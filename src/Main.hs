@@ -1,6 +1,8 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings #-}
 
+import Prelude hiding (div)
+
 import Data.String (fromString)
 import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
@@ -11,11 +13,9 @@ import qualified Data.Time.Clock
 import GHCJS.VDOM
 import GHCJS.VDOM.Element (p, h1, div, text)
 import GHCJS.Foreign.QQ
--- import qualified GHCJS.DOM
 
 import qualified Text.Parser.Combinators as P
 import qualified Text.Parser.Char as CP
--- import qualified Text.ParserCombinators.ReadP as RP
 import qualified Text.Parsec as Parsec
 
 
@@ -61,9 +61,9 @@ main = do
     threadDelay 1000000
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     let theNode = div () [
-          h1 () [text "Hello Hans!"],
-          p () [text (fromString $ show time)]
-      ]
+                            h1 () [text "Hello Hans!"],
+                            p () [text (fromString $ show time)]
+                            ]
     return theNode
 
 
