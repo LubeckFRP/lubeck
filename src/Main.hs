@@ -4,18 +4,16 @@
 import Prelude hiding (div)
 import qualified Prelude
 
-import Data.String (fromString)
 import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
 import Control.Monad (forM_)
+import Control.Monad (forever, unless)
 import Control.Concurrent (threadDelay, forkIO)
--- import qualified Control.Concurrent.Chan as Chan
 import qualified Control.Concurrent.STM.TVar as TVar
 import qualified Control.Concurrent.STM.TChan as TChan
 import Control.Monad.STM (atomically)
-
-import System.Random as Random
-import Control.Monad (forever, unless)
+import Data.String (fromString)
+import qualified System.Random as Random
 import qualified Data.Time.Clock
 
 import GHCJS.VDOM
@@ -75,7 +73,7 @@ main = do
 
   forkIO $ do
     threadDelay (round $ 1000000*1)
-    forM_ [0..4000] $ \_ -> forkIO $ do
+    forM_ [0..12000] $ \_ -> forkIO $ do
       atomically $ TVar.modifyTVar threadsLaunched succ
       forever $ threadDelay (round $ 1000000*1)
 
