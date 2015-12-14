@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings #-}
 
 import Prelude hiding (div)
+import qualified Prelude
 
 import Data.String (fromString)
 import Control.Monad.Plus (partial, predicate)
@@ -52,13 +53,12 @@ getW = do
 
 -- main = print $ (cs :: Pitch) .+^ (_P8^*(-3) ^+^ m3)
 main = do
-  print "Hello Tom!"
   print (partial odd $ 11245521)
   print (runParser sexpr "(+ 1 2 (+ 3 4))")
 
   w <- getW
   loop w $ do
-    threadDelay 1000000
+    threadDelay (1000000 `Prelude.div` 10)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     let theNode = div () [
                             h1 () [text "Hello Hans!"],
