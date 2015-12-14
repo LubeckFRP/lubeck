@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes #-}
 
 import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
@@ -44,7 +44,7 @@ runParser (P x) input = case Parsec.runParser x () "unnamed" input of
 
 getW :: IO DOMNode
 getW = do
-  root <- [js| document.createElement('div') |]
+  root <- [js| document.createElement('div'); |]
   return [js_| document.body.appendChild(`root); |]
 
 -- main = print $ (cs :: Pitch) .+^ (_P8^*(-3) ^+^ m3)
