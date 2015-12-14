@@ -2,6 +2,18 @@ flags: {}
 compiler: ghcjs-0.2.0_ghc-7.10.2
 packages:
 - '.'
+- location:
+    git: git@github.com:ghcjs/ghcjs-ffiqq.git
+    commit: da31b18582542fcfceade5ef6b2aca66662b9e20
+- location:
+    git: git@github.com:ghcjs/ghcjs-vdom.git
+    commit: 454f6c65c1d0fb3d55c994a483e975e12d82a8dd
+- location:
+    git: git@github.com:ghcjs/ghcjs-dom.git
+    commit: bbd0e70f7dae6d8d9b89b7307f2d0acf613836a7
+# - location:
+    # git: git@github.com:ghcjs/ghcjs-ffiqq.git
+    # commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 extra-deps:
 - monadplus-1.4.2
 resolver: lts-3.18
