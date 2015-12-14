@@ -65,21 +65,34 @@ main = do
   w <- getW
   randomVals <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
   counter <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
+  threadsLaunched <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
+
   forkIO $ do
     forever $ do
       threadDelay (round $ 1000000*1.5)
       Random.randomIO >>= (atomically . TVar.writeTVar randomVals)
+
+  forkIO $ do
+    threadDelay (round $ 1000000*1)
+    forM_ [0..100] $ forkIO $ do
+      atomically $ TVar.modifyTVar threadsLaunched succ
+      forever $ threadDelay (round $ 1000000*1)
+
+
   initEventDelegation []
+
   loop w $ do
     threadDelay (round $ 1000000/20)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     randomVal <- atomically $ TVar.readTVar randomVals
     counterVal <- atomically $ TVar.readTVar counter
+    threadsLaunchedVal <- atomically $ TVar.readTVar threadsLaunched
 
     let theNode = div () [ h1 () [text "Hello Hans!"]
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
                          , p () [text (fromString $ show counterVal)]
+                         , p () [text (fromString $ show threadsLaunchedVal ++ " threads launched")]
                          , form [submit $ \e -> preventDefault e >> return ()] [
                               button [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Increase"]
                             , button [click $ \e -> (atomically $ TVar.modifyTVar counter pred)] [text "Decrease"]
