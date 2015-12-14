@@ -8,7 +8,10 @@ import Data.String (fromString)
 import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
 import Control.Concurrent (threadDelay, forkIO)
-import qualified Control.Concurrent.Chan as Chan
+-- import qualified Control.Concurrent.Chan as Chan
+import qualified Control.Concurrent.STM.TVar as TVar
+import Control.Monad.STM (atomically)
+
 import System.Random as Random
 import Control.Monad (forever, unless)
 import qualified Data.Time.Clock
@@ -58,15 +61,15 @@ main = do
   print (runParser sexpr "(+ 1 2 (+ 3 4))")
 
   w <- getW
-  randomVals <- (Chan.newChan :: IO (Chan.Chan Double))
+  randomVals <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
   forkIO $ do
     forever $ do
       threadDelay (round $ 1000000*1.5)
-      Random.randomIO >>= Chan.writeChan randomVals
+      Random.randomIO >>= (atomically . TVar.writeTVar randomVals)
   loop w $ do
     threadDelay (round $ 1000000/50)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
-    randomVal <- Chan.readChan randomVals
+    randomVal <- atomically $ TVar.readTVar randomVals
     let theNode = div () [ h1 () [text "Hello Tom!"]
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
