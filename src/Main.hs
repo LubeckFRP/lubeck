@@ -10,6 +10,7 @@ import Control.Applicative
 import Control.Concurrent (threadDelay, forkIO)
 -- import qualified Control.Concurrent.Chan as Chan
 import qualified Control.Concurrent.STM.TVar as TVar
+import qualified Control.Concurrent.STM.TChan as TChan
 import Control.Monad.STM (atomically)
 
 import System.Random as Random
@@ -17,7 +18,8 @@ import Control.Monad (forever, unless)
 import qualified Data.Time.Clock
 
 import GHCJS.VDOM
-import GHCJS.VDOM.Element (p, h1, div, text)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button)
+import GHCJS.VDOM.Event (click)
 import GHCJS.Foreign.QQ
 
 import qualified Text.Parser.Combinators as P
@@ -62,6 +64,7 @@ main = do
 
   w <- getW
   randomVals <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
+  counter <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
   forkIO $ do
     forever $ do
       threadDelay (round $ 1000000*1.5)
@@ -70,9 +73,15 @@ main = do
     threadDelay (round $ 1000000/50)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     randomVal <- atomically $ TVar.readTVar randomVals
-    let theNode = div () [ h1 () [text "Hello Tom!"]
+    counterVal <- atomically $ TVar.readTVar counter
+
+    let theNode = div () [ h1 () [text "Hello Hans!"]
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
+                         , p () [text (fromString $ show counterVal)]
+                        , --  form () [
+                            button [click $ \_ -> atomically $ TVar.modifyTVar counter succ] [text "Click!"]
+                          -- ]
                          ]
     return theNode
 
