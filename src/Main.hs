@@ -1,13 +1,15 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings #-}
 
+import Data.String (fromString)
 import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
 import Control.Concurrent (threadDelay)
 import Control.Monad (forever, unless)
+import qualified Data.Time.Clock
 
 import GHCJS.VDOM
-import GHCJS.VDOM.Element (p, h1)
+import GHCJS.VDOM.Element (p, h1, div, text)
 import GHCJS.Foreign.QQ
 -- import qualified GHCJS.DOM
 
@@ -44,8 +46,9 @@ runParser (P x) input = case Parsec.runParser x () "unnamed" input of
 
 getW :: IO DOMNode
 getW = do
-  root <- [js| document.createElement('div'); |]
-  return [js_| document.body.appendChild(`root); |]
+  root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
+  -- [js_| (`root); |]
+  return root
 
 -- main = print $ (cs :: Pitch) .+^ (_P8^*(-3) ^+^ m3)
 main = do
@@ -56,21 +59,27 @@ main = do
   w <- getW
   loop w $ do
     threadDelay 1000000
-    let theNode = h1 [] ["Hello Tom!"]
+    (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
+    let theNode = div () [
+          h1 () [text "Hello Hans!"],
+          p () [text (fromString $ show time)]
+      ]
     return theNode
 
 
 -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
-loop domNode k =
+loop domNode k = do
+  node1 <- k
+  vMount <- mount domNode node1
   forever $ do
     node <- k
     insist $ do
-      delta <- diff domNode node
-      patch domNode delta
+      delta <- diff vMount node
+      patch vMount delta
 
 -- | Repeat a computation until it succeeds.
 insist :: Monad m => m Bool -> m ()
 insist k = do
   r <- k
-  unless r (insist k)
+  -- unless r (insist k)
   return ()
