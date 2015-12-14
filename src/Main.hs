@@ -19,7 +19,7 @@ import qualified Data.Time.Clock
 
 import GHCJS.VDOM
 import GHCJS.VDOM.Element (p, h1, div, text, form, button)
-import GHCJS.VDOM.Event (click)
+import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ
 
 import qualified Text.Parser.Combinators as P
@@ -69,8 +69,9 @@ main = do
     forever $ do
       threadDelay (round $ 1000000*1.5)
       Random.randomIO >>= (atomically . TVar.writeTVar randomVals)
+  initEventDelegation []
   loop w $ do
-    threadDelay (round $ 1000000/50)
+    threadDelay (round $ 1000000/20)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     randomVal <- atomically $ TVar.readTVar randomVals
     counterVal <- atomically $ TVar.readTVar counter
@@ -79,9 +80,13 @@ main = do
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
                          , p () [text (fromString $ show counterVal)]
-                        , --  form () [
-                            button [click $ \_ -> atomically $ TVar.modifyTVar counter succ] [text "Click!"]
-                          -- ]
+                         , form [submit $ \e -> preventDefault e >> return ()] [
+                              button [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Increase"]
+                            , button [click $ \e -> (atomically $ TVar.modifyTVar counter pred)] [text "Decrease"]
+                          ]
+                         , div [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Click above me!"]
+                         , div [click $ \_ -> print "!"] [text "Click above me!"]
+
                          ]
     return theNode
 
@@ -92,8 +97,8 @@ loop domNode k = do
   node1 <- k
   vMount <- mount domNode node1
   forever $ do
-    node <- k
     insist $ do
+      node <- k
       delta <- diff vMount node
       patch vMount delta
 
@@ -101,5 +106,5 @@ loop domNode k = do
 insist :: Monad m => m Bool -> m ()
 insist k = do
   r <- k
-  -- unless r (insist k)
+  unless r (insist k)
   return ()
