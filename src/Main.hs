@@ -7,7 +7,9 @@ import qualified Prelude
 import Data.String (fromString)
 import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (threadDelay, forkIO)
+import qualified Control.Concurrent.Chan as Chan
+import System.Random as Random
 import Control.Monad (forever, unless)
 import qualified Data.Time.Clock
 
@@ -56,13 +58,19 @@ main = do
   print (runParser sexpr "(+ 1 2 (+ 3 4))")
 
   w <- getW
+  randomVals <- (newChan Chan.Chan Double)
+  forkIO $ do
+    threadDelay (round $ 1000000*1.5)
+    Random.randomIO >>= Chan.writeChan randomVals
+    return ()
   loop w $ do
-    threadDelay (1000000 `Prelude.div` 50)
+    threadDelay (round $ 1000000/50)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
-    let theNode = div () [
-                            h1 () [text "Hello Tom!"],
-                            p () [text (fromString $ show time)]
-                            ]
+    randomVal <- Chan.readChan randomVals
+    let theNode = div () [ h1 () [text "Hello Tom!"]
+                         , p () [text (fromString $ show time)]
+                         , p () [text (fromString $ show randomVal)]
+                         ]
     return theNode
 
 
