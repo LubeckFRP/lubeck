@@ -58,11 +58,11 @@ main = do
   print (runParser sexpr "(+ 1 2 (+ 3 4))")
 
   w <- getW
-  randomVals <- (newChan Chan.Chan Double)
+  randomVals <- (Chan.newChan :: IO (Chan.Chan Double))
   forkIO $ do
-    threadDelay (round $ 1000000*1.5)
-    Random.randomIO >>= Chan.writeChan randomVals
-    return ()
+    forever $ do
+      threadDelay (round $ 1000000*1.5)
+      Random.randomIO >>= Chan.writeChan randomVals
   loop w $ do
     threadDelay (round $ 1000000/50)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
