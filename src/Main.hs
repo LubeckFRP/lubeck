@@ -7,6 +7,7 @@ import qualified Prelude
 import Data.String (fromString)
 import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
+import Control.Monad (forM_)
 import Control.Concurrent (threadDelay, forkIO)
 -- import qualified Control.Concurrent.Chan as Chan
 import qualified Control.Concurrent.STM.TVar as TVar
@@ -74,7 +75,7 @@ main = do
 
   forkIO $ do
     threadDelay (round $ 1000000*1)
-    forM_ [0..100] $ forkIO $ do
+    forM_ [0..4000] $ \_ -> forkIO $ do
       atomically $ TVar.modifyTVar threadsLaunched succ
       forever $ threadDelay (round $ 1000000*1)
 
@@ -82,7 +83,7 @@ main = do
   initEventDelegation []
 
   loop w $ do
-    threadDelay (round $ 1000000/20)
+    threadDelay (round $ 1000000/30)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     randomVal <- atomically $ TVar.readTVar randomVals
     counterVal <- atomically $ TVar.readTVar counter
