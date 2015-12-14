@@ -61,7 +61,7 @@ main = do
     threadDelay (1000000 `Prelude.div` 10)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     let theNode = div () [
-                            h1 () [text "Hello Hans!"],
+                            h1 () [text "Hello Tom!"],
                             p () [text (fromString $ show time)]
                             ]
     return theNode
