@@ -51,14 +51,13 @@ getW = do
   -- [js_| (`root); |]
   return root
 
--- main = print $ (cs :: Pitch) .+^ (_P8^*(-3) ^+^ m3)
 main = do
   print (partial odd $ 11245521)
   print (runParser sexpr "(+ 1 2 (+ 3 4))")
 
   w <- getW
   loop w $ do
-    threadDelay (1000000 `Prelude.div` 10)
+    threadDelay (1000000 `Prelude.div` 50)
     (Data.Time.Clock.UTCTime day time) <- Data.Time.Clock.getCurrentTime
     let theNode = div () [
                             h1 () [text "Hello Tom!"],
@@ -68,6 +67,7 @@ main = do
 
 
 -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
+loop :: DOMNode -> IO VNode -> IO ()
 loop domNode k = do
   node1 <- k
   vMount <- mount domNode node1
