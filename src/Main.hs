@@ -29,7 +29,7 @@ getFromAPI = xhrText r
   where
     r = Request {
         reqMethod          = GET
-      , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/any/tomjauncey/shoutouts"
+      , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/tomjauncey/tomjauncey/shoutouts"
       , reqLogin           = Nothing
       , reqHeaders         = []
       , reqWithCredentials = False
@@ -44,8 +44,8 @@ getW = do
 main = do
 
   w <- getW
-  randomVals <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
-  counter <- (TVar.newTVarIO 15 :: IO (TVar.TVar Int))
+  randomVals      <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
+  counter         <- (TVar.newTVarIO 15 :: IO (TVar.TVar Int))
   threadsLaunched <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
 
   forkIO $ do
@@ -61,6 +61,11 @@ main = do
 
 
   initEventDelegation []
+
+  forkIO $ do
+    r <- fmap contents getFromAPI -- TODO use
+    print r
+    return ()
 
   loop w $ do
     threadDelay (round $ 1000000/30)
