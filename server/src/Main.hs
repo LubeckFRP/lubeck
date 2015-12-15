@@ -51,8 +51,12 @@ inheritSpecifically ks = do
 
 main = do
   env <- stackEnv
-  -- TODO handler error
-  let Right jsExeDir = getJsExeBinPathFromEnv env
-  putStrLn "Serving compiled app from:"
-  putStrLn $ " " ++ jsExeDir++"/ghcjs-test.jsexe"
-  Network.Wai.Handler.Warp.run 8080 (serve (Proxy::Proxy GhcJsTestServer) (server (jsExeDir++"/ghcjs-test.jsexe")))
+  let port = 8080
+  jsExeDir = getJsExeBinPathFromEnv env
+  case jsExeDir of
+    Left msg -> print $ "Could not find compiled code: " ++ msg
+    Right jsExeDir -> do
+      putStrLn "Serving compiled client from"
+      putStrLn $ " " ++ jsExeDir ++ "/ghcjs-test.jsexe"
+      putStrLn $ "Listening on " ++ port
+      Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server (jsExeDir++"/ghcjs-test.jsexe")))
