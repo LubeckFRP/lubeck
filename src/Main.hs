@@ -16,13 +16,15 @@ import qualified Control.Concurrent.STM.TVar as TVar
 import qualified Data.Time.Clock
 import qualified System.Random as Random
 import JavaScript.Web.XMLHttpRequest -- TODO
+import qualified Data.Text
+import Data.Text(Text)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
 
-getFromAPI :: ()
+getFromAPI :: IO (Response Text)
 getFromAPI = xhrText r
   where
     r = Request {
