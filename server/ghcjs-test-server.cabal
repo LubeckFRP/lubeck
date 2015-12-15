@@ -1,0 +1,21 @@
+
+name:                ghcjs-test-server
+version:             0.1.0.0
+license:             AllRightsReserved
+license-file:        ../LICENSE
+author:              Hans
+maintainer:          hans@hanshoglund.se
+-- copyright:
+-- category:
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+executable ghcjs-test-server
+  main-is:             Main.hs
+  -- other-modules:
+  -- other-extensions:
+  build-depends:       base >=4.8 && <4.9
+
+  hs-source-dirs:      src
+  default-language:    Haskell2010
