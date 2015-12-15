@@ -41,8 +41,12 @@ inheritSpecifically ks = do
 main :: IO ()
 main = do
   let port = 8080
+
+  -- Extracts environment with the Stack additions
+  -- Uses some heuristics to find the location of the compiled code (see getJsExeBinPathFromEnv)
   jsExeDir <- fmap getJsExeBinPathFromEnv stackEnv
 
+  -- If successful, serve the compiled code
   case jsExeDir of
     Left msg -> print $ "Could not find compiled code: " ++ msg
     Right jsExeDir -> do
@@ -51,4 +55,4 @@ main = do
       putStrLn $ " " ++ jsExeDir ++ "/ghcjs-test.jsexe"
       putStrLn $ "Listening on " ++ show port
 
-      Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server (jsExeDir++"/ghcjs-test.jsexe")))
+      Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server $ jsExeDir++"/ghcjs-test.jsexe"))
