@@ -87,7 +87,7 @@ main = do
     counterVal <- atomically $ TVar.readTVar counter
     threadsLaunchedVal <- atomically $ TVar.readTVar threadsLaunched
 
-    let theNode = div () [ h1 () [text "Hello Hans!"]
+    let theNode = div () [ h1 () [text "Hello, Hans!"]
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
                          , p () [text (fromString $ show counterVal)]

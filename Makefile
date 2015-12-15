@@ -10,11 +10,11 @@ build-client:
 
 .PHONY: build-server
 build-server:
-	(cd server && stack build -j8)
+	(cd server && stack install -j8)
 
 .PHONY: run-server
 run-server: build-server
-	(cd server && stack build && stack exec $(NAME)-server)
+	~/.local/bin/ghcjs-test-server
 
 .PHONY: view-client-locally
 view-client-locally: build-client
