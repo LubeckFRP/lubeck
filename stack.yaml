@@ -16,4 +16,4 @@ packages:
     # commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 extra-deps:
 - monadplus-1.4.2
-resolver: lts-3.18
+resolver: nightly-2015-12-14
