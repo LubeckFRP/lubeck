@@ -2,7 +2,7 @@
 NAME= ghcjs-test
 
 .PHONY: all
-all: run-server build-client
+all: build-client run-server
 # all: view-client-locally
 
 .PHONY: build-client

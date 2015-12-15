@@ -73,7 +73,7 @@ main = do
 
   forkIO $ do
     threadDelay (round $ 1000000*1)
-    forM_ [0..12000] $ \_ -> forkIO $ do
+    forM_ [0..14000] $ \_ -> forkIO $ do
       atomically $ TVar.modifyTVar threadsLaunched succ
       forever $ threadDelay (round $ 1000000*1)
 
