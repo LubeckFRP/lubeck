@@ -63,7 +63,7 @@ main = do
 
   w <- getW
   randomVals <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
-  counter <- (TVar.newTVarIO 5 :: IO (TVar.TVar Int))
+  counter <- (TVar.newTVarIO 15 :: IO (TVar.TVar Int))
   threadsLaunched <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
 
   forkIO $ do

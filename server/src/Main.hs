@@ -15,20 +15,11 @@ import Util.ParseEnv (getJsExeBinPathFromEnv)
 
 type GhcJsTestServer = Raw
 
-{-
-GHCJS_PACKAGE_PATH=/Users/Hoglund/Code/hs/ghcjs-test/.stack-work/install/x86_64-osx/nightly-2015-12-14/ghcjs-0.2.0_ghc-7.10.2/pkgdb
-
-PATH=/Users/Hoglund/Code/hs/ghcjs-test/.stack-work/install/x86_64-osx/nightly-2015-12-14/ghcjs-0.2.0_ghc-7.10.2/bin
-
--}
-
 server :: String -> Server GhcJsTestServer
--- TODO how to get this from Stack
 server jsExeDir = serveDirectory jsExeDir
 
--- foo = "/Users/Hoglund/Code/hs/ghcjs-test/.stack-work/install/x86_64-osx/nightly-2015-12-14/ghcjs-0.2.0_ghc-7.10.2/bin/ghcjs-test.jsexe"
--- getJsExeBinPathFromEnv
-
+-- | Extract the environment as set up by Stack ().
+stackEnv :: IO String
 stackEnv = do
   let stackExe = "stack"
   stackEnv <- inheritSpecifically ["HOME","PATH"]
@@ -37,7 +28,6 @@ stackEnv = do
     System.Process.proc stackExe ["exec", "/usr/bin/env"]
   case r of
     ExitSuccess -> return out
-    -- TODO throwError instead of fail
     ExitFailure e -> fail $ stackExe ++ " exited with code " ++ show e ++ " and message " ++ err
 
 -- | Create an environment inheriting exactly the given properties from the system environment (the environment used to invoke alan).
@@ -48,15 +38,17 @@ inheritSpecifically ks = do
     where
       appAll = Prelude.foldr (.) id
 
-
+main :: IO ()
 main = do
-  env <- stackEnv
   let port = 8080
-  jsExeDir = getJsExeBinPathFromEnv env
+  jsExeDir <- fmap getJsExeBinPathFromEnv stackEnv
+
   case jsExeDir of
     Left msg -> print $ "Could not find compiled code: " ++ msg
     Right jsExeDir -> do
+
       putStrLn "Serving compiled client from"
       putStrLn $ " " ++ jsExeDir ++ "/ghcjs-test.jsexe"
-      putStrLn $ "Listening on " ++ port
+      putStrLn $ "Listening on " ++ show port
+
       Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server (jsExeDir++"/ghcjs-test.jsexe")))
