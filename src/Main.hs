@@ -4,62 +4,30 @@
 import Prelude hiding (div)
 import qualified Prelude
 
-import Control.Monad.Plus (partial, predicate)
 import Control.Applicative
+import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (forM_)
 import Control.Monad (forever, unless)
-import Control.Concurrent (threadDelay, forkIO)
-import qualified Control.Concurrent.STM.TVar as TVar
-import qualified Control.Concurrent.STM.TChan as TChan
+import Control.Monad.Plus (partial, predicate)
 import Control.Monad.STM (atomically)
 import Data.String (fromString)
-import qualified System.Random as Random
+import qualified Control.Concurrent.STM.TChan as TChan
+import qualified Control.Concurrent.STM.TVar as TVar
 import qualified Data.Time.Clock
+import qualified System.Random as Random
 
-import GHCJS.VDOM
+import GHCJS.VDOM (mount, diff, patch)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ
-
-import qualified Text.Parser.Combinators as P
-import qualified Text.Parser.Char as CP
-import qualified Text.Parsec as Parsec
-
-
--- PARSING
-
-data SExpr = Atom String | List [SExpr]
-  deriving (Eq, Ord, Show)
-
-sexpr :: Parser SExpr
-sexpr = do
-  P.choice $ [
-      fmap Atom $ P.some (P.choice [CP.alphaNum, CP.oneOf "+-*/"]),
-      do
-        CP.char '('
-        xs <- sexpr `P.sepBy` CP.space
-        CP.char ')'
-        return $ List xs
-    ]
-
-newtype Parser a = P { unP :: Parsec.Parsec String () a }
-  deriving (Functor, Applicative, Monad, Alternative, P.Parsing, CP.CharParsing)
-
-runParser :: Parser a -> String -> Either String a
-runParser (P x) input = case Parsec.runParser x () "unnamed" input of
-  Left e -> Left (show e)
-  Right x -> Right x
 
 
 getW :: IO DOMNode
 getW = do
   root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
-  -- [js_| (`root); |]
   return root
 
 main = do
-  print (partial odd $ 11245521)
-  print (runParser sexpr "(+ 1 2 (+ 3 4))")
 
   w <- getW
   randomVals <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
