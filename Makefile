@@ -2,15 +2,16 @@
 NAME= ghcjs-test
 
 .PHONY: all
-all: view-client-locally
+all: run-server build-client
+# all: view-client-locally
 
 .PHONY: build-client
 build-client:
-	stack build -j8
+	stack build -j8 --install-ghc
 
 .PHONY: build-server
 build-server:
-	(cd server && stack install -j8)
+	(cd server && stack install -j8 --install-ghc)
 
 .PHONY: run-server
 run-server: build-server
