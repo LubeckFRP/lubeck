@@ -15,12 +15,24 @@ import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
 import qualified Data.Time.Clock
 import qualified System.Random as Random
+import JavaScript.Web.XMLHttpRequest -- TODO
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
 
+getFromAPI :: ()
+getFromAPI = xhrText r
+  where
+    r = Request {
+        reqMethod          = GET
+      , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/any/tomjauncey/shoutouts"
+      , reqLogin           = Nothing
+      , reqHeaders         = []
+      , reqWithCredentials = False
+      , reqData            = NoData
+      }
 
 getW :: IO DOMNode
 getW = do
