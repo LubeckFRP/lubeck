@@ -19,7 +19,7 @@ import qualified System.Random as Random
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
-import GHCJS.Foreign.QQ
+import GHCJS.Foreign.QQ (js)
 
 
 getW :: IO DOMNode
