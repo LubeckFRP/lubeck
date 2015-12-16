@@ -28,24 +28,31 @@ import Data.Default (def)
 -- TODO
 import FRP
 
-getW :: IO DOMNode
-getW = do
-  root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
-  return root
+type Html   = VNode
+type Sink a = a -> IO ()
 
-network :: (Stream String -> Stream String)
-network inp =
-      let
-        as = counter $ filterE (== "A") inp
-        bs = counter $ filterE (== "B") inp
-        qs = counter $ filterE (== "Q") inp
-        info = liftA3 (\na nb nq -> "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs") as bs qs
-  in sample info inp
+newtype Action = Action String
+  deriving (Eq, Ord, Show)
 
-mainView :: (String -> IO ()) -> String -> VNode
-mainView sink st = div () [ h1 () [text "Example"]
+newtype Model  = Model String
+  deriving (Eq, Ord, Show)
+
+initial :: Model
+initial = Model "Press A, B or Q!"
+
+update :: Stream Action -> Signal Model
+update inp =
+  let
+    as = counter $ filterE (== Action "A") inp
+    bs = counter $ filterE (== Action "B") inp
+    qs = counter $ filterE (== Action "Q") inp
+  in liftA3 (\na nb nq -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs") as bs qs
+
+render :: Sink Action -> Model -> Html
+render sink (Model st) = div () [ h1 () [text "Example"]
    , p () [text (fromString $ st)]
-   , form [submit $ \e -> preventDefault e >> return ()] (fmap (\a -> button [click $ \_ -> (sink [a])] [text $ fromString [a]]) ['A'..'Z'])
+   , form [submit $ \e -> preventDefault e >> return ()]
+    (fmap (\a -> button [click $ \_ -> (sink $ Action [a])] [text $ fromString [a]]) ['A'..'Z'])
    ]
 
 
@@ -53,33 +60,37 @@ main = do
   w <- getW
   initEventDelegation []
 
-  frpIn  <- (TChan.newTChanIO :: IO (TChan.TChan String))
-  -- frpOut <- (TChan.newTChanIO :: IO (TChan.TChan String))
-  frpState <- (TVar.newTVarIO "Press A, B or Q!" :: IO (TVar.TVar String))
+  frpIn    <- (TChan.newTChanIO :: IO (TChan.TChan Action))
+  frpState <- (TVar.newTVarIO initial :: IO (TVar.TVar Model))
 
   forkIO $ do
-    runR network (atomically $ TChan.readTChan frpIn) (atomically . TVar.writeTVar frpState)
+    runR (\inp -> sample (update inp) inp) (atomically $ TChan.readTChan frpIn) (atomically . TVar.writeTVar frpState)
 
   loop w $ do
     threadDelay (round $ 1000000/30)
     st <- atomically $ TVar.readTVar frpState
-    return $ mainView (atomically . TChan.writeTChan frpIn) st
+    return $ render (atomically . TChan.writeTChan frpIn) st
 
+  where
+    getW :: IO DOMNode
+    getW = do
+      root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
+      return root
 
--- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
-loop :: DOMNode -> IO VNode -> IO ()
-loop domNode k = do
-  node1 <- k
-  vMount <- mount domNode node1
-  forever $ do
-    insist $ do
-      node <- k
-      delta <- diff vMount node
-      patch vMount delta
+    -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
+    loop :: DOMNode -> IO VNode -> IO ()
+    loop domNode k = do
+      node1 <- k
+      vMount <- mount domNode node1
+      forever $ do
+        insist $ do
+          node <- k
+          delta <- diff vMount node
+          patch vMount delta
 
--- | Repeat a computation until it succeeds.
-insist :: Monad m => m Bool -> m ()
-insist k = do
-  r <- k
-  unless r (insist k)
-  return ()
+    -- | Repeat a computation until it succeeds.
+    insist :: Monad m => m Bool -> m ()
+    insist k = do
+      r <- k
+      unless r (insist k)
+      return ()
