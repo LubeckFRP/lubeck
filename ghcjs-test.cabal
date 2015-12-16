@@ -39,6 +39,7 @@ executable ghcjs-test
                      , css-text
                      , diagrams
                      , diagrams-svg
+                    --  , diagrams-ghcjs
                      , music-pitch
                      , music-parts
                      , music-score
