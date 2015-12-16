@@ -140,7 +140,11 @@ newVar   :: a       -> M (Var R a, Var W a)
 readVar  :: Var R a -> M a
 writeVar :: Var W a -> a -> M ()
 
-fork = forkIO
+logM :: String -> M ()
+fork :: M () -> M ()
+
+logM = putStrLn
+fork k = forkIO k >> return ()
 newChan = newChanC
 dupChan = dupChanC
 readChan = readChanC
@@ -170,6 +174,7 @@ appendE a b = do
   z <- newChan
   fork (forever $ readChan x >>= writeChan (snd z))
   fork (forever $ readChan y >>= writeChan (snd z))
+  logM "Done creating append"
   return (fst z)
 
 scatterE :: Foldable t => Event (t a) -> Event a
@@ -179,6 +184,7 @@ scatterE a = do
   fork $ forever $ do
     vs <- readChan x
     forM_ vs (writeChan (snd z))
+  logM "Done creating scatter"
   return (fst z)
 mapE :: (a -> b) -> Event a -> Event b
 mapE f = fmap (fmap f)
@@ -212,6 +218,7 @@ accumR z e = do
     r <- readVar (fst v)
     writeVar (snd v) (f r)
     return ()
+  logM "Done creating accumR"
   return $ fst v
 
 snapshotWith :: (a -> b -> c) -> Beh a -> Event b -> Event c
@@ -223,6 +230,7 @@ snapshotWith f b e = do
     ev <- readChan e'
     bv <- readVar b'
     writeChan (snd z) (f bv ev)
+  logM "Done creating snapshotWith"
   return (fst z)
 
 -- snapshotWith const :: Beh c -> Event b -> Event c

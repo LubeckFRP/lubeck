@@ -114,6 +114,10 @@ main = do
   lazyList        <- (TVar.newTVarIO [0..] :: IO (TVar.TVar [Int]))
   lazyListOffset  <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
 
+  frpIn <- (TChan.newTChanIO :: IO (TChan.TChan String)
+  frpOut <- (TChan.newTChanIO :: IO (TChan.TChan String)
+
+
   forkIO $ do
     forever $ do
       threadDelay (round $ 1000000*1.5)
@@ -132,6 +136,10 @@ main = do
     r <- fmap contents getFromAPI -- TODO use
     print r
     return ()
+
+  forkIO $ do
+    let network = id
+    runR network (atomically $ TChan.readTChan frpIn) (atomically . TChan.writeTChan frpOut)
 
   forkIO $ forever $ do
     atomically $ TChan.readTChan convertMarkdown -- pause
