@@ -106,7 +106,7 @@ markdownToHtml x = do
 main = do
 
   w <- getW
-  convertMarkdown <- (TChan.newTChanIO () :: IO (TChan.TChan ()))
+  convertMarkdown <- (TChan.newTChanIO :: IO (TChan.TChan ()))
 
   randomVals      <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
   counter         <- (TVar.newTVarIO 15 :: IO (TVar.TVar Int))
@@ -135,8 +135,9 @@ main = do
     return ()
 
   forkIO $ forever $ do
-    TChan.readTChan convertMarkdown -- pause
-    print $ markdownToHtml (Data.Text.unpack markdownTest)
+    atomically $ TChan.readTChan convertMarkdown -- pause
+    r <- Random.randomIO
+    print $ markdownToHtml (Data.Text.unpack (mconcat (replicate 10 markdownTest) <> (fromString.show) (r::Double)))
     return ()
 
   loop w $ do
