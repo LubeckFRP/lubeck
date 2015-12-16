@@ -55,7 +55,7 @@ main = do
 
   frpIn  <- (TChan.newTChanIO :: IO (TChan.TChan String))
   -- frpOut <- (TChan.newTChanIO :: IO (TChan.TChan String))
-  frpState <- (TVar.newTVarIO "Press some buttons" :: IO (TVar.TVar String))
+  frpState <- (TVar.newTVarIO "Press A, B or Q!" :: IO (TVar.TVar String))
 
   forkIO $ do
     runR network (atomically $ TChan.readTChan frpIn) (atomically . TVar.writeTVar frpState)
