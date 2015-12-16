@@ -16,8 +16,6 @@ import qualified Data.Text
 import Data.Text(Text)
 import Data.Monoid
 
-import Control.Lens
-
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
@@ -25,7 +23,6 @@ import GHCJS.Foreign.QQ (js)
 
 import Data.Default (def)
 
--- TODO
 import FRP
 
 type Html   = VNode
