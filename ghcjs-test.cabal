@@ -31,11 +31,19 @@ executable ghcjs-test
                      , random
                      , stm
                      , text
+                     , containers
+                     , vector
                      , lens
                      , pandoc
+                     , xml
+                     , css-text
+                     , diagrams
+                     , diagrams-svg
                      , music-pitch
                      , music-parts
                      , music-score
+                     , neat-interpolation
+                     , data-default
 
   hs-source-dirs:      src
   default-language:    Haskell2010
