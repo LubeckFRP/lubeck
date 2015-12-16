@@ -24,21 +24,21 @@ executable ghcjs-test
                      , ghcjs-ffiqq == 0.1.0.0
                      , ghcjs-base ==0.2.0.0
                     --  , ghcjs-dom ==0.2.3.0
-                     , parsec
-                     , parsers
-                     , time
-                     , random
+                    --  , parsec
+                    --  , parsers
+                    --  , time
+                    --  , random
                      , stm
                      , contravariant
                      , text
-                     , containers
-                     , vector
+                    --  , containers
+                    --  , vector
                      , lens
-                     , pandoc
+                    --  , pandoc
                      , xml
-                     , css-text
-                     , diagrams
-                     , diagrams-svg
+                    --  , css-text
+                    --  , diagrams
+                    --  , diagrams-svg
                     --  , diagrams-ghcjs
                      , neat-interpolation
                      , data-default
