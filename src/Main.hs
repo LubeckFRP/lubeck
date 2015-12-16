@@ -12,9 +12,6 @@ import Data.String (fromString)
 import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
--- import qualified Data.Time.Clock
-import qualified System.Random as Random
--- import JavaScript.Web.XMLHttpRequest -- TODO
 import qualified Data.Text
 import Data.Text(Text)
 import Data.Monoid
