@@ -1,10 +1,95 @@
 
 {-# LANGUAGE GADTs #-}
 
+module FRP where
+
 import Control.Applicative
 import Control.Monad (forever, forM_, join)
 import Data.Functor.Contravariant
 
+import Control.Concurrent(forkIO)
+import Control.Monad.STM (atomically)
+import qualified Control.Concurrent.STM.TChan as TChan
+import qualified Control.Concurrent.STM.TVar as TVar
+import Control.Concurrent.STM.TChan (TChan)
+import Control.Concurrent.STM.TVar(TVar)
+
+
+data R
+data W
+
+-- Concurrent Haskell implementation with IO as M
+-- Simple implementation, no transactions
+
+data ChanC rw a where
+  ChanC_Raw   :: TChan a -> ChanC rw a
+  ChanC_Map   :: (a -> b) -> ChanC R a -> ChanC R b
+  ChanC_CMap  :: (a -> b) -> ChanC W b -> ChanC W a
+newChanC     :: IO (ChanC R a, ChanC W a)
+newChanC = do
+  x <- TChan.newTChanIO
+  return (ChanC_Raw x, ChanC_Raw x)
+dupChanC     :: ChanC R a -> IO (ChanC R a)
+dupChanC = go
+  where
+    go (ChanC_Raw r) = do
+      r2 <- atomically $ TChan.dupTChan r
+      return (ChanC_Raw r2)
+    go (ChanC_Map f x) = do
+      x2 <- dupChanC x
+      return (ChanC_Map f x2)
+readChanC    :: ChanC R a -> IO a -- Blocking
+readChanC = go
+  where
+    go (ChanC_Raw r) = atomically $ TChan.readTChan r
+    go (ChanC_Map f x) = fmap f $ readChanC x
+tryReadChanC :: ChanC R a -> IO (Maybe a)
+tryReadChanC = go
+  where
+    go (ChanC_Raw r) = atomically $ TChan.tryReadTChan r
+    go (ChanC_Map f x) = fmap (fmap f) $ tryReadChanC x
+writeChanC   :: ChanC W a -> a -> IO ()
+writeChanC c x = go c
+  where
+    go (ChanC_Raw r)    = atomically $ TChan.writeTChan r x
+    go (ChanC_CMap f r) = writeChanC r (f x)
+
+data VarC rw a where
+  VarC_Raw  :: TVar a                       -> VarC rw a
+  VarC_Map  :: (a -> b) -> VarC R a         -> VarC R b
+  VarC_Ap   :: VarC R (a -> b) -> VarC R a  -> VarC R b
+  VarC_CMap :: (a -> b) -> VarC W b         -> VarC W a
+
+newVarC   :: a       -> IO (VarC R a, VarC W a)
+newVarC x = do
+  v <- TVar.newTVarIO x
+  return (VarC_Raw v, VarC_Raw v)
+readVarC  :: VarC R a -> IO a
+readVarC = go
+  where
+    go (VarC_Raw x)   = atomically $ TVar.readTVar x
+    go (VarC_Map f x) = fmap f $ readVarC x
+    go (VarC_Ap f x) = do
+      fv <- readVarC f
+      xv <- readVarC x
+      return (fv xv)
+writeVarC :: VarC W a -> a -> IO ()
+writeVarC v a = go v
+  where
+    go (VarC_Raw x)    = atomically $ TVar.writeTVar x a
+    go (VarC_CMap f x) = writeVarC x (f a)
+
+instance (rw ~ R) => Functor (ChanC rw) where fmap = ChanC_Map
+instance (rw ~ W) => Contravariant (ChanC rw) where contramap = ChanC_CMap
+
+instance (rw ~ R) => Functor (VarC rw) where fmap = VarC_Map
+instance (rw ~ R) => Applicative (VarC rw) where
+  -- pure x = -- TODO tricky
+  f <*> x = VarC_Ap f x
+instance (rw ~ W) => Contravariant (VarC rw) where contramap = VarC_CMap
+
+
+{-
 -- Primitives
 
 data M a
@@ -17,8 +102,6 @@ instance Monad M where
   (>>=) = undefined
 fork        :: M () -> M () -- todo block, stop
 
-data R
-data W
 data Var rw a
 instance (rw ~ R) => Functor (Var rw) where
   fmap = undefined
@@ -41,6 +124,31 @@ newVar   :: a       -> M (Var R a, Var W a)
 readVar  :: Var R a -> M a
 writeVar :: Var W a -> a -> M ()
 [newChan, dupChan, readChan, tryReadChan, fork, writeChan, dupVar, newVar, readVar, writeVar] = undefined
+-}
+
+type M = IO
+type Chan = ChanC
+type Var  = VarC
+
+newChan     :: M (Chan R a, Chan W a)
+dupChan     :: Chan R a -> M (Chan R a)
+readChan    :: Chan R a -> M a -- Blocking
+tryReadChan :: Chan R a -> M (Maybe a)
+writeChan   :: Chan W a -> a -> M ()
+
+newVar   :: a       -> M (Var R a, Var W a)
+readVar  :: Var R a -> M a
+writeVar :: Var W a -> a -> M ()
+
+fork = forkIO
+newChan = newChanC
+dupChan = dupChanC
+readChan = readChanC
+tryReadChan = tryReadChanC
+writeChan = writeChanC
+newVar = newVarC
+readVar = readVarC
+writeVar = writeVarC
 
 
 -- FRP interface
@@ -82,16 +190,13 @@ mapB :: (a -> b) -> Beh a -> Beh b
 mapB f = fmap (fmap f)
 
 pureB :: a -> Beh a
-pureB x = join $ pure (fmap fst $ newVar x)
+pureB x = fmap fst $ newVar x
 
 apB :: Beh (a -> b) -> Beh a -> Beh b
 apB fk xk = do
   f <- fk
   x <- xk
   return $ f <*> x
-
--- trivial functor, applicative?
-
 
 foldpR :: (a -> b -> b) -> b -> Event a -> Beh b
 foldpR f z e = accumR z (mapE f e)
