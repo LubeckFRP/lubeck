@@ -7,6 +7,7 @@ all: build-client run-server
 
 .PHONY: build-client
 build-client:
+	clear && \
 	stack build -j8 --install-ghc
 
 .PHONY: build-server
