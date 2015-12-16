@@ -97,10 +97,10 @@ size  material      color
 11    glass         transparent
 |]
 
-markdownToHtml :: String -> Either String String
-markdownToHtml x = do
-  doc <- over _Left show $ Text.Pandoc.Readers.Markdown.readMarkdown def x
-  return $ Text.Pandoc.Writers.HTML.writeHtmlString def doc
+-- markdownToHtml :: String -> Either String String
+-- markdownToHtml x = do
+--   doc <- over _Left show $ Text.Pandoc.Readers.Markdown.readMarkdown def x
+--   return $ Text.Pandoc.Writers.HTML.writeHtmlString def doc
 
 main = do
 
@@ -114,8 +114,8 @@ main = do
   lazyList        <- (TVar.newTVarIO [0..] :: IO (TVar.TVar [Int]))
   lazyListOffset  <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
 
-  frpIn <- (TChan.newTChanIO :: IO (TChan.TChan String)
-  frpOut <- (TChan.newTChanIO :: IO (TChan.TChan String)
+  frpIn <- (TChan.newTChanIO :: IO (TChan.TChan String))
+  frpOut <- (TChan.newTChanIO :: IO (TChan.TChan String))
 
 
   forkIO $ do
@@ -138,14 +138,19 @@ main = do
     return ()
 
   forkIO $ do
-    let network = id
+    let network inp = let
+      as = filterE (== "A") inp
+      bs = filterE (== "B") inp
+
+      in sample (pure "X") inp
+
     runR network (atomically $ TChan.readTChan frpIn) (atomically . TChan.writeTChan frpOut)
 
-  forkIO $ forever $ do
-    atomically $ TChan.readTChan convertMarkdown -- pause
-    r <- Random.randomIO
-    print $ markdownToHtml (Data.Text.unpack (mconcat (replicate 10 markdownTest) <> (fromString.show) (r::Double)))
-    return ()
+  -- forkIO $ forever $ do
+  --   atomically $ TChan.readTChan convertMarkdown -- pause
+  --   r <- Random.randomIO
+  --   print $ markdownToHtml (Data.Text.unpack (mconcat (replicate 10 markdownTest) <> (fromString.show) (r::Double)))
+  --   return ()
 
   loop w $ do
     threadDelay (round $ 1000000/30)
@@ -159,6 +164,10 @@ main = do
     atomically $ TVar.modifyTVar lazyList (drop 1001)
     -- atomically $ TVar.modifyTVar lazyListOffset (+ 1001)
 
+    frpRes  <- atomically $ TChan.tryReadTChan frpOut
+    case frpRes of
+      Nothing -> return ()
+      Just x -> print x
 
     let theNode = div () [ h1 () [text "Hello, Hans!"]
                          , p () [text (fromString $ show $ over _2 (*10) (1,2,3))]
@@ -174,9 +183,13 @@ main = do
                          , p () [text (fromString $ show counterVal)]
                          , p () [text (fromString $ show threadsLaunchedVal ++ " threads launched")]
                          , form [submit $ \e -> preventDefault e >> return ()] [
-                              button [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Increase"]
-                            , button [click $ \e -> (atomically $ TVar.modifyTVar counter pred)] [text "Decrease"]
-                            , button [click $ \e -> (atomically $ TChan.writeTChan convertMarkdown ())] [text "Run Markdown Converter"]
+                            --   button [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Increase"]
+                            -- , button [click $ \e -> (atomically $ TVar.modifyTVar counter pred)] [text "Decrease"]
+                            -- , button [click $ \e -> (atomically $ TChan.writeTChan convertMarkdown ())] [text "Run Markdown Converter"]
+
+                              button [click $ \e -> (atomically $ TChan.writeTChan frpIn "A")] [text "A"]
+                            , button [click $ \e -> (atomically $ TChan.writeTChan frpIn "B")] [text "B"]
+
                           ]
                          , div [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Click above me!"]
                          , div [click $ \_ -> print "!"] [text "Click above me!"]

@@ -164,11 +164,18 @@ writeVar = writeVarC
 --   accum, snapshot, run: ?
 
 {-| A series of occurrences. Similar to Beh without the initial value. -}
-type Event a = M (Chan R a)
+newtype Event a = Event { getEvent :: M (Chan R a) }
+
+instance Functor Event where
+  fmap = mapE
+instance Monoid (Event a) where
+  mempty = memptyE
+  mappend = appendE
+
 memptyE :: Event a
-memptyE = fmap fst newChan
+memptyE = Event $ fmap fst newChan
 appendE :: Event a -> Event a -> Event a
-appendE a b = do
+appendE (Event a) (Event b) = Event $ do
   x <- a
   y <- b
   z <- newChan
@@ -176,9 +183,8 @@ appendE a b = do
   fork (forever $ readChan y >>= writeChan (snd z))
   logM "Done creating append"
   return (fst z)
-
 scatterE :: Foldable t => Event (t a) -> Event a
-scatterE a = do
+scatterE (Event a) = Event $ do
   x <- a
   z <- newChan
   fork $ forever $ do
@@ -186,31 +192,33 @@ scatterE a = do
     forM_ vs (writeChan (snd z))
   logM "Done creating scatter"
   return (fst z)
+
 mapE :: (a -> b) -> Event a -> Event b
-mapE f = fmap (fmap f)
+mapE f (Event x) = Event $ fmap (fmap f) x
 
 {-| A direcretely time-varying value. -}
-type Beh a = M (Var R a)
+newtype Beh a = Beh { getBeh :: M (Var R a) }
+
+instance Functor Beh where
+  fmap = mapB
+instance Applicative Beh where
+  pure = pureB
+  (<*>) = apB
 
 mapB :: (a -> b) -> Beh a -> Beh b
-mapB f = fmap (fmap f)
+mapB f (Beh x) = Beh $ fmap (fmap f) x
 
 pureB :: a -> Beh a
-pureB x = fmap fst $ newVar x
+pureB x = Beh $ fmap fst $ newVar x
 
 apB :: Beh (a -> b) -> Beh a -> Beh b
-apB fk xk = do
+apB (Beh fk) (Beh xk) = Beh $ do
   f <- fk
   x <- xk
   return $ f <*> x
 
-foldpR :: (a -> b -> b) -> b -> Event a -> Beh b
-foldpR f z e = accumR z (mapE f e)
--- foldpR.flip :: (b -> a -> b) -> b -> Event a -> Beh b
--- foldpR const :: b -> Event b -> Beh b
-
 accumR :: a -> Event (a -> a) -> Beh a
-accumR z e = do
+accumR z (Event e) = Beh $ do
   e' <- e
   v  <- newVar z
   fork $ forever $ do
@@ -221,8 +229,9 @@ accumR z e = do
   logM "Done creating accumR"
   return $ fst v
 
+
 snapshotWith :: (a -> b -> c) -> Beh a -> Event b -> Event c
-snapshotWith f b e = do
+snapshotWith f (Beh b) (Event e) = Event $ do
   b' <- b
   e' <- e
   z <- newChan
@@ -243,8 +252,38 @@ runR :: (Event a -> Event b) -> M a -> (b -> M ()) -> M ()
 runR f inp outp = do
   x <- newChan
   fork (forever $ inp >>= writeChan (snd x))
-  outpCh <- f (dupChan $ fst x)
+  outpCh <- getEvent $ f (Event $ dupChan $ fst x)
   forever $ readChan outpCh >>= outp
   return ()
 
--- runR2 :: (Event a -> Event b) -> (M a, a -> M ())
+  -- runR2 :: (Event a -> Event b) -> (M a, a -> M ())
+
+
+
+
+
+
+-- DERIVED
+
+foldpR :: (a -> b -> b) -> b -> Event a -> Beh b
+foldpR f z e = accumR z (mapE f e)
+-- foldpR.flip :: (b -> a -> b) -> b -> Event a -> Beh b
+-- foldpR const :: b -> Event b -> Beh b
+
+
+filterE :: (a -> Bool) -> Event a -> Event a
+filterE p = scatterE . mapE (\x -> if p x then [x] else [])
+
+sample :: Beh a -> Event b -> Event a
+sample = snapshotWith const
+
+snapshot :: Beh a -> Event b -> Event (a, b)
+snapshot = snapshotWith (,)
+
+-- snapshotWith ($)   :: Beh (a -> c) -> Event a -> Event c
+
+accumE :: c -> Event (c -> c) -> Event c
+accumE x a = accumR x a `sample` a
+
+step :: a -> Event a -> Beh a
+step z x = accumR z (mapE const x)
