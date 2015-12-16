@@ -3,6 +3,34 @@ compiler: ghcjs-0.2.0_ghc-7.10.2
 packages:
 - '.'
 - location:
+    git: git@github.com:music-suite/music-pitch.git
+    commit: 0308c04580536ffc82b020eacdb72a6e68513221
+- location:
+    git: git@github.com:music-suite/music-dynamics.git
+    commit: ced2f09f44baa4e282b1c564f330500593e4d44e
+- location:
+    git: git@github.com:music-suite/music-pitch-literal.git
+    commit: ad069f893f67b1367dd5fab40114bdb1a9f88710
+- location:
+    git: git@github.com:music-suite/music-dynamics-literal.git
+    commit: dc41e9a5781502fac48171e0207f41c5495f7ac0
+- location:
+    git: git@github.com:music-suite/music-parts.git
+    commit: 38aa0aa30207ad83ef9382d681c29f5ed3cc1117
+- location:
+    git: git@github.com:music-suite/music-articulation.git
+    commit: 6549d7c5511d142a69d73d020563c4bd00b12653
+- location:
+    git: git@github.com:music-suite/musicxml2.git
+    commit: 69bffbb9bfb075495b0a5883389c949810f890d2
+- location:
+    git: git@github.com:music-suite/lilypond.git
+    commit: 35a801df218d577f0845f9ed9ab3386523954fab
+- location:
+    git: git@github.com:music-suite/music-score.git
+    commit: b8730edea8d3f37b13a49a00a175b8b8e9c6b440
+
+- location:
     git: git@github.com:ghcjs/ghcjs-ffiqq.git
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 - location:
@@ -15,5 +43,20 @@ packages:
     # git: git@github.com:ghcjs/ghcjs-ffiqq.git
     # commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 extra-deps:
+- prettify-1.0
+- average-0.6.1
+- data-interval-1.2.0
+- hsini-0.4.2
 - monadplus-1.4.2
+- positive-0.4.1
+- reverse-apply-2.0.1
+- roman-numerals-0.5.1.5
+- type-unary-0.2.19
+- applicative-numbers-0.1.3
+- extended-reals-0.2.1.0
+- ty-0.1.6
+# - music-pitch-literal-1.9.0
+# - music-dynamics-literal-1.9.0
+# - music-pitch-1.9.0
+# - music-dynamics-1.9.0
 resolver: nightly-2015-12-14

@@ -19,6 +19,9 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 import qualified Data.Text
 import Data.Text(Text)
 
+import Music.Parts (playableRange, trumpet)
+import Music.Pitch hiding (diff)
+import Music.Score hiding (text, diff, Pitch)
 import Control.Lens
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
@@ -78,6 +81,10 @@ main = do
 
     let theNode = div () [ h1 () [text "Hello, Hans!"]
                          , p () [text (fromString $ show $ over _2 (*10) (1,2,3))]
+
+
+                         , p () [text (fromString $ show $ (scat[c,d,e] :: Score Pitch))]
+
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
                          , p () [text (fromString $ show counterVal)]
