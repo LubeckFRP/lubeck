@@ -16,7 +16,7 @@ build-server:
 
 .PHONY: run-server
 run-server: build-server
-	~/.local/bin/ghcjs-test-server
+	nohup ~/.local/bin/ghcjs-test-server &
 
 .PHONY: view-client-locally
 view-client-locally: build-client
