@@ -53,6 +53,9 @@ main = do
   counter         <- (TVar.newTVarIO 15 :: IO (TVar.TVar Int))
   threadsLaunched <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
 
+  lazyList        <- (TVar.newTVarIO [0..] :: IO (TVar.TVar [Int]))
+  lazyListOffset  <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
+
   forkIO $ do
     forever $ do
       threadDelay (round $ 1000000*1.5)
@@ -60,7 +63,7 @@ main = do
 
   forkIO $ do
     threadDelay (round $ 1000000*1)
-    forM_ [0..14000] $ \_ -> forkIO $ do
+    forM_ [0..14] $ \_ -> forkIO $ do
       atomically $ TVar.modifyTVar threadsLaunched succ
       forever $ threadDelay (round $ 1000000*1)
 
@@ -79,11 +82,20 @@ main = do
     counterVal <- atomically $ TVar.readTVar counter
     threadsLaunchedVal <- atomically $ TVar.readTVar threadsLaunched
 
+    ll  <- atomically $ TVar.readTVar lazyList
+    llo <- atomically $ TVar.readTVar lazyListOffset
+    atomically $ TVar.modifyTVar lazyList (drop 1001)
+    -- atomically $ TVar.modifyTVar lazyListOffset (+ 1001)
+
+
     let theNode = div () [ h1 () [text "Hello, Hans!"]
                          , p () [text (fromString $ show $ over _2 (*10) (1,2,3))]
 
 
                          , p () [text (fromString $ show $ (scat[c,d,e] :: Score Pitch))]
+
+                         -- This leaks, as the original list is retained and gradually being evaluated
+                         , p () [text (fromString $ show $ take 10 (drop llo ll))]
 
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
