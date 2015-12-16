@@ -29,6 +29,7 @@ executable ghcjs-test
                      , time
                      , random
                      , stm
+                     , contravariant
                      , text
                      , containers
                      , vector

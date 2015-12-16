@@ -8,9 +8,8 @@ import Control.Applicative
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (forM_)
 import Control.Monad (forever, unless)
-import Control.Monad.Plus (partial, predicate)
-import Control.Monad.STM (atomically)
 import Data.String (fromString)
+import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
 import qualified Data.Time.Clock
@@ -31,6 +30,9 @@ import qualified NeatInterpolation
 import Data.Default (def)
 import qualified Text.Pandoc.Readers.Markdown
 import qualified Text.Pandoc.Writers.HTML
+
+-- TODO
+import FRP
 
 
 getFromAPI :: IO (Response Text)
