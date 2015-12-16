@@ -20,9 +20,6 @@ import qualified Data.Text
 import Data.Text(Text)
 import Data.Monoid
 
--- import Music.Parts (playableRange, trumpet)
--- import Music.Pitch hiding (diff)
--- import Music.Score hiding (text, diff, Pitch)
 import Control.Lens
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
