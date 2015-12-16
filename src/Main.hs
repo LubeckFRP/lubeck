@@ -27,8 +27,6 @@ import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, pr
 import GHCJS.Foreign.QQ (js)
 
 import Data.Default (def)
-import qualified Text.Pandoc.Readers.Markdown
-import qualified Text.Pandoc.Writers.HTML
 
 -- TODO
 import FRP
