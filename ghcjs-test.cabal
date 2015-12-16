@@ -24,7 +24,6 @@ executable ghcjs-test
                      , ghcjs-ffiqq == 0.1.0.0
                      , ghcjs-base ==0.2.0.0
                     --  , ghcjs-dom ==0.2.3.0
-                     , monadplus == 1.4.2
                      , parsec
                      , parsers
                      , time
@@ -40,9 +39,6 @@ executable ghcjs-test
                      , diagrams
                      , diagrams-svg
                     --  , diagrams-ghcjs
-                     , music-pitch
-                     , music-parts
-                     , music-score
                      , neat-interpolation
                      , data-default
 
