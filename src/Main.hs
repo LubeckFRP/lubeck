@@ -106,6 +106,8 @@ markdownToHtml x = do
 main = do
 
   w <- getW
+  convertMarkdown <- (TChan.newTChanIO () :: IO (TChan.TChan ()))
+
   randomVals      <- (TVar.newTVarIO 0 :: IO (TVar.TVar Double))
   counter         <- (TVar.newTVarIO 15 :: IO (TVar.TVar Int))
   threadsLaunched <- (TVar.newTVarIO 0 :: IO (TVar.TVar Int))
@@ -132,9 +134,9 @@ main = do
     print r
     return ()
 
-  forkIO $ do
+  forkIO $ forever $ do
+    TChan.readTChan convertMarkdown -- pause
     print $ markdownToHtml (Data.Text.unpack markdownTest)
-    print $ markdownToHtml (Data.Text.unpack (markdownTest <> markdownTest))
     return ()
 
   loop w $ do
@@ -166,6 +168,7 @@ main = do
                          , form [submit $ \e -> preventDefault e >> return ()] [
                               button [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Increase"]
                             , button [click $ \e -> (atomically $ TVar.modifyTVar counter pred)] [text "Decrease"]
+                            , button [click $ \e -> (atomically $ TChan.writeTChan convertMarkdown ())] [text "Run Markdown Converter"]
                           ]
                          , div [click $ \e -> (atomically $ TVar.modifyTVar counter succ)] [text "Click above me!"]
                          , div [click $ \_ -> print "!"] [text "Click above me!"]
