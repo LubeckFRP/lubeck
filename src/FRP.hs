@@ -19,29 +19,29 @@ import Control.Concurrent.STM.TVar(TVar)
 -- FRP interface
 
 
-{-| A series of occurrences. Similar to Beh without the initial value. -}
-newtype Event a = Event { getEvent :: M (Chan R a) }
+{-| A series of events. Similar to Signal without the initial value. -}
+newtype Stream a = Stream { getStream :: M (Chan R a) }
 
-instance Functor Event where
+instance Functor Stream where
   fmap = mapE
-instance Monoid (Event a) where
+instance Monoid (Stream a) where
   mempty = memptyE
   mappend = appendE
 
--- | An event that never occurs.
-memptyE :: Event a
-memptyE = Event $ fmap fst newChan
+-- | An Stream that never occurs.
+memptyE :: Stream a
+memptyE = Stream $ fmap fst newChan
 
 -- |
--- Interleave occurances of two events.
+-- Interleave the events of two streams.
 --
--- Note the order is non-deterministic, and that there is no guarantee that events derived from the same input occur
+-- Note the order is non-deterministic, and that there is no guarantee that Streams derived from the same input occur
 -- simultaneously (or even close in time). In a sense this function is Similar to race in the 'async' package.
 --
 -- This means that in cases such as @fmap f ev <> fmap g ev@, the @f@ and @g@ might be evaluated in parallel and results
 -- are allowed to stream through without blocking the output.
-appendE :: Event a -> Event a -> Event a
-appendE (Event a) (Event b) = Event $ do
+appendE :: Stream a -> Stream a -> Stream a
+appendE (Stream a) (Stream b) = Stream $ do
   x <- a
   y <- b
   z <- newChan
@@ -50,9 +50,9 @@ appendE (Event a) (Event b) = Event $ do
   logM "Done creating append"
   return (fst z)
 
--- | For every occurance of a container type, emit one occurance per element. Order is preserved.
-scatterE :: Foldable t => Event (t a) -> Event a
-scatterE (Event a) = Event $ do
+-- | For every event of a container type, emit one event per element. Order is preserved.
+scatterE :: Foldable t => Stream (t a) -> Stream a
+scatterE (Stream a) = Stream $ do
   x <- a
   z <- newChan
   fork $ forever $ do
@@ -61,32 +61,32 @@ scatterE (Event a) = Event $ do
   logM "Done creating scatter"
   return (fst z)
 
-mapE :: (a -> b) -> Event a -> Event b
-mapE f (Event x) = Event $ fmap (fmap f) x
+mapE :: (a -> b) -> Stream a -> Stream b
+mapE f (Stream x) = Stream $ fmap (fmap f) x
 
 {-| A direcretely time-varying value. -}
-newtype Beh a = Beh { getBeh :: M (Var R a) }
+newtype Signal a = Signal { getSignal :: M (Var R a) }
 
-instance Functor Beh where
+instance Functor Signal where
   fmap = mapB
-instance Applicative Beh where
+instance Applicative Signal where
   pure = pureB
   (<*>) = apB
 
-mapB :: (a -> b) -> Beh a -> Beh b
-mapB f (Beh x) = Beh $ fmap (fmap f) x
+mapB :: (a -> b) -> Signal a -> Signal b
+mapB f (Signal x) = Signal $ fmap (fmap f) x
 
-pureB :: a -> Beh a
-pureB x = Beh $ fmap fst $ newVar x
+pureB :: a -> Signal a
+pureB x = Signal $ fmap fst $ newVar x
 
-apB :: Beh (a -> b) -> Beh a -> Beh b
-apB (Beh fk) (Beh xk) = Beh $ do
+apB :: Signal (a -> b) -> Signal a -> Signal b
+apB (Signal fk) (Signal xk) = Signal $ do
   f <- fk
   x <- xk
   return $ f <*> x
 
-accumR :: a -> Event (a -> a) -> Beh a
-accumR z (Event e) = Beh $ do
+accumR :: a -> Stream (a -> a) -> Signal a
+accumR z (Stream e) = Signal $ do
   e' <- e
   v  <- newVar z
   fork $ forever $ do
@@ -98,8 +98,8 @@ accumR z (Event e) = Beh $ do
   return $ fst v
 
 
-snapshotWith :: (a -> b -> c) -> Beh a -> Event b -> Event c
-snapshotWith f (Beh b) (Event e) = Event $ do
+snapshotWith :: (a -> b -> c) -> Signal a -> Stream b -> Stream c
+snapshotWith f (Signal b) (Stream e) = Stream $ do
   b' <- b
   e' <- e
   z <- newChan
@@ -110,18 +110,17 @@ snapshotWith f (Beh b) (Event e) = Event $ do
   logM "Done creating snapshotWith"
   return (fst z)
 
--- snapshotWith const :: Beh c -> Event b -> Event c
--- snapshotWith (,)   :: Beh a -> Event b -> Event (a, b)
--- snapshotWith ($)   :: Beh (a -> c) -> Event a -> Event c
+-- snapshotWith const :: Signal c -> Stream b -> Stream c
+-- snapshotWith (,)   :: Signal a -> Stream b -> Stream (a, b)
+-- snapshotWith ($)   :: Signal (a -> c) -> Stream a -> Stream c
 
 
 -- |
 -- Run an FRP network.
 --
---
 -- Arguments:
 --
---  * A function of input events to output events (the network)
+--  * A function of input Streams to output Streams (the network)
 --
 --  * A blocking computation emitting input values (i.e. the result of calling readMVar or readTChan).
 --
@@ -129,39 +128,41 @@ snapshotWith f (Beh b) (Event e) = Event $ do
 --
 -- This function does *not* return.
 --
-runR :: (Event a -> Event b) -> M a -> (b -> M ()) -> M ()
+runR :: (Stream a -> Stream b) -> M a -> (b -> M ()) -> M ()
 runR f inp outp = do
   x <- newChan
   fork (forever $ inp >>= writeChan (snd x))
-  outpCh <- getEvent $ f (Event $ dupChan $ fst x)
+  outpCh <- getStream $ f (Stream $ dupChan $ fst x)
   forever $ readChan outpCh >>= outp
   return ()
 
 -- The dual, not used at the moment
--- coRunR :: (Event a -> Event b) -> (M a, a -> M ())
+-- coRunR :: (Stream a -> Stream b) -> (M a, a -> M ())
+
+
 
 -- DERIVED COMBINATORS
 
-foldpR :: (a -> b -> b) -> b -> Event a -> Beh b
+foldpR :: (a -> b -> b) -> b -> Stream a -> Signal b
 foldpR f z e = accumR z (mapE f e)
--- foldpR.flip :: (b -> a -> b) -> b -> Event a -> Beh b
--- foldpR const :: b -> Event b -> Beh b
+-- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
+-- foldpR const :: b -> Stream b -> Signal b
 
-filterE :: (a -> Bool) -> Event a -> Event a
+filterE :: (a -> Bool) -> Stream a -> Stream a
 filterE p = scatterE . mapE (\x -> if p x then [x] else [])
 
-sample :: Beh a -> Event b -> Event a
+sample :: Signal a -> Stream b -> Stream a
 sample = snapshotWith const
 
-snapshot :: Beh a -> Event b -> Event (a, b)
+snapshot :: Signal a -> Stream b -> Stream (a, b)
 snapshot = snapshotWith (,)
 
--- snapshotWith ($)   :: Beh (a -> c) -> Event a -> Event c
+-- snapshotWith ($)   :: Signal (a -> c) -> Stream a -> Stream c
 
-accumE :: c -> Event (c -> c) -> Event c
+accumE :: c -> Stream (c -> c) -> Stream c
 accumE x a = accumR x a `sample` a
 
-step :: a -> Event a -> Beh a
+step :: a -> Stream a -> Signal a
 step z x = accumR z (mapE const x)
 
 counter e = accumR 0 (fmap (const succ) e)
