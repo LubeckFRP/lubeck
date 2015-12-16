@@ -18,10 +18,11 @@ import qualified System.Random as Random
 import JavaScript.Web.XMLHttpRequest -- TODO
 import qualified Data.Text
 import Data.Text(Text)
+import Data.Monoid
 
-import Music.Parts (playableRange, trumpet)
-import Music.Pitch hiding (diff)
-import Music.Score hiding (text, diff, Pitch)
+-- import Music.Parts (playableRange, trumpet)
+-- import Music.Pitch hiding (diff)
+-- import Music.Score hiding (text, diff, Pitch)
 import Control.Lens
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
@@ -31,8 +32,8 @@ import GHCJS.Foreign.QQ (js)
 
 import qualified NeatInterpolation
 import Data.Default (def)
-import Text.Pandoc.Readers.Markdown
-import Text.Pandoc.Writers.HTML
+import qualified Text.Pandoc.Readers.Markdown
+import qualified Text.Pandoc.Writers.HTML
 
 
 getFromAPI :: IO (Response Text)
@@ -97,10 +98,10 @@ size  material      color
 11    glass         transparent
 |]
 
-
+markdownToHtml :: String -> Either String String
 markdownToHtml x = do
-  doc <- over _Left show $ Text.Pandoc.Readers.Markdown.readMarkDown def x
-  Text.Pandoc.Writers.Html.writeHtmlString def doc
+  doc <- over _Left show $ Text.Pandoc.Readers.Markdown.readMarkdown def x
+  return $ Text.Pandoc.Writers.HTML.writeHtmlString def doc
 
 main = do
 
@@ -131,7 +132,10 @@ main = do
     print r
     return ()
 
-  print $ markdownToHtml markdownTest
+  forkIO $ do
+    print $ markdownToHtml (Data.Text.unpack markdownTest)
+    print $ markdownToHtml (Data.Text.unpack (markdownTest <> markdownTest))
+    return ()
 
   loop w $ do
     threadDelay (round $ 1000000/30)
@@ -150,7 +154,7 @@ main = do
                          , p () [text (fromString $ show $ over _2 (*10) (1,2,3))]
 
 
-                         , p () [text (fromString $ show $ (scat[c,d,e] :: Score Pitch))]
+                        --  , p () [text (fromString $ show $ (scat[c,d,e] :: Score Pitch))]
 
                          -- This leaks, as the original list is retained and gradually being evaluated
                          , p () [text (fromString $ show $ take 10 (drop llo ll))]
