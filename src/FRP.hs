@@ -18,9 +18,32 @@ import Control.Concurrent.STM.TVar(TVar)
 
 -- FRP interface
 
+{-
+Stream vs. Signal
 
-{-| A series of events. Similar to Signal without the initial value. -}
+Stream
+  - Semantically: [(Time, a)]
+  - Intuitively: a message dispatcher.
+  - Has no initial value (or any notion of a value in time)
+  - Only defined at discrete points in time
+
+Signal
+  - Semantically: (Time -> a)
+  - Intuitively: a broadcaster of a time-varying value
+  - May change discretely, but the time of change can not be observed.
+    - In particular there is no way to derive (Signal a -> Stream a) without providing
+      a Stream that triggers sampling of the signal
+  - Defined at every point in time
+
+
+-}
+
+{-| A series of events. -}
 newtype Stream a = Stream { getStream :: M (Chan R a) }
+
+{-| A time-varying value. -}
+newtype Signal a = Signal { getSignal :: M (Var R a) }
+
 
 instance Functor Stream where
   fmap = mapE
@@ -28,18 +51,19 @@ instance Monoid (Stream a) where
   mempty = memptyE
   mappend = appendE
 
--- | An Stream that never occurs.
+-- | A stream that never emits anything.
 memptyE :: Stream a
 memptyE = Stream $ fmap fst newChan
 
--- |
--- Interleave the events of two streams.
---
--- Note the order is non-deterministic, and that there is no guarantee that Streams derived from the same input occur
--- simultaneously (or even close in time). In a sense this function is Similar to race in the 'async' package.
---
--- This means that in cases such as @fmap f ev <> fmap g ev@, the @f@ and @g@ might be evaluated in parallel and results
--- are allowed to stream through without blocking the output.
+{-|
+Interleave the events of two streams.
+
+Note the order is non-deterministic, and that there is no guarantee that events derived from the same stream occur
+in any particular order. In a sense this function is Similar to race in the 'async' package.
+
+This means that in cases such as @fmap f ev <> fmap g ev@, the @f@ and @g@ might be evaluated in parallel and results
+are allowed to stream through without blocking the output.
+-}
 appendE :: Stream a -> Stream a -> Stream a
 appendE (Stream a) (Stream b) = Stream $ do
   x <- a
@@ -64,8 +88,6 @@ scatterE (Stream a) = Stream $ do
 mapE :: (a -> b) -> Stream a -> Stream b
 mapE f (Stream x) = Stream $ fmap (fmap f) x
 
-{-| A direcretely time-varying value. -}
-newtype Signal a = Signal { getSignal :: M (Var R a) }
 
 instance Functor Signal where
   fmap = mapB

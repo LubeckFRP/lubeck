@@ -33,7 +33,7 @@ getW = do
   root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
   return root
 
-network :: (Event String -> Event String)
+network :: (Stream String -> Stream String)
 network inp =
       let
         as = counter $ filterE (== "A") inp
