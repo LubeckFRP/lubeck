@@ -22,20 +22,22 @@ import Control.Concurrent.STM.TVar(TVar)
 Stream vs. Signal
 
 Stream
+
   - Semantically: [(Time, a)]
-  - Intuitively: a message dispatcher.
-  - Has no initial value (or any notion of a value in time)
+  - Intuitively: a message dispatcher
   - Only defined at discrete points in time
+  - Has no initial value (or any notion of a value in time)
 
 Signal
+
   - Semantically: (Time -> a)
-  - Intuitively: a broadcaster of a time-varying value
+  - Intuitively: a time-varying value
+  - Defined at every point in time
   - May change discretely, but the time of change can not be observed.
     - In particular there is no way to derive (Signal a -> Stream a) without providing
       a Stream that triggers sampling of the signal
-  - Defined at every point in time
 
-
+To get something like Elm's signals, use (Stream (), Signal a).
 -}
 
 {-| A series of events. -}
@@ -44,9 +46,9 @@ newtype Stream a = Stream { getStream :: M (Chan R a) }
 {-| A time-varying value. -}
 newtype Signal a = Signal { getSignal :: M (Var R a) }
 
-
 instance Functor Stream where
   fmap = mapE
+
 instance Monoid (Stream a) where
   mempty = memptyE
   mappend = appendE
@@ -142,13 +144,13 @@ snapshotWith f (Signal b) (Stream e) = Stream $ do
 --
 -- Arguments:
 --
---  * A function of input Streams to output Streams (the network)
+--  * A function of input events to output events (the network)
 --
---  * A blocking computation emitting input values (i.e. the result of calling readMVar or readTChan).
+--  * A blocking computation from which input values are pulled (i.e. the result of calling read... on some source).
 --
---  * A callback to be invoked on output.
+--  * A callback to be invoked on output (e.g. the result of calling write... on some sink).
 --
--- This function does *not* return.
+-- This function does *not* return, the calling thread is consumed.
 --
 runR :: (Stream a -> Stream b) -> M a -> (b -> M ()) -> M ()
 runR f inp outp = do
