@@ -15,11 +15,194 @@ import Control.Concurrent.STM.TChan (TChan)
 import Control.Concurrent.STM.TVar(TVar)
 
 
+
+-- FRP interface
+
+
+{-| A series of occurrences. Similar to Beh without the initial value. -}
+newtype Event a = Event { getEvent :: M (Chan R a) }
+
+instance Functor Event where
+  fmap = mapE
+instance Monoid (Event a) where
+  mempty = memptyE
+  mappend = appendE
+
+-- | An event that never occurs.
+memptyE :: Event a
+memptyE = Event $ fmap fst newChan
+
+-- |
+-- Interleave occurances of two events.
+--
+-- Note the order is non-deterministic, and that there is no guarantee that events derived from the same input occur
+-- simultaneously (or even close in time). In a sense this function is Similar to race in the 'async' package.
+--
+-- This means that in cases such as @fmap f ev <> fmap g ev@, the @f@ and @g@ might be evaluated in parallel and results
+-- are allowed to stream through without blocking the output.
+appendE :: Event a -> Event a -> Event a
+appendE (Event a) (Event b) = Event $ do
+  x <- a
+  y <- b
+  z <- newChan
+  fork (forever $ readChan x >>= writeChan (snd z))
+  fork (forever $ readChan y >>= writeChan (snd z))
+  logM "Done creating append"
+  return (fst z)
+
+-- | For every occurance of a container type, emit one occurance per element. Order is preserved.
+scatterE :: Foldable t => Event (t a) -> Event a
+scatterE (Event a) = Event $ do
+  x <- a
+  z <- newChan
+  fork $ forever $ do
+    vs <- readChan x
+    forM_ vs (writeChan (snd z))
+  logM "Done creating scatter"
+  return (fst z)
+
+mapE :: (a -> b) -> Event a -> Event b
+mapE f (Event x) = Event $ fmap (fmap f) x
+
+{-| A direcretely time-varying value. -}
+newtype Beh a = Beh { getBeh :: M (Var R a) }
+
+instance Functor Beh where
+  fmap = mapB
+instance Applicative Beh where
+  pure = pureB
+  (<*>) = apB
+
+mapB :: (a -> b) -> Beh a -> Beh b
+mapB f (Beh x) = Beh $ fmap (fmap f) x
+
+pureB :: a -> Beh a
+pureB x = Beh $ fmap fst $ newVar x
+
+apB :: Beh (a -> b) -> Beh a -> Beh b
+apB (Beh fk) (Beh xk) = Beh $ do
+  f <- fk
+  x <- xk
+  return $ f <*> x
+
+accumR :: a -> Event (a -> a) -> Beh a
+accumR z (Event e) = Beh $ do
+  e' <- e
+  v  <- newVar z
+  fork $ forever $ do
+    f <- readChan e'
+    r <- readVar (fst v)
+    writeVar (snd v) (f r)
+    return ()
+  logM "Done creating accumR"
+  return $ fst v
+
+
+snapshotWith :: (a -> b -> c) -> Beh a -> Event b -> Event c
+snapshotWith f (Beh b) (Event e) = Event $ do
+  b' <- b
+  e' <- e
+  z <- newChan
+  fork $ forever $ do
+    ev <- readChan e'
+    bv <- readVar b'
+    writeChan (snd z) (f bv ev)
+  logM "Done creating snapshotWith"
+  return (fst z)
+
+-- snapshotWith const :: Beh c -> Event b -> Event c
+-- snapshotWith (,)   :: Beh a -> Event b -> Event (a, b)
+-- snapshotWith ($)   :: Beh (a -> c) -> Event a -> Event c
+
+
+-- |
+-- Run an FRP network.
+--
+--
+-- Arguments:
+--
+--  * A function of input events to output events (the network)
+--
+--  * A blocking computation emitting input values (i.e. the result of calling readMVar or readTChan).
+--
+--  * A callback to be invoked on output.
+--
+-- This function does *not* return.
+--
+runR :: (Event a -> Event b) -> M a -> (b -> M ()) -> M ()
+runR f inp outp = do
+  x <- newChan
+  fork (forever $ inp >>= writeChan (snd x))
+  outpCh <- getEvent $ f (Event $ dupChan $ fst x)
+  forever $ readChan outpCh >>= outp
+  return ()
+
+-- The dual, not used at the moment
+-- coRunR :: (Event a -> Event b) -> (M a, a -> M ())
+
+-- DERIVED COMBINATORS
+
+foldpR :: (a -> b -> b) -> b -> Event a -> Beh b
+foldpR f z e = accumR z (mapE f e)
+-- foldpR.flip :: (b -> a -> b) -> b -> Event a -> Beh b
+-- foldpR const :: b -> Event b -> Beh b
+
+filterE :: (a -> Bool) -> Event a -> Event a
+filterE p = scatterE . mapE (\x -> if p x then [x] else [])
+
+sample :: Beh a -> Event b -> Event a
+sample = snapshotWith const
+
+snapshot :: Beh a -> Event b -> Event (a, b)
+snapshot = snapshotWith (,)
+
+-- snapshotWith ($)   :: Beh (a -> c) -> Event a -> Event c
+
+accumE :: c -> Event (c -> c) -> Event c
+accumE x a = accumR x a `sample` a
+
+step :: a -> Event a -> Beh a
+step z x = accumR z (mapE const x)
+
+counter e = accumR 0 (fmap (const succ) e)
+
+
+-- IMPLEMENTATION
+
+
 data R
 data W
 
--- Concurrent Haskell implementation with IO as M
--- Simple implementation, no transactions
+type M = IO
+type Chan = ChanC
+type Var  = VarC
+
+newChan     :: M (Chan R a, Chan W a)
+dupChan     :: Chan R a -> M (Chan R a)
+readChan    :: Chan R a -> M a -- Blocking
+tryReadChan :: Chan R a -> M (Maybe a)
+writeChan   :: Chan W a -> a -> M ()
+
+newVar   :: a       -> M (Var R a, Var W a)
+readVar  :: Var R a -> M a
+writeVar :: Var W a -> a -> M ()
+
+logM :: String -> M ()
+fork :: M () -> M ()
+
+logM = putStrLn
+fork k = forkIO k >> return ()
+newChan = newChanC
+dupChan = dupChanC
+readChan = readChanC
+tryReadChan = tryReadChanC
+writeChan = writeChanC
+newVar = newVarC
+readVar = readVarC
+writeVar = writeVarC
+
+
+-- Concurrent Haskell implementation with IO as the base monad
 
 data ChanC rw a where
   ChanC_Raw   :: TChan a -> ChanC rw a
@@ -87,205 +270,3 @@ instance (rw ~ R) => Applicative (VarC rw) where
   -- pure x = -- TODO tricky
   f <*> x = VarC_Ap f x
 instance (rw ~ W) => Contravariant (VarC rw) where contramap = VarC_CMap
-
-
-{-
--- Primitives
-
-data M a
-instance Functor M where
-  fmap = undefined
-instance Applicative M where
-  pure = undefined
-  (<*>) = undefined
-instance Monad M where
-  (>>=) = undefined
-fork        :: M () -> M () -- todo block, stop
-
-data Var rw a
-instance (rw ~ R) => Functor (Var rw) where
-  fmap = undefined
-instance (rw ~ R) => Applicative (Var rw) where
-  pure = undefined
-  (<*>) = undefined
-data Chan rw a
-instance (rw ~ R) => Functor (Chan rw) where
-  fmap = undefined
-instance (rw ~ W) => Contravariant (Chan rw) where
-  contramap = undefined
-
-newChan     :: M (Chan R a, Chan W a)
-dupChan     :: Chan R a -> M (Chan R a)
-readChan    :: Chan R a -> M a -- Blocking
-tryReadChan :: Chan R a -> M (Maybe a)
-writeChan   :: Chan W a -> a -> M ()
-
-newVar   :: a       -> M (Var R a, Var W a)
-readVar  :: Var R a -> M a
-writeVar :: Var W a -> a -> M ()
-[newChan, dupChan, readChan, tryReadChan, fork, writeChan, dupVar, newVar, readVar, writeVar] = undefined
--}
-
-type M = IO
-type Chan = ChanC
-type Var  = VarC
-
-newChan     :: M (Chan R a, Chan W a)
-dupChan     :: Chan R a -> M (Chan R a)
-readChan    :: Chan R a -> M a -- Blocking
-tryReadChan :: Chan R a -> M (Maybe a)
-writeChan   :: Chan W a -> a -> M ()
-
-newVar   :: a       -> M (Var R a, Var W a)
-readVar  :: Var R a -> M a
-writeVar :: Var W a -> a -> M ()
-
-logM :: String -> M ()
-fork :: M () -> M ()
-
-logM = putStrLn
-fork k = forkIO k >> return ()
-newChan = newChanC
-dupChan = dupChanC
-readChan = readChanC
-tryReadChan = tryReadChanC
-writeChan = writeChanC
-newVar = newVarC
-readVar = readVarC
-writeVar = writeVarC
-
-
--- FRP interface
-
--- This implementation requires 'fork/ in the base monad.
--- An alternative could be to use race/concurrently from "async":
---   appendE: race
---   scatter: race
---   accum, snapshot, run: ?
-
-{-| A series of occurrences. Similar to Beh without the initial value. -}
-newtype Event a = Event { getEvent :: M (Chan R a) }
-
-instance Functor Event where
-  fmap = mapE
-instance Monoid (Event a) where
-  mempty = memptyE
-  mappend = appendE
-
-memptyE :: Event a
-memptyE = Event $ fmap fst newChan
-appendE :: Event a -> Event a -> Event a
-appendE (Event a) (Event b) = Event $ do
-  x <- a
-  y <- b
-  z <- newChan
-  fork (forever $ readChan x >>= writeChan (snd z))
-  fork (forever $ readChan y >>= writeChan (snd z))
-  logM "Done creating append"
-  return (fst z)
-scatterE :: Foldable t => Event (t a) -> Event a
-scatterE (Event a) = Event $ do
-  x <- a
-  z <- newChan
-  fork $ forever $ do
-    vs <- readChan x
-    forM_ vs (writeChan (snd z))
-  logM "Done creating scatter"
-  return (fst z)
-
-mapE :: (a -> b) -> Event a -> Event b
-mapE f (Event x) = Event $ fmap (fmap f) x
-
-{-| A direcretely time-varying value. -}
-newtype Beh a = Beh { getBeh :: M (Var R a) }
-
-instance Functor Beh where
-  fmap = mapB
-instance Applicative Beh where
-  pure = pureB
-  (<*>) = apB
-
-mapB :: (a -> b) -> Beh a -> Beh b
-mapB f (Beh x) = Beh $ fmap (fmap f) x
-
-pureB :: a -> Beh a
-pureB x = Beh $ fmap fst $ newVar x
-
-apB :: Beh (a -> b) -> Beh a -> Beh b
-apB (Beh fk) (Beh xk) = Beh $ do
-  f <- fk
-  x <- xk
-  return $ f <*> x
-
-accumR :: a -> Event (a -> a) -> Beh a
-accumR z (Event e) = Beh $ do
-  e' <- e
-  v  <- newVar z
-  fork $ forever $ do
-    f <- readChan e'
-    r <- readVar (fst v)
-    writeVar (snd v) (f r)
-    return ()
-  logM "Done creating accumR"
-  return $ fst v
-
-
-snapshotWith :: (a -> b -> c) -> Beh a -> Event b -> Event c
-snapshotWith f (Beh b) (Event e) = Event $ do
-  b' <- b
-  e' <- e
-  z <- newChan
-  fork $ forever $ do
-    ev <- readChan e'
-    bv <- readVar b'
-    writeChan (snd z) (f bv ev)
-  logM "Done creating snapshotWith"
-  return (fst z)
-
--- snapshotWith const :: Beh c -> Event b -> Event c
--- snapshotWith (,)   :: Beh a -> Event b -> Event (a, b)
--- snapshotWith ($)   :: Beh (a -> c) -> Event a -> Event c
-
-
--- Launch a thread that wakes up on input, runs it through the FRP network, calls the output sink
-runR :: (Event a -> Event b) -> M a -> (b -> M ()) -> M ()
-runR f inp outp = do
-  x <- newChan
-  fork (forever $ inp >>= writeChan (snd x))
-  outpCh <- getEvent $ f (Event $ dupChan $ fst x)
-  forever $ readChan outpCh >>= outp
-  return ()
-
-  -- runR2 :: (Event a -> Event b) -> (M a, a -> M ())
-
-
-
-
-
-
--- DERIVED
-
-foldpR :: (a -> b -> b) -> b -> Event a -> Beh b
-foldpR f z e = accumR z (mapE f e)
--- foldpR.flip :: (b -> a -> b) -> b -> Event a -> Beh b
--- foldpR const :: b -> Event b -> Beh b
-
-
-filterE :: (a -> Bool) -> Event a -> Event a
-filterE p = scatterE . mapE (\x -> if p x then [x] else [])
-
-sample :: Beh a -> Event b -> Event a
-sample = snapshotWith const
-
-snapshot :: Beh a -> Event b -> Event (a, b)
-snapshot = snapshotWith (,)
-
--- snapshotWith ($)   :: Beh (a -> c) -> Event a -> Event c
-
-accumE :: c -> Event (c -> c) -> Event c
-accumE x a = accumR x a `sample` a
-
-step :: a -> Event a -> Beh a
-step z x = accumR z (mapE const x)
-
-counter e = accumR 0 (fmap (const succ) e)
