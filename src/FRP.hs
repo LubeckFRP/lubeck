@@ -287,3 +287,5 @@ accumE x a = accumR x a `sample` a
 
 step :: a -> Event a -> Beh a
 step z x = accumR z (mapE const x)
+
+counter e = accumR 0 (fmap (const succ) e)

@@ -102,6 +102,14 @@ size  material      color
 --   doc <- over _Left show $ Text.Pandoc.Readers.Markdown.readMarkdown def x
 --   return $ Text.Pandoc.Writers.HTML.writeHtmlString def doc
 
+network inp =
+      let
+        as = counter $ filterE (== "A") inp
+        bs = counter $ filterE (== "B") inp
+        info = liftA2 (\na nb -> show na ++ " as, " ++ show nb ++ " bs") as bs
+
+  in sample info inp
+
 main = do
 
   w <- getW
@@ -138,12 +146,6 @@ main = do
     return ()
 
   forkIO $ do
-    let network inp = let
-      as = filterE (== "A") inp
-      bs = filterE (== "B") inp
-
-      in sample (pure "X") inp
-
     runR network (atomically $ TChan.readTChan frpIn) (atomically . TChan.writeTChan frpOut)
 
   -- forkIO $ forever $ do
@@ -159,9 +161,10 @@ main = do
     counterVal <- atomically $ TVar.readTVar counter
     threadsLaunchedVal <- atomically $ TVar.readTVar threadsLaunched
 
-    ll  <- atomically $ TVar.readTVar lazyList
-    llo <- atomically $ TVar.readTVar lazyListOffset
-    atomically $ TVar.modifyTVar lazyList (drop 1001)
+    -- ll  <- atomically $ TVar.readTVar lazyList
+    -- llo <- atomically $ TVar.readTVar lazyListOffset
+    -- atomically $ TVar.modifyTVar lazyList (drop 1001)
+
     -- atomically $ TVar.modifyTVar lazyListOffset (+ 1001)
 
     frpRes  <- atomically $ TChan.tryReadTChan frpOut
@@ -176,7 +179,7 @@ main = do
                         --  , p () [text (fromString $ show $ (scat[c,d,e] :: Score Pitch))]
 
                          -- This leaks, as the original list is retained and gradually being evaluated
-                         , p () [text (fromString $ show $ take 10 (drop llo ll))]
+                        --  , p () [text (fromString $ show $ take 10 (drop llo ll))]
 
                          , p () [text (fromString $ show time)]
                          , p () [text (fromString $ show randomVal)]
