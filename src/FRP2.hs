@@ -15,6 +15,8 @@ import Control.Concurrent.STM.TVar(TVar)
 import qualified Data.IntMap as Map
 import Data.IntMap (IntMap)
 
+import qualified Data.Sequence as Seq
+import Data.Sequence (Seq)
 {-\
 
 -}
@@ -207,8 +209,23 @@ accumR = accum
 snapshotWith :: (a -> b -> c) -> R a -> E b -> E c
 snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
+scanlR :: (a -> b -> a) -> a -> E b -> IO (R a)
+scanlR f = foldpR (flip f)
+
 foldpR :: (a -> b -> b) -> b -> E a -> IO (R b)
 foldpR f z e = accumR z (mapE f e)
+
+-- |
+-- Create a past-dependent event.
+foldpE :: (a -> b -> b) -> b -> E a -> IO (E b)
+foldpE f a e = a `accumE` (f <$> e)
+
+-- |
+-- Create a past-dependent event. This combinator corresponds to 'scanl' on streams.
+scanlE :: (a -> b -> a) -> a -> E b -> IO (E a)
+scanlE f = foldpE (flip f)
+
+
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
 -- foldpR const :: b -> Stream b -> Signal b
 
@@ -228,8 +245,49 @@ accumE x a = do
   acc <- accumR x a
   return $ acc `sample` a
 
-step :: a -> E a -> IO (R a)
-step z x = accumR z (mapE const x)
 
+-- | Create a varying value by starting with the given initial value, and applying the given function
+-- whenever an update occurs.
+accumulator = accum
+
+-- | Create a varying value by starting with the given initial value, and replacing it
+-- whenever an update occurs.
+stepper :: a -> E a -> IO (R a)
+stepper z x = accumR z (mapE const x)
+
+-- | Count number of occurences, starting from zero.
 counter :: (Enum a, Num a) => E b -> IO (R a)
 counter e = accumR 0 (fmap (const succ) e)
+
+
+
+
+
+gatherE :: Int -> E a -> IO (E [a])
+gatherE n = fmap ((reverse <$>) . filterE (\xs -> length xs == n)) . foldpE g []
+    where
+        g x xs | length xs <  n  =  x : xs
+               | length xs == n  =  x : []
+               |otherwise       = error "gatherE: Wrong length"
+
+bufferE :: Int -> E a -> IO (E (Seq a))
+bufferE n = fmap (Seq.reverse <$>) . foldpE g mempty
+    where
+        g x xs = x Seq.<| Seq.take (n-1) xs
+
+recallEWith :: (b -> b -> a) -> E b -> IO (E a)
+recallEWith f e
+    = fmap (joinMaybes' . fmap combineMaybes)
+    $ dup Nothing `accumE` fmap (shift . Just) e
+    where
+        shift b (_,a) = (a,b)
+        dup x         = (x,x)
+        joinMaybes'   = scatterMaybeE
+        combineMaybes = uncurry (liftA2 f)
+
+recallE :: E a -> IO (E (a, a))
+recallE = recallEWith (,)
+
+-- lastE = fmap snd . recallE
+
+-- delayE n = foldr (.) id (replicate n lastE)
