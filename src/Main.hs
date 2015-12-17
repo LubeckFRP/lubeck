@@ -34,8 +34,7 @@ newtype Model  = Model String
   deriving (Eq, Ord, Show)
 
 initial :: Model
-initial = Model "Press A, B or Q!"
-
+initial = Model "Press a button"
 
 update :: E Action -> IO (R Model)
 update inp = do
@@ -44,9 +43,8 @@ update inp = do
     cdefgs <- counter $ mconcat $ fmap (\x -> filterE (== Action [x]) inp) "CDEFG"
     qs <- counter $ filterE (== Action "Q") inp
 
-    -- receivedABeforeQ =
-    return $ liftA4 (\na nb nq ncdefg -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs, and "
-      ++ show ncdefg ++ " of c,d,e,f or g") as bs qs
+    return $ (\na nb nq ncdefg -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs, and "
+      ++ show ncdefg ++ " of c,d,e,f or g") <$> as <*> bs <*> qs <*> cdefgs
 
 render :: Sink Action -> Model -> Html
 render sink (Model st) = div () [ h1 () [text "Example 4"]
@@ -61,6 +59,7 @@ main = do
   initEventDelegation []
 
   frpIn    <- (TChan.newTChanIO :: IO (TChan.TChan Action))
+  -- TODO extract initial from FRP system below
   frpState <- (TVar.newTVarIO initial :: IO (TVar.TVar Model))
 
   forkIO $ do
