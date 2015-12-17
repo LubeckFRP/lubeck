@@ -38,7 +38,7 @@ initial = Model "Press a button"
 
 update :: E Action -> IO (R Model)
 update inp = do
-    as <- counter $ filterE (== Action "A") inp
+    as <- counter $ filterE (== Action "A") (scatterE $ fmap (\e -> [e,e]) inp)
     bs <- counter $ filterE (== Action "B") inp
     cdefgs <- counter $ mconcat $ fmap (\x -> filterE (== Action [x]) inp) "CDEFG"
     qs <- counter $ filterE (== Action "Q") inp

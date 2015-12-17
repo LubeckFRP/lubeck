@@ -76,6 +76,7 @@ mapR :: (a -> b) -> R a -> R b
 mapR f (R aProvider) = R $ \aSink ->
   aProvider $ contramapSink f aSink
 
+-- | Never occurs. Identity for 'merge'.
 never :: E a
 never = E (\_ -> return (return ()))
 
@@ -87,13 +88,15 @@ scatterMaybeE (E maProvider) = E $ \aSink -> do
     Just a  -> aSink a
   return unsub
 
+-- | Drop occurances that does not match a given predicate.
 filterE :: (a -> Bool) -> E a -> E a
 filterE p = scatterMaybeE . fmap (\x -> if p x then Just x else Nothing)
 
--- scatterE :: Traversable t => E (t a) -> E a
--- scatterE (E taProvider) = E $ \aSink -> do
---   putStrLn "Setting up scatter"
---   taProvider $ mapM_ aSink
+-- | Spread out occurences.
+scatterE :: Traversable t => E (t a) -> E a
+scatterE (E taProvider) = E $ \aSink -> do
+  putStrLn "Setting up scatter"
+  taProvider $ mapM_ aSink
 
 merge :: E a -> E a -> E a
 merge (E f) (E g) = E $ \aSink -> do
@@ -141,6 +144,8 @@ Proof
 
 -}
 
+-- | Create a varying value from an initial value and an update event.
+--   The value is updated whenever the event occurs.
 accum :: a -> E (a -> a) -> IO (R a)
 accum z (E aaProvider) = do
   putStrLn "Setting up accum"
@@ -154,6 +159,7 @@ accum z (E aaProvider) = do
     return ()
   -- TODO unreg?
 
+-- | Sample a varying value whenever an event occurs.
 snapshot :: R a -> E b -> E (a, b)
 snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
   putStrLn "Setting up snapshot"
@@ -163,13 +169,15 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
 
 
 -- | A system that
---      * Can receive values of type a
---      * Can be polled for a sstate of type b
---      * Allow subscribers for events of type c
+--
+--   * Can receive values of type a
+--   * Can be polled for a sstate of type b
+--   * Allow subscribers for events of type c
+--
 data FrpSystem a b c = FrpSystem {
-  input :: (Sink a),
-  state :: (Sink b -> IO ()),
-  output :: (Sink c -> IO Unreg)
+  input  :: Sink a,
+  state  :: Sink b -> IO (),
+  output :: Sink c -> IO Unreg
   }
 
 
@@ -180,14 +188,13 @@ runER f = do
   (aProvider, aSink) <- newHub -- must accept subscriptions and feed values from the given sink
   -- The providers
   (R bProvider, E cProvider) <- f (E aProvider)
-
-  -- init <- do
-  --   initVar <- TVar.newTVarIO Nothing
-  --   bProvider (\b -> atomically $ TVar.writeTVar initVar (Just b))
-  --   Just init <- atomically $ TVar.readTVar initVar
-  --   return init
-
   return $ FrpSystem aSink bProvider cProvider
+
+-- init <- do
+--   initVar <- TVar.newTVarIO Nothing
+--   bProvider (\b -> atomically $ TVar.writeTVar initVar (Just b))
+--   Just init <- atomically $ TVar.readTVar initVar
+--   return init
 
 
 
