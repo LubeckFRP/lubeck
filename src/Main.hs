@@ -41,8 +41,12 @@ update :: E Action -> IO (R Model)
 update inp = do
     as <- counter $ filterE (== Action "A") inp
     bs <- counter $ filterE (== Action "B") inp
+    cdefgs <- counter $ mconcat $ fmap (\x -> filterE (== Action [x]) inp) "CDEFG"
     qs <- counter $ filterE (== Action "Q") inp
-    return $ liftA3 (\na nb nq -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs") as bs qs
+
+    -- receivedABeforeQ =
+    return $ liftA4 (\na nb nq ncdefg -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs, and "
+      ++ show ncdefg ++ " of c,d,e,f or g") as bs qs
 
 render :: Sink Action -> Model -> Html
 render sink (Model st) = div () [ h1 () [text "Example 4"]
