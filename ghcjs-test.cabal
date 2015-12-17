@@ -17,7 +17,7 @@ cabal-version:       >=1.10
 
 executable ghcjs-test
   main-is:             Main.hs
-  -- other-modules:
+  other-modules:       FRP2
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
                      , ghcjs-vdom == 0.2.0.0
@@ -31,6 +31,8 @@ executable ghcjs-test
                      , stm
                      , contravariant
                      , text
+                     , mtl
+                     , time
                     --  , containers
                     --  , vector
                      , lens
@@ -42,6 +44,7 @@ executable ghcjs-test
                     --  , diagrams-ghcjs
                      , neat-interpolation
                      , data-default
+                     , containers
 
   hs-source-dirs:      src
   default-language:    Haskell2010

@@ -23,12 +23,11 @@ import GHCJS.Foreign.QQ (js)
 
 import Data.Default (def)
 
-import FRP
+import FRP2
 
 type Html   = VNode
-type Sink a = a -> IO ()
 
-newtype Action = Action String
+newtype Action = Action {getAction :: String}
   deriving (Eq, Ord, Show)
 
 newtype Model  = Model String
@@ -37,16 +36,16 @@ newtype Model  = Model String
 initial :: Model
 initial = Model "Press A, B or Q!"
 
-update :: Stream Action -> Signal Model
-update inp =
-  let
-    as = counter $ filterE (== Action "A") inp
-    bs = counter $ filterE (== Action "B") inp
-    qs = counter $ filterE (== Action "Q") inp
-  in liftA3 (\na nb nq -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs") as bs qs
+
+update :: E Action -> IO (R Model)
+update inp = do
+    as <- counter $ filterE (== Action "A") inp
+    bs <- counter $ filterE (== Action "B") inp
+    qs <- counter $ filterE (== Action "Q") inp
+    return $ liftA3 (\na nb nq -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs") as bs qs
 
 render :: Sink Action -> Model -> Html
-render sink (Model st) = div () [ h1 () [text "Example"]
+render sink (Model st) = div () [ h1 () [text "Example 4"]
    , p () [text (fromString $ st)]
    , form [submit $ \e -> preventDefault e >> return ()]
     (fmap (\a -> button [click $ \_ -> (sink $ Action [a])] [text $ fromString [a]]) ['A'..'Z'])
@@ -61,7 +60,11 @@ main = do
   frpState <- (TVar.newTVarIO initial :: IO (TVar.TVar Model))
 
   forkIO $ do
-    runR (\inp -> sample (update inp) inp) (atomically $ TChan.readTChan frpIn) (atomically . TVar.writeTVar frpState)
+    system <- runER (\e -> update e >>= \r -> return (pure (Model "!"), sample r e))
+    (output system) (\st -> atomically $ TVar.writeTVar frpState st)
+    forever $ do
+      i <- atomically $ TChan.readTChan frpIn
+      (input system) i
 
   loop w $ do
     threadDelay (round $ 1000000/30)

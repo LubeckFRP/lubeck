@@ -109,6 +109,7 @@ apB (Signal fk) (Signal xk) = Signal $ do
   x <- xk
   return $ f <*> x
 
+-- foldpR :: (a -> b -> b) -> b -> Stream a -> Signal b
 accumR :: a -> Stream (a -> a) -> Signal a
 accumR z (Stream e) = Signal $ do
   e' <- e

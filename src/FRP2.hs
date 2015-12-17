@@ -25,17 +25,20 @@ newHub :: IO (Hub a)
 newHub = do
   ints <- TVar.newTVarIO (0 :: Int)
   sinks <- TVar.newTVarIO (Map.empty :: (IntMap (Sink a)))
-  let insert sink = do
+  let insert sink = do {
       atomically $ TVar.modifyTVar ints succ
-      i <- atomically $ TVar.readTVar ints
-      atomically $ TVar.modifyTVar sinks (Map.insert i sink)
-      putStrLn "Registered with hub"
-      return $ do
-        putStrLn "Unregistered with hub"
-        atomically $ TVar.modifyTVar sinks (Map.delete i)
-  let sendToAll value = do
+      ; i <- atomically $ TVar.readTVar ints
+      ; putStrLn ("Current i is " ++ show i)
+      ; atomically $ TVar.modifyTVar sinks (Map.insert i sink)
+      ; putStrLn "Registered with hub"
+      ; return $ do {
+            putStrLn "Unregistered with hub"
+          ; atomically $ TVar.modifyTVar sinks (Map.delete i) } }
+  let sendToAll value = do {
       sinksNow <- atomically $ TVar.readTVar sinks
-      mapM_ ($ value) sinksNow
+      ; putStrLn ("Hub propagating to " ++ show (Map.size sinksNow) ++ " subscribers")
+      ; mapM_ ($ value) sinksNow }
+  putStrLn "Hub created"
   return (insert, sendToAll)
 
 
@@ -76,18 +79,25 @@ mapR f (R aProvider) = R $ \aSink ->
 never :: E a
 never = E (\_ -> return (return ()))
 
--- filterE :: E (Maybe a) -> E a
--- filterE (E maProvider) = E $ \aSink -> do
---   unsub <- maProvider $ \ma -> case ma of
---     Nothing -> return ()
---     Just a  -> aSink a
---   return unsub
-scatterE :: Traversable t => E (t a) -> E a
-scatterE (E taProvider) = E $ \aSink -> do
-  taProvider $ mapM_ aSink
+scatterMaybeE :: E (Maybe a) -> E a
+scatterMaybeE (E maProvider) = E $ \aSink -> do
+  putStrLn "Setting up filter"
+  unsub <- maProvider $ \ma -> case ma of
+    Nothing -> return ()
+    Just a  -> aSink a
+  return unsub
+
+filterE :: (a -> Bool) -> E a -> E a
+filterE p = scatterMaybeE . fmap (\x -> if p x then Just x else Nothing)
+
+-- scatterE :: Traversable t => E (t a) -> E a
+-- scatterE (E taProvider) = E $ \aSink -> do
+--   putStrLn "Setting up scatter"
+--   taProvider $ mapM_ aSink
 
 merge :: E a -> E a -> E a
 merge (E f) (E g) = E $ \aSink -> do
+  putStrLn "Setting up merge"
   unsubF <- f aSink
   unsubG <- g aSink
   return $ do
@@ -133,18 +143,20 @@ Proof
 
 accum :: a -> E (a -> a) -> IO (R a)
 accum z (E aaProvider) = do
+  putStrLn "Setting up accum"
   var <- TVar.newTVarIO z
+  unRegAA <- aaProvider $
+    \aa -> do
+      atomically $ TVar.modifyTVar var aa
   return $ R $ \aSink -> do
-    unRegAA <- aaProvider $
-      \aa -> do
-        atomically $ TVar.modifyTVar var aa
-        value <- TVar.readTVarIO var
-        aSink value
-    -- TODO unreg?
+    value <- TVar.readTVarIO var
+    aSink value
     return ()
+  -- TODO unreg?
 
 snapshot :: R a -> E b -> E (a, b)
-snapshot (R aProvider) (E bProvider) = E $ \abSink ->
+snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
+  putStrLn "Setting up snapshot"
   bProvider $ \b ->
     aProvider $ \a ->
       abSink (a,b)
@@ -154,7 +166,11 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink ->
 --      * Can receive values of type a
 --      * Can be polled for a sstate of type b
 --      * Allow subscribers for events of type c
-data FrpSystem a b c = FrpSystem (Sink a) (Sink b -> IO ()) (Sink c -> IO Unreg)
+data FrpSystem a b c = FrpSystem {
+  input :: (Sink a),
+  state :: (Sink b -> IO ()),
+  output :: (Sink c -> IO Unreg)
+  }
 
 
 -- | Run an FRP system.
@@ -162,6 +178,7 @@ data FrpSystem a b c = FrpSystem (Sink a) (Sink b -> IO ()) (Sink c -> IO Unreg)
 runER :: (E a -> IO (R b, E c)) -> IO (FrpSystem a b c)
 runER f = do
   (aProvider, aSink) <- newHub -- must accept subscriptions and feed values from the given sink
+  -- The providers
   (R bProvider, E cProvider) <- f (E aProvider)
 
   -- init <- do
@@ -188,8 +205,8 @@ foldpR f z e = accumR z (mapE f e)
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
 -- foldpR const :: b -> Stream b -> Signal b
 
-filterE :: (a -> Bool) -> E a -> E a
-filterE p = scatterE . mapE (\x -> if p x then [x] else [])
+-- filterE :: (a -> Bool) -> E a -> E a
+-- filterE p = scatterE . mapE (\x -> if p x then [x] else [])
 
 sample :: R a -> E b -> E a
 sample = snapshotWith const
@@ -207,4 +224,5 @@ accumE x a = do
 step :: a -> E a -> IO (R a)
 step z x = accumR z (mapE const x)
 
+counter :: (Enum a, Num a) => E b -> IO (R a)
 counter e = accumR 0 (fmap (const succ) e)
