@@ -60,7 +60,7 @@ main = do
   frpState <- (TVar.newTVarIO initial :: IO (TVar.TVar Model))
 
   forkIO $ do
-    system <- runER (\e -> update e >>= \r -> return (pure (Model "!"), sample r e))
+    system <- runER (\e -> update e >>= \r -> return (r, sample r e))
     (output system) (\st -> atomically $ TVar.writeTVar frpState st)
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
