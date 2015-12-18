@@ -20,7 +20,7 @@ import Data.Maybe(fromMaybe)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr)
-import GHCJS.VDOM.Attribute (src, width, class_)
+import GHCJS.VDOM.Attribute (src, width, class_, custom)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
 
@@ -51,7 +51,13 @@ update defModel actions = do
 render :: Sink () -> Model -> Html
 render actions model = div ()
   [ h1 () [text "Shoutout browser"]
-  , div () [interactionSetW actions model]
+  , div
+    [ (custom "width"         "1170px")
+    , (custom "margin-left"   "auto")
+    , (custom "margin-right"  "auto")
+    , (custom "padding-left"  "50px")
+    , (custom "padding-right" "50px")
+    ] [interactionSetW actions model]
   ]
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
