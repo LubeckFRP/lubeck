@@ -1,55 +1,55 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
 
 module Interactions where
 
+import Control.Monad
+
 import Data.Aeson -- TODO proper
+import qualified Data.Aeson.Types
+
 import Data.Time.Clock (UTCTime)
 import qualified GHC.Generics as GHC
+-- import GHC.Generics(Generic)
+import Data.Text(Text)
+import Data.Data
 
-data Account = Account deriving (Eq, Ord, Show)
-data Count = Count deriving (Eq, Ord, Show)
-data SearchPost = SearchPost deriving (Eq, Ord, Show)
-
-{-
 data Account = Account
-  { id              :: Int
-  , username        :: Text
-  , full_name       :: Text
-  , profile_picture :: Maybe Text
-  , website         :: Maybe Text
-  , tier            :: Int
-  , discovered      :: Bool
-  , location        :: Maybe Text -- 3 letter country code ISO (+ US states)
-  , bio             :: Maybe Text
-  , sector_id       :: Maybe Int
-  , is_private      :: Bool
-  , numposts        :: Maybe Int
-  , numfollowing    :: Maybe Int
-  , p_is_male       :: Maybe Double
-  , latest_count    :: Maybe Int
+  { xx_id              :: Int
+  , xx_username        :: Text
+  , xx_full_name       :: Text
+  , xx_profile_picture :: Maybe Text
+  , xx_website         :: Maybe Text
+  , xx_tier            :: Int
+  , xx_discovered      :: Bool
+  , xx_location        :: Maybe Text -- 3 letter country code ISO (+ US states)
+  , xx_bio             :: Maybe Text
+  , xx_sector_id       :: Maybe Int
+  , xx_is_private      :: Bool
+  , xx_numposts        :: Maybe Int
+  , xx_numfollowing    :: Maybe Int
+  , xx_p_is_male       :: Maybe Double
+  , xx_latest_count    :: Maybe Int
   } deriving (GHC.Generic,Show, Eq, Data, Typeable)
-
-instance Generic         Account
-instance HasDatatypeInfo Account
-instance HasFieldNames   Account
-
-instance FromRow Account where fromRow = gfromRow
-instance ToRow   Account where toRow   = gtoRow
 
 instance ToJSON Account where
   toJSON = Data.Aeson.Types.genericToJSON
     Data.Aeson.Types.defaultOptions { Data.Aeson.Types.omitNothingFields = True }
 
-instance ToJSON (AsApiResponse Account) where
-  toJSON (AsApiResponse a) = Beautilytics.Utils.deleteJSONField "discovered" $ toJSON a
-
+-- instance ToJSON (AsApiResponse Account) where
+--   toJSON (AsApiResponse a) = Beautilytics.Utils.deleteJSONField "discovered" $ toJSON a
+--
 instance FromJSON Account
+--
+-- instance FromJSON (AsApiResponse Account) where
+--   parseJSON v = do
+--     acc <- parseJSON $ Beautilytics.Utils.addJSONField "discovered" (toJSON True) v
+--     return $ AsApiResponse acc
+--
 
-instance FromJSON (AsApiResponse Account) where
-  parseJSON v = do
-    acc <- parseJSON $ Beautilytics.Utils.addJSONField "discovered" (toJSON True) v
-    return $ AsApiResponse acc
+
+
+
 
 
 
@@ -57,17 +57,10 @@ instance FromJSON (AsApiResponse Account) where
 
 
 data Count = Count
-  { account_id :: Int
-  , count_at   :: UTCTime
-  , value      :: Int
+  { x_account_id :: Int
+  , x_count_at   :: UTCTime
+  , x_value      :: Int
   } deriving  (GHC.Generic,Show, Eq, Data, Typeable)
-
-instance Generic         Count
-instance HasDatatypeInfo Count
-instance HasFieldNames   Count
-
-instance FromRow Count where fromRow = gfromRow
-instance ToRow   Count where toRow   = gtoRow
 
 instance FromJSON Count where
     parseJSON (Object v) = Count <$>
@@ -80,38 +73,31 @@ instance ToJSON Count where
   toJSON (Count _ tm v) = object  ["count_at" .= tm, "value" .= v]
 
 
-
 data SearchPost = SearchPost
   { post_id          :: Int
   , account_id       :: Int
-  , thumbnail_url    :: T.Text
-  , url              :: T.Text
-  , description      :: Maybe T.Text
+  , thumbnail_url    :: Text
+  , url              :: Text
+  , description      :: Maybe Text
   , created_at       :: UTCTime
   , comment_count    :: Int
   , like_count       :: Int
   , location_id      :: Maybe Int
   , follower_count   :: Maybe Int
-  , username         :: T.Text
+  , username         :: Text
   , deleted          :: Bool
-  , ig_web_url       :: Maybe T.Text
+  , ig_web_url       :: Maybe Text
   , latitude         :: Maybe Double
   , longitude        :: Maybe Double
-  } deriving (GHC.Generic,Show, Eq, Data, Typeable)
+  } deriving (GHC.Generic, Show, Eq, Data, Typeable)
 
-instance Generic         SearchPost
-instance HasDatatypeInfo SearchPost
-instance HasFieldNames   SearchPost
-
-instance FromRow SearchPost where fromRow = gfromRow
-instance ToRow   SearchPost where toRow   = gtoRow
-
+-- instance Generic         SearchPost
+-- instance HasDatatypeInfo SearchPost
+-- instance HasFieldNames   SearchPost
 instance FromJSON SearchPost
 instance ToJSON   SearchPost
 
--}
 
-type DB = IO
 
 data InteractionSet m = InteractionSet
   {
@@ -134,6 +120,9 @@ data InteractionMedia m where
 instance ToJSON m => ToJSON (Interaction m)
 instance ToJSON m => ToJSON (InteractionSet m)
 
+
+
+type DB = IO
 
 loadInteractionSet :: InteractionMedia m -> Maybe Account -> Maybe Account -> DB (InteractionSet m)
 loadInteractionSet = undefined
