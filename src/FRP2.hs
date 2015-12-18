@@ -2,6 +2,7 @@
 module FRP2 where
 
 import Control.Applicative
+import Control.Monad
 import Control.Monad (forever, forM_, join)
 import Data.Functor.Contravariant
 
@@ -17,41 +18,44 @@ import Data.IntMap (IntMap)
 
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
+
+frpInternalLog :: Sink String
+frpInternalLog = putStrLn
+
 {-\
-
+An imperative dispatcher.
 -}
+data Dispatcher a = Dispatcher { subscribe :: Sink a -> IO UnsubscribeAction, dispatch :: Sink a }
 
-type Hub a = (Sink a -> IO Unreg, Sink a)
-
-newHub :: IO (Hub a)
-newHub = do
+newDispatcher :: IO (Dispatcher a)
+newDispatcher = do
   ints <- TVar.newTVarIO (0 :: Int)
   sinks <- TVar.newTVarIO (Map.empty :: (IntMap (Sink a)))
   let insert sink = do {
       atomically $ TVar.modifyTVar ints succ
       ; i <- atomically $ TVar.readTVar ints
-      ; putStrLn ("Current i is " ++ show i)
+      ; frpInternalLog ("Current number of subscribers is " ++ show i)
       ; atomically $ TVar.modifyTVar sinks (Map.insert i sink)
-      ; putStrLn "Registered with hub"
+      ; frpInternalLog "Registered with dispatcher"
       ; return $ do {
-            putStrLn "Unregistered with hub"
+            frpInternalLog "Unsubscribed to dispatcher"
           ; atomically $ TVar.modifyTVar sinks (Map.delete i) } }
-  let sendToAll value = do {
+  let dispatch value = do {
       sinksNow <- atomically $ TVar.readTVar sinks
-      ; putStrLn ("Hub propagating to " ++ show (Map.size sinksNow) ++ " subscribers")
+      ; frpInternalLog ("Dispatcher propagating to " ++ show (Map.size sinksNow) ++ " subscribers")
       ; mapM_ ($ value) sinksNow }
-  putStrLn "Hub created"
-  return (insert, sendToAll)
+  frpInternalLog "Dispatcher created"
+  return $ Dispatcher insert dispatch
 
 
 
-type Unreg = IO ()
+type UnsubscribeAction = IO ()
 type Sink a = a -> IO ()
 
 contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
 
-newtype E a = E (Sink a -> IO Unreg)
+newtype E a = E (Sink a -> IO UnsubscribeAction)
 newtype R a = R (Sink a -> IO ())
 
 instance Functor E where
@@ -72,7 +76,7 @@ mapE :: (a -> b) -> E a -> E b
 mapE f (E aProvider) = E $ \aSink ->
   aProvider $ contramapSink f aSink
   -- Sink is registered with given E
-  -- When unregistered, unregister with E
+  -- When UnsubscribeActionistered, UnsubscribeActionister with E
 
 mapR :: (a -> b) -> R a -> R b
 mapR f (R aProvider) = R $ \aSink ->
@@ -84,7 +88,7 @@ never = E (\_ -> return (return ()))
 
 scatterMaybeE :: E (Maybe a) -> E a
 scatterMaybeE (E maProvider) = E $ \aSink -> do
-  putStrLn "Setting up filter"
+  frpInternalLog "Setting up filter"
   unsub <- maProvider $ \ma -> case ma of
     Nothing -> return ()
     Just a  -> aSink a
@@ -97,19 +101,19 @@ filterE p = scatterMaybeE . fmap (\x -> if p x then Just x else Nothing)
 -- | Spread out occurences.
 scatterE :: Traversable t => E (t a) -> E a
 scatterE (E taProvider) = E $ \aSink -> do
-  putStrLn "Setting up scatter"
+  frpInternalLog "Setting up scatter"
   taProvider $ mapM_ aSink
 
 merge :: E a -> E a -> E a
 merge (E f) (E g) = E $ \aSink -> do
-  putStrLn "Setting up merge"
+  frpInternalLog "Setting up merge"
   unsubF <- f aSink
   unsubG <- g aSink
   return $ do
     unsubF
     unsubG
   -- Sink is registered with both Es
-  -- When unregistered, unregister with both Es
+  -- When UnsubscribeActionistered, UnsubscribeActionister with both Es
 
 pureR :: a -> R a
 pureR z = R ($ z)
@@ -150,21 +154,21 @@ Proof
 --   The value is updated whenever the event occurs.
 accum :: a -> E (a -> a) -> IO (R a)
 accum z (E aaProvider) = do
-  putStrLn "Setting up accum"
+  frpInternalLog "Setting up accum"
   var <- TVar.newTVarIO z
-  unRegAA <- aaProvider $
+  unregAA_ <- aaProvider $
     \aa -> do
       atomically $ TVar.modifyTVar var aa
   return $ R $ \aSink -> do
     value <- TVar.readTVarIO var
     aSink value
     return ()
-  -- TODO unreg?
+  -- TODO UnsubscribeAction?
 
 -- | Sample a varying value whenever an event occurs.
 snapshot :: R a -> E b -> E (a, b)
 snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
-  putStrLn "Setting up snapshot"
+  frpInternalLog "Setting up snapshot"
   bProvider $ \b ->
     aProvider $ \a ->
       abSink (a,b)
@@ -179,7 +183,7 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
 data FrpSystem a b c = FrpSystem {
   input  :: Sink a,
   state  :: Sink b -> IO (),
-  output :: Sink c -> IO Unreg
+  output :: Sink c -> IO UnsubscribeAction
   }
 
 
@@ -187,10 +191,26 @@ data FrpSystem a b c = FrpSystem {
 -- It starts in some initial state defined by the R component, and reacts to updates of type a.
 runER :: (E a -> IO (R b, E c)) -> IO (FrpSystem a b c)
 runER f = do
-  (aProvider, aSink) <- newHub -- must accept subscriptions and feed values from the given sink
+  Dispatcher aProvider aSink <- newDispatcher -- must accept subscriptions and feed values from the given sink
   -- The providers
   (R bProvider, E cProvider) <- f (E aProvider)
   return $ FrpSystem aSink bProvider cProvider
+
+-- DERIVED runners
+
+-- | Run an FRP system, producing a reactive value.
+-- You can poll the sstem for the current state, or subscribe to changes in its output.
+runER' :: (E a -> IO (R b)) -> IO (FrpSystem a b b)
+runER' f = runER (\e -> f e >>= \r -> return (r, sample r e))
+
+-- | Run an FRP system starting in the given state.
+-- The reactive passed to the function starts in the initial state provided here and reacts to inputs to the system.
+-- You can poll system for the current state, or subscribe to changes in its output.
+runER'' :: a -> (R a -> IO (R b)) -> IO (FrpSystem a b b)
+runER'' z f = runER' (stepper z >=> f)
+
+testFRP :: (E String -> IO (R String)) -> IO b
+testFRP x = runER' x >>= \system -> output system putStrLn >> (forever $ getLine >>= input system)
 
 -- init <- do
 --   initVar <- TVar.newTVarIO Nothing
