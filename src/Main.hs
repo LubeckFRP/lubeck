@@ -32,18 +32,6 @@ import Interactions
 
 
 
-getFromAPI :: IO (Response Text)
-getFromAPI = xhrText r
-  where
-    r = Request {
-        reqMethod          = GET
-      , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/tomjauncey/tomjauncey/shoutouts"
-      , reqLogin           = Nothing
-      , reqHeaders         = []
-      , reqWithCredentials = False
-      , reqData            = NoData
-      }
-
 
 type Html   = VNode
 
@@ -75,7 +63,6 @@ render sink (Model st) = div () [ h1 () [text "Example 4"]
 
 
 main = do
-  getFromAPI
 
   w <- getW
   initEventDelegation []
