@@ -6,11 +6,13 @@ import qualified Network.Wai.Handler.Warp
 import qualified System.Process
 import qualified Data.Map as Map
 import Data.Map(Map)
+import Control.Monad (forever)
 import Control.Monad.Except
 import System.Process -- TODO
 import System.Exit (ExitCode(..))
 import System.Environment(getEnvironment)
 import System.Directory(copyFile)
+import Control.Concurrent (threadDelay, forkIO)
 
 import Util.ParseEnv (getJsExeBinPathFromEnv)
 
@@ -56,5 +58,9 @@ main = do
       putStrLn $ " " ++ jsExeDir ++ "/ghcjs-test.jsexe"
       putStrLn $ "Listening on " ++ show port
 
-      copyFile ("static/index.html") (jsExeDir++"/ghcjs-test.jsexe/index.html")
+      -- TODO Hacky copying of index file (gets overwritten by GHCJS)
+      forkIO $ forever $ do
+        threadDelay (1000000)
+        copyFile ("static/index.html") (jsExeDir++"/ghcjs-test.jsexe/index.html")
+
       Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server $ jsExeDir++"/ghcjs-test.jsexe"))

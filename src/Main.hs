@@ -20,7 +20,7 @@ import Data.Maybe(fromMaybe)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr)
-import GHCJS.VDOM.Attribute (src, width)
+import GHCJS.VDOM.Attribute (src, width, class_)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
 
@@ -56,8 +56,8 @@ render actions model = div ()
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()
-  [ p () [ text $ "From " <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
-         , text $ "to "   <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
+  [ p () [ text $ ""       <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
+         , text $ " to "   <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: interactions)
   ]
 
@@ -65,10 +65,10 @@ interactionW :: Sink () -> Interaction SearchPost -> Html
 interactionW actions model = div ()
   [ p () [text (showJS $ model .: interaction_time)]
   -- Growth graph
-  , p () [img [src greyImgUrl, width 400] ()]
-  -- The image
-  -- , p () [text (showJS $ model .: medium .: P.url)]
-  , p () [img [src (textToJSString $ model .: medium .: P.url), width 200] ()]
+  , div [class_ "row"]
+    [ div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] ()]
+    , div [class_ "col-xs-4 col-lg-4"] [img [src (textToJSString $ model .: medium .: P.url), width 200] ()]
+    ]
   , p () [text "Estimated impact: (?)"]
   ]
 
