@@ -173,7 +173,7 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
 -- | A system that
 --
 --   * Can receive values of type a
---   * Can be polled for a sstate of type b
+--   * Can be polled for a state of type b
 --   * Allow subscribers for events of type c
 --
 data FrpSystem a b c = FrpSystem {
