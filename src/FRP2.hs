@@ -20,7 +20,8 @@ import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
 
 frpInternalLog :: Sink String
-frpInternalLog = putStrLn
+-- frpInternalLog = putStrLn
+frpInternalLog _ = return ()
 
 {-\
 An imperative dispatcher.
@@ -210,7 +211,11 @@ runER'' :: a -> (R a -> IO (R b)) -> IO (FrpSystem a b b)
 runER'' z f = runER' (stepper z >=> f)
 
 testFRP :: (E String -> IO (R String)) -> IO b
-testFRP x = runER' x >>= \system -> output system putStrLn >> (forever $ getLine >>= input system)
+testFRP x = do
+  system <- runER' x
+  output system putStrLn
+  -- TODO print initial!
+  forever $ getLine >>= input system
 
 -- init <- do
 --   initVar <- TVar.newTVarIO Nothing
