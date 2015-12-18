@@ -56,6 +56,10 @@ library
 executable ghcjs-test
   main-is:             Main.hs
   other-modules:       FRP2
+                     , BD.Data.Account
+                     , BD.Data.Count
+                     , BD.Data.Interaction
+                     , BD.Data.SearchPost
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
                      , ghcjs-vdom == 0.2.0.0

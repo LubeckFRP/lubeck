@@ -27,7 +27,7 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 
 import FRP2
 
-import BD.Data.Interactions
+import BD.Data.Interaction
 
 
 
