@@ -287,13 +287,13 @@ counter e = accumR 0 (fmap (const succ) e)
 
 
 
-
-gatherE :: Int -> E a -> IO (E [a])
-gatherE n = fmap ((reverse <$>) . filterE (\xs -> length xs == n)) . foldpE g []
+-- | Record n events and emit in a group. Inverse of scatterE.
+gatherE :: Int -> E a -> IO (E (Seq a))
+gatherE n = fmap ((Seq.reverse <$>) . filterE (\xs -> Seq.length xs == n)) . foldpE g mempty
     where
-        g x xs | length xs <  n  =  x : xs
-               | length xs == n  =  x : []
-               |otherwise       = error "gatherE: Wrong length"
+        g x xs | Seq.length xs <  n  =  x Seq.<| xs
+               | Seq.length xs == n  =  x Seq.<| mempty
+               | otherwise           = error "gatherE: Wrong length"
 
 bufferE :: Int -> E a -> IO (E (Seq a))
 bufferE n = fmap (Seq.reverse <$>) . foldpE g mempty
