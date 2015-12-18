@@ -16,6 +16,7 @@ import qualified Data.Text
 import qualified Data.List
 import Data.Text(Text)
 import Data.Monoid
+import Data.Maybe(fromMaybe)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr)
@@ -55,8 +56,8 @@ render actions model = div ()
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()
-  [ p () [text $ "From:" <> showJS (model .: from_account .:? A.username)]
-  , p () [text $ "To:" <> showJS (model .: to_account .:? A.username)]
+  [ p () [ text $ "From " <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
+         , text $ "to "   <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: interactions)
   ]
 
