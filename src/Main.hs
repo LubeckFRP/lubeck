@@ -13,23 +13,26 @@ import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
 import qualified Data.Text
+import qualified Data.List
 import Data.Text(Text)
 import Data.Monoid
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr)
+import GHCJS.VDOM.Attribute (src, width)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
 
 import Data.Default (def)
 
-import JavaScript.Web.XMLHttpRequest -- TODO
+import GHCJS.Types(JSString)
 
 import FRP2
 
-import BD.Data.Account
-import BD.Data.Count
-import BD.Data.SearchPost
+import qualified BD.Data.Account as A
+import qualified BD.Data.Count as C
+import qualified BD.Data.SearchPost as P
+import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 
 
@@ -39,40 +42,34 @@ type Widget' a = Widget a a
 
 type Action = ()
 type Model = InteractionSet SearchPost
-defModel = InteractionSet Nothing Nothing []
-
-(.:) = flip ($)
 
 update :: Model -> E Action -> IO (R Model)
 update defModel actions = do
   return $ pure defModel
 
 render :: Sink () -> Model -> Html
-render actions model = div () [ h1 () [text "Shoutout browser"]
-   div () (interactionSetW actions model)
-   ]
+render actions model = div ()
+  [ h1 () [text "Shoutout browser"]
+  , div () [interactionSetW actions model]
+  ]
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()
-  [ p () [text $ "From:" ++ model .: from_account]
-  , p () [text $ "To:" ++ model .: to_account]
-  , div () (interactionW actions model)
-  -- all thge
-
+  [ p () [text $ "From:" <> showJS (model .: from_account .:? A.username)]
+  , p () [text $ "To:" <> showJS (model .: to_account .:? A.username)]
+  , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: interactions)
   ]
 
 interactionW :: Sink () -> Interaction SearchPost -> Html
 interactionW actions model = div ()
-  [ p () [text "(date)"]
-  , p () [text "(the growth)"]
-  , p () [text "(the image)"]
-  , p () [text "Estimated impact"]
+  [ p () [text (showJS $ model .: interaction_time)]
+  -- Growth graph
+  , p () [img [src greyImgUrl, width 400] ()]
+  -- The image
+  -- , p () [text (showJS $ model .: medium .: P.url)]
+  , p () [img [src (textToJSString $ model .: medium .: P.url), width 200] ()]
+  , p () [text "Estimated impact: (?)"]
   ]
--- just account names
--- Time
--- index in interaction list?
--- growth graph
--- estimated impact
 
 main :: IO ()
 main = do
@@ -81,12 +78,15 @@ main = do
 
   -- Setup chans/vars to hook into the FRP system
   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
-  frpUpdated <- (TChan.newTVarIO :: IO (TChan.TChan ()))
+  frpUpdated <- (TChan.newTChanIO :: IO (TChan.TChan ()))
   frpState   <- (TVar.newTVarIO (error "Should not be sampled") :: IO (TVar.TVar Model))
 
   -- Launch FRP system
   forkIO $ do
     system <- runER' (update interactions)
+    -- Propagate initial value (or we won't see anything)
+    (state system) (\st -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
+    -- Register output
     (output system) (\st -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
@@ -124,3 +124,22 @@ main = do
       r <- k
       unless r (insist k)
       return ()
+
+
+-- UTILITY
+
+(.:)  :: a -> (a -> b) -> b
+(.:)  x f = f x
+
+(.:?) :: Maybe a -> (a -> b) -> Maybe b
+(.:?) x f = fmap f x
+
+showJS :: Show a => a -> JSString
+showJS = fromString . show
+
+textToJSString :: Text -> JSString
+textToJSString = fromString . Data.Text.unpack
+
+-- TODO serve
+greyImgUrl :: JSString
+greyImgUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxQSEhQUEhQUFBQUFBQUFBQUFBQUFBQUFBQXFxQUFBQYHCggGBwlHBQUITEhJSksLi4uFx8zODMsNygtLiwBCgoKDAwMDgwMDiwZFBksLCwsKywsLDc3Kyw3LCwsLDcsNzcsNyssLCwsLDc3LDcsLCwsLDcsNyw3NzcsNyw3LP/AABEIAOEA4QMBIgACEQEDEQH/xAAYAAEBAQEBAAAAAAAAAAAAAAAAAQIDB//EABkQAQEBAQEBAAAAAAAAAAAAAAABEQJBMf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A9QoqIpCCwRKjVTAIBgGqIAqKKCsiKmqCoEBEqiAWhQBFQDVRoEZrVSgzgqCurLWIIKkUBFQBUxQQi4AoEFQVBC1FMASBAEVJABQERSAAoIjTPQM6ADrWWkAVFACmgAAAAsEUBFqABFoJaACCgIilBAAWEIAJ0RKDI1gDdSrUAVFAAACAAACiAqKlAEAFEAAoIKgBQAWJFARUoICA6AgC0KBSIsAAAIRQVAASqlBAAVCKAlWoBAQBFQFixIArPSpQAQHSoqAsEXAAAAAFQBQQACAgAJjSRQTRYgFhUKCKigasTFBWbFS0EEAbqWrTAIuoAoAARYBAqSAqVQEouIAYQoJGkKAioCFKYAgtBGmWoAlq1mgmAgOqKgEVFAABRFADFBAQCoqAuloaAGgIKgCAAqAEWJABK0zQTEVAdUWoAqAKIoKJFALQASqzQAUEKAAQ0AwAEpqAtBAWBIAanQz1QTFAHWpWqyAACiKAAABBQEEChQAQFgqABUAAAQoC2oADNarNBFAHWotQUEAUAQWCQFEoCoqUCAQAAAQAoqAAkAAoEXA0GUqs0AMUHRKpUEgaKCooqpagIoIClEBRAAVAAQFEUEAACgAmroJUWs0BWdAdgqVFRYigqUAFSKqBEUAogoEKIAgLUVAFqKCQADEUBAAGVqAgKK6JV1lBSJQFBAWNRICAgqqBoAqURAAAAAANRagLpqYAi6lQFZtWsgirig2lBBFQBTkFVYAIiwABAVq+FARKAKCAi0vxAFKACIAVmqClZUEAEH//2Q=="
