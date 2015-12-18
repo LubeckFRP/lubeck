@@ -20,13 +20,13 @@ import Data.Maybe(fromMaybe)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr)
-import GHCJS.VDOM.Attribute (src, width, class_, custom)
+import GHCJS.VDOM.Attribute (src, width, class_, style)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
 
 import Data.Default (def)
 
-import GHCJS.Types(JSString)
+import GHCJS.Types(JSString, jsval)
 
 import FRP2
 
@@ -52,15 +52,11 @@ render :: Sink () -> Model -> Html
 render actions model = div ()
   [ h1 () [text "Shoutout browser"]
   , div
-    [ (custom "width"         $ j "1170px")
-    , (custom "margin-left"   $ j "auto")
-    , (custom "margin-right"  $ j "auto")
-    , (custom "padding-left"  $ j "50px")
-    , (custom "padding-right" $ j "50px")
-    ] [interactionSetW actions model]
+    [ style $ "width: 1170px; margin-left: auto; margin-right: auto"]
+    [ interactionSetW actions model ]
   ]
-  where
-    j x = jsval (x :: JSString)
+  -- where
+    -- j x = jsval (x :: JSString)
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()

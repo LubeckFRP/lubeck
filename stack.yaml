@@ -7,7 +7,7 @@ packages:
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 - location:
     git: git@github.com:BeautifulDestinations/ghcjs-vdom.git
-    commit: 068d2145e6de1abeb654332d52b203f6e7a514b8
+    commit: dd28f046713c37d7805b7997f32e861f1b85fc67
 - location:
     git: git@github.com:ghcjs/ghcjs-dom.git
     commit: bbd0e70f7dae6d8d9b89b7307f2d0acf613836a7
