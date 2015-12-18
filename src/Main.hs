@@ -37,40 +37,32 @@ type Html   = VNode
 type Widget i o = Sink o -> i -> [Html]
 type Widget' a = Widget a a
 
-newtype Action = Action ()
-  deriving (Show)
+type Action = ()
+type Model = InteractionSet SearchPost
+defModel = InteractionSet Nothing Nothing []
 
-newtype Model  = Model {
-    interactions :: Maybe (InteractionSet SearchPost)
-  }
-  deriving (Show)
-defModel = Model Nothing
+(.:) = flip ($)
 
-initial :: Model
-initial = Model Nothing
-
-update :: E Action -> IO (R Model)
-update actions = do
+update :: Model -> E Action -> IO (R Model)
+update defModel actions = do
   return $ pure defModel
 
-render :: Sink Action -> Model -> Html
+render :: Sink () -> Model -> Html
 render actions model = div () [ h1 () [text "Shoutout browser"]
+   div () (interactionSetW actions model)
    ]
 
-
-
-renderInteractionSet :: InteractionSet SearchPost -> Html
-renderInteractionSet _ = div ()
-  [ h1 () [text "Shoutout Browser"]
-  , p () [text "From"]
-  , p () [text "To"]
-  , p () [text "TODO date"]
+interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
+interactionSetW actions model = div ()
+  [ p () [text $ "From:" ++ model .: from_account]
+  , p () [text $ "To:" ++ model .: to_account]
+  , div () (interactionW actions model)
   -- all thge
 
   ]
 
-renderInteraction :: Interaction SearchPost -> Html
-renderInteraction _ = div ()
+interactionW :: Sink () -> Interaction SearchPost -> Html
+interactionW actions model = div ()
   [ p () [text "(date)"]
   , p () [text "(the growth)"]
   , p () [text "(the image)"]
@@ -84,28 +76,28 @@ renderInteraction _ = div ()
 
 main :: IO ()
 main = do
+  -- TODO currently just preloading this
   interactions <- loadShoutouts (Just "tomjauncey") Nothing
-  print interactions
 
   -- Setup chans/vars to hook into the FRP system
-  -- TODO extract "initial" from FRP system below instead of passing it explicitly here
-  frpIn    <- (TChan.newTChanIO :: IO (TChan.TChan Action))
-  frpState <- (TVar.newTVarIO initial :: IO (TVar.TVar Model))
+  frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
+  frpUpdated <- (TChan.newTVarIO :: IO (TChan.TChan ()))
+  frpState   <- (TVar.newTVarIO (error "Should not be sampled") :: IO (TVar.TVar Model))
 
   -- Launch FRP system
   forkIO $ do
-    system <- runER' update
-    (output system) (\st -> atomically $ TVar.writeTVar frpState st)
+    system <- runER' (update interactions)
+    (output system) (\st -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
       (input system) i
+
   -- Enter rendering renderingLoop on main thread
   do
     initEventDelegation []
     renderingNode <- createRenderingNode
     renderingLoop renderingNode $ do
-      -- TODO wake up on update instead of polling
-      threadDelay (round $ 1000000/30)
+      atomically $ TChan.readTChan frpUpdated
       st <- atomically $ TVar.readTVar frpState
       return $ render (atomically . TChan.writeTChan frpIn) st
 
