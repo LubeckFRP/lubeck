@@ -50,11 +50,9 @@ render :: Sink () -> Model -> Html
 render actions model = div ()
   [ h1 () [text "Shoutout browser"]
   , div
-    [ style $ "width: 1170px; margin-left: auto; margin-right: auto"]
+    [ style $ "width: 1170px; margin-left: auto; margin-right: auto" ]
     [ interactionSetW actions model ]
   ]
-  -- where
-    -- j x = jsval (x :: JSString)
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()
