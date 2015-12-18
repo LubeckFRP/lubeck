@@ -17,15 +17,13 @@ import qualified Data.List
 import Data.Text(Text)
 import Data.Monoid
 import Data.Maybe(fromMaybe)
+import Data.Default (def)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr)
 import GHCJS.VDOM.Attribute (src, width, class_, style)
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
-
-import Data.Default (def)
-
 import GHCJS.Types(JSString, jsval)
 
 import FRP2
