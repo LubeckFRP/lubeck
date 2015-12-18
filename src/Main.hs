@@ -27,6 +27,9 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 
 import FRP2
 
+import BD.Data.Account
+import BD.Data.Count
+import BD.Data.SearchPost
 import BD.Data.Interaction
 
 
@@ -36,35 +39,43 @@ import BD.Data.Interaction
 
 type Html   = VNode
 
-newtype Action = Action {getAction :: String}
+newtype Action = Action
   deriving (Eq, Ord, Show)
 
-newtype Model  = Model String
+newtype Model  = Model {
+    interactions :: Maybe (InteractionSet SearchPost)
+  }
   deriving (Eq, Ord, Show)
+defModel = Model Nothing
 
 initial :: Model
-initial = Model "Press a button"
+initial = Model Nothing
 
 update :: E Action -> IO (R Model)
-update inp = do
-    as <- counter $ filterE (== Action "A") (scatterE $ fmap (\e -> [e,e]) inp)
-    bs <- counter $ filterE (== Action "B") inp
-    cdefgs <- counter $ mconcat $ fmap (\x -> filterE (== Action [x]) inp) "CDEFG"
-    qs <- counter $ filterE (== Action "Q") inp
-
-    return $ (\na nb nq ncdefg -> Model $ "Received " ++ show na ++ " as, " ++ show nb ++ " bs, " ++ show nq ++ " qs, and "
-      ++ show ncdefg ++ " of c,d,e,f or g") <$> as <*> bs <*> qs <*> cdefgs
+update actions = do
+  return $ pure defModel
 
 render :: Sink Action -> Model -> Html
-render sink (Model st) = div () [ h1 () [text "Example 4"]
-   , p () [text (fromString $ st)]
-   , form [submit $ \e -> preventDefault e >> return ()]
-    (fmap (\a -> button [click $ \_ -> (sink $ Action [a])] [text $ fromString [a]]) ['A'..'Z'])
+render actions model = div () [ h1 () [text "Shoutout browser"]
    ]
 
+renderInteractionSet :: InteractionSet SearchPost -> Html
+renderInteractionSet = div () []
+
+renderInteraction :: Interaction SearchPost -> Html
+renderInteraction = div () []
+-- just account names
+-- Time
+-- index in interaction list?
+-- growth graph
+-- estimated impact
+
+renderSearchPost :: InteractionSet SearchPost -> Html
+renderSearchPost = div () []
+-- the media/image
 
 main = do
-  interactions <- loadInteractionSetPosts undefined undefined undefined
+  interactions <- loadShoutouts (Just "tomjauncey") Nothing
   print interactions
 
   w <- getW

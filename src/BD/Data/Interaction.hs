@@ -2,8 +2,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable, CPP #-}
 
 module BD.Data.Interaction
-    ( getFromAPI -- TODO
-    , loadInteractionSetPosts
+    ( loadShoutouts
+    , Interaction(..)
+    , InteractionSet(..)
     ) where
 
 import Control.Monad
@@ -14,6 +15,7 @@ import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
 import Data.ByteString(ByteString)
+import Data.Maybe(fromMaybe)
 
 #ifdef __GHCJS__
 import JavaScript.Web.XMLHttpRequest -- TODO
@@ -24,6 +26,13 @@ import BD.Data.Account
 import BD.Data.SearchPost
 
 #ifndef __GHCJS__
+{-|
+Faking JavaScript.Web.XMLHttpRequest for GHCI
+
+TODO
+- Implement this separately based on some client library
+- Or the other way around, possibly using a servant-generated client
+-}
 data Method = GET
 data ReqData = NoData
 data Request = Request {
@@ -54,7 +63,7 @@ data InteractionSet m = InteractionSet
 
 data Interaction m = Interaction
   {
-    target_counts :: [Count],
+    target_counts :: [Count], -- the growth
     target_account :: Account,
     interaction_time :: UTCTime,
     medium :: m -- i.e. a post
@@ -68,27 +77,28 @@ instance ToJSON m => ToJSON (InteractionSet m)
 instance FromJSON m => FromJSON (Interaction m)
 instance FromJSON m => FromJSON (InteractionSet m)
 
-
-
+-- | Monad for backend interaction. Currently same as IO, we should probably do some wrapping eventually.
 type DB = IO
 
-loadInteractionSetPosts :: InteractionMedia SearchPost -> Maybe Account -> Maybe Account -> DB (InteractionSet SearchPost)
-loadInteractionSetPosts media mFrom mTo = do
+loadShoutouts :: Maybe String -> Maybe String -> DB (InteractionSet SearchPost)
+loadShoutouts mFrom mTo = do
   r <- getFromAPI -- TODO params
   case contents r of
     Nothing          -> error "TODO no response"
     Just byteString  -> case Data.Aeson.decodeStrict byteString of
       Nothing -> error "TODO parse error"
       Just x  -> return x
-
-getFromAPI :: DB (Response ByteString)
-getFromAPI = xhrByteString r
   where
-    r = Request {
-        reqMethod          = GET
-      , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/tomjauncey/any/shoutouts"
-      , reqLogin           = Nothing
-      , reqHeaders         = []
-      , reqWithCredentials = False
-      , reqData            = NoData
-      }
+    fromAccName = fromMaybe "any" mFrom
+    toAccName   = fromMaybe "any" mTo
+    getFromAPI = xhrByteString r
+      where
+        r = Request {
+            reqMethod          = GET
+          , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/"
+                                    ++ fromAccName ++ "/" ++ toAccName ++ "/shoutouts"
+          , reqLogin           = Nothing
+          , reqHeaders         = []
+          , reqWithCredentials = False
+          , reqData            = NoData
+          }
