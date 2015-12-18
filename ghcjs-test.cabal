@@ -17,6 +17,10 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     FRP2
+                     , BD.Data.Account
+                     , BD.Data.Count
+                     , BD.Data.Interaction
+                     , BD.Data.SearchPost
   build-depends:       base >=4.8 && <4.9
                      , ghcjs-vdom == 0.2.0.0
                      , ghcjs-ffiqq == 0.1.0.0
