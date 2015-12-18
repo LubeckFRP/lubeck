@@ -33,19 +33,17 @@ import BD.Data.SearchPost
 import BD.Data.Interaction
 
 
-
-
-
-
 type Html   = VNode
+type Widget i o = Sink o -> i -> [Html]
+type Widget' a = Widget a a
 
-newtype Action = Action
-  deriving (Eq, Ord, Show)
+newtype Action = Action ()
+  deriving (Show)
 
 newtype Model  = Model {
     interactions :: Maybe (InteractionSet SearchPost)
   }
-  deriving (Eq, Ord, Show)
+  deriving (Show)
 defModel = Model Nothing
 
 initial :: Model
@@ -59,53 +57,67 @@ render :: Sink Action -> Model -> Html
 render actions model = div () [ h1 () [text "Shoutout browser"]
    ]
 
+
+
 renderInteractionSet :: InteractionSet SearchPost -> Html
-renderInteractionSet = div () []
+renderInteractionSet _ = div ()
+  [ h1 () [text "Shoutout Browser"]
+  , p () [text "From"]
+  , p () [text "To"]
+  , p () [text "TODO date"]
+  -- all thge
+
+  ]
 
 renderInteraction :: Interaction SearchPost -> Html
-renderInteraction = div () []
+renderInteraction _ = div ()
+  [ p () [text "(date)"]
+  , p () [text "(the growth)"]
+  , p () [text "(the image)"]
+  , p () [text "Estimated impact"]
+  ]
 -- just account names
 -- Time
 -- index in interaction list?
 -- growth graph
 -- estimated impact
 
-renderSearchPost :: InteractionSet SearchPost -> Html
-renderSearchPost = div () []
--- the media/image
-
+main :: IO ()
 main = do
   interactions <- loadShoutouts (Just "tomjauncey") Nothing
   print interactions
 
-  w <- getW
-  initEventDelegation []
-
+  -- Setup chans/vars to hook into the FRP system
+  -- TODO extract "initial" from FRP system below instead of passing it explicitly here
   frpIn    <- (TChan.newTChanIO :: IO (TChan.TChan Action))
-  -- TODO extract initial from FRP system below
   frpState <- (TVar.newTVarIO initial :: IO (TVar.TVar Model))
 
+  -- Launch FRP system
   forkIO $ do
-    system <- runER (\e -> update e >>= \r -> return (r, sample r e))
+    system <- runER' update
     (output system) (\st -> atomically $ TVar.writeTVar frpState st)
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
       (input system) i
-
-  loop w $ do
-    threadDelay (round $ 1000000/30)
-    st <- atomically $ TVar.readTVar frpState
-    return $ render (atomically . TChan.writeTChan frpIn) st
+  -- Enter rendering renderingLoop on main thread
+  do
+    initEventDelegation []
+    renderingNode <- createRenderingNode
+    renderingLoop renderingNode $ do
+      -- TODO wake up on update instead of polling
+      threadDelay (round $ 1000000/30)
+      st <- atomically $ TVar.readTVar frpState
+      return $ render (atomically . TChan.writeTChan frpIn) st
 
   where
-    getW :: IO DOMNode
-    getW = do
+    createRenderingNode :: IO DOMNode
+    createRenderingNode = do
       root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
       return root
 
     -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
-    loop :: DOMNode -> IO VNode -> IO ()
-    loop domNode k = do
+    renderingLoop :: DOMNode -> IO VNode -> IO ()
+    renderingLoop domNode k = do
       node1 <- k
       vMount <- mount domNode node1
       forever $ do
