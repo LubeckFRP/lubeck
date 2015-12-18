@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable, CPP #-}
 
 module BD.Data.Interaction
-    (
+    ( getFromAPI -- TODO
     ) where
 
 import Control.Monad
@@ -12,9 +12,10 @@ import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
+import Data.ByteString(ByteString)
 
 #ifdef __GHCJS__
--- import JavaScript.Web.XMLHttpRequest -- TODO
+import JavaScript.Web.XMLHttpRequest -- TODO
 #endif
 
 import BD.Data.Count
@@ -22,7 +23,6 @@ import BD.Data.Account
 import BD.Data.SearchPost
 
 #ifndef __GHCJS__
-data Response a
 data Method = GET
 data ReqData = NoData
 data Request = Request {
@@ -34,6 +34,14 @@ data Request = Request {
   reqData :: ReqData
 }
 xhrText = undefined
+xhrByteString :: Request -> IO (Response ByteString)
+xhrByteString = undefined
+type JSString = ()
+data Response a = Response { contents              :: Maybe a
+                           , status                :: Int
+                           , getAllResponseHeaders :: IO JSString
+                           , getResponseHeader     :: JSString -> IO (Maybe JSString)
+                           }
 #endif
 
 data InteractionSet m = InteractionSet
@@ -56,20 +64,28 @@ data InteractionMedia m where
 
 instance ToJSON m => ToJSON (Interaction m)
 instance ToJSON m => ToJSON (InteractionSet m)
+instance FromJSON m => FromJSON (Interaction m)
+instance FromJSON m => FromJSON (InteractionSet m)
 
 
 
 type DB = IO
 
-loadInteractionSet :: InteractionMedia m -> Maybe Account -> Maybe Account -> DB (InteractionSet m)
-loadInteractionSet = undefined
+loadInteractionSetPosts :: InteractionMedia SearchPost -> Maybe Account -> Maybe Account -> DB (InteractionSet SearchPost)
+loadInteractionSetPosts media mFrom mTo = do
+  r <- getFromAPI -- TODO params
+  case contents r of
+    Nothing          -> error "TODO no response"
+    Just byteString  -> case Data.Aeson.decodeStrict byteString of
+      Nothing -> error "TODO parse error"
+      Just x  -> return x
 
-getFromAPI :: IO (Response Text)
-getFromAPI = xhrText r
+getFromAPI :: DB (Response ByteString)
+getFromAPI = xhrByteString r
   where
     r = Request {
         reqMethod          = GET
-      , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/tomjauncey/tomjauncey/shoutouts"
+      , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/tomjauncey/any/shoutouts"
       , reqLogin           = Nothing
       , reqHeaders         = []
       , reqWithCredentials = False

@@ -63,6 +63,7 @@ render sink (Model st) = div () [ h1 () [text "Example 4"]
 
 
 main = do
+  getFromAPI
 
   w <- getW
   initEventDelegation []
