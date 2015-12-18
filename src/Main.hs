@@ -52,13 +52,15 @@ render :: Sink () -> Model -> Html
 render actions model = div ()
   [ h1 () [text "Shoutout browser"]
   , div
-    [ (custom "width"         "1170px")
-    , (custom "margin-left"   "auto")
-    , (custom "margin-right"  "auto")
-    , (custom "padding-left"  "50px")
-    , (custom "padding-right" "50px")
+    [ (custom "width"         $ j "1170px")
+    , (custom "margin-left"   $ j "auto")
+    , (custom "margin-right"  $ j "auto")
+    , (custom "padding-left"  $ j "50px")
+    , (custom "padding-right" $ j "50px")
     ] [interactionSetW actions model]
   ]
+  where
+    j x = jsval (x :: JSString)
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()
