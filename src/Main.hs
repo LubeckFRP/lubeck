@@ -26,7 +26,8 @@ import Data.Default (def)
 import JavaScript.Web.XMLHttpRequest -- TODO
 
 import FRP2
-import Interactions
+
+import BD.Data.Interactions
 
 
 
@@ -63,7 +64,8 @@ render sink (Model st) = div () [ h1 () [text "Example 4"]
 
 
 main = do
-  getFromAPI
+  interactions <- loadInteractionSetPosts undefined undefined undefined
+  print interactions
 
   w <- getW
   initEventDelegation []

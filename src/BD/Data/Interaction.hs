@@ -3,6 +3,7 @@
 
 module BD.Data.Interaction
     ( getFromAPI -- TODO
+    , loadInteractionSetPosts
     ) where
 
 import Control.Monad
