@@ -1,14 +1,15 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
 
 import Prelude hiding (div)
 import qualified Prelude
 
 import Control.Applicative
 import Control.Concurrent (threadDelay, forkIO)
-import Control.Monad (forM_)
-import Control.Monad (forever, unless)
+import Control.Monad (forM_, forever, unless)
 import Data.String (fromString)
+import qualified Data.Map as Map
+import Data.Map(Map)
 import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
@@ -21,14 +22,15 @@ import Data.Default (def)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
-import GHCJS.VDOM.Attribute (src, width, class_, style)
+import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
-import GHCJS.Foreign.QQ (js)
+import GHCJS.Foreign.QQ (js, jsu')
 import GHCJS.Types(JSString, jsval)
-import GHCJS.Marshal.Pure (pToJSVal)
-import GHCJS.VDOM.QQ (att)
-import GHCJS.VDOM.Internal (mkAttrs)
+-- import GHCJS.Marshal.Pure (pToJSVal)
+-- import GHCJS.VDOM.QQ (att)
+-- import GHCJS.VDOM.Internal (mkAttrs)
+import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import FRP2
 
@@ -50,35 +52,40 @@ update :: Model -> E Action -> IO (R (Model, IO Action))
 update defModel actions = do
   return $ pure (defModel, return ())
 
--- r :: JSString -> Attributes'
--- r name = [att| r: name |]
-
-
--- mkAttrs ''Int ["r"]
+-- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
+-- This works around the issue. The value returned here should take the place of the standard
+-- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
+customAttrs :: Map String String -> Attributes'
+customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
 
 render :: Sink () -> Model -> Html
 render actions model = div ()
   [ h1 () [text "Shoutout browser"]
 
-
   , custom "svg" ()
-  [ custom "circle" [A.custom "r" (pToJSVal (0.5::Double))] [text "bar"]
-  , custom "rect" [A.custom "x" (pToJSVal (0.5::Double))] [text "bar"]
-  , custom "rect" [A.custom "x" (pToJSVal ("test1"::JSString))] [text "bar"]
-  , custom "rect" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
-
-  , custom "a" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
-  , custom "a" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
-
-  , custom "aa" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
-  , custom "aa" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
-
+  [
+  -- custom "circle" [A.custom "r" (pToJSVal (0.5::Double))] [text "bar"]
+  -- ,
+  custom "a" (customAttrs (Map.fromList[("r","0.5")])) ()
+  -- , custom "rect" [A.custom "x" (pToJSVal (0.5::Double))] [text "bar"]
+  -- , custom "rect" [A.custom "x" (pToJSVal ("test1"::JSString))] [text "bar"]
+  -- , custom "rect" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
+  --
+  -- , custom "a" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
+  -- , custom "a" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
+  --
+  -- , custom "aa" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
+  -- , custom "aa" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
+  --
   -- , custom "script" (r 22) [text "bar", text "baz"]
-  , div (style "background: black") [text "bar", text "baz"]
+  -- , div (style "background: black") [text "bar", text "baz"]
+  -- , div (unsafeToAttributes [js|{style:"background:black"}|]) [text "Finally"]
   ]
 
   , div
-    [ style $ "width: 1170px; margin-left: auto; margin-right: auto" ]
+    ()
+    -- [ style $ "width: 1170px; margin-left: auto; margin-right: auto" ]
     [ interactionSetW actions model ]
   ]
 
