@@ -28,6 +28,7 @@ import GHCJS.Foreign.QQ (js)
 import GHCJS.Types(JSString, jsval)
 import GHCJS.Marshal.Pure (pToJSVal)
 import GHCJS.VDOM.QQ (att)
+import GHCJS.VDOM.Internal (mkAttrs)
 
 import FRP2
 
@@ -49,8 +50,11 @@ update :: Model -> E Action -> IO (R Model)
 update defModel actions = do
   return $ pure defModel
 
-r :: JSString -> Attributes'
-r name = [att| r: name |]
+-- r :: JSString -> Attributes'
+-- r name = [att| r: name |]
+
+
+mkAttrs ''Int ["r"]
 
 render :: Sink () -> Model -> Html
 render actions model = div ()
@@ -69,7 +73,7 @@ render actions model = div ()
   , custom "aa" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
   , custom "aa" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
 
-  , custom "circle" (r "0.5") [text "bar"]
+  , custom "script" (r 22) [text "bar"]
   ]
 
   , div
