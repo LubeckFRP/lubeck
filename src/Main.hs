@@ -49,7 +49,7 @@ update :: Model -> E Action -> IO (R Model)
 update defModel actions = do
   return $ pure defModel
 
-r = cls :: JSString -> Attributes'
+r :: JSString -> Attributes'
 r name = [att| r: name |]
 
 render :: Sink () -> Model -> Html
