@@ -46,9 +46,9 @@ type Widget i o = Sink o -> i -> [Html]
 type Widget' a  = Widget a a
 
 type Action = ()
-type Model = InteractionSet SearchPost
+type Model  = InteractionSet SearchPost
 
-update :: Model -> E Action -> IO (R (Model, IO Action))
+update :: E Action -> IO (R (Model, IO Action))
 update actions = do
   return $ pure (InteractionSet Nothing Nothing [], return ())
 
@@ -77,7 +77,7 @@ render actions model = div
   ]
 
   , div ()
-    [buttonW sink ()]
+    [buttonW actions ()]
   , div
     ()
     -- [ style $ "width: 1170px; margin-left: auto; margin-right: auto" ]
@@ -128,7 +128,7 @@ main = do
 
   -- Compile FRP system
   forkIO $ do
-    system <- runER' (update interactions)
+    system <- runER' update
     -- Propagate initial value (or we won't see anything)
     (state system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     -- Register output
