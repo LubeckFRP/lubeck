@@ -46,15 +46,15 @@ type Widget' a = Widget a a
 type Action = ()
 type Model = InteractionSet SearchPost
 
-update :: Model -> E Action -> IO (R Model)
+update :: Model -> E Action -> IO (R (Model, IO Action))
 update defModel actions = do
-  return $ pure defModel
+  return $ pure (defModel, return ())
 
 -- r :: JSString -> Attributes'
 -- r name = [att| r: name |]
 
 
-mkAttrs ''Int ["r"]
+-- mkAttrs ''Int ["r"]
 
 render :: Sink () -> Model -> Html
 render actions model = div ()
@@ -73,7 +73,8 @@ render actions model = div ()
   , custom "aa" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
   , custom "aa" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
 
-  , custom "script" (r 22) [text "bar"]
+  -- , custom "script" (r 22) [text "bar", text "baz"]
+  , div (style "background: black") [text "bar", text "baz"]
   ]
 
   , div
@@ -108,20 +109,28 @@ main = do
   -- Setup chans/vars to hook into the FRP system
   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
   frpUpdated <- (TChan.newTChanIO :: IO (TChan.TChan ()))
+  frpJobs    <- (TChan.newTChanIO :: IO (TChan.TChan (IO Action)))
   frpState   <- (TVar.newTVarIO (error "Should not be sampled") :: IO (TVar.TVar Model))
 
-  -- Launch FRP system
+  -- Compile FRP system
   forkIO $ do
     system <- runER' (update interactions)
     -- Propagate initial value (or we won't see anything)
-    (state system) (\st -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
+    (state system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     -- Register output
-    (output system) (\st -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
+    (output system) (\(st, job) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpJobs job >> TChan.writeTChan frpUpdated ())
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
       (input system) i
 
-  -- Enter rendering renderingLoop on main thread
+  -- Job thread
+  forkIO $
+    forever $ do
+      job <- atomically $ TChan.readTChan frpJobs
+      res <- job
+      atomically $ TChan.writeTChan frpIn res
+
+  -- Enter rendering loop on main thread
   do
     initEventDelegation []
     renderingNode <- createRenderingNode
@@ -142,7 +151,7 @@ main = do
       node1 <- k
       vMount <- mount domNode node1
       forever $ do
-        insist $ do
+        insist $ do -- TODO insist should not be needed
           node <- k
           delta <- diff vMount node
           patch vMount delta
