@@ -20,11 +20,14 @@ import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
 import GHCJS.VDOM.Attribute (src, width, class_, style)
+import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js)
 import GHCJS.Types(JSString, jsval)
+import GHCJS.Marshal.Pure (pToJSVal)
+import GHCJS.VDOM.QQ (att)
 
 import FRP2
 
@@ -46,9 +49,29 @@ update :: Model -> E Action -> IO (R Model)
 update defModel actions = do
   return $ pure defModel
 
+r = cls :: JSString -> Attributes'
+r name = [att| r: name |]
+
 render :: Sink () -> Model -> Html
 render actions model = div ()
   [ h1 () [text "Shoutout browser"]
+
+
+  , custom "svg" ()
+  [ custom "circle" [A.custom "r" (pToJSVal (0.5::Double))] [text "bar"]
+  , custom "rect" [A.custom "x" (pToJSVal (0.5::Double))] [text "bar"]
+  , custom "rect" [A.custom "x" (pToJSVal ("test1"::JSString))] [text "bar"]
+  , custom "rect" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
+
+  , custom "a" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
+  , custom "a" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
+
+  , custom "aa" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
+  , custom "aa" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
+
+  , custom "circle" (r "0.5") [text "bar"]
+  ]
+
   , div
     [ style $ "width: 1170px; margin-left: auto; margin-right: auto" ]
     [ interactionSetW actions model ]
@@ -75,7 +98,8 @@ interactionW actions model = div ()
 main :: IO ()
 main = do
   -- TODO currently just preloading this
-  interactions <- loadShoutouts (Just "tomjauncey") Nothing
+  -- interactions <- loadShoutouts (Just "tomjauncey") Nothing
+  let interactions = InteractionSet Nothing Nothing []
 
   -- Setup chans/vars to hook into the FRP system
   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
