@@ -111,9 +111,6 @@ customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.fol
 
 main :: IO ()
 main = do
-  -- interactions <- loadShoutouts (Just "tomjauncey") Nothing
-  -- let interactions = InteractionSet Nothing Nothing []
-
   -- Setup chans/vars to hook into the FRP system
   -- Actions to run (from user or finished jobs)
   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
