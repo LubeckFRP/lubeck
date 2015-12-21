@@ -39,40 +39,30 @@ import BD.Data.Interaction
 
 
 type Html       = VNode
-type Widget i o = Sink o -> i -> [Html]
+type Widget i o = Sink o -> i -> Html
 type Widget' a  = Widget a a
 
-type Action = ()
+data Action
+  = NoAction
+  | LoadAction (Maybe String) (Maybe String)
+  | ReplaceModel Model
+
+-- For debugging only
+instance Show Action where
+  show = g where
+    g NoAction = "NoAction"
+    g LoadAction = "LoadAction"
+    g ReplaceModel = "ReplaceModel"
+
 type Model  = InteractionSet SearchPost
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
-update actions = do
-  return $ pure (InteractionSet Nothing Nothing [], Nothing)
+update = foldpR (\action (model,_) -> (model,Nothing)) (InteractionSet Nothing Nothing [], Nothing)
 
-render :: Sink () -> Model -> Html
+render :: Widget Model Action
 render actions model = div
   (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Shoutout browser"]
-  , custom "svg" ()
-  [
-  -- custom "circle" [A.custom "r" (pToJSVal (0.5::Double))] [text "bar"]
-  -- ,
-  custom "a" (customAttrs (Map.fromList[("r","0.5")])) ()
-  -- , custom "rect" [A.custom "x" (pToJSVal (0.5::Double))] [text "bar"]
-  -- , custom "rect" [A.custom "x" (pToJSVal ("test1"::JSString))] [text "bar"]
-  -- , custom "rect" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
-  --
-  -- , custom "a" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
-  -- , custom "a" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
-  --
-  -- , custom "aa" [A.custom "href" (pToJSVal (0.5::Double))] [text "bar"]
-  -- , custom "aa" [A.custom "href" (pToJSVal ("test1"::JSString))] [text "bar"]
-  --
-  -- , custom "script" (r 22) [text "bar", text "baz"]
-  -- , div (style "background: black") [text "bar", text "baz"]
-  -- , div (unsafeToAttributes [js|{style:"background:black"}|]) [text "Finally"]
-  ]
-
   , div ()
     [buttonW actions ()]
   , div
@@ -81,19 +71,19 @@ render actions model = div
     [ interactionSetW actions model ]
   ]
 
-buttonW :: Sink () -> () -> Html
+buttonW :: Widget () Action
 buttonW sink () = form
   [submit $ \e -> preventDefault e >> return ()]
-  [button (click $ \_ -> sink ()) [text "Click!"]]
+  [button (click $ \_ -> sink NoAction) [text "Click!"]]
 
-interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
+interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div ()
   [ p () [ text $ ""       <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
          , text $ " to "   <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: interactions)
   ]
 
-interactionW :: Sink () -> Interaction SearchPost -> Html
+interactionW :: Widget (Interaction SearchPost) Action
 interactionW actions model = div ()
   [ p () [text (showJS $ model .: interaction_time)]
   -- Growth graph
