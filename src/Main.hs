@@ -44,20 +44,26 @@ type Widget' a  = Widget a a
 
 data Action
   = NoAction
-  | LoadAction (Maybe String) (Maybe String)
+  | LoadAction (Maybe JSString) (Maybe JSString)
   | ReplaceModel Model
 
 -- For debugging only
 instance Show Action where
   show = g where
-    g NoAction = "NoAction"
-    g LoadAction = "LoadAction"
-    g ReplaceModel = "ReplaceModel"
+    g NoAction         = "NoAction"
+    g (LoadAction _ _) = "LoadAction"
+    g (ReplaceModel _) = "ReplaceModel"
 
 type Model  = InteractionSet SearchPost
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
-update = foldpR (\action (model,_) -> (model,Nothing)) (InteractionSet Nothing Nothing [], Nothing)
+update = foldpR step initial
+  where
+    initial = (InteractionSet Nothing Nothing [], Nothing)
+
+    step NoAction             (model,_) = (model,Nothing)
+    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
+    step (ReplaceModel model) (_,_)     = (model,Nothing)
 
 render :: Widget Model Action
 render actions model = div
@@ -67,14 +73,14 @@ render actions model = div
     [buttonW actions ()]
   , div
     ()
-    -- [ style $ "width: 1170px; margin-left: auto; margin-right: auto" ]
     [ interactionSetW actions model ]
   ]
 
+-- TODO make this a Widget (Maybe JSString, Maybe JSString) Action
 buttonW :: Widget () Action
 buttonW sink () = form
   [submit $ \e -> preventDefault e >> return ()]
-  [button (click $ \_ -> sink NoAction) [text "Click!"]]
+  [button (click $ \_ -> sink (LoadAction (Just "tomjauncey") Nothing)) [text "Load shoutouts!"]]
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div ()
@@ -193,6 +199,6 @@ showJS = fromString . show
 textToJSString :: Text -> JSString
 textToJSString = fromString . Data.Text.unpack
 
--- TODO serve
+-- A data URL representing a grey image
 greyImgUrl :: JSString
 greyImgUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxQSEhQUEhQUFBQUFBQUFBQUFBQUFBQUFBQXFxQUFBQYHCggGBwlHBQUITEhJSksLi4uFx8zODMsNygtLiwBCgoKDAwMDgwMDiwZFBksLCwsKywsLDc3Kyw3LCwsLDcsNzcsNyssLCwsLDc3LDcsLCwsLDcsNyw3NzcsNyw3LP/AABEIAOEA4QMBIgACEQEDEQH/xAAYAAEBAQEBAAAAAAAAAAAAAAAAAQIDB//EABkQAQEBAQEBAAAAAAAAAAAAAAABEQJBMf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A9QoqIpCCwRKjVTAIBgGqIAqKKCsiKmqCoEBEqiAWhQBFQDVRoEZrVSgzgqCurLWIIKkUBFQBUxQQi4AoEFQVBC1FMASBAEVJABQERSAAoIjTPQM6ADrWWkAVFACmgAAAAsEUBFqABFoJaACCgIilBAAWEIAJ0RKDI1gDdSrUAVFAAACAAACiAqKlAEAFEAAoIKgBQAWJFARUoICA6AgC0KBSIsAAAIRQVAASqlBAAVCKAlWoBAQBFQFixIArPSpQAQHSoqAsEXAAAAAFQBQQACAgAJjSRQTRYgFhUKCKigasTFBWbFS0EEAbqWrTAIuoAoAARYBAqSAqVQEouIAYQoJGkKAioCFKYAgtBGmWoAlq1mgmAgOqKgEVFAABRFADFBAQCoqAuloaAGgIKgCAAqAEWJABK0zQTEVAdUWoAqAKIoKJFALQASqzQAUEKAAQ0AwAEpqAtBAWBIAanQz1QTFAHWpWqyAACiKAAABBQEEChQAQFgqABUAAAQoC2oADNarNBFAHWotQUEAUAQWCQFEoCoqUCAQAAAQAoqAAkAAoEXA0GUqs0AMUHRKpUEgaKCooqpagIoIClEBRAAVAAQFEUEAACgAmroJUWs0BWdAdgqVFRYigqUAFSKqBEUAogoEKIAgLUVAFqKCQADEUBAAGVqAgKK6JV1lBSJQFBAWNRICAgqqBoAqURAAAAAANRagLpqYAi6lQFZtWsgirig2lBBFQBTkFVYAIiwABAVq+FARKAKCAi0vxAFKACIAVmqClZUEAEH//2Q=="
