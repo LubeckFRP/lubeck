@@ -48,9 +48,9 @@ type Widget' a  = Widget a a
 type Action = ()
 type Model  = InteractionSet SearchPost
 
-update :: E Action -> IO (R (Model, IO Action))
+update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update actions = do
-  return $ pure (InteractionSet Nothing Nothing [], return ())
+  return $ pure (InteractionSet Nothing Nothing [], Nothing)
 
 render :: Sink () -> Model -> Html
 render actions model = div
@@ -85,7 +85,9 @@ render actions model = div
   ]
 
 buttonW :: Sink () -> () -> Html
-buttonW sink () = form () [button (click $ \_ -> sink ()) [text "Click!"]]
+buttonW sink () = form
+  [submit $ \e -> preventDefault e >> return ()]
+  [button (click $ \_ -> sink ()) [text "Click!"]]
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()
@@ -116,15 +118,19 @@ customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.fol
 
 main :: IO ()
 main = do
-  -- TODO currently just preloading this
   -- interactions <- loadShoutouts (Just "tomjauncey") Nothing
   -- let interactions = InteractionSet Nothing Nothing []
 
   -- Setup chans/vars to hook into the FRP system
+  -- Actions to run (from user or finished jobs)
   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
+  -- Fired whenever state has been updated
   frpUpdated <- (TChan.newTChanIO :: IO (TChan.TChan ()))
-  frpJobs    <- (TChan.newTChanIO :: IO (TChan.TChan (IO Action)))
+  -- Current state
+  -- Should not be read before frpUpdated has been emitted at least once
   frpState   <- (TVar.newTVarIO (error "Should not be sampled") :: IO (TVar.TVar Model))
+  -- Jobs for worked thread
+  frpJobs    <- (TChan.newTChanIO :: IO (TChan.TChan (IO Action)))
 
   -- Compile FRP system
   forkIO $ do
@@ -132,16 +138,24 @@ main = do
     -- Propagate initial value (or we won't see anything)
     (state system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     -- Register output
-    (output system) (\(st, job) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpJobs job >> TChan.writeTChan frpUpdated ())
+    (output system) $ \(st, job) -> do
+        atomically $ TVar.writeTVar frpState st
+        case job of
+            Nothing -> return ()
+            Just job -> atomically $ TChan.writeTChan frpJobs job
+        atomically $ TChan.writeTChan frpUpdated ()
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
+      putStrLn $ "Processing event: " ++ show i
       (input system) i
 
   -- Job thread
   forkIO $
     forever $ do
       job <- atomically $ TChan.readTChan frpJobs
+      putStrLn "Starting a job"
       res <- job
+      putStrLn "Job finished"
       atomically $ TChan.writeTChan frpIn res
 
   -- Enter rendering loop on main thread
@@ -165,7 +179,7 @@ main = do
       node1 <- k
       vMount <- mount domNode node1
       forever $ do
-        insist $ do -- TODO insist should not be needed
+        -- insist $ do -- TODO insist should not be needed
           node <- k
           delta <- diff vMount node
           patch vMount delta
