@@ -55,14 +55,18 @@ update defModel actions = do
 -- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
 -- This works around the issue. The value returned here should take the place of the standard
 -- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
+--
+-- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
 customAttrs :: Map String String -> Attributes'
 customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
 
-render :: Sink () -> Model -> Html
-render actions model = div ()
-  [ h1 () [text "Shoutout browser"]
 
+
+render :: Sink () -> Model -> Html
+render actions model = div
+  (customAttrs $ Map.fromList [("style", "width: 1170px; margin-left: auto; margin-right: auto") ])
+  [ h1 () [text "Shoutout browser"]
   , custom "svg" ()
   [
   -- custom "circle" [A.custom "r" (pToJSVal (0.5::Double))] [text "bar"]
@@ -110,8 +114,8 @@ interactionW actions model = div ()
 main :: IO ()
 main = do
   -- TODO currently just preloading this
-  -- interactions <- loadShoutouts (Just "tomjauncey") Nothing
-  let interactions = InteractionSet Nothing Nothing []
+  interactions <- loadShoutouts (Just "tomjauncey") Nothing
+  -- let interactions = InteractionSet Nothing Nothing []
 
   -- Setup chans/vars to hook into the FRP system
   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
