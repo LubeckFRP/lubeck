@@ -3,7 +3,6 @@ NAME= ghcjs-test
 
 .PHONY: all
 all: build-client run-server
-# all: view-client-locally
 
 .PHONY: build-client
 build-client:
