@@ -41,31 +41,20 @@ import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 
 
-type Html   = VNode
+type Html       = VNode
 type Widget i o = Sink o -> i -> [Html]
-type Widget' a = Widget a a
+type Widget' a  = Widget a a
 
 type Action = ()
 type Model = InteractionSet SearchPost
 
 update :: Model -> E Action -> IO (R (Model, IO Action))
-update defModel actions = do
-  return $ pure (defModel, return ())
-
--- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
--- This works around the issue. The value returned here should take the place of the standard
--- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
---
--- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
-customAttrs :: Map String String -> Attributes'
-customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
-  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
-
-
+update actions = do
+  return $ pure (InteractionSet Nothing Nothing [], return ())
 
 render :: Sink () -> Model -> Html
 render actions model = div
-  (customAttrs $ Map.fromList [("style", "width: 1170px; margin-left: auto; margin-right: auto") ])
+  (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Shoutout browser"]
   , custom "svg" ()
   [
@@ -87,11 +76,16 @@ render actions model = div
   -- , div (unsafeToAttributes [js|{style:"background:black"}|]) [text "Finally"]
   ]
 
+  , div ()
+    [buttonW sink ()]
   , div
     ()
     -- [ style $ "width: 1170px; margin-left: auto; margin-right: auto" ]
     [ interactionSetW actions model ]
   ]
+
+buttonW :: Sink () -> () -> Html
+buttonW sink () = form () [button (click $ \_ -> sink ()) [text "Click!"]]
 
 interactionSetW :: Sink () -> InteractionSet SearchPost -> Html
 interactionSetW actions model = div ()
@@ -111,10 +105,19 @@ interactionW actions model = div ()
   , p () [text "Estimated impact: (?)"]
   ]
 
+-- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
+-- This works around the issue. The value returned here should take the place of the standard
+-- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
+--
+-- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
+customAttrs :: Map String String -> Attributes'
+customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
+
 main :: IO ()
 main = do
   -- TODO currently just preloading this
-  interactions <- loadShoutouts (Just "tomjauncey") Nothing
+  -- interactions <- loadShoutouts (Just "tomjauncey") Nothing
   -- let interactions = InteractionSet Nothing Nothing []
 
   -- Setup chans/vars to hook into the FRP system
