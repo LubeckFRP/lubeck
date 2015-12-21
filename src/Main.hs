@@ -27,9 +27,6 @@ import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Event (initEventDelegation, click, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js, jsu')
 import GHCJS.Types(JSString, jsval)
--- import GHCJS.Marshal.Pure (pToJSVal)
--- import GHCJS.VDOM.QQ (att)
--- import GHCJS.VDOM.Internal (mkAttrs)
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import FRP2
