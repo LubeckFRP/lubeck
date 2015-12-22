@@ -20,14 +20,13 @@ import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
-import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
-import qualified GHCJS.VDOM.Element as E
-import GHCJS.VDOM.Attribute (src, width, class_)
-import qualified GHCJS.VDOM.Attribute as A
-import GHCJS.VDOM.Event (initEventDelegation, click, change, submit, stopPropagation, preventDefault)
+import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
+import GHCJS.VDOM.Attribute (src, width, class_)
+import qualified GHCJS.VDOM.Element as E
+import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import FRP2
