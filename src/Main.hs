@@ -31,6 +31,7 @@ import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import FRP2
+import App
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.Count as C
@@ -39,7 +40,6 @@ import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 
 
-type Html       = VNode
 type Widget i o = Sink o -> i -> Html
 type Widget' a  = Widget a a
 
@@ -83,7 +83,7 @@ buttonW sink () = form
   [ submit $ \e -> preventDefault e >> return () ]
   [
     -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
-  -- , 
+  -- ,
     E.input () [text "def"]
   , button (click $ \_ -> sink (LoadAction (Just "tomjauncey") Nothing)) [text "Load shoutouts!"] ]
 
@@ -114,79 +114,102 @@ customAttrs :: Map String String -> Attributes'
 customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
 
+-- main :: IO ()
+-- main = do
+--   -- Setup chans/vars to hook into the FRP system
+--
+--   -- Actions to run (from user or finished jobs)
+--   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
+--   -- Fired whenever state has been updated
+--   frpUpdated <- (TChan.newTChanIO :: IO (TChan.TChan ()))
+--   -- Current state
+--   -- Should not be read before frpUpdated has been emitted at least once
+--   frpState   <- (TVar.newTVarIO (error "Should not be sampled") :: IO (TVar.TVar Model))
+--   -- Jobs for worked thread
+--   frpJobs    <- (TChan.newTChanIO :: IO (TChan.TChan (IO Action)))
+--
+--   -- Compile FRP system
+--   forkIO $ do
+--     system <- runER' update
+--     -- Propagate initial value (or we won't see anything)
+--     (state system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
+--     -- Register output
+--     (output system) $ \(st, job) -> do
+--         atomically $ TVar.writeTVar frpState st
+--         case job of
+--             Nothing -> return ()
+--             Just job -> atomically $ TChan.writeTChan frpJobs job
+--         atomically $ TChan.writeTChan frpUpdated ()
+--     forever $ do
+--       i <- atomically $ TChan.readTChan frpIn
+--       putStrLn $ "Processing event: " ++ show i
+--       (input system) i
+--
+--   -- Job thread
+--   forkIO $
+--     forever $ do
+--       job <- atomically $ TChan.readTChan frpJobs
+--       putStrLn "Starting a job"
+--       res <- job
+--       putStrLn "Job finished"
+--       atomically $ TChan.writeTChan frpIn res
+--
+--   -- Enter rendering loop on main thread
+--   do
+--     initEventDelegation []
+--     renderingNode <- createRenderingNode
+--     renderingLoop renderingNode $ do
+--       atomically $ TChan.readTChan frpUpdated
+--       st <- atomically $ TVar.readTVar frpState
+--       return $ render (atomically . TChan.writeTChan frpIn) st
+--
+--   where
+--     createRenderingNode :: IO DOMNode
+--     createRenderingNode = do
+--       root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
+--       return root
+--
+--     -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
+--     renderingLoop :: DOMNode -> IO VNode -> IO ()
+--     renderingLoop domNode k = do
+--       node1 <- k
+--       vMount <- mount domNode node1
+--       forever $ do
+--         -- insist $ do -- TODO insist should not be needed
+--           node <- k
+--           delta <- diff vMount node
+--           patch vMount delta
+--
+--     -- | Repeat a computation until it succeeds.
+--     insist :: Monad m => m Bool -> m ()
+--     insist k = do
+--       r <- k
+--       unless r (insist k)
+--       return ()
+--
+--
+-- -- UTILITY
+--
+-- (.:)  :: a -> (a -> b) -> b
+-- (.:)  x f = f x
+--
+-- (.:?) :: Maybe a -> (a -> b) -> Maybe b
+-- (.:?) x f = fmap f x
+--
+-- showJS :: Show a => a -> JSString
+-- showJS = fromString . show
+--
+-- textToJSString :: Text -> JSString
+-- textToJSString = fromString . Data.Text.unpack
+--
+-- -- A data URL representing a grey image
+-- greyImgUrl :: JSString
+-- greyImgUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxQSEhQUEhQUFBQUFBQUFBQUFBQUFBQUFBQXFxQUFBQYHCggGBwlHBQUITEhJSksLi4uFx8zODMsNygtLiwBCgoKDAwMDgwMDiwZFBksLCwsKywsLDc3Kyw3LCwsLDcsNzcsNyssLCwsLDc3LDcsLCwsLDcsNyw3NzcsNyw3LP/AABEIAOEA4QMBIgACEQEDEQH/xAAYAAEBAQEBAAAAAAAAAAAAAAAAAQIDB//EABkQAQEBAQEBAAAAAAAAAAAAAAABEQJBMf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A9QoqIpCCwRKjVTAIBgGqIAqKKCsiKmqCoEBEqiAWhQBFQDVRoEZrVSgzgqCurLWIIKkUBFQBUxQQi4AoEFQVBC1FMASBAEVJABQERSAAoIjTPQM6ADrWWkAVFACmgAAAAsEUBFqABFoJaACCgIilBAAWEIAJ0RKDI1gDdSrUAVFAAACAAACiAqKlAEAFEAAoIKgBQAWJFARUoICA6AgC0KBSIsAAAIRQVAASqlBAAVCKAlWoBAQBFQFixIArPSpQAQHSoqAsEXAAAAAFQBQQACAgAJjSRQTRYgFhUKCKigasTFBWbFS0EEAbqWrTAIuoAoAARYBAqSAqVQEouIAYQoJGkKAioCFKYAgtBGmWoAlq1mgmAgOqKgEVFAABRFADFBAQCoqAuloaAGgIKgCAAqAEWJABK0zQTEVAdUWoAqAKIoKJFALQASqzQAUEKAAQ0AwAEpqAtBAWBIAanQz1QTFAHWpWqyAACiKAAABBQEEChQAQFgqABUAAAQoC2oADNarNBFAHWotQUEAUAQWCQFEoCoqUCAQAAAQAoqAAkAAoEXA0GUqs0AMUHRKpUEgaKCooqpagIoIClEBRAAVAAQFEUEAACgAmroJUWs0BWdAdgqVFRYigqUAFSKqBEUAogoEKIAgLUVAFqKCQADEUBAAGVqAgKK6JV1lBSJQFBAWNRICAgqqBoAqURAAAAAANRagLpqYAi6lQFZtWsgirig2lBBFQBTkFVYAIiwABAVq+FARKAKCAi0vxAFKACIAVmqClZUEAEH//2Q=="
+
+-- main
+
 main :: IO ()
-main = do
-  -- Setup chans/vars to hook into the FRP system
-
-  -- Actions to run (from user or finished jobs)
-  frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
-  -- Fired whenever state has been updated
-  frpUpdated <- (TChan.newTChanIO :: IO (TChan.TChan ()))
-  -- Current state
-  -- Should not be read before frpUpdated has been emitted at least once
-  frpState   <- (TVar.newTVarIO (error "Should not be sampled") :: IO (TVar.TVar Model))
-  -- Jobs for worked thread
-  frpJobs    <- (TChan.newTChanIO :: IO (TChan.TChan (IO Action)))
-
-  -- Compile FRP system
-  forkIO $ do
-    system <- runER' update
-    -- Propagate initial value (or we won't see anything)
-    (state system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
-    -- Register output
-    (output system) $ \(st, job) -> do
-        atomically $ TVar.writeTVar frpState st
-        case job of
-            Nothing -> return ()
-            Just job -> atomically $ TChan.writeTChan frpJobs job
-        atomically $ TChan.writeTChan frpUpdated ()
-    forever $ do
-      i <- atomically $ TChan.readTChan frpIn
-      putStrLn $ "Processing event: " ++ show i
-      (input system) i
-
-  -- Job thread
-  forkIO $
-    forever $ do
-      job <- atomically $ TChan.readTChan frpJobs
-      putStrLn "Starting a job"
-      res <- job
-      putStrLn "Job finished"
-      atomically $ TChan.writeTChan frpIn res
-
-  -- Enter rendering loop on main thread
-  do
-    initEventDelegation []
-    renderingNode <- createRenderingNode
-    renderingLoop renderingNode $ do
-      atomically $ TChan.readTChan frpUpdated
-      st <- atomically $ TVar.readTVar frpState
-      return $ render (atomically . TChan.writeTChan frpIn) st
-
-  where
-    createRenderingNode :: IO DOMNode
-    createRenderingNode = do
-      root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
-      return root
-
-    -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
-    renderingLoop :: DOMNode -> IO VNode -> IO ()
-    renderingLoop domNode k = do
-      node1 <- k
-      vMount <- mount domNode node1
-      forever $ do
-        -- insist $ do -- TODO insist should not be needed
-          node <- k
-          delta <- diff vMount node
-          patch vMount delta
-
-    -- | Repeat a computation until it succeeds.
-    insist :: Monad m => m Bool -> m ()
-    insist k = do
-      r <- k
-      unless r (insist k)
-      return ()
-
+main = runApp update render
 
 -- UTILITY
 
