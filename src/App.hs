@@ -8,37 +8,25 @@ module App
 import Prelude hiding (div)
 import qualified Prelude
 
-import Control.Applicative
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (forM_, forever, unless)
-import Data.String (fromString)
-import qualified Data.Map as Map
-import Data.Map(Map)
 import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
-import qualified Data.Text
 import qualified Data.List
-import Data.Text(Text)
 import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
 import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
-import qualified GHCJS.VDOM.Element as E
-import GHCJS.VDOM.Attribute (src, width, class_)
-import qualified GHCJS.VDOM.Attribute as A
-import GHCJS.VDOM.Event (initEventDelegation, click, change, submit, stopPropagation, preventDefault)
+import GHCJS.VDOM.Event (initEventDelegation)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import FRP2
 
 type Html = VNode
 
--- main :: IO ()
 runApp
   :: Show action
   => (E action -> IO (R (model, Maybe (IO action))))
@@ -95,7 +83,11 @@ runApp update render = do
   where
     createRenderingNode :: IO DOMNode
     createRenderingNode = do
-      root <- [js| (function(){ var r = window.document.createElement('div'); window.document.body.appendChild(r); return r }()) |]
+      root <- [js| (function(){
+        var root = window.document.createElement('div');
+        window.document.body.appendChild(r);
+        return root;
+      }()) |]
       return root
 
     -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
