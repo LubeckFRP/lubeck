@@ -36,7 +36,7 @@ import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import FRP2
 
-type Html       = VNode
+type Html = VNode
 
 -- main :: IO ()
 runApp
