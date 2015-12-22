@@ -112,7 +112,7 @@ customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.fol
 main :: IO ()
 main = do
   -- Setup chans/vars to hook into the FRP system
-  
+
   -- Actions to run (from user or finished jobs)
   frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan Action))
   -- Fired whenever state has been updated
