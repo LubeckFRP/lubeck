@@ -85,7 +85,7 @@ runApp update render = do
     createRenderingNode = do
       root <- [js| (function(){
         var root = window.document.createElement('div');
-        window.document.body.appendChild(r);
+        window.document.body.appendChild(root);
         return root;
       }()) |]
       return root
