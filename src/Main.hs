@@ -54,7 +54,7 @@ instance Show Action where
     g (LoadAction _ _) = "LoadAction"
     g (ReplaceModel _) = "ReplaceModel"
 
-type Model  = InteractionSet SearchPost
+type Model = InteractionSet SearchPost
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update = foldpR step initial
