@@ -4,7 +4,7 @@ module FRP2 where
 import Control.Applicative
 import Control.Monad
 import Control.Monad (forever, forM_, join)
-import Data.Functor.Contravariant
+--import Data.Functor.Contravariant
 
 import Control.Concurrent(forkIO)
 import Control.Monad.STM (atomically)

@@ -33,15 +33,15 @@ library
                     --  , time
                     --  , random
                      , stm
-                     , contravariant
+                     --, contravariant
                      , text
                      , mtl
                      , time
                     --  , containers
                     --  , vector
-                     , lens
+                    -- , lens
                     --  , pandoc
-                     , xml
+                    -- , xml
                     --  , css-text
                     --  , diagrams
                     --  , diagrams-svg
@@ -54,9 +54,11 @@ library
 
   hs-source-dirs:      src
   default-language:    Haskell2010
+  ghc-options:         -DGHCJS_BROWSER
 
 executable ghcjs-test
   main-is:             Main.hs
+  ghc-options:         -DGHCJS_BROWSER
   other-modules:       FRP2
                      , BD.Data.Account
                      , BD.Data.Count
@@ -73,15 +75,15 @@ executable ghcjs-test
                     --  , time
                     --  , random
                      , stm
-                     , contravariant
+                     --, contravariant
                      , text
                      , mtl
                      , time
                     --  , containers
                     --  , vector
-                     , lens
+                    -- , lens
                     --  , pandoc
-                     , xml
+                   --  , xml
                     --  , css-text
                     --  , diagrams
                     --  , diagrams-svg

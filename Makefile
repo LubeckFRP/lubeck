@@ -2,12 +2,17 @@
 NAME= ghcjs-test
 
 .PHONY: all
-all: build-client
+all: build min
 
-.PHONY: build-client
-build-client:
+.PHONY: build
+build:
 	cabal install --ghcjs
 	cp static/index.html .cabal-sandbox/bin/ghcjs-test.jsexe/
+	cp .cabal-sandbox/bin/ghcjs-test.jsexe/all.js .cabal-sandbox/bin/ghcjs-test.jsexe/all.min.js
+
+.PHONY: min
+min:
+	(cd .cabal-sandbox/bin/ghcjs-test.jsexe/ && ccjs all.js --compilation_level=ADVANCED_OPTIMIZATIONS  > all.min.js)
 
 .PHONY: open
 open:

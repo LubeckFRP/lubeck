@@ -14,7 +14,9 @@ sudo apt-get install -y software-properties-common
 sudo add-apt-repository -y ppa:hvr/ghc
 curl -sL https://deb.nodesource.com/setup | bash -
 
-sudo apt-get install -y cabal-install-1.22 ghc-7.10.2 stack zile libtinfo-dev nodejs alex-3.1.4 happy-1.19.5 dh-autoreconf
+sudo apt-get install -y cabal-install-1.22 ghc-7.10.2 stack zile libtinfo-dev nodejs alex-3.1.4 happy-1.19.5 dh-autoreconf zopfli
+
+npm install closurecompiler -g
 
 cat >> /home/vagrant/.bashrc <<EOF
 export PATH="/home/vagrant/.cabal/bin:/home/vagrant/.local/bin:/opt/happy/1.19.5/bin:/opt/alex/3.1.4/bin:/opt/cabal/1.22/bin:/opt/ghc/7.10.2/bin:\$PATH"
@@ -28,7 +30,6 @@ SCRIPT
 Vagrant.configure("2") do |config|
   config.vm.box = "trusty-server-cloudimg-amd64-vagrant-disk1.box"
   config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box"
-  config.vm.network :forwarded_port, guest: 3000, host: 3000
 
   config.vm.synced_folder ".", "/home/vagrant/ghcjs-test"
   config.vm.synced_folder "../ghcjs-vdom", "/home/vagrant/ghcjs-vdom"
