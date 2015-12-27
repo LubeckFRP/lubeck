@@ -1,4 +1,3 @@
-
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
 
 module BD.Data.Account
@@ -13,9 +12,9 @@ import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
-import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Types (JSString)
 import Data.Monoid
+import BD.Api
 
 
 -- import BD.Data.Count
@@ -40,11 +39,6 @@ data Account = Account
   , latest_count    :: Maybe Int
   } deriving (GHC.Generic,Show, Eq, Data, Typeable)
 
-data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data, Typeable)
-
-instance ToJSON a => ToJSON (Envelope a)
-instance FromJSON a => FromJSON (Envelope a)
-
 instance ToJSON Account where
   toJSON = Data.Aeson.Types.genericToJSON
     Data.Aeson.Types.defaultOptions { Data.Aeson.Types.omitNothingFields = True }
@@ -52,20 +46,4 @@ instance ToJSON Account where
 instance FromJSON Account
 
 getUser :: JSString -> IO Account
-getUser unm = do
-  r <- xhrByteString r
-  case contents r of
-    Nothing          -> error "TODO no response"
-    Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> error "TODO parse error"
-      Just (Envelope x) -> return x
-  where
-    r = Request {
-            reqMethod          = GET
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/"
-                                    <> unm <> "/account"
-          , reqLogin           = Nothing
-          , reqHeaders         = []
-          , reqWithCredentials = False
-          , reqData            = NoData
-          }
+getUser unm = fmap payload $ getAPI $ unm <> "/account"

@@ -18,6 +18,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     FRP2
                      , App
+                     , BD.Api
                      , BD.Data.Account
                      , BD.Data.Count
                      , BD.Data.Interaction

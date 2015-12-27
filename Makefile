@@ -2,17 +2,20 @@
 NAME= ghcjs-test
 
 .PHONY: all
-all: build-client run-server
+all: build-client
 
 .PHONY: build-client
 build-client:
-	clear && \
-	stack build -j8 --install-ghc
+	cabal install --ghcjs
+	cp static/index.html .cabal-sandbox/bin/ghcjs-test.jsexe/
 
-.PHONY: build-server
-build-server:
-	(cd server && stack install -j8 --install-ghc)
+.PHONY: open
+open:
+	google-chrome .cabal-sandbox/bin/ghcjs-test.jsexe/index.html
 
-.PHONY: run-server
-run-server: build-server
-	nohup ~/.local/bin/ghcjs-test-server &
+.PHONY: setup-build-env
+setup-build-env:
+	cabal sandbox init
+	cabal sandbox add-source ../ghcjs-vdom
+	cabal sandbox add-source ../ghcjs-ffiqq
+	cabal install --ghcjs
