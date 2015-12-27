@@ -20,6 +20,8 @@ import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
+--import Data.JSString.Text
+
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
@@ -40,70 +42,74 @@ import BD.Data.Interaction
 
 
 type Widget i o = Sink o -> i -> Html
-type Widget' a  = Widget a a
+
+type Campaign = ()
+
+type Account = Text
+
+username :: Account -> Text
+username = id
 
 data Action
-  = NoAction
-  | LoadAction (Maybe JSString) (Maybe JSString)
-  | ReplaceModel Model
+  = LoginGo
+  | LoginName JSString
+  | Logout
+  | GotUser Account
+--  | GotCampaigns [Campaign]
+--  | GoToCampaign Int
 
 -- For debugging only
 instance Show Action where
   show = g where
-    g NoAction         = "NoAction"
-    g (LoadAction _ _) = "LoadAction"
-    g (ReplaceModel _) = "ReplaceModel"
+    g LoginGo         = "LoginGo"
+    g Logout         = "Logout"
+    g (LoginName _) = "LoginName"
+    g (GotUser _) = "GotUser"
 
-type Model = InteractionSet SearchPost
+data Model = NotLoggedIn JSString
+           | LoadingUser
+           | AsUser Account UserModel
+
+data ViewSection = UserView -- | CampaignsImageLibrary | Campaign Int
+
+data UserModel = UserModel { campaigns :: [Campaign]
+                           , viewSection :: ViewSection }
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
-    initial = (InteractionSet Nothing Nothing [], Nothing)
+    initial = (NotLoggedIn "", Nothing)
 
-    step NoAction             (model,_) = (model,Nothing)
-    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
-    step (ReplaceModel model) (_,_)     = (model,Nothing)
+    step (LoginName s)        (NotLoggedIn _,_) = (NotLoggedIn s,Nothing)
+    step (LoginName s)        (m,_) = (m,Nothing)
+    step LoginGo              (NotLoggedIn s,_) = (LoadingUser, Just $ loginUser s)
+    step LoginGo              (m,_) = (m, Nothing)
+    step Logout               (_,_) = (NotLoggedIn "", Nothing)
+    step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Nothing)
+
+--    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
+--    step (ReplaceModel model) (_,_)     = (model,Nothing)
 
 render :: Widget Model Action
-render actions model = div
-  (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
-  [ h1 () [text "Shoutout browser"]
-  , div ()
-    [buttonW actions ()]
-  , div
-    ()
-    [ interactionSetW actions model ]
-  ]
-
--- TODO make this a Widget (Maybe JSString, Maybe JSString) Action
-buttonW :: Widget () Action
-buttonW sink () = form
+render sink LoadingUser = text "Loading User"
+render sink (NotLoggedIn s) = form
   [ submit $ \e -> preventDefault e >> return () ]
   [
     -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
   -- ,
-    E.input () [text "def"]
-  , button (click $ \_ -> sink (LoadAction (Just "tomjauncey") Nothing)) [text "Load shoutouts!"] ]
+    E.input () [text s]
+  , button (click $ \_ -> sink LoginGo) [text "Login"] ]
 
-interactionSetW :: Widget (InteractionSet SearchPost) Action
-interactionSetW actions model = div ()
-  [ p () [ text $ ""       <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
-         , text $ " to "   <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
-  , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: interactions)
+render sink (AsUser acc (UserModel _ UserView)) = div
+  (customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
+  [ h1 () [text "Hello"]
+  , div ()
+    [text $ textToJSString $ username acc]
   ]
 
-interactionW :: Widget (Interaction SearchPost) Action
-interactionW actions model = div ()
-  [ p () [text (showJS $ model .: interaction_time)]
-  -- Growth graph
-  , div [class_ "row"]
-    [ div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] ()]
-    , div [class_ "col-xs-4 col-lg-4"] [img [src (textToJSString $ model .: medium .: P.url), width 200] ()]
-    ]
-  , p () [text "Estimated impact: (?)"]
-  ]
-
+loginUser :: JSString -> IO Action
+loginUser s = do
+  return $ GotUser "forbestravelguide"
 
 -- MAIN
 
