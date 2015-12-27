@@ -61,7 +61,7 @@ data InteractionSet m = InteractionSet
     from_account :: Maybe Account,
     to_account :: Maybe Account,
     interactions :: [Interaction m]
-  } deriving (GHC.Generic,Show, Eq)
+  } deriving (GHC.Generic)
 
 data Interaction m = Interaction
   {
@@ -69,7 +69,7 @@ data Interaction m = Interaction
     target_account :: Account,
     interaction_time :: UTCTime,
     medium :: m -- i.e. a post
-  } deriving (GHC.Generic,Show, Eq)
+  } deriving (GHC.Generic)
 
 data InteractionMedia m where
   Shoutouts :: InteractionMedia SearchPost

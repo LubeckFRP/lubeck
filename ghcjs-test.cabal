@@ -20,6 +20,10 @@ library
                      , App
                      , BD.Api
                      , BD.Data.Account
+                     , BD.Data.AdTypes
+                     , BD.Data.Ad
+                     , BD.Data.AdCampaign
+                     , BD.Data.Image
                      , BD.Data.Count
                      , BD.Data.Interaction
                      , BD.Data.SearchPost
