@@ -30,6 +30,7 @@ import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+import Data.JSString.Text (textFromJSString)
 
 import FRP2
 import App
@@ -45,10 +46,10 @@ type Widget i o = Sink o -> i -> Html
 
 type Campaign = ()
 
-type Account = Text
+type Account = A.Account
 
 username :: Account -> Text
-username = id
+username = A.username
 
 data Action
   = LoginGo
@@ -82,7 +83,7 @@ update = foldpR step initial
 
     step (LoginName s)        (NotLoggedIn _,_) = (NotLoggedIn s,Nothing)
     step (LoginName s)        (m,_) = (m,Nothing)
-    step LoginGo              (NotLoggedIn s,_) = (LoadingUser, Just $ loginUser s)
+    step LoginGo              (NotLoggedIn s,_) = (LoadingUser, Just $ loginUser "forbestravelguide")
     step LoginGo              (m,_) = (m, Nothing)
     step Logout               (_,_) = (NotLoggedIn "", Nothing)
     step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Nothing)
@@ -104,12 +105,15 @@ render sink (AsUser acc (UserModel _ UserView)) = div
   (customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
   , div ()
-    [text $ textToJSString $ username acc]
+    [text $ textToJSString $ username acc ]
+  , div ()
+    [text $ showJS $ A.latest_count acc ]
   ]
 
 loginUser :: JSString -> IO Action
 loginUser s = do
-  return $ GotUser "forbestravelguide"
+  u <- A.getUser s
+  return $ GotUser u
 
 -- MAIN
 
