@@ -43,7 +43,7 @@ library
                      , time
                     --  , containers
                     --  , vector
-                    -- , lens
+                     , lens
                     --  , pandoc
                     -- , xml
                     --  , css-text
@@ -58,11 +58,13 @@ library
 
   hs-source-dirs:      src
   default-language:    Haskell2010
-  ghc-options:         -DGHCJS_BROWSER
+  cpp-options:         -DGHCJS_BROWSER
+  ghc-options:         -fno-warn-typed-holes
 
 executable ghcjs-test
   main-is:             Main.hs
-  ghc-options:         -DGHCJS_BROWSER
+  cpp-options:         -DGHCJS_BROWSER
+  ghc-options:         -fno-warn-typed-holes
   other-modules:       FRP2
                      , BD.Data.Account
                      , BD.Data.Count
@@ -85,7 +87,7 @@ executable ghcjs-test
                      , time
                     --  , containers
                     --  , vector
-                    -- , lens
+                     , lens
                     --  , pandoc
                    --  , xml
                     --  , css-text

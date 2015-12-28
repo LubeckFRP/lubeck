@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -19,10 +19,12 @@ import Data.Text(Text)
 import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
+import Control.Lens (over, set)
+import Control.Lens.TH(makeLenses)
 
 --import Data.JSString.Text
 
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault)
+import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
@@ -53,8 +55,8 @@ username = A.username
 
 data Action
   = LoginGo
-  | LoginName JSString
   | Logout
+  | Pure (Model -> Model)
   | GotUser Account
 --  | GotCampaigns [Campaign]
 --  | GoToCampaign Int
@@ -64,28 +66,33 @@ instance Show Action where
   show = g where
     g LoginGo         = "LoginGo"
     g Logout         = "Logout"
-    g (LoginName _) = "LoginName"
     g (GotUser _) = "GotUser"
+    g (Pure _) = "Pure"
 
-data Model = NotLoggedIn JSString
+data Model = NotLoggedIn { _loginPage :: LoginPage}
            | LoadingUser
            | AsUser Account UserModel
 
 data ViewSection = UserView -- | CampaignsImageLibrary | Campaign Int
 
+data LoginPage = LoginPage { _loginUsername :: JSString
+                           , _loginPass :: JSString }
+
 data UserModel = UserModel { campaigns :: [Campaign]
                            , viewSection :: ViewSection }
+
+makeLenses ''Model
+makeLenses ''LoginPage
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
-    initial = (NotLoggedIn "", Nothing)
+    initial = (NotLoggedIn (LoginPage "forbestravelguide" "bar"), Nothing)
 
-    step (LoginName s)        (NotLoggedIn _,_) = (NotLoggedIn s,Nothing)
-    step (LoginName s)        (m,_) = (m,Nothing)
-    step LoginGo              (NotLoggedIn s,_) = (LoadingUser, Just $ loginUser "forbestravelguide")
+    step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
     step LoginGo              (m,_) = (m, Nothing)
-    step Logout               (_,_) = (NotLoggedIn "", Nothing)
+    step (Pure f)             (m,_) = (f m, Nothing)
+    step Logout               (_,_) = initial
     step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Nothing)
 
 --    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
@@ -93,14 +100,7 @@ update = foldpR step initial
 
 render :: Widget Model Action
 render sink LoadingUser = text "Loading User"
-render sink (NotLoggedIn s) = form
-  [ submit $ \e -> preventDefault e >> return () ]
-  [
-    -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
-  -- ,
-    E.input () [text s]
-  , button (click $ \_ -> sink LoginGo) [text "Login"] ]
-
+render sink (NotLoggedIn lp) = loginPageW sink lp
 render sink (AsUser acc (UserModel _ UserView)) = div
   (customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
@@ -110,8 +110,25 @@ render sink (AsUser acc (UserModel _ UserView)) = div
     [text $ showJS $ A.latest_count acc ]
   ]
 
-loginUser :: JSString -> IO Action
-loginUser s = do
+loginPageW :: Widget LoginPage Action
+loginPageW sink (LoginPage u pw) = form
+  [ submit $ \e -> preventDefault e >> return () ]
+  [
+    -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
+  -- ,
+    E.input [A.value u,
+             change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
+   , button (click $ \_ -> sink LoginGo) [text "Login"] ]
+  where
+    _1 f (x,y) = fmap (,y) $ f x
+    _2 f (x,y) = fmap (x,) $ f y
+    emptyToN "" = Nothing
+    emptyToN xs = Just xs
+    nToEmpty Nothing   = ""
+    nToEmpty (Just xs) = xs
+
+loginUser :: LoginPage -> IO Action
+loginUser (LoginPage s _) = do
   u <- A.getUser s
   return $ GotUser u
 
