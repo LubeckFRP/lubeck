@@ -20,7 +20,7 @@ import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault)
+import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
@@ -78,13 +78,19 @@ render actions model = div
 
 -- TODO make this a Widget (Maybe JSString, Maybe JSString) Action
 buttonW :: Widget () Action
-buttonW sink () = form
-  [ submit $ \e -> preventDefault e >> return () ]
+buttonW sink () = div
+  ()
+  -- [ submit $ \e -> doneEv e >> return () ]
   [
     -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
   -- ,
-    E.input () [text "def"]
-  , button (click $ \_ -> sink (LoadAction (Just "tomjauncey") Nothing)) [text "Load shoutouts!"] ]
+    E.input (change $ \e -> print "a>" >> print (value e) >> preventDefault e) [text "def"]
+  , E.input (change $ \e -> print "b>" >> print (value e) >> preventDefault e) [text "def"]
+  , button (click $ \e -> sink (LoadAction (Just "tomjauncey") Nothing) >> preventDefault e) [text "Load shoutouts!"] ]
+
+-- TODO make notice about how single-page "form" elements should not be inside forms (use div instead) - easiest way to get around auto-submit issues
+-- TODO bug in ghcjs-vdom: both change and click return events that appear to accept stopPropagation but doesn't
+doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div ()
