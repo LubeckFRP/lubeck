@@ -19,7 +19,7 @@ import Data.Text(Text)
 import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
-import Control.Lens (over)
+import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
 
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
@@ -90,12 +90,17 @@ render actions model = div
 buttonW :: Widget (Maybe JSString, Maybe JSString) Action
 buttonW sink (x,y) = div
   ()
-  [ E.input (change $ \e -> preventDefault e >> sink (ChangeModel (over (requested) id))) [text "def"]
-  , E.input (change $ \e -> preventDefault e >> sink (ChangeModel (over (requested) id))) [text "def"]
+  [
+    --text (showJS (x, y))
+  -- ,
+    E.input (A.value x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))) []
+  , E.input (A.value y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))) []
   , button (click $ \e -> sink (LoadAction x y) >> preventDefault e) [text "Load shoutouts!"] ]
   where
     _1 f (x,y) = fmap (,y) $ f x
     _2 f (x,y) = fmap (x,) $ f y
+    emptyToN "" = Nothing
+    emptyToN xs = Just xs
 
 -- TODO make notice about how single-page "form" elements should not be inside forms (use div instead) - easiest way to get around auto-submit issues
 -- TODO bug in ghcjs-vdom: both change and click return events that appear to accept stopPropagation but doesn't
