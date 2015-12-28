@@ -86,7 +86,6 @@ render actions model = div
     [ interactionSetW actions (_interactions model) ]
   ]
 
--- TODO make this a Widget (Maybe JSString, Maybe JSString) Action
 buttonW :: Widget (Maybe JSString, Maybe JSString) Action
 buttonW sink (x,y) = div
   ()
@@ -108,8 +107,8 @@ doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div ()
-  [ p () [ text $ ""       <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
-         , text $ " to "   <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
+  [ p () [ text $ "Showing" > textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
+         , text $ " to "    <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: I.interactions)
   ]
 
