@@ -119,13 +119,6 @@ loginPageW sink (LoginPage u pw) = form
     E.input [A.value u,
              change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
    , button (click $ \_ -> sink LoginGo) [text "Login"] ]
-  where
-    _1 f (x,y) = fmap (,y) $ f x
-    _2 f (x,y) = fmap (x,) $ f y
-    emptyToN "" = Nothing
-    emptyToN xs = Just xs
-    nToEmpty Nothing   = ""
-    nToEmpty (Just xs) = xs
 
 loginUser :: LoginPage -> IO Action
 loginUser (LoginPage s _) = do
