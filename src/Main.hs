@@ -92,14 +92,16 @@ buttonW sink (x,y) = div
   [
     --text (showJS (x, y))
   -- ,
-    E.input (A.value x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))) []
-  , E.input (A.value y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))) []
+    E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+  , E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
   , button (click $ \e -> sink (LoadAction x y) >> preventDefault e) [text "Load shoutouts!"] ]
   where
     _1 f (x,y) = fmap (,y) $ f x
     _2 f (x,y) = fmap (x,) $ f y
     emptyToN "" = Nothing
     emptyToN xs = Just xs
+    nToEmpty Nothing   = ""
+    nToEmpty (Just xs) = xs
 
 -- TODO make notice about how single-page "form" elements should not be inside forms (use div instead) - easiest way to get around auto-submit issues
 -- TODO bug in ghcjs-vdom: both change and click return events that appear to accept stopPropagation but doesn't
@@ -107,7 +109,7 @@ doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div ()
-  [ p () [ text $ "Showing" > textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
+  [ p () [ text $ "Showing" <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
          , text $ " to "    <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: I.interactions)
   ]
