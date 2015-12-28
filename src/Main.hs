@@ -69,11 +69,10 @@ update = foldpR step initial
   where
     initial = (Model (Nothing,Nothing) $ InteractionSet Nothing Nothing [], Nothing)
 
-    step NoAction             (model,_) = (model,Nothing)
-    -- TODO use ChangeModel inst of Replace (leave model.requested alone)
-    step (LoadAction a b)     (model,_) = (model,Just $ fmap (ReplaceModel . Model (Nothing,Nothing)) (loadShoutouts a b))
-    step (ReplaceModel model) (_,_)     = (model,Nothing)
-    step (ChangeModel f) (model,_)      = (f model,Nothing)
+    step NoAction             (model,_) = (model,   Nothing)
+    step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- loadShoutouts a b ; return $ ChangeModel (set interactions so) })
+    step (ReplaceModel model) (_,_)     = (model,   Nothing)
+    step (ChangeModel f) (model,_)      = (f model, Nothing)
 
 render :: Widget Model Action
 render actions model = div
@@ -92,8 +91,8 @@ buttonW sink (x,y) = div
   [
     --text (showJS (x, y))
   -- ,
-    E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
-  , E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+    E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] ()
+  , E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] ()
   , button (click $ \e -> sink (LoadAction x y) >> preventDefault e) [text "Load shoutouts!"] ]
   where
     _1 f (x,y) = fmap (,y) $ f x
