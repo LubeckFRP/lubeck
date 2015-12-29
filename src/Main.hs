@@ -13,9 +13,7 @@ import Data.Map(Map)
 import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
-import qualified Data.Text
 import qualified Data.List
-import Data.Text(Text)
 import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
@@ -38,15 +36,15 @@ import FRP2
 import App
 
 import qualified BD.Data.Account as A
+import qualified BD.Data.AdCampaign as AC
 import qualified BD.Data.Count as C
 import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
+import BD.Types
 
 
 type Widget i o = Sink o -> i -> Html
-
-type Campaign = ()
 
 type Account = A.Account
 
@@ -58,6 +56,8 @@ data Action
   | Logout
   | Pure (Model -> Model)
   | GotUser Account
+  | Then Action Action
+  
 --  | GotCampaigns [Campaign]
 --  | GoToCampaign Int
 
@@ -68,21 +68,24 @@ instance Show Action where
     g Logout         = "Logout"
     g (GotUser _) = "GotUser"
     g (Pure _) = "Pure"
+    g (Then _ _) = "Then"
 
 data Model = NotLoggedIn { _loginPage :: LoginPage}
            | LoadingUser
-           | AsUser Account UserModel
+           | AsUser { _user :: A.Account
+                    , _userModel :: UserModel }
 
 data ViewSection = UserView -- | CampaignsImageLibrary | Campaign Int
 
 data LoginPage = LoginPage { _loginUsername :: JSString
                            , _loginPass :: JSString }
 
-data UserModel = UserModel { campaigns :: [Campaign]
-                           , viewSection :: ViewSection }
+data UserModel = UserModel { _campaigns :: [AC.AdCampaign]
+                           , _viewSection :: ViewSection }
 
 makeLenses ''Model
 makeLenses ''LoginPage
+makeLenses ''UserModel
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update = foldpR step initial
@@ -93,7 +96,7 @@ update = foldpR step initial
     step LoginGo              (m,_) = (m, Nothing)
     step (Pure f)             (m,_) = (f m, Nothing)
     step Logout               (_,_) = initial
-    step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Nothing)
+    step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
 
 --    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
 --    step (ReplaceModel model) (_,_)     = (model,Nothing)
@@ -101,13 +104,16 @@ update = foldpR step initial
 render :: Widget Model Action
 render sink LoadingUser = text "Loading User"
 render sink (NotLoggedIn lp) = loginPageW sink lp
-render sink (AsUser acc (UserModel _ UserView)) = div
+render sink (AsUser acc (UserModel camps UserView)) = div
   (customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
   , div ()
-    [text $ textToJSString $ username acc ]
+    [text $ A.username acc ]
   , div ()
     [text $ showJS $ A.latest_count acc ]
+  , div ()
+    [ text "number of campaigns: "
+    , text $ showJS (length camps)]
   ]
 
 loginPageW :: Widget LoginPage Action
@@ -125,6 +131,11 @@ loginUser (LoginPage s _) = do
   u <- A.getUser s
   return $ GotUser u
 
+getCampaigns :: A.Account -> IO Action
+getCampaigns acc = do
+  cs <- AC.getUserCampaigns $ A.username acc
+  return $ Pure $ set (userModel . campaigns) cs
+
 -- MAIN
 
 main :: IO ()
@@ -141,9 +152,6 @@ main = runApp update render
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show
-
-textToJSString :: Text -> JSString
-textToJSString = fromString . Data.Text.unpack
 
 -- A data URL representing a grey image
 greyImgUrl :: JSString

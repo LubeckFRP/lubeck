@@ -19,6 +19,7 @@ library
   exposed-modules:     FRP2
                      , App
                      , BD.Api
+                     , BD.Types
                      , BD.Data.Account
                      , BD.Data.AdTypes
                      , BD.Data.Ad

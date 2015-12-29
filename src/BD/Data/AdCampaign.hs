@@ -5,13 +5,13 @@ module BD.Data.AdCampaign where
 import Control.Monad
 import Data.Aeson -- TODO proper
 import Data.Data
-import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
 import GHCJS.Types (JSString)
 import Data.Monoid
 import BD.Api
+import BD.Types
 import BD.Data.AdTypes
 
 data AdCampaign = AdCampaign
@@ -26,3 +26,6 @@ data AdCampaign = AdCampaign
 
 instance FromJSON AdCampaign
 instance ToJSON AdCampaign
+
+getUserCampaigns :: JSString -> IO [AdCampaign]
+getUserCampaigns unm = fmap payload $ getAPI $ unm <> "/ad-campaigns"
