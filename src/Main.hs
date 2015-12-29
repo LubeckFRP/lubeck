@@ -25,7 +25,7 @@ import Control.Lens.TH(makeLenses)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
 import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
@@ -75,7 +75,7 @@ data Model = NotLoggedIn { _loginPage :: LoginPage}
            | AsUser { _user :: A.Account
                     , _userModel :: UserModel }
 
-data ViewSection = UserView -- | CampaignsImageLibrary | Campaign Int
+data ViewSection = UserView | CampaignView Int -- | CampaignsImageLibrary 
 
 data LoginPage = LoginPage { _loginUsername :: JSString
                            , _loginPass :: JSString }
@@ -104,6 +104,7 @@ update = foldpR step initial
 render :: Widget Model Action
 render sink LoadingUser = text "Loading User"
 render sink (NotLoggedIn lp) = loginPageW sink lp
+
 render sink (AsUser acc (UserModel camps UserView)) = div
   (customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
@@ -114,8 +115,45 @@ render sink (AsUser acc (UserModel camps UserView)) = div
   , div ()
     [ text "number of campaigns: "
     , text $ showJS (length camps)]
+  , campaignTable sink camps
+  , menu sink ()    
   ]
 
+render sink (AsUser acc (UserModel camps (CampaignView ix))) =
+  let camp = camps !! ix
+  in div ()
+      [ h1 () [text $ AC.campaign_name camp]
+      , div ()
+        [text "daily budget:"
+        , text $ showJS $ AC.daily_budget camp ]
+      , menu sink ()    
+      ]
+
+menu :: Widget () Action
+menu sink () = div () [
+    text "Menu: " 
+  , E.a (click $ \_ -> sink $ Pure (set (userModel . viewSection) UserView)) [text "User"]
+  , E.a (click $ \_ -> sink Logout) [text "Logout"]
+  ] 
+
+campaignTable :: Widget [AC.AdCampaign] Action
+campaignTable sink camps = table () [
+  thead ()
+    [ tr ()
+        [ th () [text "FB id"]
+        , th () [text "Name"]
+        , th () ()
+        ]
+    ]
+  , tbody () (map (campaignRow sink) $ zip [0..] camps)
+  ]
+
+campaignRow sink (ix, camp) = tr ()
+  [ td () [text $ showJS $ AC.fbid camp]
+  , td () [text $ AC.campaign_name camp]
+  , td () [E.a (click $ \_ -> sink $ Pure (set (userModel . viewSection) (CampaignView ix))) [text "view"]]
+  ]
+  
 loginPageW :: Widget LoginPage Action
 loginPageW sink (LoginPage u pw) = form
   [ submit $ \e -> preventDefault e >> return () ]
