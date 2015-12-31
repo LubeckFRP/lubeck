@@ -37,6 +37,7 @@ import App
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.AdCampaign as AC
+import qualified BD.Data.Ad as Ad
 import qualified BD.Data.Count as C
 import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
@@ -57,7 +58,8 @@ data Action
   | Pure (Model -> Model)
   | GotUser Account
   | Then Action Action
-  
+  | GoTo ViewSection
+
 --  | GotCampaigns [Campaign]
 --  | GoToCampaign Int
 
@@ -69,13 +71,18 @@ instance Show Action where
     g (GotUser _) = "GotUser"
     g (Pure _) = "Pure"
     g (Then _ _) = "Then"
+    g (GoTo _) = "GoTo"
+
 
 data Model = NotLoggedIn { _loginPage :: LoginPage}
            | LoadingUser
            | AsUser { _user :: A.Account
                     , _userModel :: UserModel }
 
-data ViewSection = UserView | CampaignView Int -- | CampaignsImageLibrary 
+data ViewSection = UserView
+                 | CampaignView { _campaignIx :: Int
+                                , _campaignAds :: (Maybe [Ad.Ad]) }
+              -- | CampaignsImageLibrary
 
 data LoginPage = LoginPage { _loginUsername :: JSString
                            , _loginPass :: JSString }
@@ -86,6 +93,7 @@ data UserModel = UserModel { _campaigns :: [AC.AdCampaign]
 makeLenses ''Model
 makeLenses ''LoginPage
 makeLenses ''UserModel
+makeLenses ''ViewSection
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update = foldpR step initial
@@ -97,9 +105,25 @@ update = foldpR step initial
     step (Pure f)             (m,_) = (f m, Nothing)
     step Logout               (_,_) = initial
     step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
+    step (GoTo vs)            (m,_) = goToViewSection vs m
 
 --    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
 --    step (ReplaceModel model) (_,_)     = (model,Nothing)
+
+goToViewSection UserView model
+  = (set (userModel . viewSection) UserView model, Nothing)
+goToViewSection cv@(CampaignView n mads) model
+  = (set (userModel . viewSection) cv model, mLoadAds n model mads)
+
+mLoadAds :: Int -> Model -> Maybe [Ad.Ad] -> Maybe (IO Action)
+mLoadAds _ _ (Just _) = Nothing
+mLoadAds n model (Nothing) = Just $ do
+  let campid = showJS $ AC.fbid $ (_campaigns $ _userModel $ model)!!n
+      username = A.username $ _user model
+  ads <- Ad.getCampaignAds username campid
+  return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
+
+
 
 render :: Widget Model Action
 render sink LoadingUser = text "Loading User"
@@ -116,25 +140,25 @@ render sink (AsUser acc (UserModel camps UserView)) = div
     [ text "number of campaigns: "
     , text $ showJS (length camps)]
   , campaignTable sink camps
-  , menu sink ()    
+  , menu sink ()
   ]
 
-render sink (AsUser acc (UserModel camps (CampaignView ix))) =
+render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
   let camp = camps !! ix
   in div ()
       [ h1 () [text $ AC.campaign_name camp]
       , div ()
         [text "daily budget:"
         , text $ showJS $ AC.daily_budget camp ]
-      , menu sink ()    
+      , menu sink ()
       ]
 
 menu :: Widget () Action
 menu sink () = div () [
-    text "Menu: " 
-  , E.a (click $ \_ -> sink $ Pure (set (userModel . viewSection) UserView)) [text "User"]
+    text "Menu: "
+  , E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
   , E.a (click $ \_ -> sink Logout) [text "Logout"]
-  ] 
+  ]
 
 campaignTable :: Widget [AC.AdCampaign] Action
 campaignTable sink camps = table () [
@@ -151,9 +175,9 @@ campaignTable sink camps = table () [
 campaignRow sink (ix, camp) = tr ()
   [ td () [text $ showJS $ AC.fbid camp]
   , td () [text $ AC.campaign_name camp]
-  , td () [E.a (click $ \_ -> sink $ Pure (set (userModel . viewSection) (CampaignView ix))) [text "view"]]
+  , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
   ]
-  
+
 loginPageW :: Widget LoginPage Action
 loginPageW sink (LoginPage u pw) = form
   [ submit $ \e -> preventDefault e >> return () ]
