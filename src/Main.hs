@@ -105,19 +105,18 @@ update = foldpR step initial
     step (Pure f)             (m,_) = (f m, Nothing)
     step Logout               (_,_) = initial
     step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
-    step (GoTo vs)            (m,_) = goToViewSection vs m
+    step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
 
 --    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
 --    step (ReplaceModel model) (_,_)     = (model,Nothing)
 
-goToViewSection UserView model
-  = (set (userModel . viewSection) UserView model, Nothing)
-goToViewSection cv@(CampaignView n mads) model
-  = (set (userModel . viewSection) cv model, mLoadAds n model mads)
+goToViewSection (CampaignView n Nothing) model
+  = Just $ loadAds n model
+goToViewSection _ model
+  = Nothing
 
-mLoadAds :: Int -> Model -> Maybe [Ad.Ad] -> Maybe (IO Action)
-mLoadAds _ _ (Just _) = Nothing
-mLoadAds n model (Nothing) = Just $ do
+loadAds :: Int -> Model -> IO Action
+loadAds n model =  do
   let campid = showJS $ AC.fbid $ (_campaigns $ _userModel $ model)!!n
       username = A.username $ _user model
   ads <- Ad.getCampaignAds username campid
