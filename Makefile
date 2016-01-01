@@ -14,6 +14,12 @@ build:
 min:
 	(cd .cabal-sandbox/bin/ghcjs-test.jsexe/ && ccjs all.js --compilation_level=ADVANCED_OPTIMIZATIONS  > all.min.js)
 
+.PHONY: compress
+compress:
+	(cd .cabal-sandbox/bin/ghcjs-test.jsexe/ && zopfli -c -i1000 all.min.js > all.min.js.gz)
+
+
+
 .PHONY: open
 open:
 	google-chrome .cabal-sandbox/bin/ghcjs-test.jsexe/index.html

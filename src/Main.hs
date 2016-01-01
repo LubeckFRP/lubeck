@@ -150,8 +150,24 @@ render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
       , div ()
         [text "daily budget:"
         , text $ showJS $ AC.daily_budget camp ]
+      , renderAdList sink mads
       , menu sink ()
       ]
+
+renderAdList sink Nothing = text "Loading ads"
+renderAdList sink (Just ads) = table () [
+    tableHeaders ["FB adset id", "Name", "Budget"]
+  , tbody () (map (adRow sink) ads)
+  ]
+
+adRow sink ad = tr ()
+  [ td () [text $ showJS $ Ad.fb_adset_id ad]
+  , td () [text $ Ad.ad_title ad]
+  , td () [text $ showJS $ Ad.current_budget ad]
+  ]
+
+tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
+
 
 menu :: Widget () Action
 menu sink () = div () [
@@ -162,13 +178,7 @@ menu sink () = div () [
 
 campaignTable :: Widget [AC.AdCampaign] Action
 campaignTable sink camps = table () [
-  thead ()
-    [ tr ()
-        [ th () [text "FB id"]
-        , th () [text "Name"]
-        , th () ()
-        ]
-    ]
+    tableHeaders ["FB id", "Name", ""]
   , tbody () (map (campaignRow sink) $ zip [0..] camps)
   ]
 

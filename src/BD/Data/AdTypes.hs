@@ -17,7 +17,7 @@ type USDcents = Int
 
 type URL = String
 
-type FBGraphId = Int
+type FBGraphId = Integer
 
 data Objective = VideoViews
                | ClicksToWebsite URL
