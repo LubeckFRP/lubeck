@@ -6,6 +6,7 @@ import qualified Prelude
 
 import qualified Data.Text
 import Data.Text(Text)
+import Data.String
 
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Types(JSString, jsval)
