@@ -25,9 +25,12 @@ update = foldpR step initial
     step () (model,_) = (model, Nothing)
 
 render :: Widget Text ()
-render actions model = h1 () [text model]
+render actions model = h1 () [text $ textToJSString model]
 
 -- MAIN
 
 main :: IO ()
 main = runApp update render
+
+textToJSString :: Text -> JSString
+textToJSString = fromString . Data.Text.unpack
