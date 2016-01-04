@@ -44,6 +44,7 @@ inheritSpecifically ks = do
 main :: IO ()
 main = do
   let port = 8080
+  let appName = "bd-interactions" -- TODO get from cmdline
 
   -- Extracts environment with the Stack additions
   -- Uses some heuristics to find the location of the compiled code (see getJsExeBinPathFromEnv)
@@ -55,12 +56,12 @@ main = do
     Right jsExeDir -> do
 
       putStrLn "Serving compiled client from"
-      putStrLn $ " " ++ jsExeDir ++ "/ghcjs-test.jsexe"
+      putStrLn $ " " ++ jsExeDir ++ "/" ++ appName ++ ".jsexe"
       putStrLn $ "Listening on " ++ show port
 
       -- TODO Hacky copying of index file (gets overwritten by GHCJS)
       forkIO $ forever $ do
         threadDelay (1000000)
-        copyFile ("static/index.html") (jsExeDir++"/ghcjs-test.jsexe/index.html")
+        copyFile ("static/index.html") (jsExeDir++"/" ++ appName ++ ".jsexe/index.html")
 
-      Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server $ jsExeDir++"/ghcjs-test.jsexe"))
+      Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server $ jsExeDir++"/" ++ appName ++ ".jsexe"))
