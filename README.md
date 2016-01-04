@@ -24,9 +24,9 @@ There are two ways to build and serve this code at the moment.
 ### Using Stack
 
 - [Install Stack](http://docs.haskellstack.org/)
-- `make -f Makefile.stack`
+- `make -f Makefile`
 
 ### Using cabal
 
 - Install GHC, Cabal and GHCJS (versions?)
-- `make -f Makefile.cabal`
+- `make -f Makefile.cabal-style`
