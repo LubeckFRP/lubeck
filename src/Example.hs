@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -21,10 +21,10 @@ type Widget' a  = Widget a a
 update :: E () -> IO (R (Text, Maybe (IO ())))
 update = foldpR step initial
   where
-    initial = "Hello Web!"
+    initial = "Hello Web!" :: Text
     step () (model,_) = (model, Nothing)
 
-render :: Widget String ()
+render :: Widget Text ()
 render actions model = h1 () [text model]
 
 -- MAIN
