@@ -21,7 +21,7 @@ type Widget' a  = Widget a a
 update :: E () -> IO (R (Text, Maybe (IO ())))
 update = foldpR step initial
   where
-    initial = "Hello Web!" :: Text
+    initial = ("Hello Web!", Nothing)
     step () (model,_) = (model, Nothing)
 
 render :: Widget Text ()
