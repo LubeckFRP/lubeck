@@ -1,6 +1,4 @@
 
-NAME= ghcjs-test
-
 .PHONY: all
 all: build-client run-server
 
