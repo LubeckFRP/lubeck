@@ -6,14 +6,13 @@ packages:
     git: git@github.com:ghcjs/ghcjs-ffiqq.git
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 - location:
-    git: git@github.com:ghcjs/ghcjs-vdom.git
-    commit: 454f6c65c1d0fb3d55c994a483e975e12d82a8dd
-- location:
-    git: git@github.com:ghcjs/ghcjs-dom.git
-    commit: bbd0e70f7dae6d8d9b89b7307f2d0acf613836a7
+    git: git@github.com:BeautifulDestinations/ghcjs-vdom.git
+    commit: f774831aaab234b72cfbd4b32800f4685211ee6d
 # - location:
-    # git: git@github.com:ghcjs/ghcjs-ffiqq.git
-    # commit: da31b18582542fcfceade5ef6b2aca66662b9e20
+    # git: git@github.com:ghcjs/ghcjs-dom.git
+    # commit: bbd0e70f7dae6d8d9b89b7307f2d0acf613836a7
+# - location:
+    # git: git@github.com:ghcjs/diagrams-ghcjs.git
+    # commit: 50de0daa6a14406e5e4e57d9ccc11af8a376f410
 extra-deps:
-- monadplus-1.4.2
 resolver: nightly-2015-12-14
