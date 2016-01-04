@@ -1,17 +1,15 @@
 
-name:                ghcjs-test-server
+name:                lubeck-server
 version:             0.1.0.0
+synopsis:            A simple Elm-Reactor style server
 license:             AllRightsReserved
 license-file:        ../LICENSE
-author:              Hans
-maintainer:          hans@hanshoglund.se
--- copyright:
--- category:
+author:              Beautiful Destinations
+maintainer:          hans@beautifuldestinations.com
 build-type:          Simple
--- extra-source-files:
 cabal-version:       >=1.10
 
-executable ghcjs-test-server
+executable lubeck-server
   main-is:             Main.hs
   -- other-modules:
   -- other-extensions:

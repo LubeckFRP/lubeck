@@ -1,4 +1,3 @@
-
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
 import Prelude hiding (div)
@@ -22,7 +21,6 @@ import Control.Lens.TH(makeLenses)
 
 --import Data.JSString.Text
 
-
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
@@ -42,8 +40,8 @@ import qualified BD.Data.Ad as Ad
 import qualified BD.Data.Count as C
 import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
-import qualified BD.Data.Interaction as I
-import BD.Data.Interaction hiding (interactions)
+import BD.Data.Interaction
+import BD.Types
 
 
 type Widget i o = Sink o -> i -> Html
@@ -54,35 +52,76 @@ username :: Account -> Text
 username = A.username
 
 data Action
-  = NoAction
-  | LoadAction (Maybe JSString) (Maybe JSString)
-  | ChangeModel (Model -> Model)
-  | ReplaceModel Model -- (ReplaceModel x) == (ChangeModel (const x))
+  = LoginGo
+  | Logout
+  | Pure (Model -> Model)
+  | GotUser Account
+  | Then Action Action
+  | GoTo ViewSection
+
+--  | GotCampaigns [Campaign]
+--  | GoToCampaign Int
 
 -- For debugging only
 instance Show Action where
   show = g where
+    g LoginGo         = "LoginGo"
+    g Logout         = "Logout"
+    g (GotUser _) = "GotUser"
+    g (Pure _) = "Pure"
+    g (Then _ _) = "Then"
+    g (GoTo _) = "GoTo"
 
-    g NoAction         = "NoAction"
-    g (LoadAction _ _) = "LoadAction"
-    g (ChangeModel _)  = "ChangeModel"
-    g (ReplaceModel _) = "ReplaceModel"
 
-data Model = Model
-  { _requested    :: (Maybe JSString, Maybe JSString)
-  , _interactions :: InteractionSet SearchPost }
+data Model = NotLoggedIn { _loginPage :: LoginPage}
+           | LoadingUser
+           | AsUser { _user :: A.Account
+                    , _userModel :: UserModel }
+
+data ViewSection = UserView
+                 | CampaignView { _campaignIx :: Int
+                                , _campaignAds :: (Maybe [Ad.Ad]) }
+              -- | CampaignsImageLibrary
+
+data LoginPage = LoginPage { _loginUsername :: JSString
+                           , _loginPass :: JSString }
+
+data UserModel = UserModel { _campaigns :: [AC.AdCampaign]
+                           , _viewSection :: ViewSection }
+
 makeLenses ''Model
+makeLenses ''LoginPage
+makeLenses ''UserModel
+makeLenses ''ViewSection
 
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
+    initial = (NotLoggedIn (LoginPage "forbestravelguide" "bar"), Nothing)
 
-    initial = (Model (Nothing,Nothing) $ InteractionSet Nothing Nothing [], Nothing)
+    step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
+    step LoginGo              (m,_) = (m, Nothing)
+    step (Pure f)             (m,_) = (f m, Nothing)
+    step Logout               (_,_) = initial
+    step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
+    step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
 
-    step NoAction             (model,_) = (model,   Nothing)
-    step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- loadShoutouts a b ; return $ ChangeModel (set interactions so) })
-    step (ReplaceModel model) (_,_)     = (model,   Nothing)
-    step (ChangeModel f) (model,_)      = (f model, Nothing)
+--    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
+--    step (ReplaceModel model) (_,_)     = (model,Nothing)
+
+goToViewSection (CampaignView n Nothing) model
+  = Just $ loadAds n model
+goToViewSection _ model
+  = Nothing
+
+loadAds :: Int -> Model -> IO Action
+loadAds n model =  do
+  let campid = showJS $ AC.fbid $ (_campaigns $ _userModel $ model)!!n
+      username = A.username $ _user model
+  ads <- Ad.getCampaignAds username campid
+  return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
+
+
 
 render :: Widget Model Action
 render sink LoadingUser = text "Loading User"
@@ -94,41 +133,78 @@ render sink (AsUser acc (UserModel camps UserView)) = div
   , div ()
     [text $ A.username acc ]
   , div ()
-    [buttonW actions (_requested model)]
-  , div
-    ()
-    [ interactionSetW actions (_interactions model) ]
+    [text $ showJS $ A.latest_count acc ]
+  , div ()
+    [ text "number of campaigns: "
+    , text $ showJS (length camps)]
+  , campaignTable sink camps
+  , menu sink ()
   ]
 
-buttonW :: Widget (Maybe JSString, Maybe JSString) Action
-buttonW sink (x,y) = div
-  ()
-  [ E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] ()
-  , E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] ()
-  , button (click $ \e -> sink (LoadAction x y) >> preventDefault e) [text "Load shoutouts!"] ]
-  where
-    _1 f (x,y) = fmap (,y) $ f x
-    _2 f (x,y) = fmap (x,) $ f y
-    emptyToN "" = Nothing
-    emptyToN xs = Just xs
-    nToEmpty Nothing   = ""
-    nToEmpty (Just xs) = xs
+render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
+  let camp = camps !! ix
+  in div ()
+      [ h1 () [text $ AC.campaign_name camp]
+      , div ()
+        [text "daily budget:"
+        , text $ showJS $ AC.daily_budget camp ]
+      , renderAdList sink mads
+      , menu sink ()
+      ]
 
--- TODO make notice about how single-page "form" elements should not be inside forms (use div instead) - easiest way to get around auto-submit issues
--- TODO bug in ghcjs-vdom: both change and click return events that appear to accept stopPropagation but doesn't
-doneEv x = stopPropagation x >> preventDefault x
-
-interactionSetW :: Widget (InteractionSet SearchPost) Action
-interactionSetW actions model = div ()
-  [ p () [ text $ "Showing" <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
-         , text $ " to "    <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
-  , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: I.interactions)
+renderAdList sink Nothing = text "Loading ads"
+renderAdList sink (Just ads) = table () [
+    tableHeaders ["FB adset id", "Name", "Budget"]
+  , tbody () (map (adRow sink) ads)
   ]
+
+adRow sink ad = tr ()
+  [ td () [text $ showJS $ Ad.fb_adset_id ad]
+  , td () [text $ Ad.ad_title ad]
+  , td () [text $ showJS $ Ad.current_budget ad]
+  ]
+
+tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
+
+
+menu :: Widget () Action
+menu sink () = div () [
+    text "Menu: "
+  , E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
+  , E.a (click $ \_ -> sink Logout) [text "Logout"]
+  ]
+
+campaignTable :: Widget [AC.AdCampaign] Action
+campaignTable sink camps = table () [
+    tableHeaders ["FB id", "Name", ""]
+  , tbody () (map (campaignRow sink) $ zip [0..] camps)
+  ]
+
+campaignRow sink (ix, camp) = tr ()
+  [ td () [text $ showJS $ AC.fbid camp]
+  , td () [text $ AC.campaign_name camp]
+  , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
+  ]
+
+loginPageW :: Widget LoginPage Action
+loginPageW sink (LoginPage u pw) = form
+  [ submit $ \e -> preventDefault e >> return () ]
+  [
+    -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
+  -- ,
+    E.input [A.value u,
+             change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
+   , button (click $ \_ -> sink LoginGo) [text "Login"] ]
 
 loginUser :: LoginPage -> IO Action
 loginUser (LoginPage s _) = do
   u <- A.getUser s
   return $ GotUser u
+
+getCampaigns :: A.Account -> IO Action
+getCampaigns acc = do
+  cs <- AC.getUserCampaigns $ A.username acc
+  return $ Pure $ set (userModel . campaigns) cs
 
 -- MAIN
 

@@ -1,4 +1,6 @@
 
+NAME= ghcjs-test
+
 .PHONY: all
 all: build min
 
@@ -12,7 +14,13 @@ build:
 min:
 	(cd .cabal-sandbox/bin/ghcjs-test.jsexe/ && ccjs all.js --compilation_level=ADVANCED_OPTIMIZATIONS  > all.min.js)
 
+.PHONY: open
+open:
+	google-chrome .cabal-sandbox/bin/ghcjs-test.jsexe/index.html
 
-.PHONY: run-server
-run-server: build-server
-	nohup ~/.local/bin/lubeck-server &
+.PHONY: setup-build-env
+setup-build-env:
+	cabal sandbox init
+	cabal sandbox add-source ../ghcjs-vdom
+	cabal sandbox add-source ../ghcjs-ffiqq
+	cabal install --ghcjs
