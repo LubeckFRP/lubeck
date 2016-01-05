@@ -11,7 +11,62 @@ We interact with these events using two primary types:
 - 'Reactive' is a value that may change discretely, in response to events.
 
 -}
-module Lubeck.FRP where
+module Lubeck.FRP (
+    -- * FRP
+    EventStream,
+    Reactive,
+    Signal,
+    mapE,
+    mapR,
+    never,
+    filterJustE,
+    filterE,
+    scatterE,
+    merge,
+    pureR,
+    zipR,
+    accum,
+    snapshot,
+    accumR,
+    snapshotWith,
+    scanlR,
+    foldpR,
+    foldpE,
+    scanlE,
+    sample,
+    accumE,
+    accumulator,
+    stepper,
+    counter,
+    gatherE,
+    bufferE,
+    recallEWith,
+    recallE,
+    pureS,
+    mapS,
+    zipS,
+    stepperS,
+    accumS,
+    updates,
+    current,
+    -- * Run FRP
+    FrpSystem(..),
+    runER,
+    runER',
+    runER'',
+    testFRP,
+    -- * Sink
+    Sink,
+    emptySink,
+    appendSinks,
+    contramapSink,
+    -- * Dispatcher
+    Dispatcher,
+    newDispatcher,
+    UnsubscribeAction,
+    -- * Misc
+    frpInternalLog,
+  ) where
 
 import Control.Applicative
 import Data.Monoid
@@ -134,11 +189,10 @@ scatterE (E taProvider) = E $ \aSink -> do
 -- | Merge two event streams by interleaving occurances.
 --
 -- Two events may occur at the same time. This usually happens because
--- they are being emitted on different event strems that are nevertheless based
+-- they are being emitted on different event strems that are both based
 -- on the same underlying stream. For example there may be a stream to listen
 -- for key presses, and another stream for presses on the key 'k'.
---
--- If events occur simultaneously in two streams composed with merge, both
+-- If events occur simultaneously in two streams composed with 'merge', both
 -- will be processed in left-to-right order.
 merge :: EventStream a -> EventStream a -> EventStream a
 merge (E f) (E g) = E $ \aSink -> do
