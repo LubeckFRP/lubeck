@@ -14,15 +14,16 @@ We interact with these events using two primary types:
 module Lubeck.FRP where
 
 import Control.Applicative
+import Data.Monoid
 import Control.Monad
 import Control.Monad (forever, forM_, join)
 --import Data.Functor.Contravariant
 
 import Control.Concurrent(forkIO)
 import Control.Monad.STM (atomically)
-import qualified Control.Concurrent.STM.TChan as TChan
+-- import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
-import Control.Concurrent.STM.TChan (TChan)
+-- import Control.Concurrent.STM.TChan (TChan)
 import Control.Concurrent.STM.TVar(TVar)
 
 import qualified Data.IntMap as Map
@@ -60,10 +61,19 @@ newDispatcher = do
   frpInternalLog "Dispatcher created"
   return $ Dispatcher insert dispatch
 
-
-
+-- | An action used to unsubscribe a sink from a dispatcher.
+-- Unsibscribing twice has no effect.
 type UnsubscribeAction = IO ()
+
+-- | A sink is a computation that can recieve a value of some type to perform a side effect (typically sending the
+-- value along to some other part of the system). The most interesting functions are 'mappend' and 'contramap'.
 type Sink a = a -> IO ()
+
+emptySink :: Sink a
+emptySink _ = return ()
+
+appendSinks :: Sink a -> Sink a -> Sink a
+appendSinks f g x = f x >> g x
 
 contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
@@ -101,8 +111,8 @@ mapR f (R aProvider) = R $ \aSink ->
 never :: EventStream a
 never = E (\_ -> return (return ()))
 
-scatterMaybeE :: EventStream (Maybe a) -> EventStream a
-scatterMaybeE (E maProvider) = E $ \aSink -> do
+filterJustE :: EventStream (Maybe a) -> EventStream a
+filterJustE (E maProvider) = E $ \aSink -> do
   frpInternalLog "Setting up filter"
   unsub <- maProvider $ \ma -> case ma of
     Nothing -> return ()
@@ -111,14 +121,25 @@ scatterMaybeE (E maProvider) = E $ \aSink -> do
 
 -- | Drop occurances that does not match a given predicate.
 filterE :: (a -> Bool) -> EventStream a -> EventStream a
-filterE p = scatterMaybeE . fmap (\x -> if p x then Just x else Nothing)
+filterE p = filterJustE . fmap (\x -> if p x then Just x else Nothing)
 
--- | Spread out occurences.
+-- | Spread out events as if they had happened directly after each other.
+-- The events will be processed in traverse order. If given an empty container,
+-- no event is emitted.
 scatterE :: Traversable t => EventStream (t a) -> EventStream a
 scatterE (E taProvider) = E $ \aSink -> do
   frpInternalLog "Setting up scatter"
   taProvider $ mapM_ aSink
 
+-- | Merge two event streams by interleaving occurances.
+--
+-- Two events may occur at the same time. This usually happens because
+-- they are being emitted on different event strems that are nevertheless based
+-- on the same underlying stream. For example there may be a stream to listen
+-- for key presses, and another stream for presses on the key 'k'.
+--
+-- If events occur simultaneously in two streams composed with merge, both
+-- will be processed in left-to-right order.
 merge :: EventStream a -> EventStream a -> EventStream a
 merge (E f) (E g) = E $ \aSink -> do
   frpInternalLog "Setting up merge"
@@ -245,16 +266,17 @@ snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 scanlR :: (a -> b -> a) -> a -> EventStream b -> IO (Reactive a)
 scanlR f = foldpR (flip f)
 
+-- Create a past-dependent reactive value.
 foldpR :: (a -> b -> b) -> b -> EventStream a -> IO (Reactive b)
 foldpR f z e = accumR z (mapE f e)
 
 -- |
--- Create a past-dependent event.
+-- Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> EventStream a -> IO (EventStream b)
 foldpE f a e = a `accumE` (f <$> e)
 
 -- |
--- Create a past-dependent event. This combinator corresponds to 'scanl' on streams.
+-- Create a past-dependent event stream. This combinator corresponds to 'scanl' on streams.
 scanlE :: (a -> b -> a) -> a -> EventStream b -> IO (EventStream a)
 scanlE f = foldpE (flip f)
 
@@ -265,6 +287,7 @@ scanlE f = foldpE (flip f)
 -- filterE :: (a -> Bool) -> E a -> E a
 -- filterE p = scatterE . mapE (\x -> if p x then [x] else [])
 
+-- | Get the current value of the reactive whenever an event occurs.
 sample :: Reactive a -> EventStream b -> EventStream a
 sample = snapshotWith const
 
@@ -273,7 +296,9 @@ sample = snapshotWith const
 
 -- snapshotWith ($)   :: Signal (a -> c) -> Stream a -> Stream c
 
-accumE :: c -> EventStream (c -> c) -> IO (EventStream c)
+-- | Create an event stream that emits the result of accumulating its inputs
+-- whenever an update occurs.
+accumE :: a -> EventStream (a -> a) -> IO (EventStream a)
 accumE x a = do
   acc <- accumR x a
   return $ acc `sample` a
@@ -295,7 +320,7 @@ counter e = accumR 0 (fmap (const succ) e)
 
 
 
--- | Record n events and emit in a group. Inverse of scatterE.
+-- | Record n events and emit in a group. Inverse of 'scatterE'.
 gatherE :: Int -> EventStream a -> IO (EventStream (Seq a))
 gatherE n = fmap ((Seq.reverse <$>) . filterE (\xs -> Seq.length xs == n)) . foldpE g mempty
     where
@@ -315,7 +340,7 @@ recallEWith f e
     where
         shift b (_,a) = (a,b)
         dup x         = (x,x)
-        joinMaybes'   = scatterMaybeE
+        joinMaybes'   = filterJustE
         combineMaybes = uncurry (liftA2 f)
 
 recallE :: EventStream a -> IO (EventStream (a, a))
@@ -324,3 +349,38 @@ recallE = recallEWith (,)
 -- lastE = fmap snd . recallE
 
 -- delayE n = foldr (.) id (replicate n lastE)
+
+data Signal a = S (EventStream (), Reactive a)
+
+-- | A constant signal.
+pureS :: a -> Signal a
+pureS x = S (mempty, pure x)
+
+-- | Map over the contents of a signal.
+mapS :: (a -> b) -> Signal a -> Signal b
+mapS f (S (e,r)) = S (e,fmap f r)
+
+-- | Create an event that signal when either of the given signals updates.
+-- Its value is always the current value of the first argument applied to the second value.
+zipS :: Signal (a -> b) -> Signal a -> Signal b
+zipS (S (fe,fr)) (S (xe,xr)) = let r = fr <*> xr in S (fmap (const ()) fe <> xe, r)
+
+-- | Create a signal from an initial value and an series of updates.
+stepperS :: a -> EventStream a -> IO (Signal a)
+stepperS z e = do
+  r <- stepper z e
+  return $ S (fmap (const ()) e, r)
+
+-- | Create a signal from an initial value and an series of updates.
+accumS :: a -> EventStream (a -> a) -> IO (Signal a)
+accumS z e = do
+  r <- accumR z e
+  return $ S (fmap (const ()) e, r)
+
+-- | Get an events stream that triggers whenever the signal is updated.
+updates :: Signal a -> EventStream a
+updates (S (e,r)) = sample r e
+
+-- | Convert a signal to a reactive that always has the same as the signal.
+current :: Signal a -> Reactive a
+current (S (e,r)) = r
