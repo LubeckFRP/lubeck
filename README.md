@@ -42,10 +42,10 @@ There are two ways to build and serve this code at the moment.
 - DONE Framework library
 - DONE Separate library and repo structure
 - DONE Deployment - server needs to serve different applications (Hans; 05 Jan 16, before Lunch.)
-- Form combinators - need to be able to connect a form to a value in the model, and a field in a form to a value inside the form value (Hans; 07 Jan 16)
-- Support for Pure / Impure action type in the core framework so not every app defines this. Unless you come up with a cleverer component architecture (Hans; 07 Jan 16)
+- ONGOING Form combinators - need to be able to connect a form to a value in the model, and a field in a form to a value inside the form value (Hans; 07 Jan 16)
+- LATER Support for Pure / Impure action type in the core framework so not every app defines this. Unless you come up with a cleverer component architecture (Hans; 07 Jan 16)
 - History (Back button) support. App needs to be able to finely declare what is an checkpoint in history and what is an inconsequential change to model - we don't want every keypress in a form to be in the browser history. (Hans; 10 Feb 2016)
-- Component architecture (Feb 2016 or earlier). This should either be encapsulated state or using lenses to focus on parts of a global state value
+- ONGOING Component architecture (Feb 2016 or earlier). This should either be encapsulated state or using lenses to focus on parts of a global state value
 
 - Data visualisation
 - Port data visualisation library from Elm app (15 Jan 16)

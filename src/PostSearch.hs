@@ -19,7 +19,7 @@ import BD.Query.PostQuery
 type Widget i o = Sink o -> i -> Html
 type Widget' a  = Widget a a
 
-update :: E () -> IO (R (JSString, Maybe (IO ())))
+update :: EventStream () -> IO (Reactive (JSString, Maybe (IO ())))
 update = foldpR step initial
   where
     initial = ("Post search (with add to library)", Nothing)

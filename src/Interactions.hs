@@ -61,7 +61,7 @@ data Model = Model
   , _interactions :: InteractionSet SearchPost }
 makeLenses ''Model
 
-update :: E Action -> IO (R (Model, Maybe (IO Action)))
+update :: EventStream Action -> IO (Reactive (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
     initial = (Model (Nothing,Nothing) $ InteractionSet Nothing Nothing [], Nothing)

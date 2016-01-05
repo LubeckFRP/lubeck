@@ -1,4 +1,16 @@
 
+{-|
+A lightweight Functional Reactive Programming (FRP) library.
+
+The essence of FRP is responding to external events such as user interaction, communication, real-world events.
+We interact with these events using two primary types:
+
+- 'EventStream' is an infinite sequence of events (timestamped values).
+  In classical FRP, this type is called /an event/, and the value-pairs are referred to as /event occurences/.
+
+- 'Reactive' is a value that may change discretely, in response to events.
+
+-}
 module Lubeck.FRP where
 
 import Control.Applicative
@@ -57,39 +69,39 @@ contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
 
 -- | A series of values.
-newtype E a = E (Sink a -> IO UnsubscribeAction)
+newtype EventStream a = E (Sink a -> IO UnsubscribeAction)
 -- | A time-varying value.
-newtype R a = R (Sink a -> IO ())
+newtype Reactive a = R (Sink a -> IO ())
 
-instance Functor E where
+instance Functor EventStream where
   fmap = mapE
 
-instance Monoid (E a) where
+instance Monoid (EventStream a) where
   mempty = never
   mappend = merge
 
-instance Functor R where
+instance Functor Reactive where
   fmap = mapR
 
-instance Applicative R where
+instance Applicative Reactive where
   pure = pureR
   (<*>) = zipR
 
-mapE :: (a -> b) -> E a -> E b
+mapE :: (a -> b) -> EventStream a -> EventStream b
 mapE f (E aProvider) = E $ \aSink ->
   aProvider $ contramapSink f aSink
   -- Sink is registered with given E
   -- When UnsubscribeActionistered, UnsubscribeActionister with E
 
-mapR :: (a -> b) -> R a -> R b
+mapR :: (a -> b) -> Reactive a -> Reactive b
 mapR f (R aProvider) = R $ \aSink ->
   aProvider $ contramapSink f aSink
 
 -- | Never occurs. Identity for 'merge'.
-never :: E a
+never :: EventStream a
 never = E (\_ -> return (return ()))
 
-scatterMaybeE :: E (Maybe a) -> E a
+scatterMaybeE :: EventStream (Maybe a) -> EventStream a
 scatterMaybeE (E maProvider) = E $ \aSink -> do
   frpInternalLog "Setting up filter"
   unsub <- maProvider $ \ma -> case ma of
@@ -98,16 +110,16 @@ scatterMaybeE (E maProvider) = E $ \aSink -> do
   return unsub
 
 -- | Drop occurances that does not match a given predicate.
-filterE :: (a -> Bool) -> E a -> E a
+filterE :: (a -> Bool) -> EventStream a -> EventStream a
 filterE p = scatterMaybeE . fmap (\x -> if p x then Just x else Nothing)
 
 -- | Spread out occurences.
-scatterE :: Traversable t => E (t a) -> E a
+scatterE :: Traversable t => EventStream (t a) -> EventStream a
 scatterE (E taProvider) = E $ \aSink -> do
   frpInternalLog "Setting up scatter"
   taProvider $ mapM_ aSink
 
-merge :: E a -> E a -> E a
+merge :: EventStream a -> EventStream a -> EventStream a
 merge (E f) (E g) = E $ \aSink -> do
   frpInternalLog "Setting up merge"
   unsubF <- f aSink
@@ -118,10 +130,10 @@ merge (E f) (E g) = E $ \aSink -> do
   -- Sink is registered with both Es
   -- When UnsubscribeActionistered, UnsubscribeActionister with both Es
 
-pureR :: a -> R a
+pureR :: a -> Reactive a
 pureR z = R ($ z)
 
-zipR :: R (a -> b) -> R a -> R b
+zipR :: Reactive (a -> b) -> Reactive a -> Reactive b
 zipR (R abProvider) (R aProvider) = R $ \bSink ->
   abProvider $
     \ab -> aProvider $
@@ -155,7 +167,7 @@ Proof
 
 -- | Create a varying value from an initial value and an update event.
 --   The value is updated whenever the event occurs.
-accum :: a -> E (a -> a) -> IO (R a)
+accum :: a -> EventStream (a -> a) -> IO (Reactive a)
 accum z (E aaProvider) = do
   frpInternalLog "Setting up accum"
   var <- TVar.newTVarIO z
@@ -169,7 +181,7 @@ accum z (E aaProvider) = do
   -- TODO UnsubscribeAction?
 
 -- | Sample a varying value whenever an event occurs.
-snapshot :: R a -> E b -> E (a, b)
+snapshot :: Reactive a -> EventStream b -> EventStream (a, b)
 snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
   frpInternalLog "Setting up snapshot"
   bProvider $ \b ->
@@ -192,7 +204,7 @@ data FrpSystem a b c = FrpSystem {
 
 -- | Run an FRP system.
 -- It starts in some initial state defined by the R component, and reacts to updates of type a.
-runER :: (E a -> IO (R b, E c)) -> IO (FrpSystem a b c)
+runER :: (EventStream a -> IO (Reactive b, EventStream c)) -> IO (FrpSystem a b c)
 runER f = do
   Dispatcher aProvider aSink <- newDispatcher -- must accept subscriptions and feed values from the given sink
   -- The providers
@@ -203,16 +215,16 @@ runER f = do
 
 -- | Run an FRP system, producing a reactive value.
 -- You can poll the sstem for the current state, or subscribe to changes in its output.
-runER' :: (E a -> IO (R b)) -> IO (FrpSystem a b b)
+runER' :: (EventStream a -> IO (Reactive b)) -> IO (FrpSystem a b b)
 runER' f = runER (\e -> f e >>= \r -> return (r, sample r e))
 
 -- | Run an FRP system starting in the given state.
 -- The reactive passed to the function starts in the initial state provided here and reacts to inputs to the system.
 -- You can poll system for the current state, or subscribe to changes in its output.
-runER'' :: a -> (R a -> IO (R b)) -> IO (FrpSystem a b b)
+runER'' :: a -> (Reactive a -> IO (Reactive b)) -> IO (FrpSystem a b b)
 runER'' z f = runER' (stepper z >=> f)
 
-testFRP :: (E String -> IO (R String)) -> IO b
+testFRP :: (EventStream String -> IO (Reactive String)) -> IO b
 testFRP x = do
   system <- runER' x
   output system putStrLn
@@ -227,23 +239,23 @@ testFRP x = do
 
 accumR = accum
 
-snapshotWith :: (a -> b -> c) -> R a -> E b -> E c
+snapshotWith :: (a -> b -> c) -> Reactive a -> EventStream b -> EventStream c
 snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
-scanlR :: (a -> b -> a) -> a -> E b -> IO (R a)
+scanlR :: (a -> b -> a) -> a -> EventStream b -> IO (Reactive a)
 scanlR f = foldpR (flip f)
 
-foldpR :: (a -> b -> b) -> b -> E a -> IO (R b)
+foldpR :: (a -> b -> b) -> b -> EventStream a -> IO (Reactive b)
 foldpR f z e = accumR z (mapE f e)
 
 -- |
 -- Create a past-dependent event.
-foldpE :: (a -> b -> b) -> b -> E a -> IO (E b)
+foldpE :: (a -> b -> b) -> b -> EventStream a -> IO (EventStream b)
 foldpE f a e = a `accumE` (f <$> e)
 
 -- |
 -- Create a past-dependent event. This combinator corresponds to 'scanl' on streams.
-scanlE :: (a -> b -> a) -> a -> E b -> IO (E a)
+scanlE :: (a -> b -> a) -> a -> EventStream b -> IO (EventStream a)
 scanlE f = foldpE (flip f)
 
 
@@ -253,7 +265,7 @@ scanlE f = foldpE (flip f)
 -- filterE :: (a -> Bool) -> E a -> E a
 -- filterE p = scatterE . mapE (\x -> if p x then [x] else [])
 
-sample :: R a -> E b -> E a
+sample :: Reactive a -> EventStream b -> EventStream a
 sample = snapshotWith const
 
 -- snapshot :: R a -> E b -> E (a, b)
@@ -261,7 +273,7 @@ sample = snapshotWith const
 
 -- snapshotWith ($)   :: Signal (a -> c) -> Stream a -> Stream c
 
-accumE :: c -> E (c -> c) -> IO (E c)
+accumE :: c -> EventStream (c -> c) -> IO (EventStream c)
 accumE x a = do
   acc <- accumR x a
   return $ acc `sample` a
@@ -273,30 +285,30 @@ accumulator = accum
 
 -- | Create a varying value by starting with the given initial value, and replacing it
 -- whenever an update occurs.
-stepper :: a -> E a -> IO (R a)
+stepper :: a -> EventStream a -> IO (Reactive a)
 stepper z x = accumR z (mapE const x)
 
 -- | Count number of occurences, starting from zero.
-counter :: (Enum a, Num a) => E b -> IO (R a)
+counter :: (Enum a, Num a) => EventStream b -> IO (Reactive a)
 counter e = accumR 0 (fmap (const succ) e)
 
 
 
 
 -- | Record n events and emit in a group. Inverse of scatterE.
-gatherE :: Int -> E a -> IO (E (Seq a))
+gatherE :: Int -> EventStream a -> IO (EventStream (Seq a))
 gatherE n = fmap ((Seq.reverse <$>) . filterE (\xs -> Seq.length xs == n)) . foldpE g mempty
     where
         g x xs | Seq.length xs <  n  =  x Seq.<| xs
                | Seq.length xs == n  =  x Seq.<| mempty
                | otherwise           = error "gatherE: Wrong length"
 
-bufferE :: Int -> E a -> IO (E (Seq a))
+bufferE :: Int -> EventStream a -> IO (EventStream (Seq a))
 bufferE n = fmap (Seq.reverse <$>) . foldpE g mempty
     where
         g x xs = x Seq.<| Seq.take (n-1) xs
 
-recallEWith :: (b -> b -> a) -> E b -> IO (E a)
+recallEWith :: (b -> b -> a) -> EventStream b -> IO (EventStream a)
 recallEWith f e
     = fmap (joinMaybes' . fmap combineMaybes)
     $ dup Nothing `accumE` fmap (shift . Just) e
@@ -306,7 +318,7 @@ recallEWith f e
         joinMaybes'   = scatterMaybeE
         combineMaybes = uncurry (liftA2 f)
 
-recallE :: E a -> IO (E (a, a))
+recallE :: EventStream a -> IO (EventStream (a, a))
 recallE = recallEWith (,)
 
 -- lastE = fmap snd . recallE
