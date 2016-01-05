@@ -30,7 +30,7 @@ import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 import Data.JSString.Text (textFromJSString)
 
 import Lubeck.FRP
-import Lubeck.App (runApp)
+import Lubeck.App (Html, runApp)
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.AdCampaign as AC

@@ -56,7 +56,9 @@ type Sink a = a -> IO ()
 contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
 
+-- | A series of values.
 newtype E a = E (Sink a -> IO UnsubscribeAction)
+-- | A time-varying value.
 newtype R a = R (Sink a -> IO ())
 
 instance Functor E where

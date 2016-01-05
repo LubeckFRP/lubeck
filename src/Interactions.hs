@@ -29,7 +29,7 @@ import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import Lubeck.FRP
-import Lubeck.App (runApp)
+import Lubeck.App (Html, runApp)
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.Count as C
