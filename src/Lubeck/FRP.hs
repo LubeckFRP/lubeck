@@ -1,9 +1,23 @@
 
 {-|
 
-A lightweight Functional Reactive Programming (FRP) library.
+A library for Functional Reactive Programming (FRP).
 
-The essence of FRP is responding to external events such as user input.
+The interface is similar to reactive-banana with some important differences:
+
+- Simultaneous events are not allowed. Streams created with 'merge' will emitt both events
+  in left-to-right order.
+
+- There is no way to be notified when reactives are updated (use the 'Signal' type instead).
+
+- As in reactive-banana, past-dependent values must be allocated inside a monad, which is also used
+ for registering callbacks and sending values (currently this is all 'IO').
+
+* What is FRP?
+
+TODO link to some good resource
+
+All about responding to external events using the following types:
 
 - 'EventStream' is a sequence of events (values).
 
@@ -12,6 +26,7 @@ The essence of FRP is responding to external events such as user input.
 - 'Signal' is a variant of 'Reactive' that allow users to be notified whenever it is updated.
 
 For an overview of existing FRP implementations, see https://github.com/gelisam/frp-zoo.
+
 See also Evan Czaplicki's talk on the taxonomy of FRP: https://www.youtube.com/watch?v=Agu6jipKfYw
 
 -}
@@ -25,7 +40,7 @@ module Lubeck.FRP (
     never,
     merge,
     filterE,
-    filterJustE,
+    filterJust,
     scatterE,
 
     -- ** Past-dependent events
@@ -187,8 +202,8 @@ never :: EventStream a
 never = E (\_ -> return (return ()))
 
 -- | Drop 'Nothing' events.
-filterJustE :: EventStream (Maybe a) -> EventStream a
-filterJustE (E maProvider) = E $ \aSink -> do
+filterJust :: EventStream (Maybe a) -> EventStream a
+filterJust (E maProvider) = E $ \aSink -> do
   frpInternalLog "Setting up filter"
   unsub <- maProvider $ \ma -> case ma of
     Nothing -> return ()
@@ -197,9 +212,9 @@ filterJustE (E maProvider) = E $ \aSink -> do
 
 -- | Drop occurances that does not match a given predicate.
 filterE :: (a -> Bool) -> EventStream a -> EventStream a
-filterE p = filterJustE . fmap (\x -> if p x then Just x else Nothing)
+filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
--- | Spread out events as if they had happened directly after each other.
+-- | Spread out events as if they had occured simultaneously.
 -- The events will be processed in traverse order. If given an empty container,
 -- no event is emitted.
 scatterE :: Traversable t => EventStream (t a) -> EventStream a
@@ -416,7 +431,7 @@ recallEWith f e
     where
         shift b (_,a) = (a,b)
         dup x         = (x,x)
-        joinMaybes'   = filterJustE
+        joinMaybes'   = filterJust
         combineMaybes = uncurry (liftA2 f)
 
 recallE :: EventStream a -> IO (EventStream (a, a))
