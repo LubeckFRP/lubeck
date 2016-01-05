@@ -33,6 +33,12 @@ There are two ways to build and serve this code at the moment.
 - Install GHC, Cabal and GHCJS manually
 - `make -f Makefile.cabal-style`
 
+### Using Vagrant
+
+- `vagrant up`
+- Wait a very long time
+- To recompile, `vagrant ssh` then `cd lubeck && cabal install --ghcjs`
+
 ## CI/QA
 
 - TODO
