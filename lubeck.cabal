@@ -13,6 +13,8 @@ library
   exposed-modules:     Lubeck.FRP
                      , Lubeck.App
                      , Lubeck.Web.History
+                     , Lubeck.Drawing
+                     , Lubeck.Forms
                      , BD.Api
                      , BD.Types
                      , BD.Data.Account
@@ -36,6 +38,9 @@ library
                      , containers
                      , lens
                      , intervals
+                     , vector-space
+                     , vector-space-points
+                     , colour
 
                      , xml
                      , neat-interpolation
