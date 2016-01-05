@@ -1,5 +1,5 @@
 
-module BD.Data.Query.PostQuery (
+module BD.Query.PostQuery (
   PostQuery(..),
   SimplePostQuery
 ) where
