@@ -21,7 +21,7 @@ data Count = Count
   { account_id :: Int
   , count_at   :: UTCTime
   , value      :: Int
-  } deriving  (GHC.Generic,Show, Eq, Data, Typeable)
+  } deriving  (GHC.Generic,Show)
 
 instance FromJSON Count where
     parseJSON (Object v) = Count <$>

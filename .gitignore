@@ -2,3 +2,8 @@
 .stack*
 nohub*
 nohup*
+*~
+.cabal-sandbox/
+dist/
+.vagrant/
+cabal.sandbox.config

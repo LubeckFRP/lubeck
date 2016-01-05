@@ -33,7 +33,7 @@ data SearchPost = SearchPost
   , ig_web_url       :: Maybe Text
   , latitude         :: Maybe Double
   , longitude        :: Maybe Double
-  } deriving (GHC.Generic, Show, Eq, Data, Typeable)
+  } deriving (GHC.Generic)
 
 instance FromJSON SearchPost
 instance ToJSON   SearchPost

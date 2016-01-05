@@ -1,17 +1,20 @@
-
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
 
 module BD.Data.Account
     ( Account(..)
+    , getUser
     ) where
 
 import Control.Monad
 import Data.Aeson -- TODO proper
 import Data.Data
-import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
+import GHCJS.Types (JSString)
+import Data.Monoid
+import BD.Api
+import BD.Types
 
 -- import BD.Data.Count
 -- import BD.Data.Account
@@ -33,10 +36,13 @@ data Account = Account
   , numfollowing    :: Maybe Int
   , p_is_male       :: Maybe Double
   , latest_count    :: Maybe Int
-  } deriving (GHC.Generic,Show, Eq, Data, Typeable)
+  } deriving (GHC.Generic)
 
 instance ToJSON Account where
   toJSON = Data.Aeson.Types.genericToJSON
     Data.Aeson.Types.defaultOptions { Data.Aeson.Types.omitNothingFields = True }
 
 instance FromJSON Account
+
+getUser :: JSString -> IO Account
+getUser unm = fmap payload $ getAPI $ unm <> "/account"

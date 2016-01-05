@@ -12,7 +12,13 @@ cabal-version:       >=1.10
 library
   exposed-modules:     FRP2
                      , App
+                     , BD.Api
+                     , BD.Types
                      , BD.Data.Account
+                     , BD.Data.AdTypes
+                     , BD.Data.Ad
+                     , BD.Data.AdCampaign
+                     , BD.Data.Image
                      , BD.Data.Count
                      , BD.Data.Interaction
                      , BD.Data.SearchPost
@@ -21,12 +27,13 @@ library
                      , ghcjs-ffiqq == 0.1.0.0
                      , ghcjs-base ==0.2.0.0
                      , stm
-                     , contravariant
+                     --, contravariant
                      , text
                      , mtl
                      , time
                      , containers
                      , lens
+
                      , xml
                      , neat-interpolation
                      , data-default
@@ -36,6 +43,8 @@ library
 
   hs-source-dirs:      src
   default-language:    Haskell2010
+  cpp-options:         -DGHCJS_BROWSER
+  ghc-options:         -fno-warn-typed-holes
 
 executable bd-interactions
   main-is:             src/Main.hs
@@ -46,7 +55,7 @@ executable bd-interactions
                      , ghcjs-base ==0.2.0.0
                      , ghcjs-ffiqq == 0.1.0.0
                      , stm
-                     , contravariant
+                     --, contravariant
                      , text
                      , mtl
                      , time
