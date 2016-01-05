@@ -1,8 +1,19 @@
 
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings #-}
+
 module Lubeck.Drawing where
 
+import GHCJS.Types(JSString)
+import Data.Monoid
+import Control.Applicative
+import Data.VectorSpace
+import Data.AffineSpace
+import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour)
 import qualified Data.Colour
+import qualified Data.JSString
+import Data.JSString.Text (textFromJSString)
+
 
 import Data.Map(Map)
 import qualified Data.Map
@@ -15,10 +26,6 @@ import Data.Time.Calendar (Day)
 import Numeric.Interval (Interval)
 
 -- TODO svg, html nodes
-
-type alias RawLineSegment = { x : Float, y : Float }
-  -- List [LineSegment]
-
 
   {-
 
@@ -43,10 +50,15 @@ examplePlot =
 
 
 {-| A point in 2D space. -}
-data Point = Point { x : Float, y : Float }
+data Point = Point { x :: Float, y :: Float }
 
 {-| A vector (distance between two points) in 2D space. -}
-data Point = Point { dx : Float, dy : Float }
+data Vector = Vector { dx :: Float, dy :: Float }
+
+instance AdditiveGroup Vector where
+instance VectorSpace Vector where
+instance AffineSpace Point where
+  type Diff Point = Vector
 
 {-
 
@@ -76,17 +88,19 @@ negateV a = { dx = negate a.dx, dy = negate a.dy }
 -}
 
 offsetVectors :: Point -> [Vector] -> [Point]
-offsetVectors p = let
-  unsafeTail xs = case xs of
-    []      -> Debug.crash "offsetVectors"
-    (x::xs) -> xs
-  offsetPoints = List.scanl (flip (.+^))
-  in unsafeTail << offsetPoints p
+offsetVectors = error "TODO"
+-- offsetVectors p = let
+--   unsafeTail xs = case xs of
+--     []      -> error "offsetVectors"
+--     (x:xs) -> xs
+--   offsetPoints = Data.List.scanl (flip (.+^))
+--   in unsafeTail . offsetPoints p
 
 betweenPoints :: [Point] -> [Vector]
-betweenPoints xs = case List.tail xs of
-  Nothing -> []
-  Just ys -> List.map2 (.-.) ys xs
+betweenPoints = error "TODO"
+-- betweenPoints xs = case Data.List.tail xs of
+--   Nothing -> []
+--   Just ys -> liftA2 (.-.) ys xs
 
 -- distanceVs : Point -> List Point -> List Vector
 -- distanceVs p = tail . pointOffsets p
@@ -104,7 +118,7 @@ can be expressed as `turn/2`, three quarters of a turn by `turn*3/4` and so on.
 To convert to radians or degrees, use
 
  -}
-data Angle = Float
+type Angle = Float
 
 {-| The value representing a full turn.
 This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
@@ -112,11 +126,11 @@ turn :: Angle
 turn = pi * 2
 
 {-| Convert an angle to radians. -}
-angleToRadians : Angle -> Float
+angleToRadians :: Angle -> Float
 angleToRadians x = x
 
 {-| Convert an angle to degrees. -}
-angleToDegrees : Angle -> Float
+angleToDegrees :: Angle -> Float
 angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 {-| -}
@@ -150,36 +164,36 @@ apTransformation (a1,b1,c1,d1,e1,f1) (a2,b2,c2,d2,e2,f2) =
      a1*e2 + c1*f2 + e1,
      b1*e2 + d1*f2 + f1)
 
-infixr 6 <>
+infixr 6 !<>
 
 {-| Compose two transformations. -}
-(<>) :: Transformation -> Transformation -> Transformation
-(<>) = apTransformation
+(!<>) :: Transformation -> Transformation -> Transformation
+(!<>) = apTransformation
 
 {-| -}
 transformationToMatrix :: Transformation -> (Float, Float, Float, Float, Float, Float)
 transformationToMatrix x = x
 
+{-| -}
+type Style = Map JSString JSString
+
+{-| -}
+emptyStyle :: Style
+emptyStyle = Data.Map.empty
+
+{-| -}
+styleNamed :: JSString -> JSString -> Style
+styleNamed = Data.Map.singleton
+
+{-| -}
+apStyle :: Style -> Style -> Style
+apStyle = Data.Map.union
+
+{-| -}
+styleToAttrString :: Style -> JSString
+styleToAttrString = Data.Map.foldlWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) ""
+
 {-
-
-{-| -}
-type alias Style = Dict String String
-
-{-| -}
-emptyStyle : Style
-emptyStyle = Dict.empty
-
-{-| -}
-styleNamed : String -> String -> Style
-styleNamed = Dict.singleton
-
-{-| -}
-apStyle : Style -> Style -> Style
-apStyle = Dict.union
-
-{-| -}
-styleToAttrString : Style -> String
-styleToAttrString = Dict.foldl (\n v rest -> n ++ ":" ++ v ++ "; " ++ rest) ""
 
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
