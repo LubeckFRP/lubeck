@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns #-}
 
 module Lubeck.Drawing where
 
@@ -193,8 +193,6 @@ apStyle = Data.Map.union
 styleToAttrString :: Style -> JSString
 styleToAttrString = Data.Map.foldlWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) ""
 
-{-
-
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
 
@@ -208,9 +206,9 @@ styleToAttrString = Data.Map.foldlWithKey (\n v rest -> n <> ":" <> v <> "; " <>
 
   Images can be composed using [over](#over) and [stack](#stack), which overlays the two images so that their origins match exactly.
 -}
-type alias Drawing = DrawingBase
+type Drawing = DrawingBase
 
-type alias Envelope = Maybe (Vector -> Float)
+type Envelope = Maybe (Vector -> Float)
 -- Max monoid
 -- Transform by inverse-transforming argument and transforming (scaling) result
 
@@ -220,50 +218,51 @@ type alias Envelope = Maybe (Vector -> Float)
 -- TODO path support (generalizes all others! including text?)
 -- TODO masks
 -- TODO better font support
-type DrawingBase
+data DrawingBase
   = Circle
   | Rect
   | Line -- conceptually a line from point a to point b
-  | Lines Bool (List Vector) -- sequence of straight lines, closed or not. For closed lines, there is no need to return the original point (i.e. the sum of the vector does not have to be zeroV).
+  | Lines Bool [Vector] -- sequence of straight lines, closed or not. For closed lines, there is no need to return the original point (i.e. the sum of the vector does not have to be zeroV).
 
-  | Text String
+  | Text JSString
   | Transf Transformation Drawing
   | Style Style Drawing
   | Em
   | Ap Drawing Drawing
+  -- deriving (Eq, Ord)
 
 {-| An empty and transparent drawing.
     Identity for [over](#over) and [stack](#stack). -}
-empty : Drawing
-empty      = Em
+transparent :: Drawing
+transparent      = Em
 
 {-| A centered circle with radius one. -}
-circle : Drawing
+circle :: Drawing
 circle    = Circle
 
 {-| A centered square with a width and height of one. -}
-square : Drawing
+square :: Drawing
 square = Rect
 
 {-| A centered horizontal line of length one. -}
-horizontalLine : Drawing
+horizontalLine :: Drawing
 horizontalLine = translateX (-0.5) Line
 
 {-| A centered vertical line of length one. -}
-verticalLine : Drawing
+verticalLine :: Drawing
 verticalLine = rotate (turn/4) horizontalLine
 
 {-| -}
-segments : List Vector -> Drawing
+segments :: [Vector] -> Drawing
 segments = Lines False
 
 {-| -}
-polygon : List Vector -> Drawing
+polygon :: [Vector] -> Drawing
 polygon = Lines True
 
 {-| -}
-text : String -> Drawing
-text      = Text
+text :: JSString -> Drawing
+text = Text
 
 {-| Layer the two images so that their origins match precisely. The origin of the given
     images become the origin of the new image as well.
@@ -272,12 +271,12 @@ The order of the arguments matter: the first image is placed closer to the viewe
 the second, so all areas in the first image that are not transparent will cover the
 corresponding area in the second image.
     -}
-over : Drawing -> Drawing -> Drawing
+over :: Drawing -> Drawing -> Drawing
 over = flip Ap
 
 {-| Like [over](#over), but with an arbitrary number of images. -}
-stack : List Drawing -> Drawing
-stack = List.foldr over empty
+stack :: [Drawing] -> Drawing
+stack = Data.List.foldr over transparent
 
 {-| Apply a [Transformation](#Transformation) to an image.
 
@@ -297,47 +296,51 @@ transformation one at a time:
 transform s (transform t image) = transform (s <> t) image
 ```
  -}
-transform : Transformation -> Drawing -> Drawing
+transform :: Transformation -> Drawing -> Drawing
 transform = Transf
 
+
 {-| Translate (move) an image. -}
-translate : Vector -> Drawing -> Drawing
-translate { dx, dy } = transform (1,0,0,1,dx,dy)
+translate :: Vector -> Drawing -> Drawing
+translate (Vector { dx, dy }) = transform (1,0,0,1,dx,dy)
 
 {-| Translate (move) an image along the horizonal axis.
 A positive argument will move the image to the right. -}
-translateX : Float -> Drawing -> Drawing
+translateX :: Float -> Drawing -> Drawing
 translateX x = translate (Vector x 0)
 
 {-| Translate (move) an image along the vertical axis.
 A positive argument will move the image upwards (as opposed to standard SVG behavior). -}
-translateY : Float -> Drawing -> Drawing
+translateY :: Float -> Drawing -> Drawing
 translateY y = translate (Vector 0 y)
 
 {-| Scale (stretch) an image. -}
-scaleXY : Float -> Float -> Drawing -> Drawing
+scaleXY :: Float -> Float -> Drawing -> Drawing
 scaleXY     x y = transform (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
-scale : Float -> Drawing -> Drawing
+scale :: Float -> Drawing -> Drawing
 scale    x   = scaleXY x x
 
 {-| Scale (stretch) an image horizontally. -}
-scaleX : Float -> Drawing -> Drawing
+scaleX :: Float -> Drawing -> Drawing
 scaleX    x   = scaleXY x 1
 
 {-| Scale (stretch) an image vertically. -}
-scaleY : Float -> Drawing -> Drawing
+scaleY :: Float -> Drawing -> Drawing
 scaleY      y = scaleXY 1 y
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
-rotate : Angle -> Drawing -> Drawing
+rotate :: Angle -> Drawing -> Drawing
 rotate    a   = transform (cos a, 0 - sin a, sin a, cos a, 0, 0)
 -- The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
-shearXY : Float -> Float -> Drawing -> Drawing
+shearXY :: Float -> Float -> Drawing -> Drawing
 shearXY   a b = transform (1, b, a, 1, 0, 0)
+
+
+{-
 
 {-| A smoke-colored background big enough to fill the whole screen.
 
@@ -526,7 +529,7 @@ basicDataGrowth f x = let
   data = x,
   fit xs = (List.map (fitSq ps) ps, ()),
   plot = plotGrowth { color = Nothing },
-  axisPlot _ = empty
+  axisPlot _ = transparent
   }
 
 {-| -}
