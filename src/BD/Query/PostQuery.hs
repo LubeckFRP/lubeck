@@ -12,10 +12,10 @@ data PostQuery
   | PostQueryHasComment String
   | PostQueryHashtag String
   | PostQueryUsername String
-  | PostQueryUsernames (List String)
+  | PostQueryUsernames [String]
 
   | PostQueryFollowers Ordering Int
-  | PostQueryDate Ordering Date
+  | PostQueryDate Ordering Day
   | PostQueryLocation Int
   | PostQueryHasLocation Bool
 
@@ -26,6 +26,7 @@ data PostQuery
   | PostQueryNot PostQuery
   | PostQueryAnd [PostQuery]
   | PostQueryOr [PostQuery]
+  deriving (Eq, Ord, Show)
 
 data SimplePostQuery = SimplePostQuery {
     caption      :: String,
@@ -40,3 +41,16 @@ data SimplePostQuery = SimplePostQuery {
     orderBy     :: PostOrder,
     direction   :: SortDirection
   }
+  deriving (Eq, Ord, Show)
+
+data PostOrder
+  = PostByCreated
+  | PostByFollowers
+  | PostByLikes
+  | PostByComments
+  deriving (Eq, Ord, Show)
+
+data SortDirection
+  = Asc
+  | Desc
+  deriving (Eq, Ord, Show)
