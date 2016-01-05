@@ -44,9 +44,11 @@ inheritSpecifically ks = do
 main :: IO ()
 main = do
   let port = 8090
+
   -- let appName = "bd-example-app" -- TODO get from cmdline
-  let appName = "bd-adplatform" -- TODO get from cmdline
-  -- let appName = "bd-interactions" -- TODO get from cmdline
+  -- let appName = "bd-adplatform" -- TODO get from cmdline
+  let appName = "bd-interactions" -- TODO get from cmdline
+
   let indexHtmlFile = "static/index.html"
 
   -- Extracts environment with the Stack additions
