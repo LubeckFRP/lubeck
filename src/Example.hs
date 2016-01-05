@@ -30,9 +30,4 @@ render actions model = h1 () [text model]
 -- MAIN
 
 main :: IO ()
-main = do
-  onPopState (\_ -> print "State HS!")
-  pushState (jsval ("1"::JSString)) "" ""
-  pushState (jsval ("2"::JSString)) "" ""
-  pushState (jsval ("3"::JSString)) "" ""
-  runApp update render
+main = runApp update render
