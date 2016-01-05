@@ -39,6 +39,12 @@ There are two ways to build and serve this code at the moment.
 - Wait a very long time
 - To recompile, `vagrant ssh` then `cd lubeck && cabal install --ghcjs`
 
+## Documentation
+
+Most dependencies are on Stackage, so their documentation is available on https://www.stackage.org/nightly-yyyy-mm-dd (see `stack.yaml` resolver field for date).
+
+The easist way to get the documentation for the `lubeck` library and the GHCJS-specific modules is to run `stack haddock`.
+
 ## CI/QA
 
 - TODO
