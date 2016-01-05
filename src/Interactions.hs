@@ -12,21 +12,16 @@ import Control.Monad (forM_, forever, unless)
 import Data.String (fromString)
 import qualified Data.Map as Map
 import Data.Map(Map)
-import Control.Monad.STM (atomically)
-import qualified Control.Concurrent.STM.TChan as TChan
-import qualified Control.Concurrent.STM.TVar as TVar
--- import qualified Data.Text
 import qualified Data.List
--- import Data.Text(Text)
 import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
 
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
+import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
 import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
@@ -34,7 +29,7 @@ import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import Lubeck.FRP
-import Lubeck.App
+import Lubeck.App (runApp)
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.Count as C

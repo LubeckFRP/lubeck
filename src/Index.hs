@@ -6,10 +6,8 @@ module Main where
 import Prelude hiding (div)
 import qualified Prelude
 
-import Data.String
-
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Types(JSString, jsval)
+import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
 import GHCJS.VDOM.Attribute (src, width, class_)
 

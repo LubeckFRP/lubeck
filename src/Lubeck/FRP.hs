@@ -23,7 +23,7 @@ frpInternalLog :: Sink String
 -- frpInternalLog = putStrLn
 frpInternalLog _ = return ()
 
-{-\
+{-|
 An imperative dispatcher.
 -}
 data Dispatcher a = Dispatcher { subscribe :: Sink a -> IO UnsubscribeAction, dispatch :: Sink a }
@@ -216,12 +216,6 @@ testFRP x = do
   output system putStrLn
   -- TODO print initial!
   forever $ getLine >>= input system
-
--- init <- do
---   initVar <- TVar.newTVarIO Nothing
---   bProvider (\b -> atomically $ TVar.writeTVar initVar (Just b))
---   Just init <- atomically $ TVar.readTVar initVar
---   return init
 
 
 
