@@ -20,11 +20,11 @@ type Widget' a  = Widget a a
 update :: E () -> IO (R (JSString, Maybe (IO ())))
 update = foldpR step initial
   where
-    initial = ("Hello Web!", Nothing)
+    initial = ("Index", Nothing)
     step () (model,_) = (model, Nothing)
 
 render :: Widget JSString ()
-render actions model = h1 () [text $ textToJSString model]
+render actions model = h1 () [text $ model]
 
 -- MAIN
 
