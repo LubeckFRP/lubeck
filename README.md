@@ -1,23 +1,21 @@
 
 # Lubeck
 
-Beautiful Destinations front-end platforms.
+Beautiful Destinations front-end based on GHCJS.
 
 ## Code overview
 
-We use GHCJS to build all front-end platforms.
-
 The code is organized as follows:
 
+  - BD front-end library (Lubeck) `src/Lubeck`
   - BD data model `src/BD`
-  - Non BD-specific front-end libraries `src/Lubeck`
-  - The actual single-page applications `src/*.hs`
+  - BD applications `src/*.hs`
 
-All client side code is declared in `lubeck.cabal`, as a single library and several excecutables (the single-page apps).
+All client side code is declared in `lubeck.cabal`, as a single library and several executables (each is a single-page application).
 
-The client-code can be built separately, or served with the "official" server (in `server`). This server can serve
+The client-code can be built to HTML/JS manually, or using the "official" server (in `server`). This server can serve
 the built applications and also provide `404.html`, `index.html` etc. Note that this server only serves front-end content
-and does not do any DB interaction (i.e. its state is determined solely by this repository).
+and does not do any backend interaction (i.e. its state is determined solely by this repository).
 
 ## Build/Deploy
 
@@ -43,7 +41,7 @@ There are two ways to build and serve this code at the moment.
 
 Most dependencies are on Stackage, so their documentation is available on https://www.stackage.org/nightly-yyyy-mm-dd (see `stack.yaml` resolver field for date).
 
-The easist way to get the documentation for the `lubeck` library and the GHCJS-specific modules is to run `stack haddock`.
+The easiest way to get the documentation for the `lubeck` library and the GHCJS-specific modules is to run `stack haddock`.
 
 ## CI/QA
 
