@@ -24,7 +24,7 @@ update = foldpR step initial
     step () (model,_) = (model, Nothing)
 
 render :: Widget JSString ()
-render actions model = h1 () [text $ textToJSString model]
+render actions model = h1 () [text model]
 
 -- MAIN
 
