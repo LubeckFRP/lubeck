@@ -12,6 +12,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Lubeck.FRP
                      , Lubeck.App
+                     , Lubeck.Web.History
                      , BD.Api
                      , BD.Types
                      , BD.Data.Account
