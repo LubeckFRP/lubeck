@@ -11,8 +11,6 @@ cabal-version:       >=1.10
 
 executable lubeck-server
   main-is:             Main.hs
-  -- other-modules:
-  -- other-extensions:
   build-depends:       base           >=4.8 && <4.9
                      , servant        ==0.4.4.5
                      , servant-server ==0.4.4.5
