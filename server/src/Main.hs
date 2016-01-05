@@ -1,4 +1,5 @@
 
+{-# LANGUAGE DataKinds, TypeOperators #-}
 
 import Servant
 import Servant.Utils.StaticFiles (serveDirectory)
@@ -16,7 +17,12 @@ import Control.Concurrent (threadDelay, forkIO)
 
 import Util.ParseEnv (getJsExeBinPathFromEnv)
 
-type GhcJsTestServer = Raw
+type Layout =
+  ("example" :> Raw
+    :<|>
+  "adplatform" :> Raw
+    :<|>
+  "interactions" :> Raw)
 
 -- server :: String -> Server GhcJsTestServer
 -- server jsExeDir = serveDirectory jsExeDir
@@ -43,12 +49,7 @@ inheritSpecifically ks = do
 
 main :: IO ()
 main = do
-  let port = 8090
-
-  -- let appName = "bd-example-app" -- TODO get from cmdline
-  -- let appName = "bd-adplatform" -- TODO get from cmdline
-  let appName = "bd-interactions" -- TODO get from cmdline
-
+  let port          = 8090
   let indexHtmlFile = "static/index.html"
 
   -- Extracts environment with the Stack additions
@@ -58,18 +59,22 @@ main = do
   -- If successful, serve the compiled code
   case jsExeDir of
     Left msg -> print $ "Could not find compiled code: " ++ msg
-    Right jsExeDir -> serveApp port jsExeDir appName indexHtmlFile
+    Right jsExeDir -> do
+      exampleServer <- serveApp jsExeDir "bd-example-app" indexHtmlFile
+      adplatformServer <- serveApp jsExeDir "bd-adplatform" indexHtmlFile
+      interactionsServer <- serveApp jsExeDir "bd-interactions" indexHtmlFile
 
-serveApp :: Int -> String -> String -> String -> IO ()
-serveApp port jsExeDir appName indexHtmlFile = do
+      putStrLn $ "Listening on " ++ show port
+      Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) (exampleServer :<|> adplatformServer :<|> interactionsServer)
+
+serveApp :: String -> String -> String -> IO (Server Raw)
+serveApp jsExeDir appName indexHtmlFile = do
   putStrLn $ "Serving app '" ++ appName ++ "', from"
   putStrLn $ " " ++ jsExeDir ++ "/" ++ appName ++ ".jsexe"
   putStrLn $ " index.html is '" ++ indexHtmlFile ++ "'"
-  putStrLn $ "Listening on " ++ show port
 
   -- TODO Hacky copying of index file (gets overwritten by GHCJS)
   -- forkIO $ forever $ do
     -- threadDelay (1000000)
   copyFile indexHtmlFile (jsExeDir ++ "/" ++ appName ++ ".jsexe/index.html")
-
-  Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy GhcJsTestServer) (serveDirectory $ jsExeDir ++ "/" ++ appName ++ ".jsexe" :: Server GhcJsTestServer)
+  return $ serveDirectory $ jsExeDir ++ "/" ++ appName ++ ".jsexe"
