@@ -33,7 +33,7 @@ stackEnv = do
     ExitSuccess -> return out
     ExitFailure e -> fail $ stackExe ++ " exited with code " ++ show e ++ " and message " ++ err
 
--- | Create an environment inheriting exactly the given properties from the system environment (the environment used to invoke alan).
+-- | Create an environment inheriting exactly the given properties from the system environment
 inheritSpecifically :: [String] -> IO (Maybe [(String, String)])
 inheritSpecifically ks = do
   base <- fmap Map.fromList $ System.Environment.getEnvironment
@@ -43,8 +43,10 @@ inheritSpecifically ks = do
 
 main :: IO ()
 main = do
-  let port = 8080
+  let port = 8090
+  -- let appName = "bd-example-app" -- TODO get from cmdline
   let appName = "bd-interactions" -- TODO get from cmdline
+  let indexHtmlFile = "static/index.html"
 
   -- Extracts environment with the Stack additions
   -- Uses some heuristics to find the location of the compiled code (see getJsExeBinPathFromEnv)
@@ -53,15 +55,18 @@ main = do
   -- If successful, serve the compiled code
   case jsExeDir of
     Left msg -> print $ "Could not find compiled code: " ++ msg
-    Right jsExeDir -> do
+    Right jsExeDir -> serveApp port jsExeDir appName indexHtmlFile
 
-      putStrLn "Serving compiled client from"
-      putStrLn $ " " ++ jsExeDir ++ "/" ++ appName ++ ".jsexe"
-      putStrLn $ "Listening on " ++ show port
+serveApp :: Int -> String -> String -> String -> IO ()
+serveApp port jsExeDir appName indexHtmlFile = do
+  putStrLn $ "Serving app '" ++ appName ++ "', from"
+  putStrLn $ " " ++ jsExeDir ++ "/" ++ appName ++ ".jsexe"
+  putStrLn $ " index.html is '" ++ indexHtmlFile ++ "'"
+  putStrLn $ "Listening on " ++ show port
 
-      -- TODO Hacky copying of index file (gets overwritten by GHCJS)
-      forkIO $ forever $ do
-        threadDelay (1000000)
-        copyFile ("static/index.html") (jsExeDir++"/" ++ appName ++ ".jsexe/index.html")
+  -- TODO Hacky copying of index file (gets overwritten by GHCJS)
+  -- forkIO $ forever $ do
+    -- threadDelay (1000000)
+  copyFile indexHtmlFile (jsExeDir ++ "/" ++ appName ++ ".jsexe/index.html")
 
-      Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server $ jsExeDir++"/" ++ appName ++ ".jsexe"))
+  Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server $ jsExeDir ++ "/" ++ appName ++ ".jsexe"))

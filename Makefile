@@ -13,4 +13,4 @@ build-server:
 
 .PHONY: run-server
 run-server: build-server
-	nohup ~/.local/bin/lubeck-server &
+	~/.local/bin/lubeck-server &
