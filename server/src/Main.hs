@@ -22,6 +22,8 @@ type Layout =
     :<|>
   "interactions" :> Raw
     :<|>
+  "posts" :> Raw
+    :<|>
   Raw
 
 main :: IO ()
@@ -40,12 +42,15 @@ main = do
       exampleServer       <- serveApp jsExeDir "bd-example-app"   indexHtmlFile
       adplatformServer    <- serveApp jsExeDir "bd-adplatform"    indexHtmlFile
       interactionsServer  <- serveApp jsExeDir "bd-interactions"  indexHtmlFile
+      postSearchServer    <- serveApp jsExeDir "bd-post-search"   indexHtmlFile
       indexServer         <- serveApp jsExeDir "bd-index"         indexHtmlFile
+
       putStrLn $ "Listening on " ++ show port
       Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) $
         exampleServer
           :<|> adplatformServer
           :<|> interactionsServer
+          :<|> postSearchServer
           :<|> indexServer
 
 serveApp :: String -> String -> String -> IO (Server Raw)
