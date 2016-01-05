@@ -63,12 +63,12 @@ data Action
 -- For debugging only
 instance Show Action where
   show = g where
-    g LoginGo         = "LoginGo"
-    g Logout         = "Logout"
+    g LoginGo     = "LoginGo"
+    g Logout      = "Logout"
     g (GotUser _) = "GotUser"
-    g (Pure _) = "Pure"
-    g (Then _ _) = "Then"
-    g (GoTo _) = "GoTo"
+    g (Pure _)    = "Pure"
+    g (Then _ _)  = "Then"
+    g (GoTo _)    = "GoTo"
 
 
 data Model = NotLoggedIn { _loginPage :: LoginPage}
