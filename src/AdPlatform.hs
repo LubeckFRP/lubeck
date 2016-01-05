@@ -92,7 +92,7 @@ makeLenses ''LoginPage
 makeLenses ''UserModel
 makeLenses ''ViewSection
 
-update :: EventStream Action -> IO (Reactive (Model, Maybe (IO Action)))
+update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
     initial = (NotLoggedIn (LoginPage "forbestravelguide" "bar"), Nothing)

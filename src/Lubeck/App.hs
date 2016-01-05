@@ -29,7 +29,7 @@ type Html = VNode
 
 runApp
   :: Show action
-  => (EventStream action -> IO (Reactive (model, Maybe (IO action))))
+  => (Events action -> IO (Behavior (model, Maybe (IO action))))
   -> (Sink action -> model -> Html)
   -> IO ()
 runApp update render = do

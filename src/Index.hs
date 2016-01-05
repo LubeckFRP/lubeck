@@ -17,7 +17,7 @@ import Lubeck.App (Html, runApp)
 type Widget i o = Sink o -> i -> Html
 type Widget' a  = Widget a a
 
-update :: EventStream () -> IO (Reactive (JSString, Maybe (IO ())))
+update :: Events () -> IO (Behavior (JSString, Maybe (IO ())))
 update = foldpR step initial
   where
     initial = ("Index", Nothing)
