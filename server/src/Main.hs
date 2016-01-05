@@ -18,8 +18,8 @@ import Util.ParseEnv (getJsExeBinPathFromEnv)
 
 type GhcJsTestServer = Raw
 
-server :: String -> Server GhcJsTestServer
-server jsExeDir = serveDirectory jsExeDir
+-- server :: String -> Server GhcJsTestServer
+-- server jsExeDir = serveDirectory jsExeDir
 
 -- | Extract the environment as set up by Stack ().
 stackEnv :: IO String
@@ -45,7 +45,8 @@ main :: IO ()
 main = do
   let port = 8090
   -- let appName = "bd-example-app" -- TODO get from cmdline
-  let appName = "bd-interactions" -- TODO get from cmdline
+  let appName = "bd-adplatform" -- TODO get from cmdline
+  -- let appName = "bd-interactions" -- TODO get from cmdline
   let indexHtmlFile = "static/index.html"
 
   -- Extracts environment with the Stack additions
@@ -69,4 +70,4 @@ serveApp port jsExeDir appName indexHtmlFile = do
     -- threadDelay (1000000)
   copyFile indexHtmlFile (jsExeDir ++ "/" ++ appName ++ ".jsexe/index.html")
 
-  Network.Wai.Handler.Warp.run port (serve (Proxy::Proxy GhcJsTestServer) (server $ jsExeDir ++ "/" ++ appName ++ ".jsexe"))
+  Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy GhcJsTestServer) (serveDirectory $ jsExeDir ++ "/" ++ appName ++ ".jsexe" :: Server GhcJsTestServer)

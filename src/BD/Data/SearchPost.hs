@@ -8,11 +8,11 @@ module BD.Data.SearchPost
 import Control.Monad
 import Data.Aeson -- TODO proper
 import Data.Data
-import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
 
+import BD.Types
 -- import BD.Data.Count
 -- import BD.Data.Account
 -- import BD.Data.SearchPost

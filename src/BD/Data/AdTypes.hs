@@ -5,7 +5,6 @@ module BD.Data.AdTypes where
 import Control.Monad
 import Data.Aeson -- TODO proper
 import Data.Data
-import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC

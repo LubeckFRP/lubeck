@@ -13,32 +13,28 @@ import Data.Map(Map)
 import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
+-- import qualified Data.Text
 import qualified Data.List
+-- import Data.Text(Text)
 import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
 
---import Data.JSString.Text
-
-
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
 import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
-import Data.JSString.Text (textFromJSString)
 
 import FRP2
 import App
 
 import qualified BD.Data.Account as A
-import qualified BD.Data.AdCampaign as AC
-import qualified BD.Data.Ad as Ad
 import qualified BD.Data.Count as C
 import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
@@ -47,11 +43,7 @@ import BD.Data.Interaction hiding (interactions)
 
 
 type Widget i o = Sink o -> i -> Html
-
-type Account = A.Account
-
-username :: Account -> Text
-username = A.username
+type Widget' a  = Widget a a
 
 data Action
   = NoAction
@@ -62,7 +54,6 @@ data Action
 -- For debugging only
 instance Show Action where
   show = g where
-
     g NoAction         = "NoAction"
     g (LoadAction _ _) = "LoadAction"
     g (ChangeModel _)  = "ChangeModel"
@@ -76,7 +67,6 @@ makeLenses ''Model
 update :: E Action -> IO (R (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
-
     initial = (Model (Nothing,Nothing) $ InteractionSet Nothing Nothing [], Nothing)
 
     step NoAction             (model,_) = (model,   Nothing)
@@ -85,14 +75,9 @@ update = foldpR step initial
     step (ChangeModel f) (model,_)      = (f model, Nothing)
 
 render :: Widget Model Action
-render sink LoadingUser = text "Loading User"
-render sink (NotLoggedIn lp) = loginPageW sink lp
-
-render sink (AsUser acc (UserModel camps UserView)) = div
-  (customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
-  [ h1 () [text "Hello"]
-  , div ()
-    [text $ A.username acc ]
+render actions model = div
+  (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
+  [ h1 () [text "Shoutout browser"]
   , div ()
     [buttonW actions (_requested model)]
   , div
@@ -120,15 +105,22 @@ doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div ()
-  [ p () [ text $ "Showing" <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
-         , text $ " to "    <> textToJSString (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
+  [ p () [ text $ "Showing" <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
+         , text $ " to "    <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: I.interactions)
   ]
 
-loginUser :: LoginPage -> IO Action
-loginUser (LoginPage s _) = do
-  u <- A.getUser s
-  return $ GotUser u
+interactionW :: Widget (Interaction SearchPost) Action
+interactionW actions model = div ()
+  [ p () [text (showJS $ model .: interaction_time)]
+  -- Growth graph
+  , div [class_ "row"]
+    [ div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] ()]
+    , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] ()]
+    ]
+  , p () [text "Estimated impact: (?)"]
+  ]
+
 
 -- MAIN
 

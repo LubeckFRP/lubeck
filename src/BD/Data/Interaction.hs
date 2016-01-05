@@ -10,7 +10,6 @@ module BD.Data.Interaction
 import Control.Monad
 import Data.Aeson -- TODO proper
 import Data.Data
-import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
@@ -23,6 +22,7 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Types(JSString)
 #endif
 
+import BD.Types
 import BD.Data.Count
 import BD.Data.Account
 import BD.Data.SearchPost
@@ -36,6 +36,7 @@ TODO
 - Or the other way around, possibly using a servant-generated client
 -}
 type JSString = String
+type Text = String
 data Method = GET
 data ReqData = NoData
 data Request = Request {
