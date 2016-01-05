@@ -34,6 +34,7 @@ library
                      , time
                      , containers
                      , lens
+                     , intervals
 
                      , xml
                      , neat-interpolation

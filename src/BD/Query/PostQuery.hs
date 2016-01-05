@@ -4,6 +4,9 @@ module BD.Query.PostQuery (
   SimplePostQuery
 ) where
 
+import Data.Time.Calendar (Day)
+import Numeric.Interval (Interval)
+
 data PostQuery
   = PostQueryInCaption String
   | PostQueryHasComment String
@@ -11,8 +14,8 @@ data PostQuery
   | PostQueryUsername String
   | PostQueryUsernames (List String)
 
-  | PostQueryFollowers Order Int
-  | PostQueryDate Order Date
+  | PostQueryFollowers Ordering Int
+  | PostQueryDate Ordering Date
   | PostQueryLocation Int
   | PostQueryHasLocation Bool
 
@@ -21,17 +24,17 @@ data PostQuery
   | PostQueryOrderBy PostOrder
   | PostQueryOrderDirection SortDirection
   | PostQueryNot PostQuery
-  | PostQueryAnd (List PostQuery)
-  | PostQueryOr (List PostQuery)
+  | PostQueryAnd [PostQuery]
+  | PostQueryOr [PostQuery]
 
-data SimplePostQuery = {
+data SimplePostQuery = SimplePostQuery {
     caption      :: String,
     comment      :: String,
     hashTag      :: String,
     userName     :: String,
 
     followers    :: Interval Int,
-    date         :: Interval Date,
+    date         :: Interval Day,
     location     :: Maybe Int,
 
     orderBy     :: PostOrder,
