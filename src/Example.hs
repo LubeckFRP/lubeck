@@ -13,6 +13,7 @@ import GHCJS.VDOM.Attribute (src, width, class_)
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
+import Lubeck.Web.History
 
 type Widget i o = Sink o -> i -> Html
 type Widget' a  = Widget a a
