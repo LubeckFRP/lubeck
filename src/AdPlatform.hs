@@ -1,5 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
+module Main where
+
 import Prelude hiding (div)
 import qualified Prelude
 
@@ -19,8 +21,6 @@ import Data.Default (def)
 import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
 
---import Data.JSString.Text
-
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
@@ -31,8 +31,8 @@ import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 import Data.JSString.Text (textFromJSString)
 
-import FRP2
-import App
+import Lubeck.FRP
+import Lubeck.App
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.AdCampaign as AC

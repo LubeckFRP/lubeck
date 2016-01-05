@@ -1,7 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
 
-module App
+module Lubeck.App
     ( Html
     , runApp
     ) where
@@ -23,7 +23,7 @@ import GHCJS.VDOM.Event (initEventDelegation)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
 
-import FRP2
+import Lubeck.FRP
 
 type Html = VNode
 

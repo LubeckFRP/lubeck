@@ -1,5 +1,5 @@
 
-module FRP2 where
+module Lubeck.FRP where
 
 import Control.Applicative
 import Control.Monad

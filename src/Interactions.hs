@@ -1,6 +1,8 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
+module Main where
+
 import Prelude hiding (div)
 import qualified Prelude
 
@@ -31,8 +33,8 @@ import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
-import FRP2
-import App
+import Lubeck.FRP
+import Lubeck.App
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.Count as C
