@@ -16,4 +16,4 @@ pushState state title url = [jsu_| window.history.pushState(`state, `title, `url
 onPopState :: (JSVal -> IO ()) -> IO ()
 onPopState = error "TODO"
 -- onPopState cb = [jsu_| window.onpopstate = function(e) { `cb(e.state); console.log("State!") } |]
--- TODO
+-- TODO figure out how to quote the callback, or use standard FFI

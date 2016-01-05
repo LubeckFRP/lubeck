@@ -1,5 +1,6 @@
 
 {-|
+
 A lightweight Functional Reactive Programming (FRP) library.
 
 The essence of FRP is responding to external events such as user input.
@@ -15,43 +16,47 @@ See also Evan Czaplicki's talk on the taxonomy of FRP: https://www.youtube.com/w
 
 -}
 module Lubeck.FRP (
-    -- * FRP
+    -- * Combinators
     EventStream,
     Reactive,
     Signal,
-    -- mapE,
-    -- mapR,
+
+    -- ** Combining and filtering events
     never,
-    filterJustE,
-    filterE,
-    scatterE,
     merge,
-    -- pureR,
-    -- zipR,
-    accum,
-    snapshot,
-    accumR,
-    snapshotWith,
-    scanlR,
-    foldpR,
+    filterE,
+    filterJustE,
+    scatterE,
+
+    -- ** Past-dependent events
     foldpE,
     scanlE,
-    sample,
     accumE,
-    accumulator,
-    stepper,
-    counter,
     gatherE,
     bufferE,
     recallEWith,
     recallE,
-    -- pureS,
-    -- mapS,
-    -- zipS,
+
+    -- ** Building reactives
+    counter,
+    stepper,
+    accumR,
+    scanlR,
+    foldpR,
+
+    -- ** Sampling reactives
+    sample,
+    snapshot,
+    snapshotWith,
+
+    -- ** Building signals
     stepperS,
     accumS,
+
+    -- ** Sampling signals
     updates,
     current,
+
     -- * Run FRP
     FrpSystem(..),
     runER,
@@ -181,6 +186,7 @@ mapR f (R aProvider) = R $ \aSink ->
 never :: EventStream a
 never = E (\_ -> return (return ()))
 
+-- | Drop 'Nothing' events.
 filterJustE :: EventStream (Maybe a) -> EventStream a
 filterJustE (E maProvider) = E $ \aSink -> do
   frpInternalLog "Setting up filter"
@@ -303,7 +309,7 @@ runER f = do
 
 -- DERIVED runners
 
--- | Run an FRP system, producing a reactive value.
+-- | Run an FRP system, producing a reactive.
 -- You can poll the sstem for the current state, or subscribe to changes in its output.
 runER' :: (EventStream a -> IO (Reactive b)) -> IO (FrpSystem a b b)
 runER' f = runER (\e -> f e >>= \r -> return (r, sample r e))
@@ -327,25 +333,26 @@ testFRP x = do
 
 -- DERIVED
 
+-- | Create a reactive from an initial value and an series of updates.
 accumR = accum
 
+-- | Similar to 'snapshot', but uses the given function go combine the values.
 snapshotWith :: (a -> b -> c) -> Reactive a -> EventStream b -> EventStream c
 snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
+-- | Create a past-dependent reactive.
 scanlR :: (a -> b -> a) -> a -> EventStream b -> IO (Reactive a)
 scanlR f = foldpR (flip f)
 
--- Create a past-dependent reactive value.
+-- Create a past-dependent reactive.
 foldpR :: (a -> b -> b) -> b -> EventStream a -> IO (Reactive b)
 foldpR f z e = accumR z (mapE f e)
 
--- |
--- Create a past-dependent event stream.
+-- | Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> EventStream a -> IO (EventStream b)
 foldpE f a e = a `accumE` (f <$> e)
 
--- |
--- Create a past-dependent event stream. This combinator corresponds to 'scanl' on streams.
+-- | Create a past-dependent event stream. This combinator corresponds to 'scanl' on streams.
 scanlE :: (a -> b -> a) -> a -> EventStream b -> IO (EventStream a)
 scanlE f = foldpE (flip f)
 
