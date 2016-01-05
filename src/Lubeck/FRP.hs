@@ -2,13 +2,16 @@
 {-|
 A lightweight Functional Reactive Programming (FRP) library.
 
-The essence of FRP is responding to external events such as user interaction, communication, real-world events.
-We interact with these events using two primary types:
+The essence of FRP is responding to external events such as user input.
 
-- 'EventStream' is an infinite sequence of events (timestamped values).
-  In classical FRP, this type is called /an event/, and the value-pairs are referred to as /event occurences/.
+- 'EventStream' is a sequence of events (values).
 
-- 'Reactive' is a value that may change discretely, in response to events.
+- 'Reactive' is a value that may change in response to events. It can be polled for the current value.
+
+- 'Signal' is a variant of 'Reactive' that allow users to be notified whenever it is updated.
+
+For an overview of existing FRP implementations, see https://github.com/gelisam/frp-zoo.
+See also Evan Czaplicki's talk on the taxonomy of FRP: https://www.youtube.com/watch?v=Agu6jipKfYw
 
 -}
 module Lubeck.FRP (
@@ -16,15 +19,15 @@ module Lubeck.FRP (
     EventStream,
     Reactive,
     Signal,
-    mapE,
-    mapR,
+    -- mapE,
+    -- mapR,
     never,
     filterJustE,
     filterE,
     scatterE,
     merge,
-    pureR,
-    zipR,
+    -- pureR,
+    -- zipR,
     accum,
     snapshot,
     accumR,
@@ -42,9 +45,9 @@ module Lubeck.FRP (
     bufferE,
     recallEWith,
     recallE,
-    pureS,
-    mapS,
-    zipS,
+    -- pureS,
+    -- mapS,
+    -- zipS,
     stepperS,
     accumS,
     updates,
@@ -61,7 +64,7 @@ module Lubeck.FRP (
     appendSinks,
     contramapSink,
     -- * Dispatcher
-    Dispatcher,
+    Dispatcher(..),
     newDispatcher,
     UnsubscribeAction,
     -- * Misc
@@ -134,9 +137,14 @@ contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
 
 -- | A series of values.
+-- Many FRP libraries refer to 'EventStream' /event/, and the values being emitted to as /occurences/.
+-- Here it is called 'EventStream' to avoid confusion with DOM events (which are in classical parlour /occurances/).
 newtype EventStream a = E (Sink a -> IO UnsubscribeAction)
 -- | A time-varying value.
 newtype Reactive a = R (Sink a -> IO ())
+-- | A time-varying value that allow users to be notified when it is updated.
+newtype Signal a = S (EventStream (), Reactive a)
+
 
 instance Functor EventStream where
   fmap = mapE
@@ -151,6 +159,13 @@ instance Functor Reactive where
 instance Applicative Reactive where
   pure = pureR
   (<*>) = zipR
+
+instance Functor Signal where
+  fmap = mapS
+
+instance Applicative Signal where
+  pure = pureS
+  (<*>) = zipS
 
 mapE :: (a -> b) -> EventStream a -> EventStream b
 mapE f (E aProvider) = E $ \aSink ->
@@ -404,7 +419,6 @@ recallE = recallEWith (,)
 
 -- delayE n = foldr (.) id (replicate n lastE)
 
-data Signal a = S (EventStream (), Reactive a)
 
 -- | A constant signal.
 pureS :: a -> Signal a
@@ -431,7 +445,7 @@ accumS z e = do
   r <- accumR z e
   return $ S (fmap (const ()) e, r)
 
--- | Get an events stream that triggers whenever the signal is updated.
+-- | Get an events stream that emits an event whenever the signal is updated.
 updates :: Signal a -> EventStream a
 updates (S (e,r)) = sample r e
 
