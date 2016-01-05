@@ -8,11 +8,5 @@ packages:
 - location:
     git: git@github.com:BeautifulDestinations/ghcjs-vdom.git
     commit: f774831aaab234b72cfbd4b32800f4685211ee6d
-# - location:
-    # git: git@github.com:ghcjs/ghcjs-dom.git
-    # commit: bbd0e70f7dae6d8d9b89b7307f2d0acf613836a7
-# - location:
-    # git: git@github.com:ghcjs/diagrams-ghcjs.git
-    # commit: 50de0daa6a14406e5e4e57d9ccc11af8a376f410
 extra-deps:
 resolver: nightly-2015-12-14
