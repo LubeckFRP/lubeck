@@ -19,6 +19,7 @@ page = div () [h1 () [text "Index"]
     [ li () [a (href "adplatform/")   [text "Ad platform"]]
     , li () [a (href "interactions/") [text "Interaction browser"]]
     , li () [a (href "posts/")        [text "Post search"]]
+    , li () [a (href "campaigns/")    [text "Campaigns"]]
     ]
   ]
 

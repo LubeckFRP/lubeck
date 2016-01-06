@@ -24,6 +24,8 @@ type Layout =
     :<|>
   "posts" :> Raw
     :<|>
+  "campaigns" :> Raw
+    :<|>
   Raw
 
 main :: IO ()
@@ -43,6 +45,7 @@ main = do
       adplatformServer    <- serveApp jsExeDir "bd-adplatform"    indexHtmlFile
       interactionsServer  <- serveApp jsExeDir "bd-interactions"  indexHtmlFile
       postSearchServer    <- serveApp jsExeDir "bd-post-search"   indexHtmlFile
+      campaignsServer     <- serveApp jsExeDir "bd-campaigns"     indexHtmlFile
       indexServer         <- serveApp jsExeDir "bd-index"         indexHtmlFile
 
       putStrLn $ "Listening on " ++ show port
@@ -51,6 +54,7 @@ main = do
           :<|> adplatformServer
           :<|> interactionsServer
           :<|> postSearchServer
+          :<|> campaignsServer
           :<|> indexServer
 
 serveApp :: String -> String -> String -> IO (Server Raw)
