@@ -11,20 +11,12 @@ import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault,
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
 import GHCJS.VDOM.Attribute (src, width, class_)
 
-import Lubeck.FRP
-import Lubeck.App (Html, runAppPure)
-import Lubeck.Forms (Widget, Widget')
+import Lubeck.App (Html, runAppStatic)
 
-update :: Events () -> IO (Behavior JSString)
-update = foldpR step initial
-  where
-    initial = "Index"
-    step () model = model
-
-render :: Widget JSString ()
-render actions model = h1 () [text model]
+page :: Html
+page = h1 () [text "Index"]
 
 -- MAIN
 
 main :: IO ()
-main = runAppPure update render
+main = runAppStatic page
