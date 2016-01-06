@@ -4,6 +4,7 @@
 module Lubeck.App
     ( Html
     , runApp
+    , runAppPure
     ) where
 import Prelude hiding (div)
 import qualified Prelude
@@ -26,6 +27,13 @@ import GHCJS.Types(JSString, jsval)
 import Lubeck.FRP
 
 type Html = VNode
+
+runAppPure
+  :: Show action
+  => (Events action -> IO (Behavior model))
+  -> (Sink action -> model -> Html)
+  -> IO ()
+runAppPure update render = runApp (fmap (fmap $ \x -> (x,Nothing)) . update) render
 
 runApp
   :: Show action
