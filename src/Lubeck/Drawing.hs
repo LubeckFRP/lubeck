@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, CPP #-}
 
 {-|
 
@@ -66,20 +66,24 @@ module Lubeck.Drawing (
     stack,
   ) where
 
-import GHCJS.Types(JSString)
 import Data.Monoid
 import Control.Applicative
 import Data.VectorSpace
 import Data.AffineSpace
 import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour)
-import qualified Data.String
 import qualified Data.Colour
+import qualified Data.Colour.SRGB
+import qualified Data.String
 import qualified Data.JSString
-import Data.JSString.Text (textFromJSString)
 import Data.Map(Map)
 import qualified Data.Map
 import qualified Data.List
+import qualified Data.Colour.Names as C
+
+#ifdef __GHCJS__
+import GHCJS.Types(JSString)
+import Data.JSString.Text (textFromJSString)
 
 import GHCJS.VDOM (VNode)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
@@ -87,7 +91,11 @@ import GHCJS.VDOM.Element (p, h1, div, form, button, img, hr, custom, table, td,
 import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
+-- TODO consolidate (see below)
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+#else
+type JSString = String
+#endif
 
 -- TODO remove
 import Data.Time.Calendar (Day)
@@ -160,19 +168,14 @@ negateV a = { dx = negate a.dx, dy = negate a.dy }
 -}
 
 offsetVectors :: Point -> [Vector] -> [Point]
-offsetVectors = error "TODO"
--- offsetVectors p = let
---   unsafeTail xs = case xs of
---     []      -> error "offsetVectors"
---     (x:xs) -> xs
---   offsetPoints = Data.List.scanl (flip (.+^))
---   in unsafeTail . offsetPoints p
+offsetVectors p = tail . offsetVectors' p
+  where
+    offsetVectors' = Data.List.scanl (.+^)
 
 betweenPoints :: [Point] -> [Vector]
-betweenPoints = error "TODO"
--- betweenPoints xs = case Data.List.tail xs of
---   Nothing -> []
---   Just ys -> liftA2 (.-.) ys xs
+betweenPoints xs = case xs of
+  []     -> []
+  (_:ys) -> liftA2 (.-.) ys xs
 
 -- distanceVs : Point -> List Point -> List Vector
 -- distanceVs p = tail . pointOffsets p
@@ -302,6 +305,10 @@ data DrawingBase
   | Em
   | Ap Drawing Drawing
   -- deriving (Eq, Ord)
+
+instance Monoid DrawingBase where
+  mempty = transparent
+  mappend = over
 
 {-| An empty and transparent drawing.
     Identity for [over](#over) and [stack](#stack). -}
@@ -433,13 +440,14 @@ style :: Style -> Drawing -> Drawing
 style = Style
 
 {-| -}
-fillColor :: JSString -> Drawing -> Drawing
-fillColor x = style (Data.Map.singleton "fill" x)
+fillColor :: Colour Double -> Drawing -> Drawing
+fillColor x = style (Data.Map.singleton "fill" $ showColor x)
 
 {-| -}
-strokeColor :: JSString -> Drawing -> Drawing
-strokeColor x = style (Data.Map.singleton "stroke" x)
+strokeColor :: Colour Double -> Drawing -> Drawing
+strokeColor x = style (Data.Map.singleton "stroke" $ showColor x)
 
+showColor = Data.JSString.pack . Data.Colour.SRGB.sRGB24show
 {-| -}
 strokeWidth :: Float -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
@@ -508,6 +516,42 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
     --   height $ toString dimensions.y,
     --   viewBox $ "0 0 " ++ toString dimensions.x ++ " " ++ toString dimensions.y] $
     --     toSvg1 $ placeOrigo $ drawing
+
+
+-- a_width
+-- a_height
+-- a_viewBox
+-- a_"vector-effect" "non-scaling-stroke"
+-- a_x
+-- a_y
+-- a_x1
+-- a_x2
+-- a_y1
+-- a_y2
+-- a_r
+-- a_points
+-- a_transform
+-- a_style
+--
+-- n_svg
+-- n_circle
+-- n_rect
+-- n_line
+-- n_polygon
+-- n_polyline
+-- n_text'
+-- n_g
+
+-- TODO consolidate
+customAttrs :: Map String String -> Attributes'
+customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
+
+
+
+drawTest :: Svg
+drawTest = toSvg (RenderingOptions (Point 300 300) Center)
+  $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle)
 {-
 
 -- TODO move
