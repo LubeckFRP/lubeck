@@ -10,7 +10,54 @@ Essentially a stripped-down version of Diagrams:
 [diagrams]: http://projects.haskell.org/diagrams/
 
 -}
-module Lubeck.Drawing where
+module Lubeck.Drawing (
+    -- ** Basics
+    Point,
+    Vector,
+    Dimension(..),
+    Angle,
+    offsetVectors,
+    betweenPoints,
+    turn,
+    angleToRadians,
+    angleToDegrees,
+    -- ** Transformations
+    Transformation,
+    emptyTransformation,
+    apTransformation,
+    (!<>),
+    transformationToMatrix,
+    -- ** Styling
+    Style,
+    emptyStyle,
+    styleNamed,
+    apStyle,
+    styleToAttrString,
+    -- ** Envelopes
+    Envelope,
+    -- ** Drawings
+    Drawing,
+    transparent,
+    circle,
+    square,
+    horizontalLine,
+    verticalLine,
+    segments,
+    polygon,
+    text,
+    over,
+    stack,
+    transform,
+    translate,
+    translateX,
+    translateY,
+    scaleXY,
+    scale,
+    scaleX,
+    scaleY,
+    rotate,
+    shearXY,
+  ) where
 
 import GHCJS.Types(JSString)
 import Data.Monoid
@@ -29,7 +76,7 @@ import qualified Data.List
 
 import GHCJS.VDOM (VNode)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
+import GHCJS.VDOM.Element (p, h1, div, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
 import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
