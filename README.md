@@ -56,7 +56,7 @@ To add a new single-page app/static page `foo`:
 - Add the source file in `src/Foo.hs`
 - Add an executable `bd-foo` to `lubeck.cabal` (i.e. by copying `bd-example`)
 - Add a route entry to `server/Main.hs`
-- (Optionally) Add to the route from other pages
+- (Optionally) Add links to the route from other pages such as `Index.hs`
 - Rebuild
 
 For a complete example, see [this commit](https://github.com/BeautifulDestinations/lubeck/commit/319f44c76cf18dacfb3ad4115ac976a1392fc11e).
