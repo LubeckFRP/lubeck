@@ -6,6 +6,8 @@ module Main where
 import Prelude hiding (div)
 import qualified Prelude
 
+import Data.Monoid ((<>))
+
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
@@ -22,10 +24,14 @@ update :: Events () -> IO (Behavior JSString)
 update = foldpR step initial
   where
     initial = "Hello Web!"
-    step () model = model
+    step () model = model <> "!"
 
 render :: Widget JSString ()
-render actions model = h1 () [text model]
+render actions model = h1 ()
+  [ div () $ text model
+  , div () $ button
+    [ click (\_ -> actions ()) ]
+    [ text "Click me" ] ]
 
 -- MAIN
 
