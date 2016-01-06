@@ -550,7 +550,9 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
 --
 
 n_svg :: String -> String -> String -> [Svg] -> Svg
-n_svg w h vb dr = E.custom "svg" (customAttrs$Data.Map.fromList[("xmlns","http://www.w3.org/2000/svg"),("width",w),("height",h),("viewBox",vb)]) dr
+n_svg w h vb dr = E.custom "svg" (customAttrs$Data.Map.fromList[
+  -- ("xmlns","http://www.w3.org/2000/svg"),
+  ("width",w),("height",h),("viewBox",vb)]) dr
 -- n_circle
 -- n_rect
 -- n_line
@@ -570,7 +572,7 @@ customAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $
 
 drawTest :: Svg
 drawTest = toSvg (RenderingOptions (Point 300 300) Center)
-  $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
+  $ scale 45 (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
 {-
 
 -- TODO move
