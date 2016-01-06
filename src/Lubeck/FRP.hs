@@ -187,7 +187,7 @@ instance Applicative Behavior where
   (<*>) = zipR
 
 instance Monad Behavior where
-  k >>= f = join $ fmap f k
+  k >>= f = joinR $ fmap f k
 
 instance Functor Signal where
   fmap = mapS
