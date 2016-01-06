@@ -32,15 +32,13 @@ runAppStatic :: Html -> IO ()
 runAppStatic x = runAppPure (const $ return $ return x) (flip const)
 
 runAppPure
-  :: Show action
-  => (Events action -> IO (Behavior model))
+  :: (Events action -> IO (Behavior model))
   -> (Sink action -> model -> Html)
   -> IO ()
 runAppPure update render = runApp (fmap (fmap $ \x -> (x,Nothing)) . update) render
 
 runApp
-  :: Show action
-  => (Events action -> IO (Behavior (model, Maybe (IO action))))
+  :: (Events action -> IO (Behavior (model, Maybe (IO action))))
   -> (Sink action -> model -> Html)
   -> IO ()
 runApp update render = do
@@ -70,16 +68,16 @@ runApp update render = do
         atomically $ TChan.writeTChan frpUpdated ()
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
-      putStrLn $ "Processing event: " ++ show i
+      -- putStrLn $ "Processing event: " ++ show i
       (input system) i
 
   -- Job thread
   forkIO $
     forever $ do
       job <- atomically $ TChan.readTChan frpJobs
-      putStrLn "Starting a job"
+      -- putStrLn "Starting a job"
       res <- job
-      putStrLn "Job finished"
+      -- putStrLn "Job finished"
       atomically $ TChan.writeTChan frpIn res
 
   -- Enter rendering loop on main thread
