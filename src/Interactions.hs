@@ -30,6 +30,7 @@ import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
+import Lubeck.Forms (Widget, Widget')
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.Count as C
@@ -37,10 +38,6 @@ import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
 import qualified BD.Data.Interaction as I
 import BD.Data.Interaction hiding (interactions)
-
-
-type Widget i o = Sink o -> i -> Html
-type Widget' a  = Widget a a
 
 data Action
   = NoAction

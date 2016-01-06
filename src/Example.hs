@@ -16,9 +16,7 @@ import GHCJS.VDOM.Attribute (src, width, class_)
 import Lubeck.FRP
 import Lubeck.App (Html, runAppPure)
 import Lubeck.Web.History
-
-type Widget i o = Sink o -> i -> Html
-type Widget' a  = Widget a a
+import Lubeck.Forms (Widget, Widget')
 
 update :: Events () -> IO (Behavior JSString)
 update = foldpR step initial

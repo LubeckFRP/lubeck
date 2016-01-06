@@ -15,6 +15,7 @@ library
                      , Lubeck.Web.History
                      , Lubeck.Drawing
                      , Lubeck.Forms
+                     , Lubeck.Html
                      , BD.Api
                      , BD.Types
                      , BD.Data.Account

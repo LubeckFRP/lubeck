@@ -5,6 +5,7 @@ module Lubeck.App
     ( Html
     , runApp
     , runAppPure
+    , runAppStatic
     ) where
 import Prelude hiding (div)
 import qualified Prelude
@@ -25,8 +26,10 @@ import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
 
 import Lubeck.FRP
+import Lubeck.Html
 
-type Html = VNode
+runAppStatic :: Html -> IO ()
+runAppStatic x = runAppPure (const $ return $ return x) (flip const)
 
 runAppPure
   :: Show action

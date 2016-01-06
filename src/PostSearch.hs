@@ -15,9 +15,7 @@ import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 
 import BD.Query.PostQuery
-
-type Widget i o = Sink o -> i -> Html
-type Widget' a  = Widget a a
+import Lubeck.Forms (Widget, Widget')
 
 update :: Events () -> IO (Behavior (JSString, Maybe (IO ())))
 update = foldpR step initial

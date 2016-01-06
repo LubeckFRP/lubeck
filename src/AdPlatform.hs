@@ -31,6 +31,7 @@ import Data.JSString.Text (textFromJSString)
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
+import Lubeck.Forms (Widget, Widget')
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.AdCampaign as AC
@@ -40,9 +41,6 @@ import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 import BD.Types
-
-
-type Widget i o = Sink o -> i -> Html
 
 type Account = A.Account
 
