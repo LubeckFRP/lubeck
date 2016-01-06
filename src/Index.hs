@@ -20,6 +20,7 @@ page = div () [h1 () [text "Index"]
     , li () [a (href "interactions/") [text "Interaction browser"]]
     , li () [a (href "posts/")        [text "Post search"]]
     , li () [a (href "campaigns/")    [text "Campaigns"]]
+    , li () [a (href "example/")      [text "Example page"]]
     ]
   ]
 

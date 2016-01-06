@@ -17,6 +17,7 @@ import Lubeck.FRP
 import Lubeck.App (Html, runAppPure)
 import Lubeck.Web.History
 import Lubeck.Forms (Widget, Widget')
+import Lubeck.Drawing (drawTest)
 
 update :: Events () -> IO (Behavior JSString)
 update = foldpR step initial
@@ -29,7 +30,8 @@ render actions model = h1 ()
   [ div () $ text model
   , div () $ button
     [ click (\_ -> actions ()) ]
-    [ text "Click me" ] ]
+    [ text "Click me" ]
+  , drawTest ]
 
 -- MAIN
 

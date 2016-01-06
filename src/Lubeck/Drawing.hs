@@ -64,6 +64,9 @@ module Lubeck.Drawing (
     -- * Combination
     over,
     stack,
+
+    -- * Debug
+    drawTest,
   ) where
 
 import Data.Monoid
@@ -431,8 +434,8 @@ shearXY   a b = transform (1, b, a, 1, 0, 0)
 --   (fillColor "red" square) `over` smokeBackground
 -- ```
 -- -}
--- smokeBackground : Drawing
--- smokeBackground = fillColor "whitesmoke" $ scale 200000 $ square
+smokeBackground :: Drawing
+smokeBackground = fillColor C.whitesmoke $ scale 200000 $ square
 --
 -- {-| Draw the X and Y axis (their intersection is the origin). -}
 -- xyAxis : Drawing
@@ -472,7 +475,7 @@ toSvg1 :: Drawing -> [Svg]
 -- toSvg1 = error "TODO"
 toSvg1 x = let
     single x = [x]
-    -- noScale = Html.Attributes.attribute "vector-effect" "non-scaling-stroke"
+    noScale = ("vector-effect", "non-scaling-stroke")
     -- x_ = Svg.Attributes.x
     -- y_ = Svg.Attributes.y
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
@@ -481,8 +484,12 @@ toSvg1 x = let
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
 
   in case x of
---   Circle     -> single $ Svg.circle [r "0.5", noScale] []
---   Rect       -> single $ Svg.rect [x_ "-0.5", y_ "-0.5", width "1", height "1", noScale] []
+  Circle     -> single $ E.custom "circle"
+    (customAttrs$Data.Map.fromList[("r","0.5"), noScale])
+    ()
+  Rect       -> single $ E.custom "rect"
+    (customAttrs$Data.Map.fromList[("x","-0.5"),("y","-0.5"),("width","1"),("height","1"), noScale])
+    ()
 --   Line       -> single $ Svg.line [x1 "0", y1 "0", x2 "1", y2 "0", noScale] []
 --   Lines closed vs -> if closed
 --     then single $ Svg.polygon [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
@@ -490,8 +497,12 @@ toSvg1 x = let
 --
 --   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
 --
---   Transf t x -> single $ g [Svg.Attributes.transform $ "matrix" ++ toString (negY t) ++ ""] (toSvg1 x)
---   Style s x  -> single $ g [Svg.Attributes.style $ styleToAttrString s] (toSvg1 x)
+  Transf t x -> single $ E.custom "g"
+    (customAttrs$Data.Map.fromList[("transform", "matrix" ++ show (negY t) ++ "")])
+    (toSvg1 x)
+  Style s x  -> single $ E.custom "g"
+    (customAttrs$Data.Map.fromList[("style", Data.JSString.unpack $ styleToAttrString s)])
+    (toSvg1 x)
 --
   Em         -> single $ n_g' []
   Ap x y     -> single $ n_g' (toSvg1 x ++ toSvg1 y)
@@ -514,7 +525,7 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
         Center      -> translateX (x/2) . translateY (y/(-2))
         BottomLeft  -> translateY (y*(-1))
     in
-    n_svg (show x) (show y) ("0 0 " ++ show x ++ " " ++ show y) (toSvg1 $ placeOrigo $ drawing)
+    n_svg (show $ floor x) (show $ floor y) ("0 0 " ++ show (floor x) ++ " " ++ show (floor y)) (toSvg1 $ placeOrigo $ drawing)
     -- svg [
     --   width  $ toString dimensions.x,
     --   height $ toString dimensions.y,
@@ -537,6 +548,7 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
 -- a_transform
 -- a_style
 --
+
 n_svg :: String -> String -> String -> [Svg] -> Svg
 n_svg w h vb dr = E.custom "svg" (customAttrs$Data.Map.fromList[("width",w),("height",h),("viewBox",vb)]) dr
 -- n_circle
@@ -558,7 +570,7 @@ customAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $
 
 drawTest :: Svg
 drawTest = toSvg (RenderingOptions (Point 300 300) Center)
-  $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle)
+  $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
 {-
 
 -- TODO move
