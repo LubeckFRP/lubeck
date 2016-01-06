@@ -1,6 +1,15 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns #-}
 
+{-|
+
+High-level graphics library with an SVG backend.
+
+Essentially a stripped-down version of Diagrams:
+
+[diagrams]: http://projects.haskell.org/diagrams/
+
+-}
 module Lubeck.Drawing where
 
 import GHCJS.Types(JSString)

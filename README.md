@@ -54,11 +54,11 @@ The easiest way to get the documentation for the `lubeck` library and the GHCJS-
 - DONE Deployment - server needs to serve different applications (Hans; 05 Jan 16, before Lunch.)
 - ONGOING Form combinators - need to be able to connect a form to a value in the model, and a field in a form to a value inside the form value (Hans; 07 Jan 16)
 - LATER Support for Pure / Impure action type in the core framework so not every app defines this. Unless you come up with a cleverer component architecture (Hans; 07 Jan 16)
-- History (Back button) support. App needs to be able to finely declare what is an checkpoint in history and what is an inconsequential change to model - we don't want every keypress in a form to be in the browser history. (Hans; 10 Feb 2016)
+- ONGOING History (Back button) support. App needs to be able to finely declare what is an checkpoint in history and what is an inconsequential change to model - we don't want every keypress in a form to be in the browser history. (Hans; 10 Feb 2016)
 - ONGOING Component architecture (Feb 2016 or earlier). This should either be encapsulated state or using lenses to focus on parts of a global state value
 
-- Data visualisation
-- Port data visualisation library from Elm app (15 Jan 16)
+- ONGOING Data visualisation
+- ONGOING Port data visualisation library from Elm app (15 Jan 16)
 - Ticks and labels on axes. See Haskell implementation (15 Jan 16)
 - Incorporate design. (10 Feb 16)
 - Bar charts (Feb 16)
@@ -68,7 +68,7 @@ The easiest way to get the documentation for the `lubeck` library and the GHCJS-
 - Image popups (Feb 16)
 - Design / UX
 
-- Bootstrap-based design - Since we don't have designs from the designer, let's do something very canonically bootstrap (15 Jan 16).
+- DONE Bootstrap-based design - Since we don't have designs from the designer, let's do something very canonically bootstrap (15 Jan 16).
 - Sidebar navigation
 - Implement designs (when they arrive).
 
