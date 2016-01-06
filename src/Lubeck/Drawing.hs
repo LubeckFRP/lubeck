@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, QuasiQuotes, CPP #-}
 
 {-|
 
@@ -91,8 +91,11 @@ import GHCJS.VDOM.Element (p, h1, div, form, button, img, hr, custom, table, td,
 import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
+
 -- TODO consolidate (see below)
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+import GHCJS.Foreign.QQ (js, jsu, jsu')
+
 #else
 type JSString = String
 #endif
@@ -452,7 +455,8 @@ showColor = Data.JSString.pack . Data.Colour.SRGB.sRGB24show
 strokeWidth :: Float -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
   where
-    showJS = Data.JSString.pack . show
+-- TODO move
+showJS = Data.JSString.pack . show
 
 -- TODO internal
 pointsToSvgString :: [Point] -> JSString
@@ -465,18 +469,18 @@ pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.L
 type Svg = VNode
 
 toSvg1 :: Drawing -> [Svg]
-toSvg1 = error "TODO"
--- toSvg1 x = let
---     single x = [x]
---     noScale = Html.Attributes.attribute "vector-effect" "non-scaling-stroke"
---     x_ = Svg.Attributes.x
---     y_ = Svg.Attributes.y
---     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
---
---     offsetVectorsWithOrigin p vs = p :: offsetVectors p vs
---     reflY a = { dx = a.dx, dy = negate a.dy }
---
---   in case x of
+-- toSvg1 = error "TODO"
+toSvg1 x = let
+    single x = [x]
+    -- noScale = Html.Attributes.attribute "vector-effect" "non-scaling-stroke"
+    -- x_ = Svg.Attributes.x
+    -- y_ = Svg.Attributes.y
+    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
+
+  in case x of
 --   Circle     -> single $ Svg.circle [r "0.5", noScale] []
 --   Rect       -> single $ Svg.rect [x_ "-0.5", y_ "-0.5", width "1", height "1", noScale] []
 --   Line       -> single $ Svg.line [x1 "0", y1 "0", x2 "1", y2 "0", noScale] []
@@ -489,8 +493,8 @@ toSvg1 = error "TODO"
 --   Transf t x -> single $ g [Svg.Attributes.transform $ "matrix" ++ toString (negY t) ++ ""] (toSvg1 x)
 --   Style s x  -> single $ g [Svg.Attributes.style $ styleToAttrString s] (toSvg1 x)
 --
---   Em         -> single $ g [] []
---   Ap x y     -> single $ g [] (toSvg1 x ++ toSvg1 y)
+  Em         -> single $ n_g' []
+  Ap x y     -> single $ n_g' (toSvg1 x ++ toSvg1 y)
 
 
 {-| -}
@@ -510,7 +514,7 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
         Center      -> translateX (x/2) . translateY (y/(-2))
         BottomLeft  -> translateY (y*(-1))
     in
-    error "TODO"
+    n_svg (show x) (show y) ("0 0 " ++ show x ++ " " ++ show y) (toSvg1 $ placeOrigo $ drawing)
     -- svg [
     --   width  $ toString dimensions.x,
     --   height $ toString dimensions.y,
@@ -533,7 +537,8 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
 -- a_transform
 -- a_style
 --
--- n_svg
+n_svg :: String -> String -> String -> [Svg] -> Svg
+n_svg w h vb dr = E.custom "svg" (customAttrs$Data.Map.fromList[("width",w),("height",h),("viewBox",vb)]) dr
 -- n_circle
 -- n_rect
 -- n_line
@@ -541,10 +546,12 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
 -- n_polyline
 -- n_text'
 -- n_g
+n_g' :: [Svg] -> Svg
+n_g' = E.custom "g" ()
 
 -- TODO consolidate
 customAttrs :: Map String String -> Attributes'
-customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+customAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
 
 
