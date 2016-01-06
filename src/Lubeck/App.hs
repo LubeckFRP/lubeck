@@ -29,7 +29,7 @@ import Lubeck.FRP
 import Lubeck.Html
 
 runAppStatic :: Html -> IO ()
-runAppStatic x = runAppPure (const $ return $ return x) (flip const)
+runAppStatic x = runAppPure (pure $ pure $ pure x) (flip const)
 
 runAppPure
   :: (Events action -> IO (Behavior model))
