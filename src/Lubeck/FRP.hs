@@ -78,6 +78,11 @@ module Lubeck.FRP (
     runER,
     runER',
     runER'',
+    -- ** Low-level
+    newEvent,
+    subscribeEvent,
+    pollBehavior,
+    -- ** Utility
     testFRP,
     -- * Sink
     Sink,
@@ -359,9 +364,19 @@ testFRP x = do
   -- TODO print initial!
   forever $ getLine >>= input system
 
+newEvent :: IO (Sink a, Events a)
+newEvent = do
+  Dispatcher aProvider aSink <- newDispatcher
+  return $ (aSink, E aProvider)
 
+subscribeEvent :: Events a -> Sink a -> IO UnsubscribeAction
+subscribeEvent (E x) = x
 
-
+pollBehavior :: Behavior a -> IO a
+pollBehavior (R aProvider) = do
+  v <- TVar.newTVarIO undefined
+  aProvider (atomically . TVar.writeTVar v)
+  TVar.readTVarIO v
 
 -- DERIVED
 
