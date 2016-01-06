@@ -55,6 +55,7 @@ module Lubeck.FRP (
     -- ** Building behaviors
     counter,
     stepper,
+    switcher,
     accumR,
     scanlR,
     foldpR,
@@ -180,6 +181,9 @@ instance Applicative Behavior where
   pure = pureR
   (<*>) = zipR
 
+instance Monad Behavior where
+  k >>= f = join $ fmap f k
+
 instance Functor Signal where
   fmap = mapS
 
@@ -194,8 +198,12 @@ mapE f (E aProvider) = E $ \aSink ->
   -- When UnsubscribeActionistered, UnsubscribeActionister with E
 
 mapR :: (a -> b) -> Behavior a -> Behavior b
-mapR f (R aProvider) = R $ \aSink ->
-  aProvider $ contramapSink f aSink
+mapR f (R aProvider) = R $ \bSink ->
+  aProvider $ contramapSink f bSink
+
+joinR :: Behavior (Behavior a) -> Behavior a
+joinR (R behAProvider) = R $ \aSink ->
+  behAProvider $ \(R aProvider) -> aProvider aSink
 
 -- | Never occurs. Identity for 'merge'.
 never :: Events a
@@ -290,6 +298,9 @@ accum z (E aaProvider) = do
     aSink value
     return ()
   -- TODO UnsubscribeAction?
+
+switcher :: Behavior a -> Events (Behavior a) -> IO (Behavior a)
+switcher z e = fmap joinR (stepper z e)
 
 -- | Sample a varying value whenever an event occurs.
 snapshot :: Behavior a -> Events b -> Events (a, b)
