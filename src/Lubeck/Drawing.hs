@@ -19,14 +19,21 @@ import Data.VectorSpace
 import Data.AffineSpace
 import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour)
+import qualified Data.String
 import qualified Data.Colour
 import qualified Data.JSString
 import Data.JSString.Text (textFromJSString)
-
-
 import Data.Map(Map)
 import qualified Data.Map
 import qualified Data.List
+
+import GHCJS.VDOM (VNode)
+import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
+import GHCJS.VDOM.Attribute (src, width, class_)
+import qualified GHCJS.VDOM.Element as E
+import qualified GHCJS.VDOM.Attribute as A
+import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 -- TODO remove
 import Data.Time.Calendar (Day)
@@ -60,9 +67,11 @@ examplePlot =
 
 {-| A point in 2D space. -}
 data Point = Point { x :: Float, y :: Float }
+  deriving (Eq, Ord, Show)
 
 {-| A vector (distance between two points) in 2D space. -}
 data Vector = Vector { dx :: Float, dy :: Float }
+  deriving (Eq, Ord, Show)
 
 instance AdditiveGroup Vector where
 instance VectorSpace Vector where
@@ -349,94 +358,103 @@ shearXY :: Float -> Float -> Drawing -> Drawing
 shearXY   a b = transform (1, b, a, 1, 0, 0)
 
 
-{-
 
-{-| A smoke-colored background big enough to fill the whole screen.
-
-Useful to see the boundary of the canvas, as in:
-
-```elm
-  (fillColor "red" square) `over` smokeBackground
-```
--}
-smokeBackground : Drawing
-smokeBackground = fillColor "whitesmoke" $ scale 200000 $ square
-
-{-| Draw the X and Y axis (their intersection is the origin). -}
-xyAxis : Drawing
-xyAxis = strokeColor "darkgreen" $ strokeWidth 0.5 $ scale 20000 $ stack [horizontalLine, verticalLine]
+-- {-| A smoke-colored background big enough to fill the whole screen.
+--
+-- Useful to see the boundary of the canvas, as in:
+--
+-- ```elm
+--   (fillColor "red" square) `over` smokeBackground
+-- ```
+-- -}
+-- smokeBackground : Drawing
+-- smokeBackground = fillColor "whitesmoke" $ scale 200000 $ square
+--
+-- {-| Draw the X and Y axis (their intersection is the origin). -}
+-- xyAxis : Drawing
+-- xyAxis = strokeColor "darkgreen" $ strokeWidth 0.5 $ scale 20000 $ stack [horizontalLine, verticalLine]
 
 {-| Apply a style to a drawing. -}
-style : Style -> Drawing -> Drawing
+style :: Style -> Drawing -> Drawing
 style = Style
 
 {-| -}
-fillColor : String -> Drawing -> Drawing
-fillColor x = style (Dict.singleton "fill" x)
+fillColor :: JSString -> Drawing -> Drawing
+fillColor x = style (Data.Map.singleton "fill" x)
 
 {-| -}
-strokeColor : String -> Drawing -> Drawing
-strokeColor x = style (Dict.singleton "stroke" x)
+strokeColor :: JSString -> Drawing -> Drawing
+strokeColor x = style (Data.Map.singleton "stroke" x)
 
 {-| -}
-strokeWidth : Float -> Drawing -> Drawing
-strokeWidth x = style (styleNamed "stroke-width" (toString x ++ "px"))
+strokeWidth :: Float -> Drawing -> Drawing
+strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
+  where
+    showJS = Data.JSString.pack . show
+
+-- TODO internal
+pointsToSvgString :: [Point] -> JSString
+pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+  where
+    toJSString = Data.JSString.pack
+    pointToSvgString (Point {x,y}) = show x ++ "," ++ show y
 
 
-pointToSvgString : Point -> String
-pointToSvgString {x,y} = toString x ++ "," ++ toString y
+type Svg = VNode
 
-pointsToSvgString : List Point -> String
-pointsToSvgString ps = String.fromList $ List.concat $ List.intersperse (String.toList " ") $ List.map (String.toList << pointToSvgString) ps
-
-toSvg1 : Drawing -> List Svg
-toSvg1 x = let
-    single x = [x]
-    noScale = Html.Attributes.attribute "vector-effect" "non-scaling-stroke"
-    x_ = Svg.Attributes.x
-    y_ = Svg.Attributes.y
-    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-
-    offsetVectorsWithOrigin p vs = p :: offsetVectors p vs
-    reflY a = { dx = a.dx, dy = negate a.dy }
-
-  in case x of
-  Circle     -> single $ Svg.circle [r "0.5", noScale] []
-  Rect       -> single $ Svg.rect [x_ "-0.5", y_ "-0.5", width "1", height "1", noScale] []
-  Line       -> single $ Svg.line [x1 "0", y1 "0", x2 "1", y2 "0", noScale] []
-  Lines closed vs -> if closed
-    then single $ Svg.polygon [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
-    else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
-
-  Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
-
-  Transf t x -> single $ g [Svg.Attributes.transform $ "matrix" ++ toString (negY t) ++ ""] (toSvg1 x)
-  Style s x  -> single $ g [Svg.Attributes.style $ styleToAttrString s] (toSvg1 x)
-
-  Em         -> single $ g [] []
-  Ap x y     -> single $ g [] (toSvg1 x ++ toSvg1 y)
+toSvg1 :: Drawing -> [Svg]
+toSvg1 = error "TODO"
+-- toSvg1 x = let
+--     single x = [x]
+--     noScale = Html.Attributes.attribute "vector-effect" "non-scaling-stroke"
+--     x_ = Svg.Attributes.x
+--     y_ = Svg.Attributes.y
+--     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+--
+--     offsetVectorsWithOrigin p vs = p :: offsetVectors p vs
+--     reflY a = { dx = a.dx, dy = negate a.dy }
+--
+--   in case x of
+--   Circle     -> single $ Svg.circle [r "0.5", noScale] []
+--   Rect       -> single $ Svg.rect [x_ "-0.5", y_ "-0.5", width "1", height "1", noScale] []
+--   Line       -> single $ Svg.line [x1 "0", y1 "0", x2 "1", y2 "0", noScale] []
+--   Lines closed vs -> if closed
+--     then single $ Svg.polygon [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
+--     else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
+--
+--   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
+--
+--   Transf t x -> single $ g [Svg.Attributes.transform $ "matrix" ++ toString (negY t) ++ ""] (toSvg1 x)
+--   Style s x  -> single $ g [Svg.Attributes.style $ styleToAttrString s] (toSvg1 x)
+--
+--   Em         -> single $ g [] []
+--   Ap x y     -> single $ g [] (toSvg1 x ++ toSvg1 y)
 
 
 {-| -}
-type OrigoPlacement = TopLeft | BottomLeft | Center
+data OrigoPlacement = TopLeft | BottomLeft | Center
+  deriving (Eq, Ord, Show)
 {-| -}
-type alias RenderingOptions =  { dimensions : Point, origoPlacement : OrigoPlacement }
+data RenderingOptions = RenderingOptions { dimensions :: Point, origoPlacement :: OrigoPlacement }
+  deriving (Eq, Ord, Show)
 
 {-| -}
-toSvg : RenderingOptions -> Drawing -> Svg
-toSvg opts drawing =
+toSvg :: RenderingOptions -> Drawing -> Svg
+toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
     let
-      dimensions = opts.dimensions
-      placeOrigo = case opts.origoPlacement of
-        TopLeft     -> \x -> x
-        Center      -> translateX (dimensions.x/2) >> translateY (dimensions.y/(-2))
-        BottomLeft  -> translateY (dimensions.y*(-1))
+      Point {x,y} = dimensions
+      placeOrigo  = case origoPlacement of
+        TopLeft     -> id
+        Center      -> translateX (x/2) . translateY (y/(-2))
+        BottomLeft  -> translateY (y*(-1))
     in
-    svg [
-      width  $ toString dimensions.x,
-      height $ toString dimensions.y,
-      viewBox $ "0 0 " ++ toString dimensions.x ++ " " ++ toString dimensions.y] $
-        toSvg1 $ placeOrigo $ drawing
+    error "TODO"
+    -- svg [
+    --   width  $ toString dimensions.x,
+    --   height $ toString dimensions.y,
+    --   viewBox $ "0 0 " ++ toString dimensions.x ++ " " ++ toString dimensions.y] $
+    --     toSvg1 $ placeOrigo $ drawing
+{-
 
 -- TODO move
 flipV = scaleY (-1)
