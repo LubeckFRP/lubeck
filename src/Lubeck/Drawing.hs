@@ -21,32 +21,15 @@ module Lubeck.Drawing (
     turn,
     angleToRadians,
     angleToDegrees,
+
     -- ** Transformations
     Transformation,
     emptyTransformation,
     apTransformation,
     (!<>),
     transformationToMatrix,
-    -- ** Styling
-    Style,
-    emptyStyle,
-    styleNamed,
-    apStyle,
-    styleToAttrString,
-    -- ** Envelopes
-    Envelope,
-    -- ** Drawings
-    Drawing,
-    transparent,
-    circle,
-    square,
-    horizontalLine,
-    verticalLine,
-    segments,
-    polygon,
-    text,
-    over,
-    stack,
+
+    -- ** Applying transformations
     transform,
     translate,
     translateX,
@@ -57,6 +40,30 @@ module Lubeck.Drawing (
     scaleY,
     rotate,
     shearXY,
+
+    -- ** Styling
+    Style,
+    emptyStyle,
+    styleNamed,
+    apStyle,
+    styleToAttrString,
+
+    -- ** Envelopes
+    Envelope,
+    -- ** Drawings
+    Drawing,
+    -- ** Basic drawings
+    transparent,
+    circle,
+    square,
+    horizontalLine,
+    verticalLine,
+    segments,
+    polygon,
+    text,
+    -- * Combination
+    over,
+    stack,
   ) where
 
 import GHCJS.Types(JSString)
