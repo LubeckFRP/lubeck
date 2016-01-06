@@ -17,6 +17,14 @@ import Lubeck.App (Html, runApp)
 import BD.Query.PostQuery
 import Lubeck.Forms (Widget, Widget')
 
+-- IO (Behavior Html, Behavior SimplePostQuery)     state of post search form: def/user
+-- Event ()                                         submit: user
+
+-- State of results
+-- B Html, B [SearchPost]                           resulting posts: def/HTTP result
+
+-- Event ImageId                                    add to library: user
+
 update :: Events () -> IO (Behavior (JSString, Maybe (IO ())))
 update = foldpR step initial
   where

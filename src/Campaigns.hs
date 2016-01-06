@@ -18,6 +18,10 @@ import Lubeck.App (Html, runAppPure)
 import Lubeck.Web.History
 import Lubeck.Forms (Widget, Widget')
 
+-- B String               account to fetch campaigns for, def/user
+-- E ()                   user says fetch new campaigns
+-- B [Campaign], B Html   result of fetch, def/HTTP result
+
 update :: Events () -> IO (Behavior JSString)
 update = foldpR step initial
   where
