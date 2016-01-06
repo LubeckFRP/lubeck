@@ -337,12 +337,18 @@ runER f = do
 
 -- | Run an FRP system, producing a behavior.
 -- You can poll the sstem for the current state, or subscribe to changes in its output.
+--
+-- Note that as this returns a behavior, the resulting system will emit an output on every
+-- input event, whether the actual output of the network has changed or nor.
 runER' :: (Events a -> IO (Behavior b)) -> IO (FrpSystem a b b)
 runER' f = runER (\e -> f e >>= \r -> return (r, sample r e))
 
 -- | Run an FRP system starting in the given state.
 -- The behavior passed to the function starts in the initial state provided here and reacts to inputs to the system.
 -- You can poll system for the current state, or subscribe to changes in its output.
+--
+-- Note that as this returns a behavior, the resulting system will emit an output on every
+-- input event, whether the actual output of the network has changed or nor.
 runER'' :: a -> (Behavior a -> IO (Behavior b)) -> IO (FrpSystem a b b)
 runER'' z f = runER' (stepper z >=> f)
 
