@@ -272,7 +272,7 @@ apStyle = Data.Map.union
 
 {-| -}
 styleToAttrString :: Style -> JSString
-styleToAttrString = Data.Map.foldlWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) ""
+styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) ""
 
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.

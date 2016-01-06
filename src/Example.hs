@@ -26,8 +26,8 @@ update = foldpR step initial
     step () model = model <> "!"
 
 render :: Widget JSString ()
-render actions model = h1 ()
-  [ div () $ text model
+render actions model = div ()
+  [ div () $ h1 () $ text model
   , div () $ button
     [ click (\_ -> actions ()) ]
     [ text "Click me" ]
