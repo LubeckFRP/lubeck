@@ -247,8 +247,8 @@ scatter (E taProvider) = E $ \aSink -> do
 --
 -- Two events may occur at the same time. This usually happens because
 -- they are being emitted on different event strems that are both based
--- on the same underlying stream. For example there may be a stream to listen
--- for key presses, and another stream for presses on the key 'k'.
+-- on the same underlying stream.
+--
 -- If events occur simultaneously in two streams composed with 'merge', both
 -- will be processed in left-to-right order.
 merge :: Events a -> Events a -> Events a
@@ -300,8 +300,8 @@ Proof
 -- | Create a behavior from an initial value and an series of updates.
 --   Whenever the event occurs, the value is updated by applying the function
 --   contained in the event.
-accum :: a -> Events (a -> a) -> IO (Behavior a)
-accum z (E aaProvider) = do
+accumR :: a -> Events (a -> a) -> IO (Behavior a)
+accumR z (E aaProvider) = do
   frpInternalLog "Setting up accum"
   var <- TVar.newTVarIO z
   unregAA_ <- aaProvider $
