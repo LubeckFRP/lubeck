@@ -28,73 +28,72 @@ import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
 import BD.Api (getAPI)
 
--- IO (Behavior Html, Behavior SimplePostQuery)     state of post search form: def/user
--- Event ()                                         submit: user
 
--- State of results
--- B Html, B [SearchPost]                           resulting posts: def/HTTP result
-
--- Event ImageId                                    add to library: user
-
-
-
-
-
-
+searchForm :: Widget () SimplePostQuery
+searchForm doSearch () = div () $
+  button (click $ \e -> doSearch undefined) $ text "Search!"
 
 
 type Post = SearchPost
 
+-- | Non-interactive post table (for search results).
 postSearchResult :: Widget [Post] ()
 postSearchResult dontUseSink posts = div () [
     h1 () [text "Search Results"]
     , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
     , postTable dontUseSink posts
   ]
+  where
+    postTable :: Widget [Post] ()
+    postTable dontUseSink posts =
+      table [class_ "table table-striped table-hover"] $ tbody () $
+        fmap (tr () . fmap (postTableCell dontUseSink)) (divide 5 posts)
 
-postTable :: Widget [Post] ()
-postTable dontUseSink posts =
-  table [class_ "table table-striped table-hover"] $ tbody () $
-    fmap (tr () . fmap (postTableCell dontUseSink)) (divide 5 posts)
-
-postTableCell :: Widget Post ()
-postTableCell dontUseSink post = td ()
-  [ a [ target "_blank",
-        href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
-        -- , class_ "hh-brighten-image"
+    postTableCell :: Widget Post ()
+    postTableCell dontUseSink post = td ()
+      [ a [ target "_blank",
+            href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
+            -- , class_ "hh-brighten-image"
+            ]
+          [ imgFromWidthAndUrl' 150 (P.thumbnail_url post) [{-fixMissingImage-}] ],
+        div () [
+          a [href "#"
+          ] [text $ "@" <> P.username post]
+          ],
+        div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
+        div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)]
         ]
-      [ imgFromWidthAndUrl' 150 (P.thumbnail_url post) [{-fixMissingImage-}] ],
-    div () [
-      a [href "#"
-      ] [text $ "@" <> P.username post]
-      ],
-    div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
-    div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)]
-    ]
+
+-- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
+maybeW :: Widget a b -> Widget (Maybe a) b
+maybeW w s Nothing  = div () [text "(nothing)"]
+maybeW w s (Just x) = w s x
 
 
 -- MAIN
 
 main :: IO ()
 main = do
-  -- Many ways to formulate this, here is a simple approach
-  (doSearch, searches) <- newEventOf (undefined :: SimplePostQuery)
+  -- Search events are sent by the searchForm widget and triggers an API call
+  -- Result events are sent in response to an API request
+  (doSearch, searches)  <- newEventOf (undefined :: SimplePostQuery)
   (searchDone, results) <- newEventOf (undefined :: Maybe [Post])
+
+  -- Signal holding the results of the lastest search, or Nothing if no
+  -- search has been performed yet
+  resultsS <- stepperS Nothing results :: IO (Signal (Maybe [Post]))
+
+  -- API calls
   subscribeEvent searches $ \query -> do
-    -- TODO POST requeswt to put in query and get ID
+    -- TODO POST request to put in query and get ID
     posts <- getAPI "internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
     searchDone $ Just posts
-  resultsS <- stepperS Nothing results :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS :: Signal Html
-  let searchForm = pure $ div () $ button (click $ \e -> doSearch undefined) $ text "Search!" :: Signal Html
-  runAppReactive $ liftA2 (\x y -> div () [x,y]) searchForm resultView
-  -- runAppStatic $ postSearchResult emptySink posts
 
-maybeW :: Widget a b -> Widget (Maybe a) b
-maybeW w s Nothing  = div () [text "(nothing)"]
-maybeW w s (Just x) = w s x
+  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html
+  let searchView = pure $ searchForm doSearch ()                        :: Signal Html
+  let view = liftA2 (\x y -> div () [x,y]) resultView resultView        :: Signal Html
 
-
+  runAppReactive view
 
 
 -- UTILITY
@@ -120,7 +119,6 @@ imgFromWidthAndUrl' w url attrs = img (attrs ++ [width w, src url]) ()
 showWithThousandSeparator :: Int -> JSString
 showWithThousandSeparator n = Data.JSString.pack $ concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show n
 
--- newEvent (of :: Int)
-
+-- | Like newEvent with a type hint.
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf _ = newEvent
