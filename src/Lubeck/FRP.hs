@@ -3,9 +3,9 @@
 
 A library for Functional Behavior Programming (FRP).
 
-The interface is similar to reactive-banana with some important differences:
+The interface is similar to reactive-banana [1] with some important differences:
 
-- Simultaneous events are not allowed. Streams created with 'merge' will emit both events
+- Simultaneous events are never merged. Event streams created with 'merge' will emit both events
   in left-to-right order.
 
 - There is no way to be notified when behaviors are updated (use the 'Signal' type instead).
@@ -29,6 +29,9 @@ For an overview of existing FRP implementations, see https://github.com/gelisam/
 
 See also Evan Czaplicki's talk on the taxonomy of FRP: https://www.youtube.com/watch?v=Agu6jipKfYw
 
+
+[1]: https://hackage.haskell.org/package/reactive-banana
+
 -}
 module Lubeck.FRP (
     -- * Combinators
@@ -39,18 +42,18 @@ module Lubeck.FRP (
     -- ** Combining and filtering events
     never,
     merge,
-    filterE,
+    filter,
     filterJust,
-    scatterE,
+    scatter,
 
     -- ** Past-dependent events
     foldpE,
     scanlE,
     accumE,
-    gatherE,
-    bufferE,
-    recallEWith,
-    recallE,
+    gather,
+    buffer,
+    withPreviousWith,
+    withPrevious,
 
     -- ** Building behaviors
     counter,
@@ -96,6 +99,9 @@ module Lubeck.FRP (
     -- * Misc
     frpInternalLog,
   ) where
+
+import Prelude hiding (filter)
+import qualified Prelude
 
 import Control.Applicative
 import Data.Monoid
@@ -163,12 +169,14 @@ contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
 
 -- | A series of values.
--- Many FRP libraries refer to 'Events' /event/, and the values being emitted to as /occurences/.
--- Here it is called 'Events' to avoid confusion with DOM events (which are in classical parlour /occurances/).
+--   We call a value occuring an /event/, other libraries might refer to them as /occurences/ or /updates/.
 newtype Events a = E (Sink a -> IO UnsubscribeAction)
 -- | A time-varying value.
+--   Can be polled for the current value.
+--   There is no way of being notified when a behavior is updated, use 'Events' or 'Signal' if this is desired.
 newtype Behavior a = R (Sink a -> IO ())
 -- | A time-varying value that allow users to be notified when it is updated.
+--   The same as Elm's signal.
 newtype Signal a = S (Events (), Behavior a)
 
 
@@ -224,14 +232,14 @@ filterJust (E maProvider) = E $ \aSink -> do
   return unsub
 
 -- | Drop occurances that does not match a given predicate.
-filterE :: (a -> Bool) -> Events a -> Events a
-filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
+filter :: (a -> Bool) -> Events a -> Events a
+filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
 -- | Spread out events as if they had occured simultaneously.
 -- The events will be processed in traverse order. If given an empty container,
 -- no event is emitted.
-scatterE :: Traversable t => Events (t a) -> Events a
-scatterE (E taProvider) = E $ \aSink -> do
+scatter :: Traversable t => Events (t a) -> Events a
+scatter (E taProvider) = E $ \aSink -> do
   frpInternalLog "Setting up scatter"
   taProvider $ mapM_ aSink
 
@@ -289,8 +297,9 @@ Proof
 
 -}
 
--- | Create a varying value from an initial value and an update event.
---   The value is updated whenever the event occurs.
+-- | Create a behavior from an initial value and an series of updates.
+--   Whenever the event occurs, the value is updated by applying the function
+--   contained in the event.
 accum :: a -> Events (a -> a) -> IO (Behavior a)
 accum z (E aaProvider) = do
   frpInternalLog "Setting up accum"
@@ -304,10 +313,12 @@ accum z (E aaProvider) = do
     return ()
   -- TODO UnsubscribeAction?
 
+-- | Create a behavior that starts out as a given behavior, and switches to
+--   a different behavior whenever and event occurs.
 switcher :: Behavior a -> Events (Behavior a) -> IO (Behavior a)
 switcher z e = fmap joinR (stepper z e)
 
--- | Sample a varying value whenever an event occurs.
+-- | Sample the current value of a behavior whenever an event occurs.
 snapshot :: Behavior a -> Events b -> Events (a, b)
 snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
   frpInternalLog "Setting up snapshot"
@@ -380,9 +391,6 @@ pollBehavior (R aProvider) = do
 
 -- DERIVED
 
--- | Create a behavior from an initial value and an series of updates.
-accumR = accum
-
 -- | Similar to 'snapshot', but uses the given function go combine the values.
 snapshotWith :: (a -> b -> c) -> Behavior a -> Events b -> Events c
 snapshotWith f r e = fmap (uncurry f) $ snapshot r e
@@ -407,8 +415,8 @@ scanlE f = foldpE (flip f)
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
 -- foldpR const :: b -> Stream b -> Signal b
 
--- filterE :: (a -> Bool) -> E a -> E a
--- filterE p = scatterE . mapE (\x -> if p x then [x] else [])
+-- filter :: (a -> Bool) -> E a -> E a
+-- filter p = scatter . mapE (\x -> if p x then [x] else [])
 
 -- | Get the current value of the behavior whenever an event occurs.
 sample :: Behavior a -> Events b -> Events a
@@ -427,10 +435,6 @@ accumE x a = do
   return $ acc `sample` a
 
 
--- | Create a varying value by starting with the given initial value, and applying the given function
--- whenever an update occurs.
-accumulator = accum
-
 -- | Create a varying value by starting with the given initial value, and replacing it
 -- whenever an update occurs.
 stepper :: a -> Events a -> IO (Behavior a)
@@ -443,21 +447,21 @@ counter e = accumR 0 (fmap (const succ) e)
 
 
 
--- | Record n events and emit in a group. Inverse of 'scatterE'.
-gatherE :: Int -> Events a -> IO (Events (Seq a))
-gatherE n = fmap ((Seq.reverse <$>) . filterE (\xs -> Seq.length xs == n)) . foldpE g mempty
+-- | Record n events and emit in a group. Inverse of 'scatter'.
+gather :: Int -> Events a -> IO (Events (Seq a))
+gather n = fmap ((Seq.reverse <$>) . filter (\xs -> Seq.length xs == n)) . foldpE g mempty
     where
         g x xs | Seq.length xs <  n  =  x Seq.<| xs
                | Seq.length xs == n  =  x Seq.<| mempty
-               | otherwise           = error "gatherE: Wrong length"
+               | otherwise           = error "gather: Wrong length"
 
-bufferE :: Int -> Events a -> IO (Events (Seq a))
-bufferE n = fmap (Seq.reverse <$>) . foldpE g mempty
+buffer :: Int -> Events a -> IO (Events (Seq a))
+buffer n = fmap (Seq.reverse <$>) . foldpE g mempty
     where
         g x xs = x Seq.<| Seq.take (n-1) xs
 
-recallEWith :: (b -> b -> a) -> Events b -> IO (Events a)
-recallEWith f e
+withPreviousWith :: (b -> b -> a) -> Events b -> IO (Events a)
+withPreviousWith f e
     = fmap (joinMaybes' . fmap combineMaybes)
     $ dup Nothing `accumE` fmap (shift . Just) e
     where
@@ -466,10 +470,10 @@ recallEWith f e
         joinMaybes'   = filterJust
         combineMaybes = uncurry (liftA2 f)
 
-recallE :: Events a -> IO (Events (a, a))
-recallE = recallEWith (,)
+withPrevious :: Events a -> IO (Events (a, a))
+withPrevious = withPreviousWith (,)
 
--- lastE = fmap snd . recallE
+-- lastE = fmap snd . withPrevious
 
 -- delayE n = foldr (.) id (replicate n lastE)
 
