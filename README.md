@@ -99,3 +99,4 @@ For a complete example, see [this commit](https://github.com/BeautifulDestinatio
 - Define audiences for ads (20 Feb 16)
 
 - Commit hook on endpoint (Hans)
+- Error-handling in BD.getApi (Hans)
