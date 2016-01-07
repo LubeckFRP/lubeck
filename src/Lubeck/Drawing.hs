@@ -435,7 +435,7 @@ shearXY   a b = transform (1, b, a, 1, 0, 0)
 -- ```
 -- -}
 smokeBackground :: Drawing
-smokeBackground = fillColor C.whitesmoke $ scale 200000 $ square
+smokeBackground = fillColor C.whitesmoke $ scale 5000 $ square
 --
 -- {-| Draw the X and Y axis (their intersection is the origin). -}
 -- xyAxis : Drawing
@@ -585,8 +585,8 @@ customProps props attrs =
 
 drawTest :: Svg
 drawTest = toSvg (RenderingOptions (Point 300 300) Center)
-  -- $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
-  $ scale 200 $ fillColor C.blue circle
+  $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
+  -- $ scale 1.1 $ (scale 200 $ fillColor C.blue circle) <> (scale 250 $ fillColor C.red square) <> smokeBackground
 {-
 
 -- TODO move
