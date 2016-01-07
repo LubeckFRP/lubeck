@@ -91,7 +91,7 @@ main = do
 
   let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html
   let searchView = pure $ searchForm doSearch ()                        :: Signal Html
-  let view = liftA2 (\x y -> div () [x,y]) resultView resultView        :: Signal Html
+  let view = liftA2 (\x y -> div () [x,y]) searchView resultView        :: Signal Html
 
   runAppReactive view
 
