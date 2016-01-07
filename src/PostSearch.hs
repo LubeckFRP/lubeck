@@ -7,11 +7,13 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import qualified Data.Maybe
+import Data.Monoid
 
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, td)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td)
 import GHCJS.VDOM.Attribute (src, width, class_, href, target, width, src)
+import qualified Data.JSString
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppStatic)
@@ -22,6 +24,7 @@ import qualified BD.Data.Account as A
 import BD.Data.SearchPost (SearchPost)
 import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
+import BD.Api (getApi)
 
 -- IO (Behavior Html, Behavior SimplePostQuery)     state of post search form: def/user
 -- Event ()                                         submit: user
@@ -32,51 +35,55 @@ import BD.Query.PostQuery
 -- Event ImageId                                    add to library: user
 
 
+type Post = SearchPost
 
 postSearchResult :: Widget [Post] ()
-postSearchResult _ posts = div () [
-    h1 [] [text "Search Results"]
-    , div [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
-    , postTable () posts
+postSearchResult dontUseSink posts = div () [
+    h1 () [text "Search Results"]
+    , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
+    , postTable dontUseSink posts
   ]
 
 postTable :: Widget [Post] ()
-postTable _ posts = table [class_ "table table-striped table-hover"]
-  [ tbody [] $ fmap (\xs -> tr [] (fmap (postTableCell ()) xs)) (divide 5 posts)]
+postTable dontUseSink posts =
+  table [class_ "table table-striped table-hover"] $ tbody () $
+    fmap (tr () . fmap (postTableCell dontUseSink)) (divide 5 posts)
 
 postTableCell :: Widget Post ()
-postTableCell _ post = let
-  in td []
+postTableCell dontUseSink post = td ()
   [ a [ target "_blank",
         href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
         -- , class_ "hh-brighten-image"
         ]
-      [ imgFromWidthAndUrl' 150 (P.thumbnail_url post) [fixMissingImage] ],
+      [ imgFromWidthAndUrl' 150 (P.thumbnail_url post) [{-fixMissingImage-}] ],
     div () [
       a [href "#"
-      ] [text $ "@" ++ P.username post]
+      ] [text $ "@" <> P.username post]
       ],
-    div () [text $ "(l) " ++ showWithThousandSeparator (P.like_count post)],
-    div () [text $ "(c) " ++ showWithThousandSeparator (P.comment_count post)]
+    div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
+    div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)]
     ]
 
+page = postSearchResult undefined
 
 -- MAIN
 
 main :: IO ()
-main = runAppStatic page
+main = do
+  posts <- getApi "https://data.beautifuldestinations.com/api/v1/internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
+  runAppStatic $ page posts
 
 
 -- UTILITY
 
 -- @divide n @ separates a list into sublists of length n.
 -- The last chunk may be shorter.
-divide :: Int -> List a -> List (List a)
+divide :: Int -> [a] -> [[a]]
 divide n xs = case xs of
   [] -> []
   xs -> take n xs : divide n (drop n xs)
 
-imgFromWidthAndUrl' _ _ = div () [text "Img"]
+imgFromWidthAndUrl' _ _ _ = div () [text "Img"]
 -- imgFromWidthAndUrl : Int -> String -> Html
 -- imgFromWidthAndUrl       width url = img [width width, src url] []
 --
