@@ -7,12 +7,13 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import qualified Data.Maybe
+import qualified Data.List
 import Data.Monoid
 
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td)
-import GHCJS.VDOM.Attribute (src, width, class_, href, target, width, src)
+import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
 import qualified Data.JSString
 
 import Lubeck.FRP
@@ -24,7 +25,7 @@ import qualified BD.Data.Account as A
 import BD.Data.SearchPost (SearchPost)
 import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
-import BD.Api (getApi)
+import BD.Api (getAPI)
 
 -- IO (Behavior Html, Behavior SimplePostQuery)     state of post search form: def/user
 -- Event ()                                         submit: user
@@ -64,14 +65,13 @@ postTableCell dontUseSink post = td ()
     div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)]
     ]
 
-page = postSearchResult undefined
 
 -- MAIN
 
 main :: IO ()
 main = do
-  posts <- getApi "https://data.beautifuldestinations.com/api/v1/internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
-  runAppStatic $ page posts
+  posts <- getAPI "internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
+  runAppStatic $ postSearchResult emptySink posts
 
 
 -- UTILITY
@@ -83,19 +83,16 @@ divide n xs = case xs of
   [] -> []
   xs -> take n xs : divide n (drop n xs)
 
-imgFromWidthAndUrl' _ _ _ = div () [text "Img"]
--- imgFromWidthAndUrl : Int -> String -> Html
--- imgFromWidthAndUrl       width url = img [width width, src url] []
---
--- imgFromWidthAndUrl' : Int -> String -> List Html.Attribute -> Html
--- imgFromWidthAndUrl' width url attrs = img (attrs ++ [width width, src url]) []
---
--- imgFromWidthAndUrlCircle : Int -> String -> Html
--- imgFromWidthAndUrlCircle width url = img [class_ "img-circle", width width, src url] []
---
+-- @divide n @ separates a list into sublists of length n.
+-- The first chunk may be shorter.
+divideFromEnd :: Int -> [a] -> [[a]]
+divideFromEnd n = reverse . fmap reverse . divide n . reverse
+
+imgFromWidthAndUrl' :: Int -> JSString -> [Attribute] -> Html
+imgFromWidthAndUrl' w url attrs = img (attrs ++ [width w, src url]) ()
+
 -- imgFromWidthAndUrlCircle' : Int -> String -> List Html.Attribute -> Html
 -- imgFromWidthAndUrlCircle' width url attrs = img (attrs ++ [class_ "img-circle", width width, src url]) []
 
 showWithThousandSeparator :: Int -> JSString
-showWithThousandSeparator = const "100,000"
--- showWithThousandSeparator n = String.fromList $ List.concat $ List.intersperse (String.toList ",") $ divideFromEnd 3 $ String.toList (show n)
+showWithThousandSeparator n = Data.JSString.pack $ concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show n
