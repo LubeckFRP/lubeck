@@ -108,7 +108,7 @@ module Lubeck.FRP (
     subscribeEvent,
     pollBehavior,
     reactimate,
-    
+
     -- ** Utility
     testFRP,
 
@@ -184,7 +184,10 @@ type UnsubscribeAction = IO ()
 
 -- | A sink is a computation that can recieve a value of some type to perform a side effect (typically sending the
 -- value along to some other part of the system). The most interesting functions are 'mappend' and 'contramap'.
+
 type Sink a = a -> IO ()
+-- TODO redo as
+-- newtype Sink a = Sink { sendTo :: a -> IO () }
 
 emptySink :: Sink a
 emptySink _ = return ()
