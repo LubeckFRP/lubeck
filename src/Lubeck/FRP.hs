@@ -10,8 +10,27 @@ The interface is similar to reactive-banana [1] with some important differences:
 
 - There is no way to be notified when behaviors are updated (use the 'Signal' type instead).
 
-- As in behavior-banana, past-dependent values must be allocated inside a monad, which is also used
- for registering callbacks and sending values (currently this is all 'IO').
+As in reactive-banana, past-dependent values must be allocated inside a monad, which is also used
+for registering callbacks and sending values.
+
+== Threads and execeptions
+
+This system is push-based, meaning that all computation takes place on the sending
+thread (i.e. the thread invoking 'send' on an 'FrpSystem' or a sink created by 'newEvent').
+Often you want this to be the only thread interacting with the system, but it is
+nevertheless possible to use FRP in a multi-threaded context.
+
+Being push-based also implies that all listeners registered with a system
+(using output') or event (using 'subscribeEvent') will block
+event propagation, and that exceptions they throw will be propagated back to the
+sender thread. If this is undesirable, wrap the subscribers in 'try' or 'catch'.
+
+It is safe to send values into the system from multiple threads in the
+sense that doing so it will not cause an exception, however, it /might/ lead to
+behavior values being updated a non-deterministic way and is therefore not recommended.
+Similarly, it is safe to invoke 'pollBehavior' from any thread, but, much like polling
+a 'TVar' this implies no sequencing with respect to other threads.
+
 
 == What is FRP?
 
