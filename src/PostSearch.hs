@@ -84,9 +84,9 @@ main = do
     -- TODO POST requeswt to put in query and get ID
     posts <- getAPI "internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
     searchDone $ Just posts
-  resultsR <- stepper Nothing results :: IO (Behavior (Maybe [Post]))
-  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsR :: Behavior Html
-  let searchForm = pure $ div () $ button (click $ \e -> doSearch undefined) $ text "Search!" :: Behavior Html
+  resultsS <- stepperS Nothing results :: IO (Signal (Maybe [Post]))
+  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS :: Signal Html
+  let searchForm = pure $ div () $ button (click $ \e -> doSearch undefined) $ text "Search!" :: Signal Html
   runAppReactive $ liftA2 (\x y -> div () [x,y]) searchForm resultView
   -- runAppStatic $ postSearchResult emptySink posts
 
