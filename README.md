@@ -24,7 +24,10 @@ There are two ways to build and serve this code at the moment.
 ### Using Stack
 
 - [Install Stack](http://docs.haskellstack.org/)
-- `make -f Makefile`
+- `make`
+
+This will recompile all client-code and the server as needed and serve the result from `localhost`.
+See the `Makefile` for details.
 
 ### Using cabal
 
