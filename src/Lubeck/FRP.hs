@@ -372,7 +372,7 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
 --   * Allow subscribers for events of type c
 --
 data FRPSystem a b c = FRPSystem {
-  frpSystemOutput  :: Sink a,
+  frpSystemInput  :: Sink a,
   frpSystemState  :: Sink b -> IO (),
   frpSystemOutput :: Sink c -> IO UnsubscribeAction
   }
@@ -411,7 +411,7 @@ testFRP x = do
   system <- runFRP' x
   frpSystemOutput system putStrLn
   -- TODO print initial!
-  forever $ getLine >>= frpSystemOutput system
+  forever $ getLine >>= frpSystemInput system
 
 newEvent :: IO (Sink a, Events a)
 newEvent = do

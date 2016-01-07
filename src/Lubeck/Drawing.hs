@@ -585,7 +585,8 @@ customProps props attrs =
 
 drawTest :: Svg
 drawTest = toSvg (RenderingOptions (Point 300 300) Center)
-  $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
+  -- $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
+  $ scale 200 $ fillColor C.blue circle
 {-
 
 -- TODO move
