@@ -3,7 +3,7 @@
 
 A library for Functional Behavior Programming (FRP).
 
-The interface is similar to behavior-banana with some important differences:
+The interface is similar to reactive-banana with some important differences:
 
 - Simultaneous events are not allowed. Streams created with 'merge' will emit both events
   in left-to-right order.

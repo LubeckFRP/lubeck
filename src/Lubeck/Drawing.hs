@@ -578,7 +578,7 @@ customProps props attrs =
       var props = JSON.parse(`propStr);
       var attrs = JSON.parse(`attrStr);
       props.attributes = attrs;
-      console.log(props);
+      console.log(JSON.stringify(props));
       return props;
     }()) |]
 
