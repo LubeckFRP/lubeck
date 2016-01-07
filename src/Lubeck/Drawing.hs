@@ -154,7 +154,9 @@ instance AdditiveGroup Vector where
 instance VectorSpace Vector where
   type Scalar Vector = Float
   a *^ Vector x y = Vector (a*x) (a*y)
+
 instance AffineSpace Point where
+  type Diff Point = Vector
   Point xa ya .+^ Vector xb yb = Point  (xa + xb) (ya + yb)
   Point xa ya .-. Point  xb yb = Vector (xa - xb) (ya - yb)
 
@@ -473,9 +475,12 @@ toSvg1 x = let
   Rect       -> single $ E.custom "rect"
     (customProps svgNamespace$Data.Map.fromList[("x","-0.5"),("y","-0.5"),("width","1"),("height","1"), noScale])
     ()
---   Line       -> single $ Svg.line [x1 "0", y1 "0", x2 "1", y2 "0", noScale] []
---   Lines closed vs -> if closed
---     then single $ Svg.polygon [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
+  Line -> single $ E.custom "line"
+    (customProps svgNamespace$Data.Map.fromList[("x1","0"), ("y1","0"), ("x2","1"), ("y2","0"), noScale])
+  -- Lines closed vs ->
+    -- then single $ E.custom (if closed then "polygon" else "polyline")
+  -- TODO rest
+--     then single $ Svg.polygon  [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
 --     else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
 --
 --   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
@@ -559,7 +564,7 @@ customProps props attrs =
       var props = JSON.parse(`propStr);
       var attrs = JSON.parse(`attrStr);
       props.attributes = attrs;
-      console.log(JSON.stringify(props));
+      //console.log(JSON.stringify(props));
       return props;
     }()) |]
 
