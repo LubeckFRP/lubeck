@@ -477,14 +477,15 @@ toSvg1 x = let
     ()
   Line -> single $ E.custom "line"
     (customProps svgNamespace$Data.Map.fromList[("x1","0"), ("y1","0"), ("x2","1"), ("y2","0"), noScale])
-  -- Lines closed vs ->
+    ()
+    -- Lines closed vs ->
     -- then single $ E.custom (if closed then "polygon" else "polyline")
-  -- TODO rest
---     then single $ Svg.polygon  [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
---     else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
---
---   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
---
+    -- TODO rest
+    --     then single $ Svg.polygon  [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
+    --     else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
+    --
+    --   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
+    --
   Transf t x -> single $ E.custom "g"
     (customProps svgNamespace$Data.Map.fromList[("transform", "matrix" ++ show (negY t) ++ "")])
     (toSvg1 x)
