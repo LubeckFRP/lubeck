@@ -10,7 +10,7 @@ import qualified Data.Maybe
 
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, td)
 import GHCJS.VDOM.Attribute (src, width, class_, href, target, width, src)
 
 import Lubeck.FRP
@@ -33,10 +33,10 @@ import BD.Query.PostQuery
 
 
 
-postSearchResult :: Widget [Pos] ()
+postSearchResult :: Widget [Post] ()
 postSearchResult _ posts = div () [
     h1 [] [text "Search Results"]
-    , div [] [text $ "Found " ++ toString (length posts) ++ " posts"]
+    , div [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
     , postTable () posts
   ]
 
@@ -46,18 +46,18 @@ postTable _ posts = table [class_ "table table-striped table-hover"]
 
 postTableCell :: Widget Post ()
 postTableCell _ post = let
-  -- userName always defined when returned from result page
-  userName = case post.userName of Just x -> x
   in td []
   [ a [ target "_blank",
-        href $ Data.Maybe.fromMaybe post.url post.igWebUrl, class_ "hh-brighten-image"]
-      [ imgFromWidthAndUrl' 150 post.thumbnailUrl [fixMissingImage] ],
+        href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
+        -- , class_ "hh-brighten-image"
+        ]
+      [ imgFromWidthAndUrl' 150 (P.thumbnail_url post) [fixMissingImage] ],
     div () [
       a [href "#"
-      ] [text $ "@" ++ userName]
+      ] [text $ "@" ++ P.username post]
       ],
-    div () [text $ "(l) " ++ showWithThousandSeparator post.likeCount],
-    div () [text $ "(c) " ++ showWithThousandSeparator post.commentCount]
+    div () [text $ "(l) " ++ showWithThousandSeparator (P.like_count post)],
+    div () [text $ "(c) " ++ showWithThousandSeparator (P.comment_count post)]
     ]
 
 
@@ -91,4 +91,4 @@ imgFromWidthAndUrl' _ _ = div () [text "Img"]
 
 showWithThousandSeparator :: Int -> JSString
 showWithThousandSeparator = const "100,000"
--- showWithThousandSeparator n = String.fromList $ List.concat $ List.intersperse (String.toList ",") $ divideFromEnd 3 $ String.toList (toString n)
+-- showWithThousandSeparator n = String.fromList $ List.concat $ List.intersperse (String.toList ",") $ divideFromEnd 3 $ String.toList (show n)
