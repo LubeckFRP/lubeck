@@ -65,6 +65,11 @@ module Lubeck.Drawing (
     over,
     stack,
 
+    -- * Render
+    OrigoPlacement(..),
+    RenderingOptions(..),
+    toSvg,
+
     -- * Debug
     drawTest,
   ) where
@@ -142,36 +147,16 @@ data Vector = Vector { dx :: Float, dy :: Float }
   deriving (Eq, Ord, Show)
 
 instance AdditiveGroup Vector where
+  zeroV   = Vector 0 0
+  negateV (Vector x y) = Vector (negate x) (negate y)
+  Vector xa ya ^+^ Vector xb yb = Vector (xa + xb) (ya + yb)
+
 instance VectorSpace Vector where
+  type Scalar Vector = Float
+  a *^ Vector x y = Vector (a*x) (a*y)
 instance AffineSpace Point where
-  type Diff Point = Vector
-
-{-
-
-{-| Add a point and a vector. -}
-(.+^) : Point -> Vector -> Point
-(.+^) a b = { x  = a.x  + b.dx, y  = a.y  + b.dy }
-
-{-| Calculate the distance between two points. -}
-(.-.) : Point -> Point -> Vector
-(.-.) a b = { dx = a.x  - b.x,  dy = a.y - b.y }
-
-{-| -}
-zeroV : Vector
-zeroV = Vector 0 0
-
-{-| -}
-(^+^) : Vector -> Vector -> Vector
-(^+^) a b = { dx = a.dx + b.dx, dy = a.dy + b.dy }
-
-{-| -}
-negateV : Vector -> Vector
-negateV a = { dx = negate a.dx, dy = negate a.dy }
-
-{-| Multiply a vector by a scalar. -}
-(*^) : Float -> Vector -> Vector
-(*^) a b = { dx = a*b.dx, dy = a*b.dy }
--}
+  Point xa ya .+^ Vector xb yb = Point  (xa + xb) (ya + yb)
+  Point xa ya .-. Point  xb yb = Vector (xa - xb) (ya - yb)
 
 offsetVectors :: Point -> [Vector] -> [Point]
 offsetVectors p = tail . offsetVectors' p
@@ -435,11 +420,11 @@ shearXY   a b = transform (1, b, a, 1, 0, 0)
 -- ```
 -- -}
 smokeBackground :: Drawing
-smokeBackground = fillColor C.whitesmoke $ scale 5000 $ square
+smokeBackground = fillColor C.whitesmoke $ scale 50 $ square
 --
--- {-| Draw the X and Y axis (their intersection is the origin). -}
--- xyAxis : Drawing
--- xyAxis = strokeColor "darkgreen" $ strokeWidth 0.5 $ scale 20000 $ stack [horizontalLine, verticalLine]
+{-| Draw the X and Y axis (their intersection is the origin). -}
+xyAxis :: Drawing
+xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 50 $ stack [horizontalLine, verticalLine]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
@@ -474,14 +459,10 @@ svgNamespace = Data.Map.fromList[("namespace","http://www.w3.org/2000/svg")]
                 -- ("xmlns","http://www.w3.org/2000/svg"),
 
 toSvg1 :: Drawing -> [Svg]
--- toSvg1 = error "TODO"
 toSvg1 x = let
     single x = [x]
     noScale = ("vector-effect", "non-scaling-stroke")
-    -- x_ = Svg.Attributes.x
-    -- y_ = Svg.Attributes.y
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
 
@@ -583,9 +564,10 @@ customProps props attrs =
     }()) |]
 
 
-drawTest :: Svg
-drawTest = toSvg (RenderingOptions (Point 300 300) Center)
-  $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> smokeBackground
+drawTest :: Int -> Svg
+drawTest n = toSvg (RenderingOptions (Point 300 300) Center)
+  $ rotate ((turn/13)*fromIntegral n)
+  $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> xyAxis <> smokeBackground
   -- $ scale 1.1 $ (scale 200 $ fillColor C.blue circle) <> (scale 250 $ fillColor C.red square) <> smokeBackground
 {-
 

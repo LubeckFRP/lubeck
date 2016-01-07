@@ -12,6 +12,7 @@ import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
 import GHCJS.VDOM.Attribute (src, width, class_)
+import qualified Data.JSString
 
 import Lubeck.FRP
 import Lubeck.App (Html, runAppPure)
@@ -31,7 +32,7 @@ render actions model = div ()
   , div () $ button
     [ click (\_ -> actions ()) ]
     [ text "Click me" ]
-  , drawTest ]
+  , drawTest (length $ Data.JSString.unpack $ model) ]
 
 -- MAIN
 
