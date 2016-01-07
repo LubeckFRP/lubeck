@@ -86,7 +86,7 @@ main = do
   -- API calls
   subscribeEvent searches $ \query -> do
     -- TODO POST request to put in query and get ID
-    posts <- getAPI "internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
+    posts <- getAPI "internal/queries/7e214cea34172917b24d47f1b5810342/results"
     searchDone $ Just posts
 
   let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html
