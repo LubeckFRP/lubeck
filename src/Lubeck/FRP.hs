@@ -37,7 +37,7 @@ Often you want this to be the only thread interacting with the system, but it is
 nevertheless possible to use FRP in a multi-threaded context.
 
 Being push-based also implies that all listeners registered with a system
-(using output') or event (using 'subscribeEvent') will block
+(using 'frpSystemOutput') or event (using 'subscribeEvent') will block
 event propagation, and that exceptions they throw will be propagated back to the
 sender thread. If this is undesirable, wrap the subscribers in 'try' or 'catch'.
 
@@ -372,9 +372,9 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
 --   * Allow subscribers for events of type c
 --
 data FRPSystem a b c = FRPSystem {
-  input  :: Sink a,
-  state  :: Sink b -> IO (),
-  output :: Sink c -> IO UnsubscribeAction
+  frpSystemOutput  :: Sink a,
+  frpSystemState  :: Sink b -> IO (),
+  frpSystemOutput :: Sink c -> IO UnsubscribeAction
   }
 
 
@@ -409,9 +409,9 @@ runFRP'' z f = runFRP' (stepper z >=> f)
 testFRP :: (Events String -> IO (Behavior String)) -> IO b
 testFRP x = do
   system <- runFRP' x
-  output system putStrLn
+  frpSystemOutput system putStrLn
   -- TODO print initial!
-  forever $ getLine >>= input system
+  forever $ getLine >>= frpSystemOutput system
 
 newEvent :: IO (Sink a, Events a)
 newEvent = do

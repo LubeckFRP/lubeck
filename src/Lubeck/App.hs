@@ -58,9 +58,9 @@ runApp update render = do
   forkIO $ do
     system <- runFRP' update
     -- Propagate initial value (or we won't see anything)
-    (state system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
+    (frpSystemState system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     -- Register output
-    (output system) $ \(st, job) -> do
+    (frpSystemOutput system) $ \(st, job) -> do
         atomically $ TVar.writeTVar frpState st
         case job of
             Nothing -> return ()
@@ -69,7 +69,7 @@ runApp update render = do
     forever $ do
       i <- atomically $ TChan.readTChan frpIn
       -- putStrLn $ "Processing event: " ++ show i
-      (input system) i
+      (frpSystemInput system) i
 
   -- Job thread
   forkIO $
