@@ -95,26 +95,34 @@ module Lubeck.FRP (
     updates,
     current,
 
+
     -- * Run FRP
+    -- ** High-level
     FrpSystem(..),
     runER,
     runER',
     runER'',
+
     -- ** Low-level
     newEvent,
     subscribeEvent,
     pollBehavior,
+    reactimate,
+    
     -- ** Utility
     testFRP,
+
     -- * Sink
     Sink,
     emptySink,
     appendSinks,
     contramapSink,
+
     -- * Dispatcher
     Dispatcher(..),
     newDispatcher,
     UnsubscribeAction,
+
     -- * Misc
     frpInternalLog,
   ) where
@@ -242,6 +250,7 @@ never :: Events a
 never = E (\_ -> return (return ()))
 
 -- | Drop 'Nothing' events.
+-- Specialization of 'scatter'.
 filterJust :: Events (Maybe a) -> Events a
 filterJust (E maProvider) = E $ \aSink -> do
   frpInternalLog "Setting up filter"
@@ -268,8 +277,15 @@ scatter (E taProvider) = E $ \aSink -> do
 -- they are being emitted on different event strems that are both based
 -- on the same underlying stream.
 --
--- If events occur simultaneously in two streams composed with 'merge', both
--- will be processed in left-to-right order.
+-- If two streams composed with 'merge' emit events simultaneously, the
+-- resulting stream will emit both in left-to-right order. This makes
+-- this function semantically identical to 'merge' on infinite streams.
+--
+-- @
+-- merge (x:xs) (y:ys)
+--     | x <= y = x : merge xs (y:ys)
+--     | x >  y = y : merge (x:xs) ys
+-- @
 merge :: Events a -> Events a -> Events a
 merge (E f) (E g) = E $ \aSink -> do
   frpInternalLog "Setting up merge"
@@ -408,6 +424,13 @@ pollBehavior (R aProvider) = do
   aProvider (atomically . TVar.writeTVar v)
   TVar.readTVarIO v
 
+-- | /Experimental/. Execute an IO action whenever an event occurs.
+reactimate :: Events (IO a) -> Events a
+reactimate (E ioAProvider) = E $ \aSink ->
+  ioAProvider $ (>>= aSink)
+
+
+
 -- DERIVED
 
 -- | Similar to 'snapshot', but uses the given function go combine the values.
@@ -418,7 +441,7 @@ snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 scanlR :: (a -> b -> a) -> a -> Events b -> IO (Behavior a)
 scanlR f = foldpR (flip f)
 
--- Create a past-dependent behavior.
+-- | Create a past-dependent behavior.
 foldpR :: (a -> b -> b) -> b -> Events a -> IO (Behavior b)
 foldpR f z e = accumR z (mapE f e)
 
@@ -460,7 +483,7 @@ stepper :: a -> Events a -> IO (Behavior a)
 stepper z x = accumR z (mapE const x)
 
 -- | Count number of occurences, starting from zero.
-counter :: (Enum a, Num a) => Events b -> IO (Behavior a)
+counter :: Events b -> IO (Behavior Int)
 counter e = accumR 0 (fmap (const succ) e)
 
 
