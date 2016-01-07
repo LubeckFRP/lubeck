@@ -19,7 +19,7 @@ import qualified Data.JSString
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppStatic, runAppReactive)
-import Lubeck.Forms (Widget, Widget')
+import Lubeck.Forms (Widget, Widget', component)
 
 import BD.Data.Account (Account)
 import qualified BD.Data.Account as A
@@ -29,9 +29,10 @@ import BD.Query.PostQuery
 import BD.Api (getAPI)
 
 
-searchForm :: Widget () SimplePostQuery
-searchForm doSearch () = div () $
-  button (click $ \e -> doSearch undefined) $ text "Search!"
+-- TODO finish
+searchForm :: Widget' SimplePostQuery
+searchForm doSearch search = div () $
+  button (click $ \e -> doSearch search) $ text "Search!"
 
 
 type Post = SearchPost
@@ -76,7 +77,8 @@ main :: IO ()
 main = do
   -- Search events are sent by the searchForm widget and triggers an API call
   -- Result events are sent in response to an API request
-  (doSearch, searches)  <- newEventOf (undefined :: SimplePostQuery)
+  -- (doSearch, searches)  <- newEventOf (undefined :: SimplePostQuery)
+  (searchView, searches) <- component defSimplePostQuery searchForm
   (searchDone, results) <- newEventOf (undefined :: Maybe [Post])
 
   -- Signal holding the results of the lastest search, or Nothing if no
@@ -90,7 +92,7 @@ main = do
     searchDone $ Just posts
 
   let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html
-  let searchView = pure $ searchForm doSearch ()                        :: Signal Html
+  -- let searchView = pure $ searchForm doSearch ()                        :: Signal Html
   let view = liftA2 (\x y -> div () [x,y]) searchView resultView        :: Signal Html
 
   runAppReactive view
