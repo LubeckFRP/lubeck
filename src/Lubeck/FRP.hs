@@ -209,6 +209,9 @@ newtype Behavior a = R (Sink a -> IO ())
 --   The same as Elm's signal.
 newtype Signal a = S (Events (), Behavior a)
 
+instance Monoid a => Monoid (Behavior a) where
+  mempty = pure mempty
+  mappend = liftA2 mappend
 
 instance Functor Events where
   fmap = mapE

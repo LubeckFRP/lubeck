@@ -6,6 +6,7 @@ module Lubeck.App
     , runApp
     , runAppPure
     , runAppStatic
+    , runAppReactive
     ) where
 import Prelude hiding (div)
 import qualified Prelude
@@ -29,7 +30,11 @@ import Lubeck.FRP
 import Lubeck.Html
 
 runAppStatic :: Html -> IO ()
-runAppStatic x = runAppPure (pure $ pure $ pure x) (flip const)
+runAppStatic x = runAppReactive (pure x)
+
+runAppReactive :: Behavior Html -> IO ()
+runAppReactive r = runAppPure (pure $ pure r) (flip const)
+
 
 runAppPure
   :: (Events action -> IO (Behavior model))

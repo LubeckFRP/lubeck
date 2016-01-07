@@ -9,6 +9,7 @@ import qualified Prelude
 import qualified Data.Maybe
 import qualified Data.List
 import Data.Monoid
+import Control.Applicative
 
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
@@ -17,7 +18,7 @@ import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width,
 import qualified Data.JSString
 
 import Lubeck.FRP
-import Lubeck.App (Html, runApp, runAppStatic)
+import Lubeck.App (Html, runApp, runAppStatic, runAppReactive)
 import Lubeck.Forms (Widget, Widget')
 
 import BD.Data.Account (Account)
@@ -34,6 +35,12 @@ import BD.Api (getAPI)
 -- B Html, B [SearchPost]                           resulting posts: def/HTTP result
 
 -- Event ImageId                                    add to library: user
+
+
+
+
+
+
 
 
 type Post = SearchPost
@@ -70,8 +77,24 @@ postTableCell dontUseSink post = td ()
 
 main :: IO ()
 main = do
-  posts <- getAPI "internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
-  runAppStatic $ postSearchResult emptySink posts
+  -- Many ways to formulate this, here is a simple approach
+  (doSearch, searches) <- newEventOf (undefined :: SimplePostQuery)
+  (searchDone, results) <- newEventOf (undefined :: Maybe [Post])
+  subscribeEvent searches $ \query -> do
+    -- TODO POST requeswt to put in query and get ID
+    posts <- getAPI "internal/queries/6a425a90d5b8a308d567a8bf11a015e4/results"
+    searchDone $ Just posts
+  resultsR <- stepper Nothing results :: IO (Behavior (Maybe [Post]))
+  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsR :: Behavior Html
+  let searchForm = pure $ div () $ button (click $ \e -> doSearch undefined) $ text "Search!" :: Behavior Html
+  runAppReactive $ liftA2 (\x y -> div () [x,y]) searchForm resultView
+  -- runAppStatic $ postSearchResult emptySink posts
+
+maybeW :: Widget (Maybe a) b -> Widget a b
+maybeW w s Nothing  = div () [text "(nothing)"]
+maybeW w s (Just x) = w s x
+
+
 
 
 -- UTILITY
@@ -96,3 +119,8 @@ imgFromWidthAndUrl' w url attrs = img (attrs ++ [width w, src url]) ()
 
 showWithThousandSeparator :: Int -> JSString
 showWithThousandSeparator n = Data.JSString.pack $ concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show n
+
+-- newEvent (of :: Int)
+
+newEventOf :: a -> IO (Sink a, Events a)
+newEventOf _ = newEvent
