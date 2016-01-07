@@ -94,3 +94,5 @@ For a complete example, see [this commit](https://github.com/BeautifulDestinatio
 - Create ad (Tom/ Eugene; 15 Jan 16)
 - Show optimised images from image library (25 Jan 16)
 - Define audiences for ads (20 Feb 16)
+
+- Commit hook on endpoint (Hans)
