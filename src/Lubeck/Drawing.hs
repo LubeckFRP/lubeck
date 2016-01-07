@@ -571,9 +571,9 @@ customProps props attrs =
 
 
 drawTest :: Int -> Svg
-drawTest n = toSvg (RenderingOptions (Point 300 300) Center)
+drawTest n = toSvg (RenderingOptions (Point 500 500) Center)
   $ rotate ((turn/13)*fromIntegral n)
-  $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) <> xyAxis <> smokeBackground
+  $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) -- <> xyAxis <> smokeBackground
   -- $ scale 1.1 $ (scale 200 $ fillColor C.blue circle) <> (scale 250 $ fillColor C.red square) <> smokeBackground
 {-
 
