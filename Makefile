@@ -11,6 +11,10 @@ build-client:
 build-server:
 	(cd server && stack install -j8 --install-ghc)
 
+.PHONY: stop-server
+stop-server:
+	 if [ -f server.PID ]; then kill `cat server.PID`; fi
+
 .PHONY: run-server
-run-server: build-server
-	~/.local/bin/lubeck-server &
+run-server: build-server stop-server
+	 { ~/.local/bin/lubeck-server & echo $$! > server.PID; }
