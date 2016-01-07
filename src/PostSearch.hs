@@ -90,7 +90,7 @@ main = do
   runAppReactive $ liftA2 (\x y -> div () [x,y]) searchForm resultView
   -- runAppStatic $ postSearchResult emptySink posts
 
-maybeW :: Widget (Maybe a) b -> Widget a b
+maybeW :: Widget a b -> Widget (Maybe a) b
 maybeW w s Nothing  = div () [text "(nothing)"]
 maybeW w s (Just x) = w s x
 
