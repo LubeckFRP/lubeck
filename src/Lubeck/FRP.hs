@@ -13,10 +13,26 @@ The interface is similar to reactive-banana [1] with some important differences:
 As in reactive-banana, past-dependent values must be allocated inside a monad, which is also used
 for registering callbacks and sending values.
 
+= What is FRP?
+
+TODO link to some good resource
+
+All about responding to external events using the following types:
+
+- 'Events' is an infintie stream of events (values).
+
+- 'Behavior' is a value that may change in response to events.
+
+- 'Signal' is a variant of 'Behavior' that allow users to be notified whenever it is updated.
+
+For an overview of existing FRP implementations, see https://github.com/gelisam/frp-zoo.
+
+See also Evan Czaplicki's talk on the Taxonomy of FRP: https://www.youtube.com/watch?v=Agu6jipKfYw
+
 == Threads and execeptions
 
 This system is push-based, meaning that all computation takes place on the sending
-thread (i.e. the thread invoking 'send' on an 'FrpSystem' or a sink created by 'newEvent').
+thread (i.e. the thread invoking 'send' on an 'FRPSystem' or a sink created by 'newEvent').
 Often you want this to be the only thread interacting with the system, but it is
 nevertheless possible to use FRP in a multi-threaded context.
 
@@ -28,27 +44,11 @@ sender thread. If this is undesirable, wrap the subscribers in 'try' or 'catch'.
 It is safe to send values into the system from multiple threads in the
 sense that doing so it will not cause an exception, however, it /might/ lead to
 behavior values being updated a non-deterministic way and is therefore not recommended.
-Similarly, it is safe to invoke 'pollBehavior' from any thread, but, much like polling
-a 'TVar' this implies no sequencing with respect to other threads.
+Similarly, it is safe to invoke 'pollBehavior' from any thread, but this implies
+no sequencing with respect to other threads (much like reading a 'TVar').
 
 
-== What is FRP?
-
-TODO link to some good resource
-
-All about responding to external events using the following types:
-
-- 'Events' is a sequence of events (values).
-
-- 'Behavior' is a value that may change in response to events. It can be polled for the current value.
-
-- 'Signal' is a variant of 'Behavior' that allow users to be notified whenever it is updated.
-
-For an overview of existing FRP implementations, see https://github.com/gelisam/frp-zoo.
-
-See also Evan Czaplicki's talk on the taxonomy of FRP: https://www.youtube.com/watch?v=Agu6jipKfYw
-
-
+=
 [1]: https://hackage.haskell.org/package/reactive-banana
 
 -}
@@ -98,10 +98,10 @@ module Lubeck.FRP (
 
     -- * Run FRP
     -- ** High-level
-    FrpSystem(..),
-    runER,
-    runER',
-    runER'',
+    FRPSystem(..),
+    runFRP,
+    runFRP',
+    runFRP'',
 
     -- ** Low-level
     newEvent,
@@ -371,7 +371,7 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
 --   * Can be polled for a state of type b
 --   * Allow subscribers for events of type c
 --
-data FrpSystem a b c = FrpSystem {
+data FRPSystem a b c = FRPSystem {
   input  :: Sink a,
   state  :: Sink b -> IO (),
   output :: Sink c -> IO UnsubscribeAction
@@ -380,12 +380,12 @@ data FrpSystem a b c = FrpSystem {
 
 -- | Run an FRP system.
 -- It starts in some initial state defined by the R component, and reacts to updates of type a.
-runER :: (Events a -> IO (Behavior b, Events c)) -> IO (FrpSystem a b c)
-runER f = do
+runFRP :: (Events a -> IO (Behavior b, Events c)) -> IO (FRPSystem a b c)
+runFRP f = do
   Dispatcher aProvider aSink <- newDispatcher -- must accept subscriptions and feed values from the given sink
   -- The providers
   (R bProvider, E cProvider) <- f (E aProvider)
-  return $ FrpSystem aSink bProvider cProvider
+  return $ FRPSystem aSink bProvider cProvider
 
 -- DERIVED runners
 
@@ -394,8 +394,8 @@ runER f = do
 --
 -- Note that as this returns a behavior, the resulting system will emit an output on every
 -- input event, whether the actual output of the network has changed or nor.
-runER' :: (Events a -> IO (Behavior b)) -> IO (FrpSystem a b b)
-runER' f = runER (\e -> f e >>= \r -> return (r, sample r e))
+runFRP' :: (Events a -> IO (Behavior b)) -> IO (FRPSystem a b b)
+runFRP' f = runFRP (\e -> f e >>= \r -> return (r, sample r e))
 
 -- | Run an FRP system starting in the given state.
 -- The behavior passed to the function starts in the initial state provided here and reacts to inputs to the system.
@@ -403,12 +403,12 @@ runER' f = runER (\e -> f e >>= \r -> return (r, sample r e))
 --
 -- Note that as this returns a behavior, the resulting system will emit an output on every
 -- input event, whether the actual output of the network has changed or nor.
-runER'' :: a -> (Behavior a -> IO (Behavior b)) -> IO (FrpSystem a b b)
-runER'' z f = runER' (stepper z >=> f)
+runFRP'' :: a -> (Behavior a -> IO (Behavior b)) -> IO (FRPSystem a b b)
+runFRP'' z f = runFRP' (stepper z >=> f)
 
 testFRP :: (Events String -> IO (Behavior String)) -> IO b
 testFRP x = do
-  system <- runER' x
+  system <- runFRP' x
   output system putStrLn
   -- TODO print initial!
   forever $ getLine >>= input system

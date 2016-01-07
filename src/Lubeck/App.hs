@@ -56,7 +56,7 @@ runApp update render = do
 
   -- Compile FRP system
   forkIO $ do
-    system <- runER' update
+    system <- runFRP' update
     -- Propagate initial value (or we won't see anything)
     (state system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     -- Register output
