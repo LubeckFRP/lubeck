@@ -26,7 +26,7 @@ import qualified BD.Data.Account as A
 import BD.Data.SearchPost (SearchPost)
 import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
-import BD.Api (getAPI)
+import BD.Api (unsafeGetAPI)
 
 
 -- TODO finish
@@ -88,7 +88,7 @@ main = do
   -- API calls
   subscribeEvent searches $ \query -> do
     -- TODO POST request to put in query and get ID
-    posts <- getAPI "internal/queries/7e214cea34172917b24d47f1b5810342/results"
+    posts <- unsafeGetAPI "internal/queries/7e214cea34172917b24d47f1b5810342/results"
     searchDone $ Just posts
 
   let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html

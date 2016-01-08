@@ -1,6 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
 
-module BD.Api where
+module BD.Api (
+  unsafeGetAPI,
+  Envelope(..),
+  ) where
 
 import Control.Monad
 import Data.Aeson -- TODO proper
@@ -13,8 +16,8 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Types (JSString)
 import Data.Monoid
 
-getAPI :: FromJSON a => JSString -> IO a
-getAPI q = do
+unsafeGetAPI :: FromJSON a => JSString -> IO a
+unsafeGetAPI q = do
   r <- xhrByteString r
   case contents r of
     Nothing          -> error "TODO no response"

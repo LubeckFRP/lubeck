@@ -28,4 +28,4 @@ instance FromJSON AdCampaign
 instance ToJSON AdCampaign
 
 getUserCampaigns :: JSString -> IO [AdCampaign]
-getUserCampaigns unm = fmap payload $ getAPI $ unm <> "/ad-campaigns"
+getUserCampaigns unm = fmap payload $ unsafeGetAPI $ unm <> "/ad-campaigns"

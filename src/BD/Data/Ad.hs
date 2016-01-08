@@ -31,4 +31,4 @@ instance FromJSON Ad
 instance ToJSON Ad
 
 getCampaignAds :: JSString -> JSString -> IO [Ad]
-getCampaignAds unm campid =  getAPI $ unm <> "/ads/" <> campid
+getCampaignAds unm campid =  unsafeGetAPI $ unm <> "/ads/" <> campid

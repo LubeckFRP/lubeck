@@ -45,4 +45,4 @@ instance ToJSON Account where
 instance FromJSON Account
 
 getUser :: JSString -> IO Account
-getUser unm = fmap payload $ getAPI $ unm <> "/account"
+getUser unm = fmap payload $ unsafeGetAPI $ unm <> "/account"
