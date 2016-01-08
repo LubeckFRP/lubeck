@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable, QuasiQuotes #-}
 
 module BD.Api (
   getAPI,
@@ -18,12 +18,14 @@ import Data.Data
 import Data.Monoid
 import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
+import GHCJS.Marshal(toJSVal_aeson)
 
 import qualified GHC.Generics as GHC
 
-import GHCJS.Types (JSString)
+import GHCJS.Types(JSVal, JSString, jsval)
 import qualified Data.JSString
 import JavaScript.Web.XMLHttpRequest -- TODO
+import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 {-|
 Make a GET request into the BD API.
@@ -101,22 +103,27 @@ unsafeGetAPI = fmap unsafeGetRight . getAPIEither
 Same as 'postAPI', with the 'MonadError' specialized to 'Either'.
 -}
 postAPIEither :: (ToJSON a, FromJSON b) => JSString -> a -> IO (Either JSString b)
-postAPIEither = runExceptT . postAPI
+postAPIEither p = runExceptT . postAPI p
 
 {-|
 Same as 'postAPI' but throws an IO exception upon failure.
 -}
 unsafePostAPI :: (ToJSON a, FromJSON b) => JSString -> a -> IO b
-unsafePostAPI = fmap unsafeGetRight . postAPIEither
+unsafePostAPI p = fmap unsafeGetRight . postAPIEither p
 
-unsafeGetRight :: Either a b -> b
+unsafeGetRight :: Either JSString b -> b
 unsafeGetRight (Left  e) = error (Data.JSString.unpack e)
 unsafeGetRight (Right x) = x
 
 encodeJSString :: ToJSON a => a -> IO JSString
-encodeJSString = undefined
+encodeJSString value = do
+  jsval <- toJSVal_aeson value
+  return $ stringify jsval
 -- Use toJSVal_aeson to get a JSVal
 -- Pass this to a JSON.stringify wrapper
+
+stringify :: JSVal -> JSString
+stringify object = [jsu'| JSON.stringify(`object) ]
 
 data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data, Typeable)
 
