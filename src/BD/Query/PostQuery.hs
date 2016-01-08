@@ -2,8 +2,9 @@
 {-# LANGUAGE NamedFieldPuns, OverloadedStrings #-}
 
 module BD.Query.PostQuery (
+  Query(..),
   PostQuery(..),
-  SimplePostQuery,
+  SimplePostQuery(..),
   defSimplePostQuery,
   complexifyPostQuery
 ) where
@@ -16,6 +17,13 @@ import qualified Data.Vector as V
 import qualified Data.Time.Format
 import qualified Data.JSString
 import BD.Types
+
+data Query
+  = PostQuery PostQuery
+
+instance ToJSON Query where
+  ToJSON x = case x of
+    PostQuery pq -> inObjectNamed "post" $ toJSON x
 
 data PostQuery
   = PostQueryInCaption Text

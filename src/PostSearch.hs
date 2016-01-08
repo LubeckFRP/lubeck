@@ -72,13 +72,25 @@ maybeW w s (Just x) = w s x
 
 
 -- MAIN
+-- initPostQuery = defSimplePostQuery
+initPostQuery = defSimplePostQuery {
+    caption   = "christmas",
+    comment   = "",
+    hashTag   = "",
+    userName  = ""
+    -- followers = Nothing ... Nothing,
+    -- date      = Nothing ... Nothing,
+    -- location  = Nothing,
+    -- orderBy   = PostByLikes,
+    -- direction = Asc
+  }
 
 main :: IO ()
 main = do
   -- Search events are sent by the searchForm widget and triggers an API call
   -- Result events are sent in response to an API request
   -- (doSearch, searches)  <- newEventOf (undefined :: SimplePostQuery)
-  (searchView, searches) <- component defSimplePostQuery searchForm
+  (searchView, searches) <- component initPostQuery searchForm
   (searchDone, results) <- newEventOf (undefined :: Maybe [Post])
 
   -- Signal holding the results of the lastest search, or Nothing if no
@@ -88,7 +100,7 @@ main = do
   -- API calls
   subscribeEvent searches $ \query -> do
     -- TODO POST request to put in query and get ID
-    queryId <- unsafePostAPI "internal/queries" (complexifyPostQuery query)
+    queryId <- unsafePostAPI "internal/queries" (Query $ complexifyPostQuery query)
     print (queryId :: String)
     -- TODO use result
     posts <- unsafeGetAPI "internal/queries/7e214cea34172917b24d47f1b5810342/results"
