@@ -88,7 +88,7 @@ main = do
   -- API calls
   subscribeEvent searches $ \query -> do
     -- TODO POST request to put in query and get ID
-    queryId <- unsafePostAPI "internal/queries" query
+    queryId <- unsafePostAPI "internal/queries" (complexifyPostQuery query)
     print (queryId :: String)
     -- TODO use result
     posts <- unsafeGetAPI "internal/queries/7e214cea34172917b24d47f1b5810342/results"
