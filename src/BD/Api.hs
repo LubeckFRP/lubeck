@@ -3,7 +3,7 @@
 
 module BD.Api (
   getAPI,
-  getAPI',
+  getAPIEither,
   unsafeGetAPI,
   Envelope(..),
   ) where
@@ -25,6 +25,9 @@ import GHCJS.Types (JSString)
 import qualified Data.JSString
 import JavaScript.Web.XMLHttpRequest -- TODO
 
+{-|
+Make a request into the BD API.
+-}
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
 getAPI path = do
   result <- liftIO $ xhrByteString request
@@ -43,9 +46,15 @@ getAPI path = do
           , reqData            = NoData
           }
 
-getAPI' :: FromJSON a => JSString -> IO (Either JSString a)
-getAPI' = runExceptT . getAPI
+{-|
+Same as 'getAPI', with explicit error message.
+-}
+getAPIEither :: FromJSON a => JSString -> IO (Either JSString a)
+getAPIEither = runExceptT . getAPI
 
+{-|
+Same as 'getAPI' but throws an IO exception upon failure.
+-}
 unsafeGetAPI :: FromJSON a => JSString -> IO a
 unsafeGetAPI = fmap noLeft . getAPI'
   where
