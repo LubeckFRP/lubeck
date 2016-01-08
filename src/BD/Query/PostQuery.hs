@@ -11,15 +11,18 @@ module BD.Query.PostQuery (
 import Data.Time.Calendar (Day(..))
 import Numeric.Interval (Interval, whole, (...))
 import qualified Numeric.Interval as I
-import Data.Aeson (ToJSON(..), Value(..))
+import Data.Aeson (ToJSON(..), Value(..), object)
 import qualified Data.Vector as V
+import qualified Data.Time.Format
+import qualified Data.JSString
+import BD.Types
 
 data PostQuery
-  = PostQueryInCaption String
-  | PostQueryHasComment String
-  | PostQueryHashtag String
-  | PostQueryUsername String
-  | PostQueryUsernames [String]
+  = PostQueryInCaption Text
+  | PostQueryHasComment Text
+  | PostQueryHashtag Text
+  | PostQueryUsername Text
+  | PostQueryUsernames [Text]
 
   | PostQueryFollowers Ordering Int
   | PostQueryDate Ordering Day
@@ -37,15 +40,15 @@ data PostQuery
 
 instance ToJSON PostQuery where
   toJSON x = case x of
-    PostQueryInCaption x         -> inObjectNamed "inCaption" $ String x
-    PostQueryHasComment x        -> inObjectNamed "hasComment" $ String x
+    PostQueryInCaption x         -> inObjectNamed "inCaption" $ toJSON x
+    PostQueryHasComment x        -> inObjectNamed "hasComment" $ toJSON x
 
     PostQueryFollowers o x       -> inObjectNamed "followers" $ (Array . V.fromList) [orderEnc o, (Number . fromIntegral) x]
     PostQueryDate o x            -> inObjectNamed "date" $ (Array . V.fromList) [orderEnc o, dateEnc x]
 
-    PostQueryUsername x          -> inObjectNamed "username" $ String x
+    PostQueryUsername x          -> inObjectNamed "username" $ toJSON x
     PostQueryLocation x          -> inObjectNamed "location" $ (Number . fromIntegral) x
-    PostQueryHashtag x           -> inObjectNamed "hashtag" $ String x
+    PostQueryHashtag x           -> inObjectNamed "hashtag" $ toJSON x
 
     PostQueryOrderBy x           -> inObjectNamed "orderBy" $ searchPostOrderEnc x
     PostQueryOrderDirection x    -> inObjectNamed "orderDirection" $ sortDirectionEnc x
@@ -56,7 +59,7 @@ instance ToJSON PostQuery where
     PostQueryOr xs               -> object [("or", (Array . V.fromList) (fmap toJSON xs))]
     _                     -> (Array . V.fromList) []
 
-inObjectNamed :: String -> Value -> Value
+-- inObjectNamed :: Te -> Value -> Value
 inObjectNamed n x = object [(n,x)]
 
 orderEnc x = String $ case x of
@@ -71,12 +74,20 @@ searchPostOrderEnc x = String $ case x of
 sortDirectionEnc x = String $ case x of
   Asc   -> "asc"
   Desc  -> "desc"
+dateEnc = toJSON . formatDateUTC
+
+formatDateUTC :: Day -> String
+formatDateUTC = Data.Time.Format.formatTime l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
+
 
 data SimplePostQuery = SimplePostQuery {
-    caption      :: String,
-    comment      :: String,
-    hashTag      :: String,
-    userName     :: String,
+    caption      :: Text,
+    comment      :: Text,
+    hashTag      :: Text,
+    userName     :: Text,
 
     followers    :: Interval (Maybe Int), -- Nothing for inf
     date         :: Interval (Maybe Day),
