@@ -22,6 +22,7 @@ import Data.Time.Clock (UTCTime)
 import qualified GHC.Generics as GHC
 
 import GHCJS.Types (JSString)
+import qualified Data.JSString
 import JavaScript.Web.XMLHttpRequest -- TODO
 
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
@@ -46,10 +47,10 @@ getAPI' :: FromJSON a => JSString -> IO (Either JSString a)
 getAPI' = runExceptT . getAPI
 
 unsafeGetAPI :: FromJSON a => JSString -> IO a
-unsafeGetAPI path = fmap noLeft . getAPI'
+unsafeGetAPI = fmap noLeft . getAPI'
   where
     noLeft (Right x) = x
-    noLeft (Left  e) = error e
+    noLeft (Left  e) = error (Data.JSString.unpack e)
 
 data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data, Typeable)
 
