@@ -22,7 +22,7 @@ data Query
   = PostQuery PostQuery
 
 instance ToJSON Query where
-  ToJSON x = case x of
+  toJSON x = case x of
     PostQuery pq -> inObjectNamed "post" $ toJSON x
 
 data PostQuery
