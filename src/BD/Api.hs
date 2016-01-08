@@ -80,6 +80,31 @@ unsafeGetAPI = fmap noLeft . getAPIEither
     noLeft (Right x) = x
     noLeft (Left  e) = error (Data.JSString.unpack e)
 
+
+postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> a -> m b
+postAPI path value = do
+  value <- encodeJSString value
+  result <- liftIO $ xhrByteString request
+  case contents result of
+    Nothing          -> throwError "getAPI: No response"
+    Just byteString  -> case Data.Aeson.decodeStrict byteString of
+      Nothing -> throwError "getAPI: Parse error"
+      Just x  -> return x
+  where
+    request = Request {
+            reqMethod          = POST
+          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> path
+          , reqLogin           = Nothing
+          , reqHeaders         = []
+          , reqWithCredentials = False
+          , reqData            = (StringData $ value)
+          }
+
+encodeJSString :: ToJSON a => a -> IO JSString
+encodeJSString = undefined
+-- Use toJSVal_aeson to get a JSVal
+-- Pass this to a JSON.stringify wrapper
+
 data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data, Typeable)
 
 instance ToJSON a => ToJSON (Envelope a)
