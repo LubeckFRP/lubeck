@@ -32,7 +32,8 @@ library
                      , ghcjs-ffiqq == 0.1.0.0
                      , ghcjs-base ==0.2.0.0
                      , stm
-                    --  , contravariant
+                     , contravariant
+                     , profunctors
                      , text
                      , mtl
                      , transformers
