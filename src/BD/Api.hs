@@ -5,6 +5,10 @@ module BD.Api (
   getAPI,
   getAPIEither,
   unsafeGetAPI,
+
+  postAPI,
+  postAPIEither,
+  unsafePostAPI,
   Envelope(..),
   ) where
 
