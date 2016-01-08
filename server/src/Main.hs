@@ -24,7 +24,7 @@ type Layout =
     :<|>
   "posts" :> Raw
     :<|>
-  "campaigns" :> Raw
+  "example-static" :> Raw
     :<|>
   Raw
 
@@ -41,12 +41,12 @@ main = do
   case jsExeDir of
     Left msg -> print $ "Could not find compiled code: " ++ msg
     Right jsExeDir -> do
-      exampleServer       <- serveApp jsExeDir "bd-example-app"   indexHtmlFile
-      adplatformServer    <- serveApp jsExeDir "bd-adplatform"    indexHtmlFile
-      interactionsServer  <- serveApp jsExeDir "bd-interactions"  indexHtmlFile
-      postSearchServer    <- serveApp jsExeDir "bd-post-search"   indexHtmlFile
-      campaignsServer     <- serveApp jsExeDir "bd-campaigns"     indexHtmlFile
-      indexServer         <- serveApp jsExeDir "bd-index"         indexHtmlFile
+      exampleServer       <- serveApp jsExeDir "bd-example-app"         indexHtmlFile
+      adplatformServer    <- serveApp jsExeDir "bd-adplatform"          indexHtmlFile
+      interactionsServer  <- serveApp jsExeDir "bd-interactions"        indexHtmlFile
+      postSearchServer    <- serveApp jsExeDir "bd-post-search"         indexHtmlFile
+      exampleStaticServer <- serveApp jsExeDir "bd-example-static-page" indexHtmlFile
+      indexServer         <- serveApp jsExeDir "bd-index"               indexHtmlFile
 
       putStrLn $ "Listening on " ++ show port
       Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) $
@@ -54,7 +54,7 @@ main = do
           :<|> adplatformServer
           :<|> interactionsServer
           :<|> postSearchServer
-          :<|> campaignsServer
+          :<|> exampleStaticServer
           :<|> indexServer
 
 serveApp :: String -> String -> String -> IO (Server Raw)

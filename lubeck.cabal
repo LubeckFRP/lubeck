@@ -63,6 +63,14 @@ executable bd-example-app
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
+executable bd-example-static-page
+  main-is:             src/ExampleStatic.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , ghcjs-vdom == 0.2.0.0
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
 executable bd-interactions
   main-is:             src/Interactions.hs
   build-depends:       base >=4.8 && <4.9
@@ -121,14 +129,6 @@ executable bd-index
 
 executable bd-post-search
   main-is:             src/PostSearch.hs
-  build-depends:       base >=4.8 && <4.9
-                     , lubeck
-                     , ghcjs-vdom == 0.2.0.0
-                     , ghcjs-base ==0.2.0.0
-  default-language:    Haskell2010
-
-executable bd-campaigns
-  main-is:             src/Campaigns.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , ghcjs-vdom == 0.2.0.0
