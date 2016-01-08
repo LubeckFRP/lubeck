@@ -6,7 +6,10 @@ module BD.Api (
   ) where
 
 import Control.Monad
-import Data.Aeson -- TODO proper
+import Data.Aeson (FromJSON(..), ToJSON(..))
+import Control.Monad.Except
+import Control.Monad.IO.Class
+
 import Data.Data
 import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
@@ -15,6 +18,9 @@ import qualified GHC.Generics as GHC
 import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Types (JSString)
 import Data.Monoid
+
+getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
+getAPI path = liftIO $ unsafeGetAPI path
 
 unsafeGetAPI :: FromJSON a => JSString -> IO a
 unsafeGetAPI q = do

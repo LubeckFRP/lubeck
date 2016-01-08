@@ -32,9 +32,10 @@ library
                      , ghcjs-ffiqq == 0.1.0.0
                      , ghcjs-base ==0.2.0.0
                      , stm
-                     --, contravariant
+                    --  , contravariant
                      , text
                      , mtl
+                     , transformers
                      , time
                      , containers
                      , lens
@@ -42,7 +43,6 @@ library
                      , vector-space
                      , vector-space-points
                      , colour
-
                      , xml
                      , neat-interpolation
                      , data-default
