@@ -59,7 +59,7 @@ instance ToJSON PostQuery where
     PostQueryOr xs               -> object [("or", (Array . V.fromList) (fmap toJSON xs))]
     _                     -> (Array . V.fromList) []
 
--- inObjectNamed :: Te -> Value -> Value
+-- inObjectNamed :: Text -> Value -> Value
 inObjectNamed n x = object [(n,x)]
 
 orderEnc x = String $ case x of
