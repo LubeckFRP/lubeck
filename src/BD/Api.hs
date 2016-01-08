@@ -65,6 +65,25 @@ getAPI path = do
           , reqData            = NoData
           }
 
+postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> a -> m b
+postAPI path value = do
+  body <- liftIO $ encodeJSString value
+  result <- liftIO $ xhrByteString (request body)
+  case contents result of
+    Nothing          -> throwError "getAPI: No response"
+    Just byteString  -> case Data.Aeson.decodeStrict byteString of
+      Nothing -> throwError "getAPI: Parse error"
+      Just x  -> return x
+  where
+    request body = Request {
+            reqMethod          = POST
+          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> path
+          , reqLogin           = Nothing
+          , reqHeaders         = []
+          , reqWithCredentials = False
+          , reqData            = (StringData $ body)
+          }
+
 {-|
 Same as 'getAPI', with the 'MonadError' specialized to 'Either'.
 -}
@@ -75,30 +94,24 @@ getAPIEither = runExceptT . getAPI
 Same as 'getAPI' but throws an IO exception upon failure.
 -}
 unsafeGetAPI :: FromJSON a => JSString -> IO a
-unsafeGetAPI = fmap noLeft . getAPIEither
-  where
-    noLeft (Right x) = x
-    noLeft (Left  e) = error (Data.JSString.unpack e)
+unsafeGetAPI = fmap unsafeGetRight . getAPIEither
 
 
-postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> a -> m b
-postAPI path value = do
-  value <- encodeJSString value
-  result <- liftIO $ xhrByteString request
-  case contents result of
-    Nothing          -> throwError "getAPI: No response"
-    Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> throwError "getAPI: Parse error"
-      Just x  -> return x
-  where
-    request = Request {
-            reqMethod          = POST
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> path
-          , reqLogin           = Nothing
-          , reqHeaders         = []
-          , reqWithCredentials = False
-          , reqData            = (StringData $ value)
-          }
+{-|
+Same as 'postAPI', with the 'MonadError' specialized to 'Either'.
+-}
+postAPIEither :: (ToJSON a, FromJSON b) => JSString -> a -> IO (Either JSString b)
+postAPIEither = runExceptT . postAPI
+
+{-|
+Same as 'postAPI' but throws an IO exception upon failure.
+-}
+unsafePostAPI :: (ToJSON a, FromJSON b) => JSString -> a -> IO b
+unsafePostAPI = fmap unsafeGetRight . postAPIEither
+
+unsafeGetRight :: Either a b -> b
+unsafeGetRight (Left  e) = error (Data.JSString.unpack e)
+unsafeGetRight (Right x) = x
 
 encodeJSString :: ToJSON a => a -> IO JSString
 encodeJSString = undefined
