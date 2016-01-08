@@ -123,7 +123,7 @@ encodeJSString value = do
 -- Pass this to a JSON.stringify wrapper
 
 stringify :: JSVal -> JSString
-stringify object = [jsu'| JSON.stringify(`object) ]
+stringify object = [jsu'| JSON.stringify(`object) |]
 
 data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data, Typeable)
 
