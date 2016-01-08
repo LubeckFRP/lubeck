@@ -26,7 +26,7 @@ import qualified BD.Data.Account as A
 import BD.Data.SearchPost (SearchPost)
 import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
-import BD.Api (unsafeGetAPI)
+import BD.Api (unsafeGetAPI, unsafePostAPI)
 
 
 -- TODO finish
@@ -88,6 +88,8 @@ main = do
   -- API calls
   subscribeEvent searches $ \query -> do
     -- TODO POST request to put in query and get ID
+    queryId <- unsafePostAPI "internal/queries" query
+    -- TODO use result
     posts <- unsafeGetAPI "internal/queries/7e214cea34172917b24d47f1b5810342/results"
     searchDone $ Just posts
 

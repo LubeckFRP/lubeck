@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns, OverloadedStrings #-}
 
 module BD.Query.PostQuery (
   PostQuery(..),
@@ -11,6 +11,8 @@ module BD.Query.PostQuery (
 import Data.Time.Calendar (Day(..))
 import Numeric.Interval (Interval, whole, (...))
 import qualified Numeric.Interval as I
+import Data.Aeson (ToJSON(..), Value(..))
+import qualified Data.Vector as V
 
 data PostQuery
   = PostQueryInCaption String
@@ -32,6 +34,40 @@ data PostQuery
   | PostQueryAnd [PostQuery]
   | PostQueryOr [PostQuery]
   deriving (Eq, Ord, Show)
+
+instance ToJSON PostQuery where
+  toJSON x = case x of
+    PostQueryInCaption x         -> inObjectNamed "inCaption" $ String x
+    PostQueryHasComment x        -> inObjectNamed "hasComment" $ String x
+
+    PostQueryFollowers o x       -> inObjectNamed "followers" $ (Array . V.fromList) [orderEnc o, (Number . fromIntegral) x]
+    PostQueryDate o x            -> inObjectNamed "date" $ (Array . V.fromList) [orderEnc o, dateEnc x]
+
+    PostQueryUsername x          -> inObjectNamed "username" $ String x
+    PostQueryLocation x          -> inObjectNamed "location" $ (Number . fromIntegral) x
+    PostQueryHashtag x           -> inObjectNamed "hashtag" $ String x
+
+    PostQueryOrderBy x           -> inObjectNamed "orderBy" $ searchPostOrderEnc x
+    PostQueryOrderDirection x    -> inObjectNamed "orderDirection" $ sortDirectionEnc x
+    PostQueryLimit x             -> inObjectNamed "limit" $ (Number . fromIntegral) x
+    PostQueryOffset x            -> inObjectNamed "offset" $ (Number . fromIntegral) x
+    PostQueryNot x               -> object [("not", toJSON x)]
+    PostQueryAnd xs              -> object [("and", (Array . V.fromList) (fmap toJSON xs))]
+    PostQueryOr xs               -> object [("or", (Array . V.fromList) (fmap toJSON xs))]
+    _                     -> (Array . V.fromList) []
+
+orderEnc x = String $ case x of
+  LT -> "<"
+  EQ -> "="
+  GT -> ">"
+searchPostOrderEnc x = String $ case x of
+  PostByCreated    -> "created"
+  PostByFollowers  -> "followers"
+  PostByLikes      -> "likes"
+  PostByComments   -> "comments"
+sortDirectionEnc x = String $ case x of
+  Asc   -> "asc"
+  Desc  -> "desc"
 
 data SimplePostQuery = SimplePostQuery {
     caption      :: String,
