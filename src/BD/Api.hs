@@ -2,6 +2,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
 
 module BD.Api (
+  getAPI,
+  getAPI',
   unsafeGetAPI,
   Envelope(..),
   ) where
@@ -24,39 +26,30 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
 getAPI path = do
-  result <- xhrByteString request
+  result <- liftIO $ xhrByteString request
   case contents result of
-    Nothing          -> fail "getAPI: No response"
+    Nothing          -> throwError "getAPI: No response"
     Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> fail "getAPI: Parse error"
+      Nothing -> throwError "getAPI: Parse error"
       Just x  -> return x
   where
     request = Request {
             reqMethod          = GET
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> q
+          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
           , reqWithCredentials = False
           , reqData            = NoData
           }
 
+getAPI' :: FromJSON a => JSString -> IO (Either JSString a)
+getAPI' = runExceptT . getAPI
+
 unsafeGetAPI :: FromJSON a => JSString -> IO a
-unsafeGetAPI q = do
-  result <- xhrByteString request
-  case contents result of
-    Nothing          -> error "TODO no response"
-    Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> error "TODO parse error"
-      Just x -> return x
+unsafeGetAPI path = fmap noLeft . getAPI'
   where
-    request = Request {
-            reqMethod          = GET
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> q
-          , reqLogin           = Nothing
-          , reqHeaders         = []
-          , reqWithCredentials = False
-          , reqData            = NoData
-          }
+    noLeft (Right x) = x
+    noLeft (Left  e) = error e
 
 data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data, Typeable)
 
