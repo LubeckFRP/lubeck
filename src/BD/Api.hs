@@ -29,13 +29,14 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 Make a GET request into the BD API.
 
 API specification
-https://github.com/BeautifulDestinations/beautilytics/wiki/API-specification
+<https://github.com/BeautifulDestinations/beautilytics/wiki/API-specification>
 
-The @path@ parameter is everything after the @.../api/v1/@ part. You must specify
+The @path@ parameter is everything after the @...\/api\/v1\/@ part. You must specify
 the correct return type (as determined by the specification) or the request will
-fail with a parse error. Note that most endpoints are wrapper in an 'Envelope'.
+fail with a parse error. Note that most endpoints are wrapped in an 'Envelope'
+(see example below).
 
-Example usage:
+Usage:
 
 @
 data Api
@@ -43,7 +44,7 @@ instance MonadError JSString Api
 instance MonadIO Api
 
 getPosts :: Api (Envelope Account)
-getPosts = getAPI "/jacob/account"
+getPosts = getAPI "\/jacob\/account"
 @
 -}
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
@@ -65,7 +66,7 @@ getAPI path = do
           }
 
 {-|
-Same as 'getAPI', with explicit error message.
+Same as 'getAPI', with the 'MonadError' specialized to 'Either'.
 -}
 getAPIEither :: FromJSON a => JSString -> IO (Either JSString a)
 getAPIEither = runExceptT . getAPI
