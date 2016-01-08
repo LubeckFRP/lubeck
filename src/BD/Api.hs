@@ -43,8 +43,8 @@ data Api
 instance MonadError JSString Api
 instance MonadIO Api
 
-getPosts :: Api (Envelope Account)
-getPosts = getAPI "\/jacob\/account"
+getAccount :: JSString -> Api (Envelope Account)
+getAccount name = getAPI "\/" <> name <> "\/account"
 @
 -}
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
