@@ -91,6 +91,7 @@ formatDateUTC = Data.Time.Format.formatTime l f
     f = Data.Time.Format.iso8601DateFormat Nothing
 
 
+-- | Non-recursive version of 'PostQuery', suitable for use in forms.
 data SimplePostQuery = SimplePostQuery {
     caption      :: Text,
     comment      :: Text,
@@ -131,6 +132,7 @@ defSimplePostQuery = SimplePostQuery {
     direction = Asc
   }
 
+-- | Convert a 'SimplePostQuery' to a 'PostQuery'.
 complexifyPostQuery :: SimplePostQuery -> PostQuery
 complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, followers, date, location, orderBy, direction}) =
     PostQueryAnd $
@@ -145,11 +147,12 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
     someDay = ModifiedJulianDay 0
     complexifyInterval z f x = fmap (uncurry f) (intervalToOrderings z x)
 
--- | Convert an interval to a list of restrictions.
--- First argument is an arbitrary value of the type.
+-- |
+-- Convert an interval to a list of restrictions.
+--  First argument is an arbitrary value of the type.
 intervalToOrderings :: a -> Interval (Maybe a) -> [(Ordering, a)]
 intervalToOrderings arbitrary i
-  | I.null i  = [(GT,arbitrary),(LT,arbitrary)] -- Not quite, should be orderings that denote to the empty set such as for any x [(GT,x),(LT,x)]
+  | I.null i  = [(GT,arbitrary),(LT,arbitrary)]
   | otherwise = case (I.inf i, I.sup i) of
     (Nothing, Nothing) -> []
     (Nothing, Just b)  -> [(LT, b)]
