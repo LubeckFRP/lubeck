@@ -23,21 +23,35 @@ import GHCJS.Types (JSString)
 import JavaScript.Web.XMLHttpRequest -- TODO
 
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
-getAPI path = liftIO $ unsafeGetAPI path
+getAPI path = do
+  result <- xhrByteString request
+  case contents result of
+    Nothing          -> fail "getAPI: No response"
+    Just byteString  -> case Data.Aeson.decodeStrict byteString of
+      Nothing -> fail "getAPI: Parse error"
+      Just x  -> return x
+  where
+    request = Request {
+            reqMethod          = GET
+          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> q
+          , reqLogin           = Nothing
+          , reqHeaders         = []
+          , reqWithCredentials = False
+          , reqData            = NoData
+          }
 
 unsafeGetAPI :: FromJSON a => JSString -> IO a
 unsafeGetAPI q = do
-  r <- xhrByteString r
-  case contents r of
+  result <- xhrByteString request
+  case contents result of
     Nothing          -> error "TODO no response"
     Just byteString  -> case Data.Aeson.decodeStrict byteString of
       Nothing -> error "TODO parse error"
       Just x -> return x
   where
-    r = Request {
+    request = Request {
             reqMethod          = GET
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/"
-                                    <> q
+          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> q
           , reqLogin           = Nothing
           , reqHeaders         = []
           , reqWithCredentials = False
