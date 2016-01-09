@@ -88,27 +88,36 @@ initPostQuery = defSimplePostQuery {
 main :: IO ()
 main = do
   -- Search events are sent by the searchForm widget and triggers an API call
-  -- Result events are sent in response to an API request
-  -- (doSearch, searches)  <- newEventOf (undefined :: SimplePostQuery)
-  (searchView, searches) <- component initPostQuery searchForm
-  (searchDone, results) <- newEventOf (undefined :: Maybe [Post])
 
+  (searchView, searches) <- component initPostQuery searchForm
+  -- (doSearch, searches)  <- newEventOf (undefined :: SimplePostQuery)
+  -- let searchView = pure $ searchForm doSearch defSimplePostQuery :: Signal Html
+
+
+  -- Result events are sent in response to an API request
+
+  (searchDone, results) <- newEventOf (undefined :: Maybe [Post])
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
   resultsS <- stepperS Nothing results :: IO (Signal (Maybe [Post]))
+  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html
+
+  let view = liftA2 (\x y -> div () [x,y]) searchView resultView        :: Signal Html
 
   -- API calls
   subscribeEvent searches $ \query -> do
     -- TODO POST request to put in query and get ID
-    queryId <- unsafePostAPI "internal/queries" (PostQuery $ complexifyPostQuery query)
-    print (queryId :: String)
-    -- TODO use result
-    posts <- unsafeGetAPI "internal/queries/7e214cea34172917b24d47f1b5810342/results"
-    searchDone $ Just posts
 
-  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html
-  -- let searchView = pure $ searchForm doSearch ()                        :: Signal Html
-  let view = liftA2 (\x y -> div () [x,y]) searchView resultView        :: Signal Html
+    -- TODO this crashes!
+    let cpq = complexifyPostQuery query
+    print cpq
+    -- queryId <- unsafePostAPI "internal/queries" (PostQuery $ cpq)
+    -- print (queryId :: String)
+
+    -- TODO use result
+    posts <- unsafeGetAPI "internal/queries/1451164011e77ac8b25b9459749e788c/results"
+    searchDone $ Just posts
+    return ()
 
   runAppReactive view
 
