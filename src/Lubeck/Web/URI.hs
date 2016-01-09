@@ -20,7 +20,7 @@ encodeURIComponent x = [jsu'| encodeURIComponent(`x) |]
 
 -- | Get the value of the given URI parameter.
 getURIParameter :: JSString -> IO (Maybe JSString)
-getURIParameter paramHs = noEmpty $ [js|
+getURIParameter paramHs = fmap noEmpty $ [js|
   (function(){
 
   function parseQueryString(query) {
