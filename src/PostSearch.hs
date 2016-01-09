@@ -10,12 +10,17 @@ import qualified Data.Maybe
 import qualified Data.List
 import Data.Monoid
 import Control.Applicative
+import qualified Data.Map as Map
+import Data.Map(Map)
 
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td)
-import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
 import qualified Data.JSString
+import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input)
+import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
+import qualified GHCJS.VDOM.Element as E
+import qualified GHCJS.VDOM.Attribute as A
+import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 
 import Lubeck.FRP
 import Lubeck.Forms
@@ -27,15 +32,72 @@ import qualified BD.Data.Account as A
 import BD.Data.SearchPost (SearchPost)
 import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
+import qualified BD.Query.PostQuery as PQ
 import BD.Api
 
 
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm output search = div () $
+searchForm output search = form (customAttrs[("style","form-vertical")]) $
   [ text (showJS search)
+  , input () [text $ PQ.caption search]
   , button (click $ \e -> output $ Submit search) $ text "Search!" ]
 
+{-
+searchPost appEvents updateQuery query = [
+  form_ "form-vertical" [Attr.style [("width", "80%"), ("margin", "15px")]] $ []
+    ++ longStringWidget "Caption"          (Signal.forwardTo updateQuery (\new -> { query | caption   <- new })) query.caption
+    ++ longStringWidget "Comment"          (Signal.forwardTo updateQuery (\new -> { query | comment   <- new })) query.comment
+    ++ longStringWidget "Hashtag"          (Signal.forwardTo updateQuery (\new -> { query | hashTag   <- new })) query.hashTag
+    ++ longStringWidget "User name"        (Signal.forwardTo updateQuery (\new -> { query | userName  <- new })) query.userName
+    ++ integerIntervalWidget        "Poster followers" (Signal.forwardTo updateQuery (\new -> { query | followers <- new })) query.followers
+    ++ dateIntervalWidget    "Posting date"     (Signal.forwardTo updateQuery (\new -> { query | date      <- new })) query.date
+
+    -- TODO Location
+
+    ++ [
+    div [class_ "form-group form-inline"]
+    [ div [class_ "form-group"] $ List.concat [
+
+      [ label [] [text "Sort by"] ]
+
+      , selectWidget
+        [ (PostByFollowers, "Poster followers")
+        , (PostByLikes,     "Likes")
+        , (PostByComments,  "Comments")
+        , (PostByCreated,   "Posting time")]
+        (Signal.forwardTo updateQuery (\new -> { query | orderBy <- new })) query.orderBy
+
+      , selectWidget
+        [ (Asc,   "from lowest to highest")
+        , (Desc,  "from highest to lowest")]
+        (Signal.forwardTo updateQuery (\new -> { query | direction <- new })) query.direction ]]
+          ]]
+
+longStringWidget : String -> Widget' String
+longStringWidget title update value = [ div [class_ "form-group"]
+    [ label [] [text title]
+    , input [ type_ "search", Attr.attribute "size" "100", class_ "form-control"
+      , Attr.value value
+      , onChange update ] [] ]]
+
+selectWidget : List (a, String) -> Widget' a
+selectWidget xs = let
+  (vals, names) = List.unzip xs
+  (toInt, fromInt) = indexed vals
+  count = List.map toString [0..1000]
+
+  selectWidget' : (a -> String) -> (String -> b) -> List (String, String) -> Widget a b
+  selectWidget' f g vs = mapInput f $ mapOutput g $ selectWidget'' vs
+
+  selectWidget'' : List (String, String) -> Widget' String
+  selectWidget'' valuesLabels s x = [select [class_ "form-control", onChange s, Attr.value x] $ List.map (\(v,l) -> option ([Attr.value v]
+    ++ if v == x then [Attr.selected True] else []
+    )  [text l]) valuesLabels]
+
+  in selectWidget' (toString << toInt) (fromInt << unsafeToInt) (zip count names)
+
+-}
 
 type Post = SearchPost
 
@@ -163,3 +225,12 @@ newEventOf _ = newEvent
 
 showJS :: Show a => a -> JSString
 showJS = Data.JSString.pack . show
+
+-- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
+-- This works around the issue. The value returned here should take the place of the standard
+-- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
+--
+-- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
+customAttrs :: Map String String -> Attributes'
+customAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
