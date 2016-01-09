@@ -18,8 +18,9 @@ decodeURIComponent x = [jsu'| decodeURIComponent(`x) |]
 encodeURIComponent :: JSString -> JSString
 encodeURIComponent x = [jsu'| encodeURIComponent(`x) |]
 
-getUriParameter :: JSString -> IO JSString
-getUriParameter paramHs = [js|
+-- | Get the value of the given URI parameter.
+getUriParameter :: JSString -> IO (Maybe JSString)
+getUriParameter paramHs = noEmpty $ [js|
   (function(){
 
   function parseQueryString(query) {
@@ -39,3 +40,6 @@ getUriParameter paramHs = [js|
   return (r ? r : "");
   }())
   |]
+  where
+    noEmpty [] = Nothing
+    noEmpty xs = Just xs
