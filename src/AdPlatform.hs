@@ -32,6 +32,7 @@ import Data.JSString.Text (textFromJSString)
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
+import Lubeck.Web.Uri (encodeURIComponent)
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.AdCampaign as AC
@@ -134,7 +135,7 @@ render sink (AsUser acc (UserModel camps UserView)) = div
     [ text "number of campaigns: "
     , text $ showJS (length camps)]
   , campaignTable sink camps
-  , menu sink ()
+  , menu sink acc
   ]
 
 render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
@@ -145,7 +146,7 @@ render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
         [text "daily budget:"
         , text $ showJS $ AC.daily_budget camp ]
       , renderAdList sink mads
-      , menu sink ()
+      , menu sink acc
       ]
 
 renderAdList sink Nothing = text "Loading ads"
@@ -163,10 +164,11 @@ adRow sink ad = tr ()
 tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
 
 
-menu :: Widget () Action
+menu :: Widget Account Action
 menu sink () = div () [
     text "Menu: "
   , E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
+  , E.a (A.href "/posts/?user=" <> encodeURIComponent A.username) [text "Post Search"]
   , E.a (click $ \_ -> sink Logout) [text "Logout"]
   ]
 
