@@ -117,8 +117,9 @@ longStringWidget title update value = div
     -- TODO size
     , A.class_ "form-control"
     , A.value value
-    , keydown $ contramapSink Ev.value update ] ()
-    , change  $ contramapSink Ev.value update ] ()
+    , keydown $ contramapSink Ev.value update
+    , change  $ contramapSink Ev.value update
+    ] ()
   ]
 
 type Post = SearchPost
