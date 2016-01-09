@@ -120,11 +120,7 @@ main = do
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
-    -- TODO POST request to put in query and get ID
-
-    -- TODO this crashes!
     let complexQuery = PostQuery $ complexifyPostQuery query
-    -- print complexQuery
     eQueryId <- postAPIEither "internal/queries" $ complexQuery
     case eQueryId of
       Left _ -> print "Failed posting query"
