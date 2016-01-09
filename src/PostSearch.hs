@@ -63,7 +63,9 @@ postSearchResult dontUseSink posts = div () [
           ] [text $ "@" <> P.username post]
           ],
         div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
-        div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)]
+        div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
+        -- For uploading to marketing api
+        div () [button () [text "Create Ad"]]
         ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
@@ -88,26 +90,33 @@ initPostQuery = defSimplePostQuery {
 
 main :: IO ()
 main = do
-  getURIParameter "user" >>= print
-  -- Search events are sent by the searchForm widget and triggers an API call
-
-  (searchView, searches) <- component initPostQuery searchForm
-  -- (doSearch, searches)  <- newEventOf (undefined :: SimplePostQuery)
-  -- let searchView = pure $ searchForm doSearch defSimplePostQuery :: Signal Html
+  userName <- getURIParameter "user"
 
 
-  -- Result events are sent in response to an API request
+  -- Search event (from user)
+  (searchView, searchRequested) <- component initPostQuery searchForm
 
-  (searchDone, results) <- newEventOf (undefined :: Maybe [Post])
+  -- Create ad event (from user)
+  (createAd, adCreated) <- newEventOf (undefined :: SearchPost)
+
+  -- Search result event (from API)
+  (receiveSearchResult, searchResultReceived) <- newEventOf (undefined :: Maybe [Post])
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
-  resultsS <- stepperS Nothing results :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((maybeW postSearchResult) emptySink) resultsS  :: Signal Html
+  results <- stepperS Nothing searchResultReceived :: IO (Signal (Maybe [Post]))
+  let resultView = fmap ((maybeW postSearchResult) emptySink) results  :: Signal Html
+
 
   let view = liftA2 (\x y -> div () [x,y]) searchView resultView        :: Signal Html
 
   -- API calls
-  subscribeEvent searches $ \query -> do
+
+  -- Create ad
+  subscribeEvent adCreated $ \post -> do
+    print (userName, P.ig_web_url post)
+
+  -- Fetch Posts
+  subscribeEvent searchRequested $ \query -> do
     -- TODO POST request to put in query and get ID
 
     -- TODO this crashes!
@@ -119,7 +128,7 @@ main = do
       Right queryId -> do
         -- print (queryId :: JSString)
         posts <- unsafeGetAPI $ "internal/queries/" <> queryId <> "/results"
-        searchDone $ Just posts
+        receiveSearchResult $ Just posts
 
     return ()
 
