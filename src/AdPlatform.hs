@@ -32,7 +32,7 @@ import Data.JSString.Text (textFromJSString)
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
-import Lubeck.Web.Uri (encodeURIComponent)
+import Lubeck.Web.URI (encodeURIComponent)
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.AdCampaign as AC

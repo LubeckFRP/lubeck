@@ -20,7 +20,7 @@ import qualified Data.JSString
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppStatic, runAppReactive)
 import Lubeck.Forms (Widget, Widget', component)
-import Lubeck.Web.Uri (getUriParameter)
+import Lubeck.Web.URI (getUriParameter)
 
 import BD.Data.Account (Account)
 import qualified BD.Data.Account as A

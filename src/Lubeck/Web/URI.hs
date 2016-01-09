@@ -1,7 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
 
-module Lubeck.Web.Uri
+module Lubeck.Web.URI
   ( encodeURIComponent
   , decodeURIComponent
   , getURIParameter
