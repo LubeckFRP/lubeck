@@ -4,7 +4,7 @@
 module Lubeck.Web.Uri
   ( encodeURIComponent
   , decodeURIComponent
-  , getUriParameter
+  , getURIParameter
   ) where
 
 import GHCJS.Types (JSVal)
@@ -19,8 +19,8 @@ encodeURIComponent :: JSString -> JSString
 encodeURIComponent x = [jsu'| encodeURIComponent(`x) |]
 
 -- | Get the value of the given URI parameter.
-getUriParameter :: JSString -> IO (Maybe JSString)
-getUriParameter paramHs = noEmpty $ [js|
+getURIParameter :: JSString -> IO (Maybe JSString)
+getURIParameter paramHs = noEmpty $ [js|
   (function(){
 
   function parseQueryString(query) {

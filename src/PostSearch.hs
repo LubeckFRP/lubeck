@@ -88,7 +88,7 @@ initPostQuery = defSimplePostQuery {
 
 main :: IO ()
 main = do
-  getUriParameter "user" >>= print
+  getURIParameter "user" >>= print
   -- Search events are sent by the searchForm widget and triggers an API call
 
   (searchView, searches) <- component initPostQuery searchForm
