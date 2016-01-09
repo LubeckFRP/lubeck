@@ -31,7 +31,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "trusty-server-cloudimg-amd64-vagrant-disk1.box"
   config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box"
 
-  config.vm.synced_folder ".", "/home/vagrant/ghcjs-test"
+  config.vm.synced_folder ".", "/home/vagrant/lubeck"
   config.vm.synced_folder "../ghcjs-vdom", "/home/vagrant/ghcjs-vdom"
   config.vm.synced_folder "../ghcjs-ffiqq", "/home/vagrant/ghcjs-ffiqq"
 
