@@ -41,5 +41,6 @@ getURIParameter paramHs = fmap noEmpty $ [js|
   }())
   |]
   where
-    noEmpty [] = Nothing
-    noEmpty xs = Just xs
+    noEmpty xs
+      | xs == ""  = Nothing
+      | otherwise = Just xs
