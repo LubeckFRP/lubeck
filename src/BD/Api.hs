@@ -70,6 +70,22 @@ getAPI path = do
           , reqData            = NoData
           }
 
+{-|
+Make a POST request into the BD API.
+
+For API specification and paths, see above.
+
+Usage:
+
+@
+data Api
+instance MonadError JSString Api
+instance MonadIO Api
+
+postQuery :: Query -> Api (Envelope QueryId)
+postQuery = postAPI "\/internal\/queries\/"
+@
+-}
 postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> a -> m b
 postAPI path value = do
   -- liftIO $ putStrLn "DEBUG encoding body"
