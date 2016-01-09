@@ -100,3 +100,5 @@ For a complete example, see [this commit](https://github.com/BeautifulDestinatio
 
 - Commit hook on endpoint (Hans)
 - Error-handling in BD.getApi (Hans)
+
+- Integrate ad platform with post search
