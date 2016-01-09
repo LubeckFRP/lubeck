@@ -72,11 +72,11 @@ getAPI path = do
 
 postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> a -> m b
 postAPI path value = do
-  liftIO $ putStrLn "DEBUG encoding body"
+  -- liftIO $ putStrLn "DEBUG encoding body"
   body <- liftIO $ encodeJSString value
-  liftIO $ putStrLn "DEBUG making request"
+  -- liftIO $ putStrLn "DEBUG making request"
   result <- liftIO $ xhrByteString (request body)
-  liftIO $ putStrLn "DEBUG decoding result"
+  -- liftIO $ putStrLn "DEBUG decoding result"
   case contents result of
     Nothing          -> throwError "getAPI: No response"
     Just byteString  -> case Data.Aeson.decodeStrict byteString of
