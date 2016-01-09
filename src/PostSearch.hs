@@ -39,20 +39,20 @@ searchForm doSearch search = div () $
 type Post = SearchPost
 
 -- | Non-interactive post table (for search results).
-postSearchResult :: Widget [Post] ()
-postSearchResult dontUseSink posts = div () [
+postSearchResult :: Widget [Post] Post
+postSearchResult sink posts = div () [
     h1 () [text "Search Results"]
     , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
-    , postTable dontUseSink posts
+    , postTable sink posts
   ]
   where
-    postTable :: Widget [Post] ()
-    postTable dontUseSink posts =
+    postTable :: Widget [Post] Post
+    postTable sink posts =
       table [class_ "table table-striped table-hover"] $ tbody () $
-        fmap (tr () . fmap (postTableCell dontUseSink)) (divide 5 posts)
+        fmap (tr () . fmap (postTableCell sink)) (divide 5 posts)
 
-    postTableCell :: Widget Post ()
-    postTableCell dontUseSink post = td ()
+    postTableCell :: Widget Post Post
+    postTableCell sink post = td ()
       [ a [ target "_blank",
             href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
             -- , class_ "hh-brighten-image"
@@ -65,7 +65,7 @@ postSearchResult dontUseSink posts = div () [
         div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
         div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
         -- For uploading to marketing api
-        div () [button () [text "Create Ad"]]
+        div () [button (click $ \_ -> sink post) [text "Create Ad"]]
         ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
@@ -97,14 +97,14 @@ main = do
   (searchView, searchRequested) <- component initPostQuery searchForm
 
   -- Create ad event (from user)
-  (createAd, adCreated) <- newEventOf (undefined :: SearchPost)
+  (createAd, adCreated) <- newEventOf (undefined :: Post)
 
   -- Search result event (from API)
   (receiveSearchResult, searchResultReceived) <- newEventOf (undefined :: Maybe [Post])
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
   results <- stepperS Nothing searchResultReceived :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((maybeW postSearchResult) emptySink) results  :: Signal Html
+  let resultView = fmap ((maybeW postSearchResult) createAd) results  :: Signal Html
 
 
   let view = liftA2 (\x y -> div () [x,y]) searchView resultView        :: Signal Html
