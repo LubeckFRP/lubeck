@@ -15,11 +15,12 @@ import Data.Map(Map)
 
 import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
+import GHCJS.VDOM.Event (click, change, keydown, submit, stopPropagation, preventDefault, value)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input, label)
 import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
+import qualified GHCJS.VDOM.Event as Ev
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 
@@ -39,16 +40,20 @@ import BD.Api
 
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm output search = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
-  [ div () [text (showJS search)]
-  -- , input () [text $ PQ.caption search]
+searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
+  [ div () [text (showJS query)]
+  -- , input () [text $ PQ.caption query]
+
+  , longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
+  , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
+  , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
+  , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
 
 
 
 
-
-  , button (click $ \e -> output $ Submit search) $ text "Search!" ]
+  , button (click $ \e -> output $ Submit query) $ text "Search!" ]
 
 {-
 searchPost appEvents updateQuery query = [
@@ -112,7 +117,8 @@ longStringWidget title update value = div
     -- TODO size
     , A.class_ "form-control"
     , A.value value
-    , change update ] ()
+    , keydown $ contramapSink Ev.value update ] ()
+    , change  $ contramapSink Ev.value update ] ()
   ]
 
 type Post = SearchPost
