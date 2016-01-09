@@ -136,5 +136,6 @@ executable bd-post-search
                      , lubeck
                      , ghcjs-vdom == 0.2.0.0
                      , ghcjs-base ==0.2.0.0
+                     , ghcjs-ffiqq == 0.1.0.0
                      , containers
   default-language:    Haskell2010

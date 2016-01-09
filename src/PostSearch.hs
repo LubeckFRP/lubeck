@@ -16,7 +16,7 @@ import Data.Map(Map)
 import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input, label)
 import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
@@ -29,7 +29,7 @@ import Lubeck.App (Html, runAppReactive)
 import Lubeck.Web.URI (getURIParameter)
 
 import BD.Data.Account (Account)
-import qualified BD.Data.Account as A
+import qualified BD.Data.Account as Ac
 import BD.Data.SearchPost (SearchPost)
 import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
@@ -39,9 +39,15 @@ import BD.Api
 
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm output search = form (customAttrs[("style","form-vertical")]) $
-  [ text (showJS search)
-  , input () [text $ PQ.caption search]
+searchForm output search = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
+  [ div () [text (showJS search)]
+  -- , input () [text $ PQ.caption search]
+
+
+
+
+
+
   , button (click $ \e -> output $ Submit search) $ text "Search!" ]
 
 {-
@@ -75,12 +81,7 @@ searchPost appEvents updateQuery query = [
         (Signal.forwardTo updateQuery (\new -> { query | direction <- new })) query.direction ]]
           ]]
 
-longStringWidget : String -> Widget' String
-longStringWidget title update value = [ div [class_ "form-group"]
-    [ label [] [text title]
-    , input [ type_ "search", Attr.attribute "size" "100", class_ "form-control"
-      , Attr.value value
-      , onChange update ] [] ]]
+
 
 selectWidget : List (a, String) -> Widget' a
 selectWidget xs = let
@@ -99,6 +100,20 @@ selectWidget xs = let
   in selectWidget' (toString << toInt) (fromInt << unsafeToInt) (zip count names)
 
 -}
+
+
+
+longStringWidget :: JSString -> Widget' JSString
+longStringWidget title update value = div
+  [ class_ "form-group" ]
+  [ label () [text title]
+  , input
+    [ A.type_ "search"
+    -- TODO size
+    , A.class_ "form-control"
+    , A.value value
+    , change update ] ()
+  ]
 
 type Post = SearchPost
 
