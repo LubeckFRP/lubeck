@@ -1,9 +1,15 @@
 
+{-|
+Provides high-level way of constructing forms and other interfaces.
+
+/Experimental/
+-}
 module Lubeck.Forms where
 
 import Lubeck.FRP
 import Lubeck.Html (Html)
 
+{--}
 type Widget i o = Sink o -> i -> Html
 
 type Widget' a  = Widget a a

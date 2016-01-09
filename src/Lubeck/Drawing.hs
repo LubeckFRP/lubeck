@@ -7,7 +7,9 @@ High-level graphics library with an SVG backend.
 
 Essentially a stripped-down version of Diagrams:
 
-[diagrams]: http://projects.haskell.org/diagrams/
+[diagrams]: http://projects.haskell.org/diagrams
+
+/Experimental/
 
 -}
 module Lubeck.Drawing (
