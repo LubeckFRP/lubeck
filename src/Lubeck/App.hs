@@ -14,7 +14,7 @@ The 'runApp' and 'runAppPure' functions provide an Elm-style top level loop, in 
 state function. I (Hans) feel these are most appropriate for small apps where the FRP graph is completely static.
 -}
 module Lubeck.App
-    ( Html
+    ( module Lubeck.Html
     , runApp
     , runAppPure
     , runAppStatic
