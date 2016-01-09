@@ -47,7 +47,7 @@ formComponent z w = do
 
 data Submit a
   = DontSubmit a -- ^ Store new value internally, don't send on changes.
-  | Submit a     -- ^ Send on changes (as per last @Intermittent@).
+  | Submit a     -- ^ Send on changes.
 
 value :: Submit a -> a
 value (DontSubmit x) = x
