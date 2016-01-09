@@ -1,6 +1,11 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
 
+{-|
+Bindings to Web History API.
+
+/Experimental/
+-}
 module Lubeck.Web.History where
 
 import GHCJS.Types (JSVal)
