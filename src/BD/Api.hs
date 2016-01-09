@@ -22,10 +22,9 @@ import Data.Data
 import Data.Monoid
 import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
-import GHCJS.Marshal(toJSVal_aeson)
-
 import qualified GHC.Generics as GHC
 
+import GHCJS.Marshal(toJSVal_aeson)
 import GHCJS.Types(JSVal, JSString, jsval)
 import qualified Data.JSString
 import JavaScript.Web.XMLHttpRequest -- TODO

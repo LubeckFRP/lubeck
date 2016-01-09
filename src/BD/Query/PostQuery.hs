@@ -9,13 +9,15 @@ module BD.Query.PostQuery (
   complexifyPostQuery
 ) where
 
+import Data.Aeson (ToJSON(..), Value(..), object)
 import Data.Time.Calendar (Day(..))
 import Numeric.Interval (Interval, whole, (...))
-import qualified Numeric.Interval as I
-import Data.Aeson (ToJSON(..), Value(..), object)
-import qualified Data.Vector as V
 import qualified Data.Time.Format
+import qualified Data.Vector as V
+import qualified Numeric.Interval as I
+
 import qualified Data.JSString
+
 import BD.Types
 
 data Query

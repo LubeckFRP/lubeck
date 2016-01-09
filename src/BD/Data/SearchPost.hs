@@ -13,9 +13,6 @@ import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
 
 import BD.Types
--- import BD.Data.Count
--- import BD.Data.Account
--- import BD.Data.SearchPost
 
 data SearchPost = SearchPost
   { post_id          :: Int

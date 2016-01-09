@@ -11,8 +11,10 @@ import Data.Data
 import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
-import GHCJS.Types (JSString)
 import Data.Monoid
+
+import GHCJS.Types (JSString)
+
 import BD.Api
 import BD.Types
 

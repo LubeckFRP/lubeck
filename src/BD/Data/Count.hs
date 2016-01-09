@@ -12,10 +12,6 @@ import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.Types
 import qualified GHC.Generics as GHC
 
--- import BD.Data.Count
--- import BD.Data.Account
--- import BD.Data.SearchPost
-
 data Count = Count
   { account_id :: Int
   , count_at   :: UTCTime
