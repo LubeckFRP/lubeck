@@ -8,7 +8,7 @@ module Lubeck.Web.Uri
   ) where
 
 import GHCJS.Types (JSVal)
-import GHCJS.Foreign.QQ (js, js_, jsu_)
+import GHCJS.Foreign.QQ (js, js_, jsu_, jsu')
 import GHCJS.Types(JSString, jsval)
 
 
