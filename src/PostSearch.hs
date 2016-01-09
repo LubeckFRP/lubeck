@@ -18,8 +18,8 @@ import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width,
 import qualified Data.JSString
 
 import Lubeck.FRP
-import Lubeck.App (Html, runApp, runAppStatic, runAppReactive)
-import Lubeck.Forms (Widget, Widget', component)
+import Lubeck.Forms
+import Lubeck.App (Html, runAppReactive)
 import Lubeck.Web.URI (getURIParameter)
 
 import BD.Data.Account (Account)
@@ -31,10 +31,10 @@ import BD.Api
 
 
 -- TODO finish
-searchForm :: Widget SimplePostQuery SimplePostQuery
-searchForm doSearch search = div () $
+searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
+searchForm output search = div () $
   [ text (showJS search)
-  , button (click $ \e -> doSearch search) $ text "Search!" ]
+  , button (click $ \e -> output $ Submit search) $ text "Search!" ]
 
 
 type Post = SearchPost
@@ -44,19 +44,19 @@ data PostAction
 
 -- | Non-interactive post table (for search results).
 postSearchResult :: Widget [Post] PostAction
-postSearchResult sink posts = div () [
+postSearchResult output posts = div () [
     h1 () [text "Search Results"]
     , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
-    , postTable sink posts
+    , postTable output posts
   ]
   where
     postTable :: Widget [Post] PostAction
-    postTable sink posts =
+    postTable output posts =
       table [class_ "table table-striped table-hover"] $ tbody () $
-        fmap (tr () . fmap (postTableCell sink)) (divide 5 posts)
+        fmap (tr () . fmap (postTableCell output)) (divide 5 posts)
 
     postTableCell :: Widget Post PostAction
-    postTableCell sink post = td ()
+    postTableCell output post = td ()
       [ a [ target "_blank",
             href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
             -- , class_ "hh-brighten-image"
@@ -69,7 +69,7 @@ postSearchResult sink posts = div () [
         div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
         div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
         -- For uploading to marketing api
-        div () [button (click $ \_ -> sink (CreateAd post)) [text "Create Ad"]]
+        div () [button (click $ \_ -> output (CreateAd post)) [text "Create Ad"]]
         ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
@@ -96,9 +96,8 @@ main :: IO ()
 main = do
   userName <- getURIParameter "user"
 
-
   -- Search event (from user)
-  (searchView, searchRequested) <- component initPostQuery searchForm
+  (searchView, searchRequested) <- formComponent initPostQuery searchForm
 
   -- Create ad event (from user)
   (createAd, adCreated) <- newEventOf (undefined :: PostAction)
