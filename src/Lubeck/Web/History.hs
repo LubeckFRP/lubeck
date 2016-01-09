@@ -6,7 +6,11 @@ Bindings to Web History API.
 
 /Experimental/
 -}
-module Lubeck.Web.History where
+module Lubeck.Web.History
+  ( go
+  , pushState
+  , onPopState
+  ) where
 
 import GHCJS.Types (JSVal)
 import GHCJS.Foreign.QQ (js_, jsu_)
