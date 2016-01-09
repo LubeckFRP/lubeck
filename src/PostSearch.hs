@@ -26,7 +26,7 @@ import qualified BD.Data.Account as A
 import BD.Data.SearchPost (SearchPost)
 import qualified BD.Data.SearchPost as P
 import BD.Query.PostQuery
-import BD.Api (unsafeGetAPI, unsafePostAPI)
+import BD.Api
 
 
 -- TODO finish
@@ -109,14 +109,16 @@ main = do
     -- TODO POST request to put in query and get ID
 
     -- TODO this crashes!
-    let cpq = complexifyPostQuery query
-    print cpq
-    -- queryId <- unsafePostAPI "internal/queries" (PostQuery $ cpq)
-    -- print (queryId :: String)
+    let complexQuery = PostQuery $ complexifyPostQuery query
+    -- print complexQuery
+    eQueryId <- postAPIEither "internal/queries" $ complexQuery
+    case eQueryId of
+      Left _ -> print "Failed posting query"
+      Right queryId -> do
+        -- print (queryId :: JSString)
+        posts <- unsafeGetAPI $ "internal/queries/" <> queryId <> "/results"
+        searchDone $ Just posts
 
-    -- TODO use result
-    posts <- unsafeGetAPI "internal/queries/1451164011e77ac8b25b9459749e788c/results"
-    searchDone $ Just posts
     return ()
 
   runAppReactive view

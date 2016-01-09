@@ -22,10 +22,11 @@ import BD.Types
 
 data Query
   = PostQuery PostQuery
+  deriving (Eq, Ord, Show)
 
 instance ToJSON Query where
   toJSON x = case x of
-    PostQuery pq -> inObjectNamed "post" $ toJSON x
+    PostQuery pq -> inObjectNamed "post" $ toJSON pq
 
 data PostQuery
   = PostQueryInCaption Text
