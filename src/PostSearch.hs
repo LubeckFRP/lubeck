@@ -38,20 +38,23 @@ searchForm doSearch search = div () $
 
 type Post = SearchPost
 
+data PostAction
+  = CreateAd Post
+
 -- | Non-interactive post table (for search results).
-postSearchResult :: Widget [Post] Post
+postSearchResult :: Widget [Post] PostAction
 postSearchResult sink posts = div () [
     h1 () [text "Search Results"]
     , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
     , postTable sink posts
   ]
   where
-    postTable :: Widget [Post] Post
+    postTable :: Widget [Post] PostAction
     postTable sink posts =
       table [class_ "table table-striped table-hover"] $ tbody () $
         fmap (tr () . fmap (postTableCell sink)) (divide 5 posts)
 
-    postTableCell :: Widget Post Post
+    postTableCell :: Widget Post PostAction
     postTableCell sink post = td ()
       [ a [ target "_blank",
             href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
@@ -65,7 +68,7 @@ postSearchResult sink posts = div () [
         div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
         div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
         -- For uploading to marketing api
-        div () [button (click $ \_ -> sink post) [text "Create Ad"]]
+        div () [button (click $ \_ -> sink (CreateAd post)) [text "Create Ad"]]
         ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
@@ -97,7 +100,7 @@ main = do
   (searchView, searchRequested) <- component initPostQuery searchForm
 
   -- Create ad event (from user)
-  (createAd, adCreated) <- newEventOf (undefined :: Post)
+  (createAd, adCreated) <- newEventOf (undefined :: PostAction)
 
   -- Search result event (from API)
   (receiveSearchResult, searchResultReceived) <- newEventOf (undefined :: Maybe [Post])
@@ -112,7 +115,7 @@ main = do
   -- API calls
 
   -- Create ad
-  subscribeEvent adCreated $ \post -> do
+  subscribeEvent adCreated $ \(CreateAd post) -> do
     print (userName, P.ig_web_url post)
 
   -- Fetch Posts
