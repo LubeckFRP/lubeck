@@ -1,20 +1,41 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
 
-module Lubeck.Web.Uri (getUriParameter) where
+module Lubeck.Web.Uri
+  ( encodeURIComponent
+  , decodeURIComponent
+  , getUriParameter
+  ) where
 
 import GHCJS.Types (JSVal)
 import GHCJS.Foreign.QQ (js, js_, jsu_)
 import GHCJS.Types(JSString, jsval)
 
+
+decodeURIComponent :: JSString -> JSString
+decodeURIComponent x = [jsu'| decodeURIComponent(x) |]
+
+encodeURIComponent :: JSString -> JSString
+encodeURIComponent x = [jsu'| encodeURIComponent(x) |]
+
 getUriParameter :: JSString -> IO JSString
-getUriParameter theName = [js|
+getUriParameter paramHs = [js|
   (function(){
-    function getParameterByName(name) {
-      name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-      var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-          results = regex.exec(location.search);
-      return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
-    }
-    return getParameterByName(`theName);
-  }()) |]
+
+  function parseQueryString(query) {
+        var obj = {},
+            qPos = query.indexOf("?"),
+	    tokens = query.substr(qPos + 1).split('&'),
+	    i = tokens.length - 1;
+	if (qPos !== -1 || query.indexOf("=") !== -1) {
+		for (; i >= 0; i--) {
+			var s = tokens[i].split('=');
+			obj[decodeURIComponent(s[0])] = s.hasOwnProperty(1) ? decodeURIComponent(s[1]) : null;
+		};
+	}
+	return obj;
+}
+  var r = parseQueryString(window.location.search)[`paramHs];
+  return (r ? r : "");
+  }())
+  |]
