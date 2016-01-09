@@ -20,6 +20,7 @@ import qualified Data.JSString
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppStatic, runAppReactive)
 import Lubeck.Forms (Widget, Widget', component)
+import Lubeck.Web.Uri (getUriParameter)
 
 import BD.Data.Account (Account)
 import qualified BD.Data.Account as A
@@ -87,6 +88,7 @@ initPostQuery = defSimplePostQuery {
 
 main :: IO ()
 main = do
+  getUriParameter "user" >>= print
   -- Search events are sent by the searchForm widget and triggers an API call
 
   (searchView, searches) <- component initPostQuery searchForm

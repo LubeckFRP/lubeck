@@ -16,7 +16,7 @@ component z w = do
   return (htmlS, aEvent)
 
 -- data Submit a
-  -- = Intermittent a -- ^ Store new value internally, don't send on changes.
-  -- | Submit         -- ^ Send on changes (as per last @Intermittent@).
+--   = Intermittent a -- ^ Store new value internally, don't send on changes.
+--   | Submit         -- ^ Send on changes (as per last @Intermittent@).
 --
 -- form :: a -> (Widget a (Sink (Submit a))) -> IO (Signal Html, Events a)
