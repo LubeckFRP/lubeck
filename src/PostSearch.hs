@@ -33,7 +33,8 @@ import BD.Api
 -- TODO finish
 searchForm :: Widget SimplePostQuery SimplePostQuery
 searchForm doSearch search = div () $
-  button (click $ \e -> doSearch search) $ text "Search!"
+  [ text (showJS search)
+  , button (click $ \e -> doSearch search) $ text "Search!" ]
 
 
 type Post = SearchPost
@@ -164,3 +165,6 @@ showWithThousandSeparator n = Data.JSString.pack $ concat $ Data.List.interspers
 -- | Like newEvent with a type hint.
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf _ = newEvent
+
+showJS :: Show a => a -> JSString
+showJS = fromString . show
