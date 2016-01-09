@@ -13,10 +13,10 @@ import GHCJS.Types(JSString, jsval)
 
 
 decodeURIComponent :: JSString -> JSString
-decodeURIComponent x = [jsu'| decodeURIComponent(x) |]
+decodeURIComponent x = [jsu'| decodeURIComponent(`x) |]
 
 encodeURIComponent :: JSString -> JSString
-encodeURIComponent x = [jsu'| encodeURIComponent(x) |]
+encodeURIComponent x = [jsu'| encodeURIComponent(`x) |]
 
 getUriParameter :: JSString -> IO JSString
 getUriParameter paramHs = [js|

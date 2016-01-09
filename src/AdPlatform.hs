@@ -165,10 +165,10 @@ tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
 
 
 menu :: Widget Account Action
-menu sink () = div () [
+menu sink acc = div () [
     text "Menu: "
   , E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
-  , E.a (A.href "/posts/?user=" <> encodeURIComponent A.username) [text "Post Search"]
+  , E.a (A.href $ "/posts/?user=" <> encodeURIComponent (A.username acc)) [text "Post Search"]
   , E.a (click $ \_ -> sink Logout) [text "Logout"]
   ]
 
