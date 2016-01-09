@@ -21,6 +21,7 @@ import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width,
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
 import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 import Lubeck.FRP
 import Lubeck.Forms
