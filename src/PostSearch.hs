@@ -167,4 +167,4 @@ newEventOf :: a -> IO (Sink a, Events a)
 newEventOf _ = newEvent
 
 showJS :: Show a => a -> JSString
-showJS = fromString . show
+showJS = Data.JSString.pack . show
