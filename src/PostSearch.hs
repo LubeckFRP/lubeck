@@ -31,7 +31,7 @@ import BD.Api
 
 
 -- TODO finish
-searchForm :: Widget' SimplePostQuery
+searchForm :: Widget SimplePostQuery SimplePostQuery
 searchForm doSearch search = div () $
   button (click $ \e -> doSearch search) $ text "Search!"
 
