@@ -179,14 +179,13 @@ newDispatcher = do
   return $ Dispatcher insert dispatch
 
 -- | An action used to unsubscribe a sink from a dispatcher.
--- Unsibscribing twice has no effect.
+-- Unsibscribing more than once has no effect.
 type UnsubscribeAction = IO ()
 
 -- | A sink is a computation that can recieve a value of some type to perform a side effect (typically sending the
 -- value along to some other part of the system). The most interesting functions are 'mappend' and 'contramapSink'.
-
 type Sink a = a -> IO ()
--- TODO redo as
+-- TODO redo as newtype
 -- newtype Sink a = Sink { sendTo :: a -> IO () }
 
 emptySink :: Sink a
@@ -416,21 +415,25 @@ testFRP x = do
   -- TODO print initial!
   forever $ getLine >>= frpSystemInput system
 
+-- | Create a new event stream and a sink that writes to it in the 'IO' monad.
 newEvent :: IO (Sink a, Events a)
 newEvent = do
   Dispatcher aProvider aSink <- newDispatcher
   return $ (aSink, E aProvider)
 
+-- | Subscribe to an event stream in the 'IO' monad.
+-- The given sink will be called into whenever an event occurs.
 subscribeEvent :: Events a -> Sink a -> IO UnsubscribeAction
 subscribeEvent (E x) = x
 
+-- | Return the current state of a behavior in the 'IO' monad.
 pollBehavior :: Behavior a -> IO a
 pollBehavior (R aProvider) = do
   v <- TVar.newTVarIO undefined
   aProvider (atomically . TVar.writeTVar v)
   TVar.readTVarIO v
 
--- | /Experimental/. Execute an IO action whenever an event occurs.
+-- | /Experimental/. Execute an 'IO' action whenever an event occurs.
 reactimate :: Events (IO a) -> Events a
 reactimate (E ioAProvider) = E $ \aSink ->
   ioAProvider $ (>>= aSink)
