@@ -180,6 +180,7 @@ initPostQuery = defSimplePostQuery
 main :: IO ()
 main = do
   mUserName <- getURIParameter "user"
+  let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
 
   -- Search event (from user)
   (searchView, searchRequested) <- formComponent initPostQuery searchForm
@@ -202,6 +203,7 @@ main = do
   -- Create ad
   subscribeEvent adCreated $ \(CreateAd post) -> do
     -- print (userName, P.ig_web_url post)
+    mUserName <- pollBehavior mUserNameB
     case mUserName of
       Nothing -> print "No account to upload post to"
       Just userName -> do

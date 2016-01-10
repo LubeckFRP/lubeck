@@ -45,9 +45,6 @@ import BD.Types
 
 type Account = A.Account
 
-username :: Account -> Text
-username = A.username
-
 data Action
   = LoginGo
   | Logout
@@ -103,13 +100,10 @@ update = foldpR step initial
     step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
     step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
 
---    step (LoadAction a b)     (model,_) = (model,Just $ fmap ReplaceModel (loadShoutouts a b))
---    step (ReplaceModel model) (_,_)     = (model,Nothing)
-
-goToViewSection (CampaignView n Nothing) model
-  = Just $ loadAds n model
-goToViewSection _ model
-  = Nothing
+    goToViewSection (CampaignView n Nothing) model
+      = Just $ loadAds n model
+    goToViewSection _ model
+      = Nothing
 
 loadAds :: Int -> Model -> IO Action
 loadAds n model =  do
