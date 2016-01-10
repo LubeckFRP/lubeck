@@ -188,13 +188,16 @@ searchPage mUserNameB = do
 
   -- Search result event (from API)
   (receiveSearchResult, searchResultReceived) <- newEventOf (undefined :: Maybe [Post])
+
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
-  results <- stepperS Nothing searchResultReceived :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((maybeW postSearchResult) createAd) results  :: Signal Html
+  results <- stepperS Nothing searchResultReceived
+    :: IO (Signal (Maybe [Post]))
+  let resultView = fmap ((maybeW postSearchResult) createAd) results
+    :: Signal Html
 
-
-  let view = liftA2 (\x y -> div () [x,y]) searchView resultView        :: Signal Html
+  let view = liftA2 (\x y -> div () [x,y]) searchView resultView
+    :: Signal Html
 
   -- API calls
 
