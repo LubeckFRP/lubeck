@@ -46,9 +46,18 @@ Most dependencies are on Stackage, so their documentation is available on https:
 
 The easiest way to get the documentation for the `lubeck` library and the GHCJS-specific modules is to run `stack haddock`.
 
-## CI/QA
+## Server/CI
 
-- TODO
+There is a public test server running this code at `http://46.101.88.167:8090`.
+
+To update/restart manually:
+
+    ssh root@46.101.88.167
+    cd apps/lubeck
+    git pull && make
+
+TODO add CI/Github hook.
+
 
 ## Miscellaneous
 
