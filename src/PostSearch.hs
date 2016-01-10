@@ -201,7 +201,11 @@ main = do
 
   -- Create ad
   subscribeEvent adCreated $ \(CreateAd post) -> do
-    print (userName, P.ig_web_url post)
+    -- print (userName, P.ig_web_url post)
+    res <- postAPIEither (userName <> "/upload-igpost-adlibrary/" <> P.id post) ()
+    case res of
+      Left _   -> print "Failed to upload post to ad library"
+      Right Ok -> print "Uploaded post"
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do

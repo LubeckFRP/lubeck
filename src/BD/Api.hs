@@ -10,6 +10,7 @@ module BD.Api (
   postAPIEither,
   unsafePostAPI,
   Envelope(..),
+  Ok(..),
   ) where
 
 import Control.Monad
@@ -151,3 +152,8 @@ data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data
 
 instance ToJSON a => ToJSON (Envelope a)
 instance FromJSON a => FromJSON (Envelope a)
+
+data Ok = Ok
+
+instance FromJSON Ok where
+  parseJSON _ = return Ok
