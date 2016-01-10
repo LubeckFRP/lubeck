@@ -177,10 +177,8 @@ initPostQuery = defSimplePostQuery
 --     -- direction = Asc
 --   }
 
-main :: IO ()
-main = do
-  mUserName <- getURIParameter "user"
-  let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
+searchPage :: Behavior (Maybe JSString) -> IO (Signal Html)
+searchPage mUserNameB = do
 
   -- Search event (from user)
   (searchView, searchRequested) <- formComponent initPostQuery searchForm
@@ -222,10 +220,16 @@ main = do
         -- print (queryId :: JSString)
         posts <- unsafeGetAPI $ "internal/queries/" <> queryId <> "/results"
         receiveSearchResult $ Just posts
-
     return ()
 
-  runAppReactive view
+  return view
+
+main :: IO ()
+main = do
+  mUserName <- getURIParameter "user"
+  let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
+  searchPage mUserNameB >>= runAppReactive
+
 
 
 -- UTILITY
