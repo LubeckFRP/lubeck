@@ -26,8 +26,6 @@ Dependencies are listed in `stack.yaml`.
 
 ## Build
 
-There are two ways to build and serve this code at the moment.
-
 ### Using Stack
 
 - [Install Stack](http://docs.haskellstack.org/)
