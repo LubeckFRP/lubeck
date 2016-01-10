@@ -7,18 +7,21 @@ Beautiful Destinations front-end based on GHCJS.
 
 ## Overview
 
-The code is organized as follows:
+- `src`
 
   - BD front-end library (Lubeck) `src/Lubeck`
   - BD data model `src/BD`
   - BD applications `src/*.hs`
 
 All client side code is declared in `lubeck.cabal`, as a single library and several executables (each is a single-page application).
+Dependencies are listed in `stack.yaml`.
 
-The client-code can be built to HTML/JS manually, or using the "official" server (in `server`). This server can serve
-the built applications and also provide `404.html`, `index.html` etc. Note that this server only serves front-end content
-and does not do any backend interaction (i.e. its state is determined solely by this repository).
+- `server` contains a simple `servant-server` based server that serves compiled client code. It does *not* call into databases or
+  perform any other kind of backend interaction.
 
+- `static` contains the standard `index.html` and other files used by the server.
+
+- `Makefile` builds client and server using `stack`.
 
 
 ## Build
