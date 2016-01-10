@@ -12,7 +12,10 @@ echo 'deb http://download.fpcomplete.com/ubuntu trusty main'|sudo tee /etc/apt/s
 
 sudo apt-get install -y software-properties-common
 sudo add-apt-repository -y ppa:hvr/ghc
-curl -sL https://deb.nodesource.com/setup | bash -
+wget -qO- https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+
+echo 'deb https://deb.nodesource.com/node_0.10 trusty main' > /etc/apt/sources.list.d/nodesource.list
+echo 'deb-src https://deb.nodesource.com/node_0.10 trusty main' >> /etc/apt/sources.list.d/nodesource.list
 
 sudo apt-get install -y cabal-install-1.22 ghc-7.10.2 stack zile libtinfo-dev nodejs alex-3.1.4 happy-1.19.5 dh-autoreconf zopfli
 
