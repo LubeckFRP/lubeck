@@ -27,6 +27,7 @@ import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 import Lubeck.FRP
 import Lubeck.Forms
+import Lubeck.Forms.Select
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Web.URI (getURIParameter)
 
