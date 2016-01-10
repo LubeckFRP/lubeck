@@ -53,19 +53,15 @@ data Action
   | Then Action Action
   | GoTo ViewSection
 
---  | GotCampaigns [Campaign]
---  | GoToCampaign Int
-
--- For debugging only
-instance Show Action where
-  show = g where
-    g LoginGo     = "LoginGo"
-    g Logout      = "Logout"
-    g (GotUser _) = "GotUser"
-    g (Pure _)    = "Pure"
-    g (Then _ _)  = "Then"
-    g (GoTo _)    = "GoTo"
-
+-- -- For debugging only
+-- instance Show Action where
+--   show = g where
+--     g LoginGo     = "LoginGo"
+--     g Logout      = "Logout"
+--     g (GotUser _) = "GotUser"
+--     g (Pure _)    = "Pure"
+--     g (Then _ _)  = "Then"
+--     g (GoTo _)    = "GoTo"
 
 data Model = NotLoggedIn { _loginPage :: LoginPage}
            | LoadingUser
@@ -104,14 +100,6 @@ update = foldpR step initial
       = Just $ loadAds n model
     goToViewSection _ model
       = Nothing
-
-loadAds :: Int -> Model -> IO Action
-loadAds n model =  do
-  let campid = showJS $ AC.fbid $ (_campaigns $ _userModel $ model)!!n
-      username = A.username $ _user model
-  ads <- Ad.getCampaignAds username campid
-  return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
-
 
 
 render :: Widget Model Action
@@ -190,6 +178,9 @@ loginPageW sink (LoginPage u pw) = form
              change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
    , button (click $ \_ -> sink LoginGo) [text "Login"] ]
 
+
+-- BACKEND
+
 loginUser :: LoginPage -> IO Action
 loginUser (LoginPage s _) = do
   u <- A.getUser s
@@ -199,6 +190,13 @@ getCampaigns :: A.Account -> IO Action
 getCampaigns acc = do
   cs <- AC.getUserCampaigns $ A.username acc
   return $ Pure $ set (userModel . campaigns) cs
+
+loadAds :: Int -> Model -> IO Action
+loadAds n model =  do
+  let campid = showJS $ AC.fbid $ (_campaigns $ _userModel $ model)!!n
+      username = A.username $ _user model
+  ads <- Ad.getCampaignAds username campid
+  return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
 
 -- MAIN
 
