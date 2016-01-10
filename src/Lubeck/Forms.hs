@@ -9,9 +9,14 @@ module Lubeck.Forms where
 import Lubeck.FRP
 import Lubeck.Html (Html)
 
-{--}
+{-|
+Provides a way of rendering a value of some type @i@, and emitting updates of some type @i@.
+-}
 type Widget i o = Sink o -> i -> Html
 
+{-|
+A variant of 'Widget' where input and output is the same.
+-}
 type Widget' a  = Widget a a
 
 lmapWidget :: (b -> a) -> Widget a s -> Widget b s
@@ -27,7 +32,11 @@ mapHtmlWidget :: (Html -> Html) -> Widget a b -> Widget a b
 mapHtmlWidget f w = \s -> f . w s
 
 
-
+-- | Create a component from a widget and an initial value.
+-- The component starts out in an initial state determined by the first argument.
+--
+-- Both the state and the view signals are updated whenever the user interacts
+-- with the component.
 component :: a -> Widget' a -> IO (Signal Html, Events a)
 component z w = do
   -- Value changed
@@ -36,6 +45,10 @@ component z w = do
   let htmlS = fmap (w aSink) aS
   return (htmlS, aEvent)
 
+-- | A variant of component that supports chanching its value internally without
+-- sending on any updates.
+--
+-- Appropriate for forms with a \"Submit\" button.
 formComponent :: a -> Widget a (Submit a) -> IO (Signal Html, Events a)
 formComponent z w = do
   -- Value changed
@@ -44,15 +57,17 @@ formComponent z w = do
   let htmlS = fmap (w aSink . value) aS
   return (htmlS, submits aEvent)
 
-
+-- | A helper type for 'formComponent'.
 data Submit a
   = DontSubmit a -- ^ Store new value internally, don't send on changes.
   | Submit a     -- ^ Send on changes.
 
+-- | Extract the value.
 value :: Submit a -> a
 value (DontSubmit x) = x
 value (Submit x)     = x
 
+-- | Extract just submit events, ignore others.
 submits :: Events (Submit a) -> Events a
 submits = filterJust . fmap g
   where
