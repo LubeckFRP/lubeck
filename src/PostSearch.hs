@@ -55,7 +55,7 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
 
   , div [ class_ "form-group form-inline" ]
     [ div [ class_ "form-group"  ]
-      [ label [] [text "Sort by" ]
+      [ label () [text "Sort by" ]
       , selectWidget
         [ (PostByFollowers, "Poster followers")
         , (PostByLikes,     "Likes")
