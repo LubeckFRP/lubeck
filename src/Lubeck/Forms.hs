@@ -87,9 +87,6 @@ mapHtmlWidget f w = \s -> f . w s
 subWidget :: Lens' s a -> Widget' a -> Widget' s
 subWidget l w o i = w (contramapSink (\x -> set l x i) o) (view l i)
 
-possibleWidget :: (Sink a -> Html) -> Prism' s a -> Widget' a -> Widget' s
-possibleWidget f p w o i = undefined
-
 -- | Compose two widgets.
 -- Both render the value and the resultant HTML is composed using the given function.
 -- Output emitted by either widget is emitted by the resultant widget.
