@@ -160,7 +160,7 @@ campaignTable sink camps = table () [
   , tbody () (map (campaignRow sink) $ zip [0..] camps)
   ]
 
-campaignRow :: Widget (AC.AdCampaign) Action
+campaignRow :: Widget (Int, AC.AdCampaign) Action
 campaignRow sink (ix, camp) = tr ()
   [ td () [text $ showJS $ AC.fbid camp]
   , td () [text $ AC.campaign_name camp]
