@@ -97,17 +97,17 @@ module Lubeck.FRP (
 
 
     -- * Run FRP
-    -- ** High-level
-    FRPSystem(..),
-    runFRP,
-    runFRP',
-    runFRP'',
-
-    -- ** Low-level
+    -- ** Standard
     newEvent,
     subscribeEvent,
     pollBehavior,
     reactimate,
+
+    -- ** FRP system
+    FRPSystem(..),
+    runFRP,
+    runFRP',
+    runFRP'',
 
     -- ** Utility
     testFRP,

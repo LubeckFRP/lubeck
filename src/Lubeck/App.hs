@@ -15,10 +15,12 @@ state function. I (Hans) feel these are most appropriate for small apps where th
 -}
 module Lubeck.App
     ( module Lubeck.Html
-    , runApp
-    , runAppPure
+    -- * Standard
     , runAppStatic
     , runAppReactive
+    -- * Elm-style
+    , runApp
+    , runAppPure
     ) where
 import Prelude hiding (div)
 import qualified Prelude
