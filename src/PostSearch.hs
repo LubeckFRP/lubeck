@@ -53,10 +53,23 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
   , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
   , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
-
-
-
-
+  , div [ class_ "form-group form-inline" ]
+    [ div [ class_ "form-group"  ]
+      [ label [] [text "Sort by" ]
+      , selectWidget
+        [ (PostByFollowers, "Poster followers")
+        , (PostByLikes,     "Likes")
+        , (PostByComments,  "Comments")
+        , (PostByCreated,   "Posting time")
+        ]
+        (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
+      , selectWidget
+        [ (Asc,   "from lowest to highest")
+        , (Desc,  "from highest to lowest")
+        ]
+        (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
+      ]
+    ]
   , button (click $ \e -> output $ Submit query) $ text "Search!" ]
 
 {-
@@ -88,7 +101,8 @@ searchPost appEvents updateQuery query = [
         [ (Asc,   "from lowest to highest")
         , (Desc,  "from highest to lowest")]
         (Signal.forwardTo updateQuery (\new -> { query | direction <- new })) query.direction ]]
-          ]]
+          ]
+          ]
 
 
 

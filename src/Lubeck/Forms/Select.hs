@@ -1,4 +1,6 @@
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lubeck.Forms.Select where
 
 import Lubeck.Forms
@@ -19,14 +21,14 @@ selectWidget xs = dimapWidget (pack . show . toInt) (fromInt . read . unpack) $ 
       where fromJust (Just x) = x
     (toInt, fromInt) = indexed vals
 
-selectWidget' :: [(String, String)] -> Widget' String
+selectWidget' :: [(JSString, JSString)] -> Widget' JSString
 selectWidget' valuesLabels s x =
   E.select
     [ A.class_ "form-control"
     , A.value x
-    , Ev.onChange s
+    , Ev.change (\e -> s $ Ev.value e)
     ]
     (fmap (\(v,l) -> E.option
       ([A.value v]{-++ if v == x then [Attr.selected True]  else []-})
-      [text l])
+      [E.text l])
         valuesLabels)

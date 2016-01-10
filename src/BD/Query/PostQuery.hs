@@ -5,6 +5,8 @@ module BD.Query.PostQuery (
   Query(..),
   PostQuery(..),
   SimplePostQuery(..),
+  PostOrder(..),
+  SortDirection(..),
   defSimplePostQuery,
   complexifyPostQuery
 ) where
