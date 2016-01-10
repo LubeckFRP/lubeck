@@ -48,7 +48,7 @@ Similarly, it is safe to invoke 'pollBehavior' from any thread, but this implies
 no sequencing with respect to other threads (much like reading a 'TVar').
 
 
-=
+
 [1]: https://hackage.haskell.org/package/reactive-banana
 
 -}
@@ -183,7 +183,7 @@ newDispatcher = do
 type UnsubscribeAction = IO ()
 
 -- | A sink is a computation that can recieve a value of some type to perform a side effect (typically sending the
--- value along to some other part of the system). The most interesting functions are 'mappend' and 'contramap'.
+-- value along to some other part of the system). The most interesting functions are 'mappend' and 'contramapSink'.
 
 type Sink a = a -> IO ()
 -- TODO redo as
