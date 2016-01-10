@@ -20,11 +20,13 @@ module Lubeck.Forms
 
   -- ** Combining and transforming widgets
   , subWidget
+  , isoW
+  , possW
+  , maybeW
+
   , bothWidget
   , multiWidget
   -- , mapMWidget
-  , isoW
-  , possW
 
   -- * Components
   , component
