@@ -43,13 +43,11 @@ import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 import BD.Types
 
-type Account = A.Account
-
 data Action
   = LoginGo
   | Logout
   | Pure (Model -> Model)
-  | GotUser Account
+  | GotUser A.Account
   | Then Action Action
   | GoTo ViewSection
 
@@ -105,7 +103,6 @@ update = foldpR step initial
 render :: Widget Model Action
 render sink LoadingUser = text "Loading User"
 render sink (NotLoggedIn lp) = loginPageW sink lp
-
 render sink (AsUser acc (UserModel camps UserView)) = div
   ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
@@ -119,7 +116,6 @@ render sink (AsUser acc (UserModel camps UserView)) = div
   , campaignTable sink camps
   , menu sink acc
   ]
-
 render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
   let camp = camps !! ix
   in div ()
@@ -131,22 +127,24 @@ render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
       , menu sink acc
       ]
 
+renderAdList :: Widget (Maybe [Ad.Ad]) Action
 renderAdList sink Nothing = text "Loading ads"
 renderAdList sink (Just ads) = table () [
     tableHeaders ["FB adset id", "Name", "Budget"]
   , tbody () (map (adRow sink) ads)
   ]
 
+adRow :: Widget Ad.Ad Action
 adRow sink ad = tr ()
   [ td () [text $ showJS $ Ad.fb_adset_id ad]
   , td () [text $ Ad.ad_title ad]
   , td () [text $ showJS $ Ad.current_budget ad]
   ]
 
+tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
 
-
-menu :: Widget Account Action
+menu :: Widget A.Account Action
 menu sink acc = div ()
   [ E.h2 () $ text "Menu"
   , E.ul ()
@@ -162,6 +160,7 @@ campaignTable sink camps = table () [
   , tbody () (map (campaignRow sink) $ zip [0..] camps)
   ]
 
+campaignRow :: Widget (AC.AdCampaign) Action
 campaignRow sink (ix, camp) = tr ()
   [ td () [text $ showJS $ AC.fbid camp]
   , td () [text $ AC.campaign_name camp]
