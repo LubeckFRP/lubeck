@@ -48,7 +48,6 @@ data Action
   | Logout
   | Pure (Model -> Model)
   | GotUser A.Account
-  | Then Action Action
   | GoTo ViewSection
 
 -- -- For debugging only
@@ -58,7 +57,6 @@ data Action
 --     g Logout      = "Logout"
 --     g (GotUser _) = "GotUser"
 --     g (Pure _)    = "Pure"
---     g (Then _ _)  = "Then"
 --     g (GoTo _)    = "GoTo"
 
 data Model = NotLoggedIn { _loginPage :: LoginPage}
@@ -89,10 +87,10 @@ update = foldpR step initial
 
     step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
     step LoginGo              (m,_) = (m, Nothing)
-    step (Pure f)             (m,_) = (f m, Nothing)
-    step Logout               (_,_) = initial
     step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
+    step Logout               (_,_) = initial
     step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
+    step (Pure f)             (m,_) = (f m, Nothing)
 
     goToViewSection (CampaignView n Nothing) model
       = Just $ loadAds n model
@@ -123,19 +121,19 @@ render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
       , div ()
         [text "daily budget:"
         , text $ showJS $ AC.daily_budget camp ]
-      , renderAdList sink mads
+      , renderAdList emptySink mads
       , menu sink acc
       ]
 
-renderAdList :: Widget (Maybe [Ad.Ad]) Action
-renderAdList sink Nothing = text "Loading ads"
-renderAdList sink (Just ads) = table () [
+renderAdList :: Widget (Maybe [Ad.Ad]) ()
+renderAdList _ Nothing = text "Loading ads"
+renderAdList _ (Just ads) = table () [
     tableHeaders ["FB adset id", "Name", "Budget"]
-  , tbody () (map (adRow sink) ads)
+  , tbody () (map (adRow emptySink) ads)
   ]
 
-adRow :: Widget Ad.Ad Action
-adRow sink ad = tr ()
+adRow :: Widget Ad.Ad ()
+adRow _ ad = tr ()
   [ td () [text $ showJS $ Ad.fb_adset_id ad]
   , td () [text $ Ad.ad_title ad]
   , td () [text $ showJS $ Ad.current_budget ad]
