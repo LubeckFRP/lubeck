@@ -164,22 +164,22 @@ maybeW w s (Just x) = w s x
 
 
 -- MAIN
--- initPostQuery = defSimplePostQuery
-initPostQuery = defSimplePostQuery {
-    caption   = "christmas",
-    comment   = "",
-    hashTag   = "",
-    userName  = ""
-    -- followers = Nothing ... Nothing,
-    -- date      = Nothing ... Nothing,
-    -- location  = Nothing,
-    -- orderBy   = PostByLikes,
-    -- direction = Asc
-  }
+initPostQuery = defSimplePostQuery
+-- initPostQuery = defSimplePostQuery {
+--     caption   = "christmas",
+--     comment   = "",
+--     hashTag   = "",
+--     userName  = ""
+--     -- followers = Nothing ... Nothing,
+--     -- date      = Nothing ... Nothing,
+--     -- location  = Nothing,
+--     -- orderBy   = PostByLikes,
+--     -- direction = Asc
+--   }
 
 main :: IO ()
 main = do
-  userName <- getURIParameter "user"
+  mUserName <- getURIParameter "user"
 
   -- Search event (from user)
   (searchView, searchRequested) <- formComponent initPostQuery searchForm
@@ -202,10 +202,13 @@ main = do
   -- Create ad
   subscribeEvent adCreated $ \(CreateAd post) -> do
     -- print (userName, P.ig_web_url post)
-    res <- postAPIEither (userName <> "/upload-igpost-adlibrary/" <> P.id post) ()
-    case res of
-      Left _   -> print "Failed to upload post to ad library"
-      Right Ok -> print "Uploaded post"
+    case mUserName of
+      Nothing -> print "No account to upload post to"
+      Just userName -> do
+        res <- postAPIEither (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+        case res of
+          Left _   -> print "Failed to upload post to ad library"
+          Right Ok -> print "Uploaded post"
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
