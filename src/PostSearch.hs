@@ -42,7 +42,6 @@ import BD.Api
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
 searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
   [ div () [text (showJS query)]
-  -- , input () [text $ PQ.caption query]
 
   , longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
   , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
@@ -191,13 +190,10 @@ searchPage mUserNameB = do
 
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
-  results <- stepperS Nothing searchResultReceived
-    :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((maybeW postSearchResult) createAd) results
-    :: Signal Html
+  results <- stepperS Nothing searchResultReceived                   :: IO (Signal (Maybe [Post]))
+  let resultView = fmap ((maybeW postSearchResult) createAd) results :: Signal Html
 
-  let view = liftA2 (\x y -> div () [x,y]) searchView resultView
-    :: Signal Html
+  let view = liftA2 (\x y -> div () [x,y]) searchView resultView     :: Signal Html
 
   -- API calls
 
