@@ -12,6 +12,7 @@ import Data.Monoid
 import Control.Applicative
 import qualified Data.Map as Map
 import Data.Map(Map)
+import Control.Lens (over, set, view, lens)
 
 import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
@@ -38,12 +39,15 @@ import qualified BD.Query.PostQuery as PQ
 import BD.Api
 
 
+
+
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
 searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
   [ div () [text (showJS query)]
 
-  , longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
+  , subW (lens PQ.caption (\s b -> s {caption=b})) (longStringWidget "Caption") output query
+  -- , longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
   , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
   , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
   , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
@@ -157,9 +161,9 @@ postSearchResult output posts = div () [
         ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
-maybeW :: Widget a b -> Widget (Maybe a) b
-maybeW w s Nothing  = div () [text "(nothing)"]
-maybeW w s (Just x) = w s x
+altW :: Html -> Widget a b -> Widget (Maybe a) b
+altW alt w s Nothing  = alt
+altW alt w s (Just x) = w s x
 
 
 -- MAIN
@@ -191,7 +195,7 @@ searchPage mUserNameB = do
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
   results <- stepperS Nothing searchResultReceived                   :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((maybeW postSearchResult) createAd) results :: Signal Html
+  let resultView = fmap ((altW (text "") postSearchResult) createAd) results :: Signal Html
 
   let view = liftA2 (\x y -> div () [x,y]) searchView resultView     :: Signal Html
 
