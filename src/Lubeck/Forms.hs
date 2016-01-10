@@ -23,6 +23,8 @@ module Lubeck.Forms
   , bothWidget
   , multiWidget
   -- , mapMWidget
+  , isoW
+  , possW
 
   -- * Components
   , component
@@ -37,7 +39,8 @@ module Lubeck.Forms
 import Lubeck.FRP
 import Lubeck.Html (Html)
 
-import Control.Lens (over, set, view, lens, Lens, Lens')
+import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
+import qualified Control.Lens
 import Control.Lens.TH (makeLenses)
 
 {-|
@@ -71,6 +74,11 @@ mapHtmlWidget f w = \s -> f . w s
 
 -- | Turn a widget of a smaller type into a widget of a larger type using a lens.
 --
+-- The resulting widget will render part of the larger type that the lens selects.
+-- It the resulting widget produces output, this will be used to transform the
+-- value rendered by the larger widget. This makes this function especially
+-- useful in conjunction with 'multiWidget'.
+--
 -- @
 -- subWidget _1     :: Widget' a -> Widget' (a, b)
 -- subWidget (at 1) :: Widget' Just a -> Widget' (Map Int a)
@@ -78,6 +86,9 @@ mapHtmlWidget f w = \s -> f . w s
 -- @
 subWidget :: Lens' s a -> Widget' a -> Widget' s
 subWidget l w o i = w (contramapSink (\x -> set l x i) o) (view l i)
+
+possibleWidget :: (Sink a -> Html) -> Prism' s a -> Widget' a -> Widget' s
+possibleWidget f p w o i = undefined
 
 -- | Compose two widgets.
 -- Both render the value and the resultant HTML is composed using the given function.
@@ -94,10 +105,33 @@ bothWidget c w1 w2 o i = w1 o i `c` w2 o i
 --
 -- manyW :: Widget Many Many
 -- manyW = multiWidget (\x y -> div () [x,y])
---   [subWidget foo intW, subWidget bar (maybeW stringW)]
+--   [subWidget foo intW, subWidget bar (maybeW (div () ()) stringW)]
 -- @
 multiWidget :: Foldable t => (Html -> Html -> Html) -> t (Widget a b) -> Widget a b
 multiWidget f = foldr1 (bothWidget f)
+
+
+isoW :: Iso' a b -> Widget' a -> Widget' b
+isoW i = dimapWidget (review i) (view i)
+
+-- | Turn a widget of a part type into a widget of an alternative type using a prism.
+--
+-- The resulting widget will render the part of the value selected by the prism if it
+-- is there, otherwise it renders the given default HTML. The default rendering can
+-- optionally use the provided sink to initiate a new value (typically some kind of
+-- default), in which case this value immediately replaces the previous value.
+--
+-- @
+-- possW _Just :: Widget' a -> Widget' (Maybe a)
+-- possW _Left :: Widget' a -> Widget' (Either a b)
+-- @
+possW :: (Sink a -> Html) -> Prism' s a -> Widget' a -> Widget' s
+possW z p w o i = case preview p i of
+  Nothing -> z (contramapSink (review p) o)
+  Just x  -> w (contramapSink (review p) o) x
+
+maybeW :: Html -> Widget' a -> Widget' (Maybe a)
+maybeW z = possW (const z) Control.Lens._Just
 
 mapMWidget :: ([Html] -> Html) -> Widget a a -> Widget [a] a
 mapMWidget k w o is = k $ fmap (w o) is
