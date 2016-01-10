@@ -6,7 +6,33 @@ Provides high-level way of constructing forms and other interfaces.
 
 /Experimental/
 -}
-module Lubeck.Forms where
+module Lubeck.Forms
+  (
+  -- * Widget type
+    Widget
+  , Widget'
+
+  -- ** Mapping over widgets
+  , lmapWidget
+  , rmapWidget
+  , dimapWidget
+  , mapHtmlWidget
+
+  -- ** Combining and transforming widgets
+  , subWidget
+  , bothWidget
+  , multiWidget
+  -- , mapMWidget
+
+  -- * Components
+  , component
+  , formComponent
+
+  -- ** Submit type
+  , Submit(..)
+  , submitValue
+  , submits
+  ) where
 
 import Lubeck.FRP
 import Lubeck.Html (Html)
@@ -73,18 +99,18 @@ multiWidget f = foldr1 (bothWidget f)
 mapMWidget :: ([Html] -> Html) -> Widget a a -> Widget [a] a
 mapMWidget k w o is = k $ fmap (w o) is
 
-
-data Many = Many { _foo :: Int, _bar :: Maybe String }
-makeLenses ''Many
-
-manyW :: Widget Many Many
-manyW = multiWidget (\x y -> x)
-  [subWidget foo intW, subWidget bar (maybeW stringW)]
-
-intW :: Widget' Int
-stringW :: Widget' String
-maybeW :: Widget' a -> Widget' (Maybe a)
-[intW, stringW, maybeW] = undefined
+--
+-- data Many = Many { _foo :: Int, _bar :: Maybe String }
+-- makeLenses ''Many
+--
+-- manyW :: Widget Many Many
+-- manyW = multiWidget (\x y -> x)
+--   [subWidget foo intW, subWidget bar (maybeW stringW)]
+--
+-- intW :: Widget' Int
+-- stringW :: Widget' String
+-- maybeW :: Widget' a -> Widget' (Maybe a)
+-- [intW, stringW, maybeW] = undefined
 
 
 -- | Create a component from a widget and an initial value.
@@ -109,7 +135,7 @@ formComponent z w = do
   -- Value changed
   (aSink,aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
   aS <- stepperS (DontSubmit z) aEvent
-  let htmlS = fmap (w aSink . value) aS
+  let htmlS = fmap (w aSink . submitValue) aS
   return (htmlS, submits aEvent)
 
 -- | A helper type for 'formComponent'.
@@ -118,9 +144,9 @@ data Submit a
   | Submit a     -- ^ Send on changes.
 
 -- | Extract the value.
-value :: Submit a -> a
-value (DontSubmit x) = x
-value (Submit x)     = x
+submitValue :: Submit a -> a
+submitValue (DontSubmit x) = x
+submitValue (Submit x)     = x
 
 -- | Extract just submit events, ignore others.
 submits :: Events (Submit a) -> Events a
