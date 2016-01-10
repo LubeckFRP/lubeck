@@ -41,7 +41,10 @@ import Control.Lens (over, set, view, lens, Lens, Lens')
 import Control.Lens.TH (makeLenses)
 
 {-|
-Provides a way of rendering a value of some type @i@, and emitting updates of some type @i@.
+Provides a way of:
+
+- Rendering a value of some type @i@
+- Sending updates of some type @o@ in response to user interaction.
 -}
 type Widget i o = Sink o -> i -> Html
 
