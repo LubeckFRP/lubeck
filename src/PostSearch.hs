@@ -15,7 +15,7 @@ import Data.Map(Map)
 
 import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
-import GHCJS.VDOM.Event (click, change, keydown, submit, stopPropagation, preventDefault, value)
+import GHCJS.VDOM.Event (click, change, keyup, submit, stopPropagation, preventDefault, value)
 import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input, label)
 import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
 import qualified GHCJS.VDOM.Element as E
@@ -117,8 +117,8 @@ longStringWidget title update value = div
     -- TODO size
     , A.class_ "form-control"
     , A.value value
-    , keydown $ contramapSink Ev.value update
     , change  $ contramapSink Ev.value update
+    , keyup $ contramapSink Ev.value update
     ] ()
   ]
 
