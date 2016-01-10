@@ -3,7 +3,9 @@
 
 Beautiful Destinations front-end based on GHCJS.
 
-## Code overview
+
+
+## Overview
 
 The code is organized as follows:
 
@@ -17,7 +19,9 @@ The client-code can be built to HTML/JS manually, or using the "official" server
 the built applications and also provide `404.html`, `index.html` etc. Note that this server only serves front-end content
 and does not do any backend interaction (i.e. its state is determined solely by this repository).
 
-## Build/Deploy
+
+
+## Build
 
 There are two ways to build and serve this code at the moment.
 
@@ -40,13 +44,9 @@ See the `Makefile` for details.
 - Wait a very long time
 - To recompile, `vagrant ssh` then `cd lubeck && cabal install --ghcjs`
 
-## Documentation
 
-Most dependencies are on Stackage, so their documentation is available on https://www.stackage.org/nightly-yyyy-mm-dd (see `stack.yaml` resolver field for date).
 
-The easiest way to get the documentation for the `lubeck` library and the GHCJS-specific modules is to run `stack haddock`.
-
-## Server/CI
+## Deploy
 
 There is a public test server running this code at `http://46.101.88.167:8090`.
 
@@ -57,6 +57,15 @@ To update/restart manually:
     git pull && make
 
 TODO add CI/Github hook.
+
+
+## Documentation
+
+Most dependencies are on Stackage, so their documentation is available on https://www.stackage.org/nightly-yyyy-mm-dd (see `stack.yaml` resolver field for date).
+
+The easiest way to get the documentation for the `lubeck` library and the GHCJS-specific modules is to run `stack haddock`.
+
+
 
 
 ## Miscellaneous
