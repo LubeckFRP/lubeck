@@ -15,26 +15,21 @@ import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified Data.JSString
 
 import Lubeck.FRP
-import Lubeck.App (Html, runAppPure)
-import Lubeck.Web.History
-import Lubeck.Forms (Widget, Widget')
+import Lubeck.App (Html, runAppReactive)
+import Lubeck.Forms (Widget, Widget', component)
 import Lubeck.Drawing (drawTest)
 
-update :: Events () -> IO (Behavior JSString)
-update = foldpR step initial
-  where
-    initial = "Hello Web!"
-    step () model = model <> "!"
-
-render :: Widget JSString ()
-render actions model = div ()
+render :: Widget' JSString
+render output model = div ()
   [ div () $ h1 () $ text model
   , div () $ button
-    [ click (\_ -> actions ()) ]
+    [ click (\_ -> output (model <> "!")) ]
     [ text "Click me" ]
   , drawTest (length $ Data.JSString.unpack $ model) ]
 
 -- MAIN
 
 main :: IO ()
-main = runAppPure update render
+main = do
+  (view, _) <- component "!" render
+  runAppReactive view
