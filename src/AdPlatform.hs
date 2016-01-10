@@ -125,22 +125,32 @@ render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
       , menu sink acc
       ]
 
+campaignTable :: Widget [AC.AdCampaign] Action
+campaignTable sink camps = table () [
+    tableHeaders ["FB id", "Name", ""]
+  , tbody () (map (campaignRow sink) $ zip [0..] camps)
+  ]
+  where
+    campaignRow :: Widget (Int, AC.AdCampaign) Action
+    campaignRow sink (ix, camp) = tr ()
+      [ td () [text $ showJS $ AC.fbid camp]
+      , td () [text $ AC.campaign_name camp]
+      , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
+      ]
+
 renderAdList :: Widget (Maybe [Ad.Ad]) ()
 renderAdList _ Nothing = text "Loading ads"
 renderAdList _ (Just ads) = table () [
     tableHeaders ["FB adset id", "Name", "Budget"]
   , tbody () (map (adRow emptySink) ads)
   ]
-
-adRow :: Widget Ad.Ad ()
-adRow _ ad = tr ()
-  [ td () [text $ showJS $ Ad.fb_adset_id ad]
-  , td () [text $ Ad.ad_title ad]
-  , td () [text $ showJS $ Ad.current_budget ad]
-  ]
-
-tableHeaders :: [JSString] -> Html
-tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
+  where
+    adRow :: Widget Ad.Ad ()
+    adRow _ ad = tr ()
+      [ td () [text $ showJS $ Ad.fb_adset_id ad]
+      , td () [text $ Ad.ad_title ad]
+      , td () [text $ showJS $ Ad.current_budget ad]
+      ]
 
 menu :: Widget A.Account Action
 menu sink acc = div ()
@@ -152,19 +162,6 @@ menu sink acc = div ()
     ]
   ]
 
-campaignTable :: Widget [AC.AdCampaign] Action
-campaignTable sink camps = table () [
-    tableHeaders ["FB id", "Name", ""]
-  , tbody () (map (campaignRow sink) $ zip [0..] camps)
-  ]
-
-campaignRow :: Widget (Int, AC.AdCampaign) Action
-campaignRow sink (ix, camp) = tr ()
-  [ td () [text $ showJS $ AC.fbid camp]
-  , td () [text $ AC.campaign_name camp]
-  , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
-  ]
-
 loginPageW :: Widget LoginPage Action
 loginPageW sink (LoginPage u pw) = form
   [ submit $ \e -> preventDefault e >> return () ]
@@ -174,6 +171,10 @@ loginPageW sink (LoginPage u pw) = form
     E.input [A.value u,
              change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
    , button (click $ \_ -> sink LoginGo) [text "Login"] ]
+
+tableHeaders :: [JSString] -> Html
+tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
+
 
 
 -- BACKEND
