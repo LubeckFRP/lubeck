@@ -80,22 +80,22 @@ makeLenses ''LoginPage
 makeLenses ''UserModel
 makeLenses ''ViewSection
 
-update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
-update = foldpR step initial
-  where
-    initial = (NotLoggedIn (LoginPage "forbestravelguide" "bar"), Nothing)
+-- update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
+-- update = foldpR step initial
+  -- where
+    -- initial = (NotLoggedIn (LoginPage "forbestravelguide" "bar"), Nothing)
 
     -- step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
-    step LoginGo              (m,_) = (m, Nothing)
+    -- step LoginGo              (m,_) = (m, Nothing)
     -- step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
-    step Logout               (_,_) = initial
-    step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
-    step (Pure f)             (m,_) = (f m, Nothing)
+    -- step Logout               (_,_) = initial
+    -- step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
+    -- step (Pure f)             (m,_) = (f m, Nothing)
 
-    goToViewSection (CampaignView n Nothing) model
-      = Just $ loadAds n model
-    goToViewSection _ model
-      = Nothing
+    -- goToViewSection (CampaignView n Nothing) model
+      -- = Just $ loadAds n model
+    -- goToViewSection _ model
+      -- = Nothing
 
 
 -- render :: Widget Model Action
@@ -134,19 +134,18 @@ userPageW sink (acc, camps) =
 
 -- render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
 
-campaignPageW :: Widget (AdCampaign.AdCampaign, Maybe [Ad.Ad]) ()
-campaignPageW sink (camp, mads) =
+campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()
+campaignPageW sink (camp, ads) =
   div ()
       [ h1 () [text $ AdCampaign.campaign_name camp]
       , div ()
         [text "daily budget:"
         , text $ showJS $ AdCampaign.daily_budget camp ]
-      , renderAdList emptySink mads
+      , renderAdList emptySink ads
       ]
   where
-    renderAdList :: Widget (Maybe [Ad.Ad]) ()
-    renderAdList _ Nothing = text "Loading ads"
-    renderAdList _ (Just ads) = table () [
+    renderAdList :: Widget [Ad.Ad] ()
+    renderAdList _ ads = table () [
         tableHeaders ["FB adset id", "Name", "Budget"]
       , tbody () (map (adRow emptySink) ads)
       ]
@@ -194,12 +193,11 @@ getCampaigns :: Account.Account -> IO [AdCampaign.AdCampaign]
 getCampaigns acc = do
   AdCampaign.getUserCampaigns $ Account.username acc
 
-loadAds :: Int -> Model -> IO Action
-loadAds n model =  do
-  let campid = showJS $ AdCampaign.fbid $ (_campaigns $ _userModel $ model)!!n
-      username = Account.username $ _user model
-  ads <- Ad.getCampaignAds username campid
-  return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
+loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO [Ad.Ad]
+loadAds account camp =  do
+  let campid = showJS $ AdCampaign.fbid camp
+      username = maybe "" Account.username $ account
+  Ad.getCampaignAds username campid
 
 
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch
@@ -211,14 +209,23 @@ adPlatform = do
   (menuView, menuNavE) <- component NavLogin menu
 
   -- Login form
-  (loginView, userLoginE) <- formComponent "" loginPageW
+  (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
   let userE       = reactimate $ fmap Account.getUser userLoginE
   let camapaignsE = reactimate $ fmap getCampaigns userE
   userS      <- stepperS Nothing (fmap Just userE)
   campaignsS <- stepperS Nothing (fmap Just camapaignsE)
 
   -- User page
+  (fetchCampaignAds, loadAdsE) <- newEvent
+  let userAndCampaignsS = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
+  let userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
+
   -- Campaign page
+  let adsE = reactimate $ snapshotWith loadAds (current userS) loadAdsE
+  latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
+  adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
+  let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
+  let adsView = fmap ((altW mempty campaignPageW) emptySink) lastestAndAdsS
 
   -- Determines what page we are viewing
   let postLoginNavE = fmap (const NavUser) (updates userS)
@@ -230,8 +237,16 @@ adPlatform = do
             , rest
             ])
             navS
-            (mconcat [menuView, loginView])
+            (mconcat [menuView, loginView, userView, adsView])
   return (view, navS, userS)
+
+
+
+-- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
+altW :: Html -> Widget a b -> Widget (Maybe a) b
+altW alt w s Nothing  = alt
+altW alt w s (Just x) = w s x
+
 
 -- MAIN
 
