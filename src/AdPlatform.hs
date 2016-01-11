@@ -166,12 +166,12 @@ adPlatform = do
   return view
 
 nav x menu login user ads search = case x of
-  NavLogin    -> wrap login
-  NavUser     -> wrap user
-  NavCampaign -> wrap ads
-  NavSearch   -> wrap search
+  NavLogin    -> wrap mempty login
+  NavUser     -> wrap menu user
+  NavCampaign -> wrap menu ads
+  NavSearch   -> wrap menu search
   where
-    wrap page = div ()
+    wrap menu page = div ()
       [ h1 () [text "Ad platform"]
       , menu
       , page
