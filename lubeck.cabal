@@ -13,6 +13,7 @@ library
   exposed-modules:     Lubeck.FRP
                      , Lubeck.App
                      , Lubeck.Drawing
+                     , Lubeck.Util
                      , Lubeck.Forms
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval

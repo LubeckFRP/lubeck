@@ -3,11 +3,10 @@
 
 module Lubeck.Forms.Interval where
 
-import Lubeck.Forms
-import Lubeck.Forms.Select
 import qualified Data.List
 import Numeric.Interval (Interval)
 import qualified Numeric.Interval as I
+import Data.Time.Calendar (Day(..))
 
 import Data.JSString (JSString, pack, unpack)
 
@@ -18,7 +17,9 @@ import qualified GHCJS.VDOM.Attribute as A
 import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
 import qualified Control.Lens
 
--- data Interval a
+import Lubeck.Forms
+import Lubeck.Forms.Select
+import Lubeck.Util(customAttrs)
 
 
 integerIntervalWidget :: JSString -> Widget' (Interval (Maybe Int))
@@ -79,9 +80,15 @@ hideableIntegerWidget enabled s v = E.input
   ]
   ()
 
--- hideableDateWidget :: Bool -> Widget' Date
--- hideableDateWidget enabled s v = input [class_ "form-control", type_ "date", style_ $ if enabled then "" else "visibility:hidden",
---   onChange (Signal.forwardTo s $ \new -> case Date.fromString new of
---   Err _ -> v
---   Ok x  -> x
---   ), Attr.value (formatDateIso v)] []
+hideableDateWidget :: Bool -> Widget' Day
+hideableDateWidget enabled s v = E.input
+  [ A.class_ "form-control"
+  , A.type_ "date"
+  -- , A.style_ $ if enabled then "" else "visibility:hidden"
+  , Ev.change $ \e -> s $ readDate $ unpack $ Ev.value e
+  , A.value (pack $ showDate v)
+  ]
+  ()
+  where
+    readDate = undefined
+    showDate = undefined

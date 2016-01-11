@@ -31,6 +31,7 @@ import Lubeck.Forms.Select
 import Lubeck.Forms.Interval
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Web.URI (getURIParameter)
+import Lubeck.Util(customAttrs)
 
 import BD.Data.Account (Account)
 import qualified BD.Data.Account as Ac
@@ -55,6 +56,7 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
   , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
   , integerIntervalWidget "Poster followers" (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
+    ++ dateIntervalWidget    "Posting date"     (Signal.forwardTo updateQuery (\new -> { query | date      <- new })) query.date
 
   , div [ class_ "form-group form-inline" ]
     [ div [ class_ "form-group"  ]
@@ -74,43 +76,6 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
       ]
     ]
   , button (click $ \e -> output $ Submit query) $ text "Search!" ]
-
-{-
-searchPost appEvents updateQuery query = [
-  form_ "form-vertical" [Attr.style [("width", "80%"), ("margin", "15px")]] $ []
-    ++ longStringWidget "Caption"          (Signal.forwardTo updateQuery (\new -> { query | caption   <- new })) query.caption
-    ++ longStringWidget "Comment"          (Signal.forwardTo updateQuery (\new -> { query | comment   <- new })) query.comment
-    ++ longStringWidget "Hashtag"          (Signal.forwardTo updateQuery (\new -> { query | hashTag   <- new })) query.hashTag
-    ++ longStringWidget "User name"        (Signal.forwardTo updateQuery (\new -> { query | userName  <- new })) query.userName
-    ++ dateIntervalWidget    "Posting date"     (Signal.forwardTo updateQuery (\new -> { query | date      <- new })) query.date
-
-    -- TODO Location
-
-    ++ [
-    div [class_ "form-group form-inline"]
-    [ div [class_ "form-group"] $ List.concat [
-
-      [ label [] [text "Sort by"] ]
-
-      , selectWidget
-        [ (PostByFollowers, "Poster followers")
-        , (PostByLikes,     "Likes")
-        , (PostByComments,  "Comments")
-        , (PostByCreated,   "Posting time")]
-        (Signal.forwardTo updateQuery (\new -> { query | orderBy <- new })) query.orderBy
-
-      , selectWidget
-        [ (Asc,   "from lowest to highest")
-        , (Desc,  "from highest to lowest")]
-        (Signal.forwardTo updateQuery (\new -> { query | direction <- new })) query.direction ]]
-          ]
-          ]
-
--}
-
-
-
-
 
 longStringWidget :: JSString -> Widget' JSString
 longStringWidget title update value = div
@@ -167,22 +132,9 @@ altW alt w s Nothing  = alt
 altW alt w s (Just x) = w s x
 
 
--- MAIN
-initPostQuery = defSimplePostQuery
--- initPostQuery = defSimplePostQuery {
---     caption   = "christmas",
---     comment   = "",
---     hashTag   = "",
---     userName  = ""
---     -- followers = Nothing ... Nothing,
---     -- date      = Nothing ... Nothing,
---     -- location  = Nothing,
---     -- orderBy   = PostByLikes,
---     -- direction = Asc
---   }
-
 searchPage :: Behavior (Maybe JSString) -> IO (Signal Html)
 searchPage mUserNameB = do
+  let initPostQuery = defSimplePostQuery
 
   -- Search event (from user)
   (searchView, searchRequested) <- formComponent initPostQuery searchForm
@@ -228,6 +180,9 @@ searchPage mUserNameB = do
 
   return view
 
+
+-- MAIN
+
 main :: IO ()
 main = do
   mUserName <- getURIParameter "user"
@@ -265,12 +220,3 @@ newEventOf _ = newEvent
 
 showJS :: Show a => a -> JSString
 showJS = Data.JSString.pack . show
-
--- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
--- This works around the issue. The value returned here should take the place of the standard
--- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
---
--- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
-customAttrs :: Map String String -> Attributes'
-customAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
-  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
