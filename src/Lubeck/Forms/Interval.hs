@@ -62,7 +62,7 @@ customIntervalWidget z numW title = id
     visible x = case x of
       "inf-inf" -> (False, False)
       "fin-inf" -> (True, False)
-      "inf-fin" -> (True, False)
+      "inf-fin" -> (False, True)
       _         -> (True, True)
     numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
 
