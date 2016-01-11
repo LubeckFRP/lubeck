@@ -1,5 +1,5 @@
 
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, TypeSynonymInstances #-}
 
 {-|
 Provides a HTML representation.
@@ -40,8 +40,13 @@ module Lubeck.Html where
 
 #ifdef __GHCJS__
 import GHCJS.VDOM (VNode)
+import qualified GHCJS.VDOM.Element as E
 
 type Html = VNode
+
+instance Monoid Html where
+  mempty      = E.div () ()
+  mappend x y = E.div () [x, y]
 #else
 
 type Html = ()

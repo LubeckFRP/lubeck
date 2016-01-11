@@ -15,6 +15,7 @@ library
                      , Lubeck.Drawing
                      , Lubeck.Forms
                      , Lubeck.Forms.Select
+                     , Lubeck.Forms.Interval
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI

@@ -104,24 +104,6 @@ searchPost appEvents updateQuery query = [
           ]
           ]
 
-
-
-selectWidget : List (a, String) -> Widget' a
-selectWidget xs = let
-  (vals, names) = List.unzip xs
-  (toInt, fromInt) = indexed vals
-  count = List.map toString [0..1000]
-
-  selectWidget' : (a -> String) -> (String -> b) -> List (String, String) -> Widget a b
-  selectWidget' f g vs = mapInput f $ mapOutput g $ selectWidget'' vs
-
-  selectWidget'' : List (String, String) -> Widget' String
-  selectWidget'' valuesLabels s x = [select [class_ "form-control", onChange s, Attr.value x] $ List.map (\(v,l) -> option ([Attr.value v]
-    ++ if v == x then [Attr.selected True] else []
-    )  [text l]) valuesLabels]
-
-  in selectWidget' (toString << toInt) (fromInt << unsafeToInt) (zip count names)
-
 -}
 
 
