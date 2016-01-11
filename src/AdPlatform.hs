@@ -159,23 +159,28 @@ adPlatform = do
   navS <- stepperS NavLogin (postLoginNavE <> menuNavE)
 
   -- Integrate post search
-  searchPageView <- searchPage (current userS)
+  searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
 
-  let view = liftA2 (\nav rest -> h1 ()
-            [ text "Ad platform: "
-            , rest
-            ])
-            navS
-            (mconcat [menuView, loginView, userView, adsView, searchPageView])
-
+  let view = nav <$> navS <*> menuView <*> loginView <*> userView <*> adsView <*> searchPageView
   return view
 
+nav x menu login user ads search = case x of
+  NavLogin    -> wrap login
+  NavUser     -> wrap user
+  NavCampaign -> wrap ads
+  NavSearch   -> wrap search
+  where
+    wrap page = div ()
+      [ h1 () [text "Ad platform"]
+      , menu
+      , page
+      ]
 
 
 -- MAIN
 
 main = do
-  (adPlatformView,_,_) <- adPlatform
+  adPlatformView <- adPlatform
   runAppReactive adPlatformView
 -- main :: IO ()
 -- main = runApp update render

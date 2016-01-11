@@ -103,7 +103,7 @@ executable bd-interactions
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-adplatform
-  main-is:             AdPlatform.hs
+  main-is:             src/AdPlatform.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , ghcjs-vdom == 0.2.0.0
