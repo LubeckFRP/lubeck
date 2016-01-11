@@ -103,7 +103,7 @@ update = foldpR step initial
 -- render sink (NotLoggedIn lp) = loginPageW sink lp
 
 -- render sink (AsUser acc (UserModel camps UserView)) =
-userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) Action
+userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) (AdCampaign.AdCampaign)
 userPageW sink (acc, camps) =
   div
   ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
@@ -128,16 +128,15 @@ userPageW sink (acc, camps) =
     campaignRow sink (ix, camp) = tr ()
       [ td () [text $ showJS $ AdCampaign.fbid camp]
       , td () [text $ AdCampaign.campaign_name camp]
-      , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
+      , td () [E.a (click $ \_ -> sink camp) [text "view"]]
       ]
 
 
 -- render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
 
-campaignPageW :: Widget ([AdCampaign.AdCampaign], Int, Maybe [Ad.Ad]) Action
-campaignPageW sink (camps, ix, mads) =
-  let camp = camps !! ix
-  in div ()
+campaignPageW :: Widget (AdCampaign.AdCampaign, Maybe [Ad.Ad]) ()
+campaignPageW sink (camp, mads) =
+  div ()
       [ h1 () [text $ AdCampaign.campaign_name camp]
       , div ()
         [text "daily budget:"
