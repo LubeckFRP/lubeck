@@ -75,8 +75,7 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
         (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
       ]
     ]
-    -- TODO button style
-  , button [click $ \e -> output $ Submit query] $ text "Search!" ]
+  , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query] $ text "Search!" ]
 
 longStringWidget :: JSString -> Widget' JSString
 longStringWidget title update value = div
