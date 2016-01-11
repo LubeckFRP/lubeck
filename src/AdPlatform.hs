@@ -98,10 +98,14 @@ update = foldpR step initial
       = Nothing
 
 
-render :: Widget Model Action
-render sink LoadingUser = text "Loading User"
+-- render :: Widget Model Action
+-- render sink LoadingUser = text "Loading User"
 -- render sink (NotLoggedIn lp) = loginPageW sink lp
-render sink (AsUser acc (UserModel camps UserView)) = div
+
+-- render sink (AsUser acc (UserModel camps UserView)) =
+userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) Action
+userPageW sink (acc, camps) =
+  div
   ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
   , div ()
@@ -112,25 +116,14 @@ render sink (AsUser acc (UserModel camps UserView)) = div
     [ text "number of campaigns: "
     , text $ showJS (length camps)]
   , campaignTable sink camps
-  -- , menu sink acc
-  ]
-render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
-  let camp = camps !! ix
-  in div ()
-      [ h1 () [text $ AdCampaign.campaign_name camp]
-      , div ()
-        [text "daily budget:"
-        , text $ showJS $ AdCampaign.daily_budget camp ]
-      , renderAdList emptySink mads
-      -- , menu sink acc
-      ]
-
-campaignTable :: Widget [AdCampaign.AdCampaign] Action
-campaignTable sink camps = table () [
-    tableHeaders ["FB id", "Name", ""]
-  , tbody () (map (campaignRow sink) $ zip [0..] camps)
   ]
   where
+    campaignTable :: Widget [AdCampaign.AdCampaign] Action
+    campaignTable sink camps = table () [
+        tableHeaders ["FB id", "Name", ""]
+      , tbody () (map (campaignRow sink) $ zip [0..] camps)
+      ]
+
     campaignRow :: Widget (Int, AdCampaign.AdCampaign) Action
     campaignRow sink (ix, camp) = tr ()
       [ td () [text $ showJS $ AdCampaign.fbid camp]
@@ -138,13 +131,27 @@ campaignTable sink camps = table () [
       , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
       ]
 
-renderAdList :: Widget (Maybe [Ad.Ad]) ()
-renderAdList _ Nothing = text "Loading ads"
-renderAdList _ (Just ads) = table () [
-    tableHeaders ["FB adset id", "Name", "Budget"]
-  , tbody () (map (adRow emptySink) ads)
-  ]
+
+-- render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
+
+campaignPageW :: Widget ([AdCampaign.AdCampaign], Int, Maybe [Ad.Ad]) Action
+campaignPageW sink (camps, ix, mads) =
+  let camp = camps !! ix
+  in div ()
+      [ h1 () [text $ AdCampaign.campaign_name camp]
+      , div ()
+        [text "daily budget:"
+        , text $ showJS $ AdCampaign.daily_budget camp ]
+      , renderAdList emptySink mads
+      ]
   where
+    renderAdList :: Widget (Maybe [Ad.Ad]) ()
+    renderAdList _ Nothing = text "Loading ads"
+    renderAdList _ (Just ads) = table () [
+        tableHeaders ["FB adset id", "Name", "Budget"]
+      , tbody () (map (adRow emptySink) ads)
+      ]
+
     adRow :: Widget Ad.Ad ()
     adRow _ ad = tr ()
       [ td () [text $ showJS $ Ad.fb_adset_id ad]
@@ -184,7 +191,7 @@ tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
 -- loginUser s = do
 --   Account.getUser s
 
-getCampaigns :: Account.Account -> IO AdCampaign.AdCampaign
+getCampaigns :: Account.Account -> IO [AdCampaign.AdCampaign]
 getCampaigns acc = do
   AdCampaign.getUserCampaigns $ Account.username acc
 
@@ -206,8 +213,10 @@ adPlatform = do
 
   -- Login form
   (loginView, userLoginE) <- formComponent "" loginPageW
-  userS <- stepperS Nothing (fmap Just $ reactimate $ fmap Account.getUser userLoginE)
-  let campaignsS = reactimate $ fmap getCampaigns userS
+  let userE       = reactimate $ fmap Account.getUser userLoginE
+  let camapaignsE = reactimate $ fmap getCampaigns userE
+  userS      <- stepperS Nothing (fmap Just userE)
+  campaignsS <- stepperS Nothing (fmap Just camapaignsE)
 
   -- User page
   -- Campaign page
