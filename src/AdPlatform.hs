@@ -87,7 +87,7 @@ update = foldpR step initial
 
     -- step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
     step LoginGo              (m,_) = (m, Nothing)
-    step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
+    -- step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
     step Logout               (_,_) = initial
     step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
     step (Pure f)             (m,_) = (f m, Nothing)
@@ -112,7 +112,7 @@ render sink (AsUser acc (UserModel camps UserView)) = div
     [ text "number of campaigns: "
     , text $ showJS (length camps)]
   , campaignTable sink camps
-  , menu sink acc
+  -- , menu sink acc
   ]
 render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
   let camp = camps !! ix
@@ -122,7 +122,7 @@ render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
         [text "daily budget:"
         , text $ showJS $ AdCampaign.daily_budget camp ]
       , renderAdList emptySink mads
-      , menu sink acc
+      -- , menu sink acc
       ]
 
 campaignTable :: Widget [AdCampaign.AdCampaign] Action
@@ -152,16 +152,20 @@ renderAdList _ (Just ads) = table () [
       , td () [text $ showJS $ Ad.current_budget ad]
       ]
 
-menu :: Widget Account.Account Action
-menu sink acc = div ()
+
+
+
+
+
+menu :: Widget' Nav
+menu sink value = div ()
   [ E.h2 () $ text "Menu"
   , E.ul ()
-    [ E.li () $ E.a (A.href $ "/posts/?user=" <> encodeURIComponent (Account.username acc)) [text "Search"]
-    , E.li () $ E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
-    , E.li () $ E.a (click $ \_ -> sink Logout) [text "Logout"]
+    [ E.li () $ E.a (click $ \_ -> sink $ NavSearch) [text "Search"]
+    , E.li () $ E.a (click $ \_ -> sink $ NavUser)   [text "User"]
+    , E.li () $ E.a (click $ \_ -> sink $ NavLogin)  [text "Logout"]
     ]
   ]
-
 
 loginPageW :: Widget JSString (Submit JSString)
 loginPageW sink name = form
@@ -180,10 +184,9 @@ tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
 -- loginUser s = do
 --   Account.getUser s
 
-getCampaigns :: Account.Account -> IO Action
+getCampaigns :: Account.Account -> IO AdCampaign.AdCampaign
 getCampaigns acc = do
-  cs <- AdCampaign.getUserCampaigns $ Account.username acc
-  return $ Pure $ set (userModel . campaigns) cs
+  AdCampaign.getUserCampaigns $ Account.username acc
 
 loadAds :: Int -> Model -> IO Action
 loadAds n model =  do
@@ -199,22 +202,28 @@ data Nav = NavLogin | NavUser | NavCampaign | NavSearch
 adPlatform :: IO (Signal Html, Signal Nav, Signal (Maybe (Account.Account)))
 adPlatform = do
   -- Menu
-  let menuView = pure (text "Menu")
+  (menuView, menuNavE) <- component NavLogin menu
 
   -- Login form
   (loginView, userLoginE) <- formComponent "" loginPageW
   userS <- stepperS Nothing (fmap Just $ reactimate $ fmap Account.getUser userLoginE)
+  let campaignsS = reactimate $ fmap (getCampaigns) userS
+
+  -- User page
+  -- Campaign page
 
   -- Determines what page we are viewing
   let postLoginNavE = fmap (const NavUser) (updates userS)
-  let menuNavE = never -- TODO
   navS <- stepperS NavLogin (postLoginNavE <> menuNavE)
+  ca
 
   let view = liftA2 (\nav rest -> h1 ()
             [ text "Ad platform: "
             , text (showJS nav)
             , rest
-            ]) navS (mconcat [menuView, loginView])
+            ])
+            navS
+            (mconcat [menuView, loginView])
   return (view, navS, userS)
 
 -- MAIN
