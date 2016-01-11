@@ -1,7 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
-module Main where
+module PostSearch (searchPage) where
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -183,11 +183,11 @@ searchPage mUserNameB = do
 
 -- MAIN
 
-main :: IO ()
-main = do
-  mUserName <- getURIParameter "user"
-  let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
-  searchPage mUserNameB >>= runAppReactive
+-- main :: IO ()
+-- main = do
+--   mUserName <- getURIParameter "user"
+--   let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
+--   searchPage mUserNameB >>= runAppReactive
 
 
 
