@@ -36,20 +36,21 @@ customIntervalWidget z numW title = id
   where
     fromInterval :: Interval (Maybe a) -> (String, (a, a))
     toInterval   :: (String, (a, a))   -> Interval (Maybe a)
-    fromInterval = undefined
-    toInterval = undefined
+    -- fromInterval = undefined
+    -- toInterval = undefined
     spanWidget2 :: Widget' (String, (a, a))
     spanWidget2 s x = composeWidget spanTypeW numsW s x
-    -- fromInterval (Interval {min, max}) = case (min, max) of
-    --   (NegInf, PosInf) -> (("inf-inf"), (z,z))
-    --   (Fin x,  PosInf) -> (("fin-inf"), (x,x))
-    --   (NegInf, Fin y)  -> (("inf-fin"), (y,y))
-    --   (Fin x,  Fin y)  -> (("fin-fin"), (x,y))
-    -- toInterval x = case x of
-    --   (("inf-inf"), (_,_)) -> Interval {min = NegInf, max = PosInf}
-    --   (("fin-inf"), (x,x)) -> Interval {min = Fin x,  max = PosInf}
-    --   (("inf-fin"), (y,y)) -> Interval {min = NegInf, max = Fin y}
-    --   (("fin-fin"), (x,y)) -> Interval {min = Fin x,  max = Fin y}
+    fromInterval i
+      | I.null = (("inf-inf"), (z,z))
+      | otherwise = case (I.inf i, I.sup i) of
+        (Just x,  Nothing) -> (("fin-inf"), (x,x))
+        (Nothing, Just y)  -> (("inf-fin"), (y,y))
+        (Just x,  Just y)  -> (("fin-fin"), (x,y))
+    toInterval x = case x of
+      (("inf-inf"), (_,_)) -> I.empty
+      (("fin-inf"), (x,_)) -> Just x  I.... Nothing
+      (("inf-fin"), (_,y)) -> Nothing I.... Just y
+      (("fin-fin"), (x,y)) -> Just x  I.... Just y
 
     spanTypeW :: Widget' String
     spanTypeW = undefined
