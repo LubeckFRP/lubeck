@@ -47,7 +47,8 @@ import BD.Api
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
 searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
-  [ div () [text (showJS query)]
+  [
+    -- div () [text (showJS query)]
 
   -- , rmapWidget DontSubmit $ subWidget (lens PQ.caption (\s b -> s {caption=b})) (longStringWidget "Caption") output query
   , longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)

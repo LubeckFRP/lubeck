@@ -156,7 +156,8 @@ adPlatform = do
 
   -- Determines what page we are viewing
   let postLoginNavE = fmap (const NavUser) (updates userS)
-  navS <- stepperS NavLogin (postLoginNavE <> menuNavE)
+  let campaignNavE = fmap (const NavCampaign) (updates adsView)
+  navS <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
 
   -- Integrate post search
   searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
