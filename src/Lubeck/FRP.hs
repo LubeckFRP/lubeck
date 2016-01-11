@@ -212,6 +212,10 @@ instance Monoid a => Monoid (Behavior a) where
   mempty = pure mempty
   mappend = liftA2 mappend
 
+instance Monoid a => Monoid (Signal a) where
+  mempty = pure mempty
+  mappend = liftA2 mappend
+
 instance Functor Events where
   fmap = mapE
 

@@ -30,8 +30,8 @@ import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 import Data.JSString.Text (textFromJSString)
 
 import Lubeck.FRP
-import Lubeck.App (Html, runApp)
-import Lubeck.Forms (Widget, Widget')
+import Lubeck.App (Html, runApp, runAppReactive)
+import Lubeck.Forms
 import Lubeck.Web.URI (encodeURIComponent)
 
 import qualified BD.Data.Account as Account
@@ -85,7 +85,7 @@ update = foldpR step initial
   where
     initial = (NotLoggedIn (LoginPage "forbestravelguide" "bar"), Nothing)
 
-    step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
+    -- step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
     step LoginGo              (m,_) = (m, Nothing)
     step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
     step Logout               (_,_) = initial
@@ -100,7 +100,7 @@ update = foldpR step initial
 
 render :: Widget Model Action
 render sink LoadingUser = text "Loading User"
-render sink (NotLoggedIn lp) = loginPageW sink lp
+-- render sink (NotLoggedIn lp) = loginPageW sink lp
 render sink (AsUser acc (UserModel camps UserView)) = div
   ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
@@ -162,15 +162,12 @@ menu sink acc = div ()
     ]
   ]
 
-loginPageW :: Widget LoginPage Action
-loginPageW sink (LoginPage u pw) = form
+
+loginPageW :: Widget JSString (Submit JSString)
+loginPageW sink name = form
   [ submit $ \e -> preventDefault e >> return () ]
-  [
-    -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
-  -- ,
-    E.input [A.value u,
-             change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
-   , button (click $ \_ -> sink LoginGo) [text "Login"] ]
+  [ E.input [A.value name, change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
+   , button (click $ \_ -> sink (Submit name)) [text "Login"] ]
 
 tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
@@ -179,10 +176,9 @@ tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
 
 -- BCampaignKEND
 
-loginUser :: LoginPage -> IO Action
-loginUser (LoginPage s _) = do
-  u <- Account.getUser s
-  return $ GotUser u
+-- loginUser :: JSString -> IO Account.Account
+-- loginUser s = do
+--   Account.getUser s
 
 getCampaigns :: Account.Account -> IO Action
 getCampaigns acc = do
@@ -196,10 +192,38 @@ loadAds n model =  do
   ads <- Ad.getCampaignAds username campid
   return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
 
+
+data Nav = NavLogin | NavUser | NavCampaign | NavSearch
+  deriving (Show, Eq)
+
+adPlatform :: IO (Signal Html, Signal Nav, Signal (Maybe (Account.Account)))
+adPlatform = do
+  -- Menu
+  let menuView = pure (text "Menu")
+
+  -- Login form
+  (loginView, userLoginE) <- formComponent "" loginPageW
+  userS <- stepperS Nothing (fmap Just $ reactimate $ fmap Account.getUser userLoginE)
+
+  -- Determines what page we are viewing
+  let postLoginNavE = fmap (const NavUser) (updates userS)
+  let menuNavE = never -- TODO
+  navS <- stepperS NavLogin (postLoginNavE <> menuNavE)
+
+  let view = liftA2 (\nav rest -> h1 ()
+            [ text "Ad platform: "
+            , text (showJS nav)
+            , rest
+            ]) navS (mconcat [menuView, loginView])
+  return (view, navS, userS)
+
 -- MAIN
 
-main :: IO ()
-main = runApp update render
+main = do
+  (adPlatformView,_,_) <- adPlatform
+  runAppReactive adPlatformView
+-- main :: IO ()
+-- main = runApp update render
 
 
 -- UTILITY
