@@ -71,7 +71,8 @@ composeWidget :: Widget' a -> Widget' b -> Widget (a,b) (a,b)
 composeWidget a b = bothWidget mappend (subWidget Control.Lens._1 a) (subWidget Control.Lens._2 b)
 
 hideableIntegerWidget :: Bool -> Widget' Int
-hideableIntegerWidget enabled s v = E.input
+hideableIntegerWidget False _ _ = mempty
+hideableIntegerWidget True s v = E.input
   [ A.class_ "form-control"
   , A.type_ "number"
   -- , A.style_ $ if enabled then "" else "visibility:hidden"
