@@ -45,6 +45,7 @@ customIntervalWidget z numW title = id
         (Just x,  Nothing) -> (("fin-inf"), (x,x))
         (Nothing, Just y)  -> (("inf-fin"), (y,y))
         (Just x,  Just y)  -> (("fin-fin"), (x,y))
+        _                  -> (("inf-inf"), (z,z))
     toInterval x = case x of
       (("inf-inf"), (_,_)) -> I.empty
       (("fin-inf"), (x,_)) -> Just x  I.... Nothing

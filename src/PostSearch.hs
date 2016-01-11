@@ -28,6 +28,7 @@ import GHCJS.Foreign.QQ (js, jsu, jsu')
 import Lubeck.FRP
 import Lubeck.Forms
 import Lubeck.Forms.Select
+import Lubeck.Forms.Interval
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Web.URI (getURIParameter)
 
@@ -52,6 +53,8 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
   , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
   , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
   , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
+
+  , integerIntervalWidget "Poster followers" (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
 
   , div [ class_ "form-group form-inline" ]
     [ div [ class_ "form-group"  ]
@@ -79,7 +82,6 @@ searchPost appEvents updateQuery query = [
     ++ longStringWidget "Comment"          (Signal.forwardTo updateQuery (\new -> { query | comment   <- new })) query.comment
     ++ longStringWidget "Hashtag"          (Signal.forwardTo updateQuery (\new -> { query | hashTag   <- new })) query.hashTag
     ++ longStringWidget "User name"        (Signal.forwardTo updateQuery (\new -> { query | userName  <- new })) query.userName
-    ++ integerIntervalWidget        "Poster followers" (Signal.forwardTo updateQuery (\new -> { query | followers <- new })) query.followers
     ++ dateIntervalWidget    "Posting date"     (Signal.forwardTo updateQuery (\new -> { query | date      <- new })) query.date
 
     -- TODO Location
