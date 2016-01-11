@@ -18,7 +18,6 @@ page = div () [h1 () [text "Index"]
   , ul ()
     [ li () [a (href "adplatform/")     [text "Ad platform"]]
     , li () [a (href "interactions/")   [text "Interaction browser"]]
-    , li () [a (href "posts/")          [text "Post search"]]
     , li () [a (href "example-static/") [text "Example static page"]]
     , li () [a (href "example/")        [text "Example reactive page"]]
     ]
