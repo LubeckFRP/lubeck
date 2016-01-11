@@ -38,9 +38,6 @@ customIntervalWidget z numW title = id
   where
     -- fromInterval :: Ord a => Interval (Maybe a) -> (String, (a, a))
     -- toInterval   :: Ord a => (String, (a, a))   -> Interval (Maybe a)
-    -- spanWidget2 :: Widget' (JSString, (a, a))
-    -- spanTypeW :: Widget' JSString
-    -- numsW :: JSString -> Widget' (a, a)
     fromInterval i
       | I.null i = (("inf-inf"), (z,z))
       | otherwise = case (I.inf i, I.sup i) of
@@ -49,10 +46,14 @@ customIntervalWidget z numW title = id
         (Just x,  Just y)  -> (("fin-fin"), (x,y))
         _                  -> (("inf-inf"), (z,z))
     toInterval x = case x of
-      (("inf-inf"), (_,_)) -> I.empty
+      (("inf-inf"), (_,_)) -> Nothing I.... Nothing
       (("fin-inf"), (x,_)) -> Just x  I.... Nothing
       (("inf-fin"), (_,y)) -> Nothing I.... Just y
       (("fin-fin"), (x,y)) -> Just x  I.... Just y
+
+    -- spanWidget2 :: Widget' (JSString, (a, a))
+    -- spanTypeW :: Widget' JSString
+    -- numsW :: JSString -> Widget' (a, a)
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
     spanTypeW = selectWidget
       [ ("inf-inf", "Any")
@@ -62,7 +63,7 @@ customIntervalWidget z numW title = id
       ]
     visible x = case x of
       "inf-inf" -> (False, False)
-      "fin-inf" -> (True, False)
+      "fin-inf" -> (True,  False)
       "inf-fin" -> (False, True)
       _         -> (True, True)
     numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
