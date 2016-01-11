@@ -21,27 +21,26 @@ import qualified Control.Lens
 -- data Interval a
 
 
--- integerIntervalWidget : String -> Widget' (Interval Int)
--- integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
+integerIntervalWidget :: JSString -> Widget' (Interval (Maybe Int))
+integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
 --
 -- dateIntervalWidget : String -> Widget' (Interval Date)
 -- dateIntervalWidget = customIntervalWidget (case Date.fromString "2015-11-06" of Ok x -> x) hideableDateWidget
 
-customIntervalWidget :: a -> (Bool -> Widget' a) -> String -> Widget' (Interval (Maybe a))
+customIntervalWidget :: Ord a => a -> (Bool -> Widget' a) -> JSString -> Widget' (Interval (Maybe a))
 customIntervalWidget z numW title = id
-    -- $ mapHtmlWidget (\x -> E.div [A.class_ "form-group form-inline"] $ E.label () [E.text title, x])
+    $ mapHtmlWidget (\x -> E.div [A.class_ "form-group form-inline"] $ E.label () [E.text title, x])
     $ lmapWidget fromInterval
     $ rmapWidget toInterval
     $ spanWidget2
   where
-    fromInterval :: Interval (Maybe a) -> (String, (a, a))
-    toInterval   :: (String, (a, a))   -> Interval (Maybe a)
-    -- fromInterval = undefined
-    -- toInterval = undefined
-    spanWidget2 :: Widget' (String, (a, a))
-    spanWidget2 s x = composeWidget spanTypeW numsW s x
+    -- fromInterval :: Ord a => Interval (Maybe a) -> (String, (a, a))
+    -- toInterval   :: Ord a => (String, (a, a))   -> Interval (Maybe a)
+    -- spanWidget2 :: Widget' (JSString, (a, a))
+    -- spanTypeW :: Widget' JSString
+    -- numsW :: JSString -> Widget' (a, a)
     fromInterval i
-      | I.null = (("inf-inf"), (z,z))
+      | I.null i = (("inf-inf"), (z,z))
       | otherwise = case (I.inf i, I.sup i) of
         (Just x,  Nothing) -> (("fin-inf"), (x,x))
         (Nothing, Just y)  -> (("inf-fin"), (y,y))
@@ -51,24 +50,37 @@ customIntervalWidget z numW title = id
       (("fin-inf"), (x,_)) -> Just x  I.... Nothing
       (("inf-fin"), (_,y)) -> Nothing I.... Just y
       (("fin-fin"), (x,y)) -> Just x  I.... Just y
-
-    spanTypeW :: Widget' String
-    spanTypeW = undefined
-    --     spanTypeW = selectWidget
-    --       [ ("inf-inf", "Any")
-    --       , ("inf-fin", "Less than")
-    --       , ("fin-inf", "Greater than")
-    --       , ("fin-fin", "Between")
-    --       ]
-    --     (showA, showB) = case fst x of
-    --       "inf-inf" -> (False, False)
-    --       "fin-inf" -> (True, False)
-    --       "inf-fin" -> (True, False)
-    --       _         -> (True, True)
-    numsW :: Widget' (a, a)
-    numsW = undefined
-    --     numsW = composeWidget   (numW showA) (numW showB)
+    spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
+    spanTypeW = selectWidget
+      [ ("inf-inf", "Any")
+      , ("inf-fin", "Less than")
+      , ("fin-inf", "Greater than")
+      , ("fin-fin", "Between")
+      ]
+    visible x = case x of
+      "inf-inf" -> (False, False)
+      "fin-inf" -> (True, False)
+      "inf-fin" -> (True, False)
+      _         -> (True, True)
+    numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
 
 -- TODO is the (Monoid Html) instance what we need?
 composeWidget :: Widget' a -> Widget' b -> Widget (a,b) (a,b)
 composeWidget a b = bothWidget mappend (subWidget Control.Lens._1 a) (subWidget Control.Lens._2 b)
+
+hideableIntegerWidget :: Bool -> Widget' Int
+hideableIntegerWidget enabled s v = E.input
+  [ A.class_ "form-control"
+  , A.type_ "number"
+  -- , A.style_ $ if enabled then "" else "visibility:hidden"
+  , Ev.change $ \e -> s $ read $ unpack $ Ev.value e
+  , A.value (pack $ show v)
+  ]
+  ()
+
+-- hideableDateWidget :: Bool -> Widget' Date
+-- hideableDateWidget enabled s v = input [class_ "form-control", type_ "date", style_ $ if enabled then "" else "visibility:hidden",
+--   onChange (Signal.forwardTo s $ \new -> case Date.fromString new of
+--   Err _ -> v
+--   Ok x  -> x
+--   ), Attr.value (formatDateIso v)] []
