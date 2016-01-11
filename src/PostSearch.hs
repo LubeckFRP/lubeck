@@ -123,7 +123,7 @@ postSearchResult output posts = div () [
         div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
         div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
         -- For uploading to marketing api
-        div () [button (click $ \_ -> output (CreateAd post)) [text "Create Ad"]]
+        div () [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (CreateAd post)] [text "Create Ad"]]
         ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
