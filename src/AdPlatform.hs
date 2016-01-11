@@ -156,7 +156,7 @@ menu :: Widget Account.Account Action
 menu sink acc = div ()
   [ E.h2 () $ text "Menu"
   , E.ul ()
-    [ E.li () $ E.a (Account.href $ "/posts/?user=" <> encodeURIComponent (Account.username acc)) [text "Search"]
+    [ E.li () $ E.a (A.href $ "/posts/?user=" <> encodeURIComponent (Account.username acc)) [text "Search"]
     , E.li () $ E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
     , E.li () $ E.a (click $ \_ -> sink Logout) [text "Logout"]
     ]
@@ -168,7 +168,7 @@ loginPageW sink (LoginPage u pw) = form
   [
     -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
   -- ,
-    E.input [Account.value u,
+    E.input [A.value u,
              change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
    , button (click $ \_ -> sink LoginGo) [text "Login"] ]
 
