@@ -81,10 +81,10 @@ hideableIntegerWidget enabled s v = E.input
   ()
 
 hideableDateWidget :: Bool -> Widget' Day
-hideableDateWidget enabled s v = E.input
+hideableDateWidget False _ _ = mempty
+hideableDateWidget True s v = E.input
   [ A.class_ "form-control"
   , A.type_ "date"
-  -- , A.style_ $ if enabled then "" else "visibility:hidden"
   , Ev.change $ \e -> s $ readDate $ unpack $ Ev.value e
   , A.value (pack $ showDate v)
   ]
