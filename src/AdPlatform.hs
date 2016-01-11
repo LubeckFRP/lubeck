@@ -207,7 +207,7 @@ adPlatform = do
   -- Login form
   (loginView, userLoginE) <- formComponent "" loginPageW
   userS <- stepperS Nothing (fmap Just $ reactimate $ fmap Account.getUser userLoginE)
-  let campaignsS = reactimate $ fmap (getCampaigns) userS
+  let campaignsS = reactimate $ fmap getCampaigns userS
 
   -- User page
   -- Campaign page
@@ -215,7 +215,6 @@ adPlatform = do
   -- Determines what page we are viewing
   let postLoginNavE = fmap (const NavUser) (updates userS)
   navS <- stepperS NavLogin (postLoginNavE <> menuNavE)
-  ca
 
   let view = liftA2 (\nav rest -> h1 ()
             [ text "Ad platform: "
