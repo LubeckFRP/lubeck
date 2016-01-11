@@ -34,8 +34,8 @@ import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
 import Lubeck.Web.URI (encodeURIComponent)
 
-import qualified BD.Data.Account as A
-import qualified BD.Data.AdCampaign as AC
+import qualified BD.Data.Account as Account
+import qualified BD.Data.AdCampaign as AdCampaign
 import qualified BD.Data.Ad as Ad
 import qualified BD.Data.Count as C
 import qualified BD.Data.SearchPost as P
@@ -47,7 +47,7 @@ data Action
   = LoginGo
   | Logout
   | Pure (Model -> Model)
-  | GotUser A.Account
+  | GotUser Account.Account
   | GoTo ViewSection
 
 -- -- For debugging only
@@ -61,7 +61,7 @@ data Action
 
 data Model = NotLoggedIn { _loginPage :: LoginPage}
            | LoadingUser
-           | AsUser { _user :: A.Account
+           | AsUser { _user :: Account.Account
                     , _userModel :: UserModel }
 
 data ViewSection = UserView
@@ -72,7 +72,7 @@ data ViewSection = UserView
 data LoginPage = LoginPage { _loginUsername :: JSString
                            , _loginPass :: JSString }
 
-data UserModel = UserModel { _campaigns :: [AC.AdCampaign]
+data UserModel = UserModel { _campaigns :: [AdCampaign.AdCampaign]
                            , _viewSection :: ViewSection }
 
 makeLenses ''Model
@@ -105,9 +105,9 @@ render sink (AsUser acc (UserModel camps UserView)) = div
   ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
   , div ()
-    [text $ A.username acc ]
+    [text $ Account.username acc ]
   , div ()
-    [text $ showJS $ A.latest_count acc ]
+    [text $ showJS $ Account.latest_count acc ]
   , div ()
     [ text "number of campaigns: "
     , text $ showJS (length camps)]
@@ -117,24 +117,24 @@ render sink (AsUser acc (UserModel camps UserView)) = div
 render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
   let camp = camps !! ix
   in div ()
-      [ h1 () [text $ AC.campaign_name camp]
+      [ h1 () [text $ AdCampaign.campaign_name camp]
       , div ()
         [text "daily budget:"
-        , text $ showJS $ AC.daily_budget camp ]
+        , text $ showJS $ AdCampaign.daily_budget camp ]
       , renderAdList emptySink mads
       , menu sink acc
       ]
 
-campaignTable :: Widget [AC.AdCampaign] Action
+campaignTable :: Widget [AdCampaign.AdCampaign] Action
 campaignTable sink camps = table () [
     tableHeaders ["FB id", "Name", ""]
   , tbody () (map (campaignRow sink) $ zip [0..] camps)
   ]
   where
-    campaignRow :: Widget (Int, AC.AdCampaign) Action
+    campaignRow :: Widget (Int, AdCampaign.AdCampaign) Action
     campaignRow sink (ix, camp) = tr ()
-      [ td () [text $ showJS $ AC.fbid camp]
-      , td () [text $ AC.campaign_name camp]
+      [ td () [text $ showJS $ AdCampaign.fbid camp]
+      , td () [text $ AdCampaign.campaign_name camp]
       , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
       ]
 
@@ -152,11 +152,11 @@ renderAdList _ (Just ads) = table () [
       , td () [text $ showJS $ Ad.current_budget ad]
       ]
 
-menu :: Widget A.Account Action
+menu :: Widget Account.Account Action
 menu sink acc = div ()
   [ E.h2 () $ text "Menu"
   , E.ul ()
-    [ E.li () $ E.a (A.href $ "/posts/?user=" <> encodeURIComponent (A.username acc)) [text "Search"]
+    [ E.li () $ E.a (Account.href $ "/posts/?user=" <> encodeURIComponent (Account.username acc)) [text "Search"]
     , E.li () $ E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
     , E.li () $ E.a (click $ \_ -> sink Logout) [text "Logout"]
     ]
@@ -168,7 +168,7 @@ loginPageW sink (LoginPage u pw) = form
   [
     -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
   -- ,
-    E.input [A.value u,
+    E.input [Account.value u,
              change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
    , button (click $ \_ -> sink LoginGo) [text "Login"] ]
 
@@ -177,22 +177,22 @@ tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
 
 
 
--- BACKEND
+-- BCampaignKEND
 
 loginUser :: LoginPage -> IO Action
 loginUser (LoginPage s _) = do
-  u <- A.getUser s
+  u <- Account.getUser s
   return $ GotUser u
 
-getCampaigns :: A.Account -> IO Action
+getCampaigns :: Account.Account -> IO Action
 getCampaigns acc = do
-  cs <- AC.getUserCampaigns $ A.username acc
+  cs <- AdCampaign.getUserCampaigns $ Account.username acc
   return $ Pure $ set (userModel . campaigns) cs
 
 loadAds :: Int -> Model -> IO Action
 loadAds n model =  do
-  let campid = showJS $ AC.fbid $ (_campaigns $ _userModel $ model)!!n
-      username = A.username $ _user model
+  let campid = showJS $ AdCampaign.fbid $ (_campaigns $ _userModel $ model)!!n
+      username = Account.username $ _user model
   ads <- Ad.getCampaignAds username campid
   return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
 
