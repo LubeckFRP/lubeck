@@ -20,6 +20,7 @@ library
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
+                     , PostSearch
                      , BD.Api
                      , BD.Types
                      , BD.Data.Account
@@ -103,7 +104,6 @@ executable bd-interactions
 
 executable bd-adplatform
   main-is:             AdPlatform.hs
-  hs-source-dirs:      src
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , ghcjs-vdom == 0.2.0.0
