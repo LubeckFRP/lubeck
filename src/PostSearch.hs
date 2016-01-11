@@ -56,7 +56,7 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
   , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
   , integerIntervalWidget "Poster followers" (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
-  -- , dateIntervalWidget    "Posting date"     (Signal.forwardTo updateQuery (\new -> { query | date      <- new })) query.date
+  , dateIntervalWidget    "Posting date"     (contramapSink (\new -> DontSubmit $ query { date = new }) output) (PQ.date query)
 
   , div [ class_ "form-group form-inline" ]
     [ div [ class_ "form-group"  ]

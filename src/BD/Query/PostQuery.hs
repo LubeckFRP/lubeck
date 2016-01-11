@@ -8,7 +8,9 @@ module BD.Query.PostQuery (
   PostOrder(..),
   SortDirection(..),
   defSimplePostQuery,
-  complexifyPostQuery
+  complexifyPostQuery,
+  formatDateUTC,
+  parseDateUTC,
 ) where
 
 import Data.Aeson (ToJSON(..), Value(..), object)
@@ -88,6 +90,12 @@ sortDirectionEnc x = String $ case x of
   Asc   -> "asc"
   Desc  -> "desc"
 dateEnc = toJSON . formatDateUTC
+
+parseDateUTC :: String -> Maybe Day
+parseDateUTC = Data.Time.Format.parseTimeM True l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
 
 formatDateUTC :: Day -> String
 formatDateUTC = Data.Time.Format.formatTime l f

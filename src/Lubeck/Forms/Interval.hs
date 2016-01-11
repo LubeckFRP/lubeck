@@ -20,13 +20,14 @@ import qualified Control.Lens
 import Lubeck.Forms
 import Lubeck.Forms.Select
 import Lubeck.Util(customAttrs)
+import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
 
 integerIntervalWidget :: JSString -> Widget' (Interval (Maybe Int))
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
 --
--- dateIntervalWidget : String -> Widget' (Interval Date)
--- dateIntervalWidget = customIntervalWidget (case Date.fromString "2015-11-06" of Ok x -> x) hideableDateWidget
+dateIntervalWidget :: String -> Widget' (Interval Day)
+dateIntervalWidget = customIntervalWidget (Day 0) hideableDateWidget
 
 customIntervalWidget :: Ord a => a -> (Bool -> Widget' a) -> JSString -> Widget' (Interval (Maybe a))
 customIntervalWidget z numW title = id
@@ -91,5 +92,5 @@ hideableDateWidget True s v = E.input
   ]
   ()
   where
-    readDate = undefined
-    showDate = undefined
+    readDate x = case parseDateUTC x of { Just x -> x }
+    showDate = formatDateUTC
