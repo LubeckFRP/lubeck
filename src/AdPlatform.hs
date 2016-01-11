@@ -103,7 +103,7 @@ update = foldpR step initial
 -- render sink (NotLoggedIn lp) = loginPageW sink lp
 
 -- render sink (AsUser acc (UserModel camps UserView)) =
-userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) (AdCampaign.AdCampaign)
+userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) AdCampaign.AdCampaign
 userPageW sink (acc, camps) =
   div
   ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
@@ -118,13 +118,13 @@ userPageW sink (acc, camps) =
   , campaignTable sink camps
   ]
   where
-    campaignTable :: Widget [AdCampaign.AdCampaign] Action
+    campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
     campaignTable sink camps = table () [
         tableHeaders ["FB id", "Name", ""]
       , tbody () (map (campaignRow sink) $ zip [0..] camps)
       ]
 
-    campaignRow :: Widget (Int, AdCampaign.AdCampaign) Action
+    campaignRow :: Widget (Int, AdCampaign.AdCampaign) AdCampaign.AdCampaign
     campaignRow sink (ix, camp) = tr ()
       [ td () [text $ showJS $ AdCampaign.fbid camp]
       , td () [text $ AdCampaign.campaign_name camp]
