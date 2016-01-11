@@ -26,8 +26,8 @@ import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 integerIntervalWidget :: JSString -> Widget' (Interval (Maybe Int))
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
 --
-dateIntervalWidget :: String -> Widget' (Interval Day)
-dateIntervalWidget = customIntervalWidget (Day 0) hideableDateWidget
+dateIntervalWidget :: JSString -> Widget' (Interval (Maybe Day))
+dateIntervalWidget = customIntervalWidget (ModifiedJulianDay 0) hideableDateWidget
 
 customIntervalWidget :: Ord a => a -> (Bool -> Widget' a) -> JSString -> Widget' (Interval (Maybe a))
 customIntervalWidget z numW title = id
