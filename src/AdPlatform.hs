@@ -30,9 +30,11 @@ import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 import Data.JSString.Text (textFromJSString)
 
 import Lubeck.FRP
-import Lubeck.App (Html, runApp)
-import Lubeck.Forms (Widget, Widget')
+import Lubeck.App (Html, runApp, runAppReactive)
+import Lubeck.Forms
 import Lubeck.Web.URI (encodeURIComponent)
+
+import PostSearch (searchPage)
 
 import qualified BD.Data.Account as Account
 import qualified BD.Data.AdCampaign as AdCampaign
@@ -43,65 +45,30 @@ import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 import BD.Types
 
-data Action
-  = LoginGo
-  | Logout
-  | Pure (Model -> Model)
-  | GotUser Account.Account
-  | GoTo ViewSection
+data Nav = NavLogin | NavUser | NavCampaign | NavSearch
+  deriving (Show, Eq)
 
--- -- For debugging only
--- instance Show Action where
---   show = g where
---     g LoginGo     = "LoginGo"
---     g Logout      = "Logout"
---     g (GotUser _) = "GotUser"
---     g (Pure _)    = "Pure"
---     g (GoTo _)    = "GoTo"
+menu :: Widget' Nav
+menu sink value = div ()
+  [ E.h2 () $ text "Menu"
+  , E.ul ()
+    [ E.li () $ E.a (click $ \_ -> sink $ NavSearch) [text "Search"]
+    , E.li () $ E.a (click $ \_ -> sink $ NavUser)   [text "User"]
+    , E.li () $ E.a (click $ \_ -> sink $ NavLogin)  [text "Logout"]
+    ]
+  ]
 
-data Model = NotLoggedIn { _loginPage :: LoginPage}
-           | LoadingUser
-           | AsUser { _user :: Account.Account
-                    , _userModel :: UserModel }
+loginPageW :: Widget JSString (Submit JSString)
+loginPageW sink name = form
+  [ submit $ \e -> preventDefault e >> return () ]
+  [ E.input [A.value name, change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
+   , button (click $ \_ -> sink (Submit name)) [text "Login"] ]
 
-data ViewSection = UserView
-                 | CampaignView { _campaignIx :: Int
-                                , _campaignAds :: (Maybe [Ad.Ad]) }
-              -- | CampaignsImageLibrary
-
-data LoginPage = LoginPage { _loginUsername :: JSString
-                           , _loginPass :: JSString }
-
-data UserModel = UserModel { _campaigns :: [AdCampaign.AdCampaign]
-                           , _viewSection :: ViewSection }
-
-makeLenses ''Model
-makeLenses ''LoginPage
-makeLenses ''UserModel
-makeLenses ''ViewSection
-
-update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
-update = foldpR step initial
-  where
-    initial = (NotLoggedIn (LoginPage "forbestravelguide" "bar"), Nothing)
-
-    step LoginGo              (NotLoggedIn lp,_) = (LoadingUser, Just $ loginUser lp)
-    step LoginGo              (m,_) = (m, Nothing)
-    step (GotUser acc)        (_,_) = (AsUser acc (UserModel [] UserView), Just $ getCampaigns acc)
-    step Logout               (_,_) = initial
-    step (GoTo vs)            (m,_) = (set (userModel . viewSection) vs m, goToViewSection vs m)
-    step (Pure f)             (m,_) = (f m, Nothing)
-
-    goToViewSection (CampaignView n Nothing) model
-      = Just $ loadAds n model
-    goToViewSection _ model
-      = Nothing
-
-
-render :: Widget Model Action
-render sink LoadingUser = text "Loading User"
-render sink (NotLoggedIn lp) = loginPageW sink lp
-render sink (AsUser acc (UserModel camps UserView)) = div
+-- | Display user information and current campaings.
+-- Emits campaign to view.
+userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) AdCampaign.AdCampaign
+userPageW sink (acc, camps) =
+  div
   ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
   [ h1 () [text "Hello"]
   , div ()
@@ -112,39 +79,38 @@ render sink (AsUser acc (UserModel camps UserView)) = div
     [ text "number of campaigns: "
     , text $ showJS (length camps)]
   , campaignTable sink camps
-  , menu sink acc
   ]
-render sink (AsUser acc (UserModel camps (CampaignView ix mads))) =
-  let camp = camps !! ix
-  in div ()
+  where
+    campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
+    campaignTable sink camps = table () [
+        tableHeaders ["FB id", "Name", ""]
+      , tbody () (map (campaignRow sink) $ zip [0..] camps)
+      ]
+
+    campaignRow :: Widget (Int, AdCampaign.AdCampaign) AdCampaign.AdCampaign
+    campaignRow sink (ix, camp) = tr ()
+      [ td () [text $ showJS $ AdCampaign.fbid camp]
+      , td () [text $ AdCampaign.campaign_name camp]
+      , td () [E.a (click $ \_ -> sink camp) [text "view"]]
+      ]
+
+-- | Display info about a campaign.
+campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()
+campaignPageW sink (camp, ads) =
+  div ()
       [ h1 () [text $ AdCampaign.campaign_name camp]
       , div ()
         [text "daily budget:"
         , text $ showJS $ AdCampaign.daily_budget camp ]
-      , renderAdList emptySink mads
-      , menu sink acc
+      , renderAdList emptySink ads
+      ]
+  where
+    renderAdList :: Widget [Ad.Ad] ()
+    renderAdList _ ads = table () [
+        tableHeaders ["FB adset id", "Name", "Budget"]
+      , tbody () (map (adRow emptySink) ads)
       ]
 
-campaignTable :: Widget [AdCampaign.AdCampaign] Action
-campaignTable sink camps = table () [
-    tableHeaders ["FB id", "Name", ""]
-  , tbody () (map (campaignRow sink) $ zip [0..] camps)
-  ]
-  where
-    campaignRow :: Widget (Int, AdCampaign.AdCampaign) Action
-    campaignRow sink (ix, camp) = tr ()
-      [ td () [text $ showJS $ AdCampaign.fbid camp]
-      , td () [text $ AdCampaign.campaign_name camp]
-      , td () [E.a (click $ \_ -> sink $ GoTo (CampaignView ix Nothing)) [text "view"]]
-      ]
-
-renderAdList :: Widget (Maybe [Ad.Ad]) ()
-renderAdList _ Nothing = text "Loading ads"
-renderAdList _ (Just ads) = table () [
-    tableHeaders ["FB adset id", "Name", "Budget"]
-  , tbody () (map (adRow emptySink) ads)
-  ]
-  where
     adRow :: Widget Ad.Ad ()
     adRow _ ad = tr ()
       [ td () [text $ showJS $ Ad.fb_adset_id ad]
@@ -152,54 +118,73 @@ renderAdList _ (Just ads) = table () [
       , td () [text $ showJS $ Ad.current_budget ad]
       ]
 
-menu :: Widget Account.Account Action
-menu sink acc = div ()
-  [ E.h2 () $ text "Menu"
-  , E.ul ()
-    [ E.li () $ E.a (A.href $ "/posts/?user=" <> encodeURIComponent (Account.username acc)) [text "Search"]
-    , E.li () $ E.a (click $ \_ -> sink $ GoTo UserView) [text "User"]
-    , E.li () $ E.a (click $ \_ -> sink Logout) [text "Logout"]
-    ]
-  ]
+-- BACKEND
 
-loginPageW :: Widget LoginPage Action
-loginPageW sink (LoginPage u pw) = form
-  [ submit $ \e -> preventDefault e >> return () ]
-  [
-    -- E.input [ change $ \e -> [jsu|console.log(`e)|] ] [text "abc"]
-  -- ,
-    E.input [A.value u,
-             change $ \e -> preventDefault e >> sink (Pure (set (loginPage . loginUsername) (value e)))] ()
-   , button (click $ \_ -> sink LoginGo) [text "Login"] ]
-
-tableHeaders :: [JSString] -> Html
-tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
-
-
-
--- BCampaignKEND
-
-loginUser :: LoginPage -> IO Action
-loginUser (LoginPage s _) = do
-  u <- Account.getUser s
-  return $ GotUser u
-
-getCampaigns :: Account.Account -> IO Action
+getCampaigns :: Account.Account -> IO [AdCampaign.AdCampaign]
 getCampaigns acc = do
-  cs <- AdCampaign.getUserCampaigns $ Account.username acc
-  return $ Pure $ set (userModel . campaigns) cs
+  AdCampaign.getUserCampaigns $ Account.username acc
 
-loadAds :: Int -> Model -> IO Action
-loadAds n model =  do
-  let campid = showJS $ AdCampaign.fbid $ (_campaigns $ _userModel $ model)!!n
-      username = Account.username $ _user model
-  ads <- Ad.getCampaignAds username campid
-  return $ Pure $ set (userModel . viewSection . campaignAds) (Just ads)
+loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO [Ad.Ad]
+loadAds account camp =  do
+  let campid = showJS $ AdCampaign.fbid camp
+      username = maybe "" Account.username $ account
+  Ad.getCampaignAds username campid
+
+adPlatform :: IO (Signal Html)
+adPlatform = do
+  -- Menu
+  (menuView, menuNavE) <- component NavLogin menu
+
+  -- Login form
+  (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
+  let userE       = reactimate $ fmap Account.getUser userLoginE
+  let camapaignsE = reactimate $ fmap getCampaigns userE
+  userS      <- stepperS Nothing (fmap Just userE)
+  campaignsS <- stepperS Nothing (fmap Just camapaignsE)
+
+  -- User page
+  (fetchCampaignAds, loadAdsE) <- newEvent
+  let userAndCampaignsS = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
+  let userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
+
+  -- Campaign page
+  let adsE = reactimate $ snapshotWith loadAds (current userS) loadAdsE
+  latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
+  adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
+  let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
+  let adsView = fmap ((altW mempty campaignPageW) emptySink) lastestAndAdsS
+
+  -- Determines what page we are viewing
+  let postLoginNavE = fmap (const NavUser) (updates userS)
+  let campaignNavE = fmap (const NavCampaign) (updates adsView)
+  navS <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
+
+  -- Integrate post search
+  searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
+
+  let view = nav <$> navS <*> menuView <*> loginView <*> userView <*> adsView <*> searchPageView
+  return view
+
+nav x menu login user ads search = case x of
+  NavLogin    -> wrap mempty login
+  NavUser     -> wrap menu user
+  NavCampaign -> wrap menu ads
+  NavSearch   -> wrap menu search
+  where
+    wrap menu page = div ()
+      [ h1 () [text "Ad platform"]
+      , menu
+      , page
+      ]
+
 
 -- MAIN
 
-main :: IO ()
-main = runApp update render
+main = do
+  adPlatformView <- adPlatform
+  runAppReactive adPlatformView
+-- main :: IO ()
+-- main = runApp update render
 
 
 -- UTILITY
@@ -215,3 +200,11 @@ showJS = fromString . show
 customAttrs :: Map String String -> Attributes'
 customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
+
+tableHeaders :: [JSString] -> Html
+tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
+
+-- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
+altW :: Html -> Widget a b -> Widget (Maybe a) b
+altW alt w s Nothing  = alt
+altW alt w s (Just x) = w s x

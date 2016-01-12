@@ -90,6 +90,8 @@ module Lubeck.FRP (
     -- ** Building signals
     stepperS,
     accumS,
+    snapshotS,
+    snapshotWithS,
 
     -- ** Sampling signals
     updates,
@@ -209,6 +211,10 @@ newtype Behavior a = R (Sink a -> IO ())
 newtype Signal a = S (Events (), Behavior a)
 
 instance Monoid a => Monoid (Behavior a) where
+  mempty = pure mempty
+  mappend = liftA2 mappend
+
+instance Monoid a => Monoid (Signal a) where
   mempty = pure mempty
   mappend = liftA2 mappend
 
@@ -553,6 +559,13 @@ accumS :: a -> Events (a -> a) -> IO (Signal a)
 accumS z e = do
   r <- accumR z e
   return $ S (fmap (const ()) e, r)
+
+snapshotS :: Behavior a -> Signal b -> Signal (a, b)
+snapshotS b1 (S (e,b2)) = S (e, liftA2 (,) b1 b2)
+
+snapshotWithS :: (a -> b -> c) -> Behavior a -> Signal b -> Signal c
+snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
+
 
 -- | Get an events stream that emits an event whenever the signal is updated.
 updates :: Signal a -> Events a

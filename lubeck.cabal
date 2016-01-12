@@ -20,6 +20,7 @@ library
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
+                     , PostSearch
                      , BD.Api
                      , BD.Types
                      , BD.Data.Account
@@ -133,13 +134,13 @@ executable bd-index
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
-executable bd-post-search
-  main-is:             src/PostSearch.hs
-  build-depends:       base >=4.8 && <4.9
-                     , lubeck
-                     , ghcjs-vdom == 0.2.0.0
-                     , ghcjs-base ==0.2.0.0
-                     , ghcjs-ffiqq == 0.1.0.0
-                     , containers
-                     , lens
-  default-language:    Haskell2010
+-- executable bd-post-search
+--   main-is:             src/PostSearch.hs
+--   build-depends:       base >=4.8 && <4.9
+--                      , lubeck
+--                      , ghcjs-vdom == 0.2.0.0
+--                      , ghcjs-base ==0.2.0.0
+--                      , ghcjs-ffiqq == 0.1.0.0
+--                      , containers
+--                      , lens
+--   default-language:    Haskell2010

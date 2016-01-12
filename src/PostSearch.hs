@@ -1,7 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
-module Main where
+module PostSearch (searchPage) where
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -47,10 +47,11 @@ import BD.Api
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
 searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
-  [ div () [text (showJS query)]
+  [
+    -- div () [text (showJS query)]
 
   -- , rmapWidget DontSubmit $ subWidget (lens PQ.caption (\s b -> s {caption=b})) (longStringWidget "Caption") output query
-  , longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
+    longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
   , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
   , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
   , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
@@ -183,11 +184,11 @@ searchPage mUserNameB = do
 
 -- MAIN
 
-main :: IO ()
-main = do
-  mUserName <- getURIParameter "user"
-  let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
-  searchPage mUserNameB >>= runAppReactive
+-- main :: IO ()
+-- main = do
+--   mUserName <- getURIParameter "user"
+--   let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
+--   searchPage mUserNameB >>= runAppReactive
 
 
 

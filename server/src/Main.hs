@@ -22,8 +22,6 @@ type Layout =
     :<|>
   "interactions" :> Raw
     :<|>
-  "posts" :> Raw
-    :<|>
   "example-static" :> Raw
     :<|>
   Raw
@@ -44,7 +42,6 @@ main = do
       exampleServer       <- serveApp jsExeDir "bd-example-app"         indexHtmlFile
       adplatformServer    <- serveApp jsExeDir "bd-adplatform"          indexHtmlFile
       interactionsServer  <- serveApp jsExeDir "bd-interactions"        indexHtmlFile
-      postSearchServer    <- serveApp jsExeDir "bd-post-search"         indexHtmlFile
       exampleStaticServer <- serveApp jsExeDir "bd-example-static-page" indexHtmlFile
       indexServer         <- serveApp jsExeDir "bd-index"               indexHtmlFile
 
@@ -53,7 +50,6 @@ main = do
         exampleServer
           :<|> adplatformServer
           :<|> interactionsServer
-          :<|> postSearchServer
           :<|> exampleStaticServer
           :<|> indexServer
 
