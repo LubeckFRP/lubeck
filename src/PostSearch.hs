@@ -78,24 +78,11 @@ searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertic
     ]
   , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query] $ text "Search!" ]
 
-longStringWidget :: JSString -> Widget' JSString
-longStringWidget title update value = div
-  [ class_ "form-group" ]
-  [ label () [text title]
-  , input
-    [ A.type_ "search"
-    -- TODO size
-    , A.class_ "form-control"
-    , A.value value
-    , change  $ contramapSink Ev.value update
-    , keyup $ contramapSink Ev.value update
-    ] ()
-  ]
 
 type Post = SearchPost
 
 data PostAction
-  = CreateAd Post
+  = UploadImage Post
 
 -- | Non-interactive post table (for search results).
 postSearchResult :: Widget [Post] PostAction
@@ -124,13 +111,8 @@ postSearchResult output posts = div () [
         div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
         div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
         -- For uploading to marketing api
-        div () [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (CreateAd post)] [text "Create Ad"]]
+        div () [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)] [text "Upload Image"]]
         ]
-
--- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
-altW :: Html -> Widget a b -> Widget (Maybe a) b
-altW alt w s Nothing  = alt
-altW alt w s (Just x) = w s x
 
 
 searchPage :: Behavior (Maybe JSString) -> IO (Signal Html)
@@ -141,7 +123,7 @@ searchPage mUserNameB = do
   (searchView, searchRequested) <- formComponent initPostQuery searchForm
 
   -- Create ad event (from user)
-  (createAd, adCreated) <- newEventOf (undefined :: PostAction)
+  (uploadImage, uploadedImage) <- newEventOf (undefined :: PostAction)
 
   -- Search result event (from API)
   (receiveSearchResult, searchResultReceived) <- newEventOf (undefined :: Maybe [Post])
@@ -149,14 +131,14 @@ searchPage mUserNameB = do
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
   results <- stepperS Nothing searchResultReceived                   :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((altW (text "") postSearchResult) createAd) results :: Signal Html
+  let resultView = fmap ((altW (text "") postSearchResult) uploadImage) results :: Signal Html
 
   let view = liftA2 (\x y -> div () [x,y]) searchView resultView     :: Signal Html
 
   -- API calls
 
   -- Create ad
-  subscribeEvent adCreated $ \(CreateAd post) -> do
+  subscribeEvent uploadedImage $ \(UploadImage post) -> do
     -- print (userName, P.ig_web_url post)
     mUserName <- pollBehavior mUserNameB
     case mUserName of

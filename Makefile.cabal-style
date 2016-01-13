@@ -7,8 +7,7 @@ all: build min
 .PHONY: build
 build:
 	cabal install --ghcjs
-	cp static/index.html .cabal-sandbox/bin/ghcjs-test.jsexe/
-	cp .cabal-sandbox/bin/ghcjs-test.jsexe/all.js .cabal-sandbox/bin/ghcjs-test.jsexe/all.min.js
+	cp static/index.html .cabal-sandbox/bin/bd-adplatform.jsexe/
 
 .PHONY: min
 min:

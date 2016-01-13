@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoMonomorphismRestriction, RankNTypes, TypeFamilies, TemplateHaskell #-}
+{-# LANGUAGE NoMonomorphismRestriction, RankNTypes, TypeFamilies, TemplateHaskell, OverloadedStrings #-}
 
 {-|
 Provides high-level way of constructing forms and other interfaces.
@@ -23,6 +23,7 @@ module Lubeck.Forms
   , isoW
   , possW
   , maybeW
+  , altW
 
   , bothWidget
   , multiWidget
@@ -36,10 +37,26 @@ module Lubeck.Forms
   , Submit(..)
   , submitValue
   , submits
+
+  -- * Form helpers
+  , longStringWidget
+
+
   ) where
 
 import Lubeck.FRP
 import Lubeck.Html (Html)
+import Prelude hiding (div)
+import qualified Prelude
+
+import GHCJS.Types(JSString, jsval)
+
+import GHCJS.VDOM.Event (click, change, keyup, submit, stopPropagation, preventDefault, value)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input, label)
+import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
+import qualified GHCJS.VDOM.Element as E
+import qualified GHCJS.VDOM.Attribute as A
+import qualified GHCJS.VDOM.Event as Ev
 
 import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
 import qualified Control.Lens
@@ -190,3 +207,23 @@ submits = filterJust . fmap g
   where
     g (Submit x) = Just x
     g _          = Nothing
+
+
+longStringWidget :: JSString -> Widget' JSString
+longStringWidget title update value = div
+  [ class_ "form-group" ]
+  [ label () [text title]
+  , input
+    [ A.type_ "search"
+    -- TODO size
+    , A.class_ "form-control"
+    , A.value value
+    , change  $ contramapSink Ev.value update
+    , keyup $ contramapSink Ev.value update
+    ] ()
+  ]
+
+-- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
+altW :: Html -> Widget a b -> Widget (Maybe a) b
+altW alt w s Nothing  = alt
+altW alt w s (Just x) = w s x

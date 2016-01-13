@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, ScopedTypeVariables #-}
 
 module Main where
 
@@ -45,7 +45,7 @@ import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 import BD.Types
 
-data Nav = NavLogin | NavUser | NavCampaign | NavSearch
+data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd
   deriving (Show, Eq)
 
 menu :: Widget' Nav
@@ -54,6 +54,7 @@ menu sink value = div ()
   , E.ul ()
     [ E.li () $ E.a (click $ \_ -> sink $ NavSearch) [text "Search"]
     , E.li () $ E.a (click $ \_ -> sink $ NavUser)   [text "User"]
+    , E.li () $ E.a (click $ \_ -> sink $ NavCreateAd)   [text "Create Ad"]
     , E.li () $ E.a (click $ \_ -> sink $ NavLogin)  [text "Logout"]
     ]
   ]
@@ -118,6 +119,9 @@ campaignPageW sink (camp, ads) =
       , td () [text $ showJS $ Ad.current_budget ad]
       ]
 
+createAdPageW :: Widget () ()
+createAdPageW sink () = div () [text "nothign to see yet"]
+
 -- BACKEND
 
 getCampaigns :: Account.Account -> IO [AdCampaign.AdCampaign]
@@ -143,9 +147,15 @@ adPlatform = do
   campaignsS <- stepperS Nothing (fmap Just camapaignsE)
 
   -- User page
-  (fetchCampaignAds, loadAdsE) <- newEvent
+  (fetchCampaignAds :: Sink AdCampaign.AdCampaign, loadAdsE) <- newEvent
   let userAndCampaignsS = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
-  let userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
+  let userView :: Signal Html
+      userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
+
+  -- Create ad page
+  (createAd, createAdE) <- newEvent
+  let unitS :: Signal () = pure ()
+  let createAdView :: Signal Html = fmap (createAdPageW createAd) unitS
 
   -- Campaign page
   let adsE = reactimate $ snapshotWith loadAds (current userS) loadAdsE
@@ -162,14 +172,15 @@ adPlatform = do
   -- Integrate post search
   searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
 
-  let view = nav <$> navS <*> menuView <*> loginView <*> userView <*> adsView <*> searchPageView
+  let view = nav <$> navS <*> menuView <*> loginView <*> userView <*> adsView <*> searchPageView <*> createAdView
   return view
 
-nav x menu login user ads search = case x of
+nav x menu login user ads search createAd = case x of
   NavLogin    -> wrap mempty login
   NavUser     -> wrap menu user
   NavCampaign -> wrap menu ads
   NavSearch   -> wrap menu search
+  NavCreateAd -> wrap menu createAd
   where
     wrap menu page = div ()
       [ h1 () [text "Ad platform"]
@@ -203,8 +214,3 @@ customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.fol
 
 tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
-
--- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
-altW :: Html -> Widget a b -> Widget (Maybe a) b
-altW alt w s Nothing  = alt
-altW alt w s (Just x) = w s x
