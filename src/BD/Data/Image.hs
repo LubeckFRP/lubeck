@@ -24,8 +24,13 @@ data Image = Image
   , fb_thumb_url  :: Maybe Text
   , ig_post_id    :: Maybe Int
   , localpath     :: Maybe Text
+  , prediction    :: Maybe Double
+
   } deriving (GHC.Generic)
 
 
 instance FromJSON Image
 instance ToJSON Image
+
+getAllImages :: Text -> IO [Image]
+getAllImages unm = unsafeGetAPI $ unm <> "/ad-images"

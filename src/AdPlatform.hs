@@ -22,7 +22,7 @@ import Control.Lens.TH(makeLenses)
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
 import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
+import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, table, td, tr, th, tbody, thead, br)
 import GHCJS.VDOM.Attribute (src, width, class_)
 import qualified GHCJS.VDOM.Element as E
 import qualified GHCJS.VDOM.Attribute as A
@@ -40,14 +40,16 @@ import qualified BD.Data.Account as Account
 import qualified BD.Data.AdCampaign as AdCampaign
 import qualified BD.Data.Ad as Ad
 import qualified BD.Data.Count as C
+import qualified BD.Data.Image as Im
 import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 import BD.Types
+import BD.Utils
 
 import Pages.CreateAd (createAdPage)
 
-data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd
+data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
   deriving (Show, Eq)
 
 menu :: Widget' Nav
@@ -56,6 +58,7 @@ menu sink value = div ()
   , E.ul ()
     [ E.li () $ E.a (click $ \_ -> sink $ NavSearch) [text "Search"]
     , E.li () $ E.a (click $ \_ -> sink $ NavUser)   [text "User"]
+    , E.li () $ E.a (click $ \_ -> sink $ NavImages)   [text "Image Library"]
     , E.li () $ E.a (click $ \_ -> sink $ NavCreateAd)   [text "Create Ad"]
     , E.li () $ E.a (click $ \_ -> sink $ NavLogin)  [text "Logout"]
     ]
@@ -121,6 +124,23 @@ campaignPageW sink (camp, ads) =
       , td () [text $ showJS $ Ad.current_budget ad]
       ]
 
+imageLibraryPageW :: Widget [Im.Image] ()
+imageLibraryPageW _ [] = text "No images in library"
+imageLibraryPageW _ ims
+  = table [class_ "table table-striped table-hover"]
+       $ tbody ()
+          $ map (tr () . map imageCell) (divide 5 ims)
+
+imageCell img = td () [ imgFromWidthAndUrl' 150 (Im.fb_thumb_url img) []
+                      , br () ()
+                      , showImagePred $ Im.prediction img
+                      , br () ()
+                      , text ("ID: " <> (showJS $ Im.id img)) ]
+
+showImagePred Nothing = text "No prediction"
+showImagePred (Just x) = text $ "Score: "<>showJS x
+
+
 -- BACKEND
 
 getCampaigns :: Account.Account -> IO [AdCampaign.AdCampaign]
@@ -133,6 +153,10 @@ loadAds account camp =  do
       username = maybe "" Account.username $ account
   Ad.getCampaignAds username campid
 
+getImages :: Account.Account -> IO [Im.Image]
+getImages acc = do
+  Im.getAllImages (Account.username acc)
+
 adPlatform :: IO (Signal Html)
 adPlatform = do
   -- Menu
@@ -142,8 +166,10 @@ adPlatform = do
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
   let userE       = reactimate $ fmap Account.getUser userLoginE
   let camapaignsE = reactimate $ fmap getCampaigns userE
+  let imagesE = reactimate $ fmap getImages userE
   userS      <- stepperS Nothing (fmap Just userE)
   campaignsS <- stepperS Nothing (fmap Just camapaignsE)
+  imagesS <- stepperS Nothing (fmap Just imagesE)
 
   -- User page
   (fetchCampaignAds :: Sink AdCampaign.AdCampaign, loadAdsE) <- newEvent
@@ -154,13 +180,16 @@ adPlatform = do
   -- Create ad page
   createAdView <- createAdPage (fmap (fmap Account.username) $ current userS)
 
-
   -- Campaign page
   let adsE = reactimate $ snapshotWith loadAds (current userS) loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
   let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
   let adsView = fmap ((altW mempty campaignPageW) emptySink) lastestAndAdsS
+
+  -- Image library page
+  let imageLibView = fmap ((altW mempty imageLibraryPageW) emptySink) imagesS
+
 
   -- Determines what page we are viewing
   let postLoginNavE = fmap (const NavUser) (updates userS)
@@ -170,15 +199,16 @@ adPlatform = do
   -- Integrate post search
   searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
 
-  let view = nav <$> navS <*> menuView <*> loginView <*> userView <*> adsView <*> searchPageView <*> createAdView
+  let view = nav <$> navS <*> menuView <*> loginView <*> userView <*> adsView <*> searchPageView <*> createAdView <*> imageLibView
   return view
 
-nav x menu login user ads search createAd = case x of
+nav x menu login user ads search createAd imlib = case x of
   NavLogin    -> wrap mempty login
   NavUser     -> wrap menu user
   NavCampaign -> wrap menu ads
   NavSearch   -> wrap menu search
   NavCreateAd -> wrap menu createAd
+  NavImages   -> wrap menu imlib
   where
     wrap menu page = div ()
       [ h1 () [text "Ad platform"]
@@ -197,6 +227,11 @@ main = do
 
 
 -- UTILITY
+
+imgFromWidthAndUrl' :: Int -> Maybe JSString -> [A.Attribute] -> Html
+imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url]) ()
+imgFromWidthAndUrl' w Nothing attrs = text "No URL"
+
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show

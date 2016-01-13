@@ -45,7 +45,7 @@ createAdForm :: Widget NewAd (Submit NewAd)
 createAdForm output newAd =  div (customAttrs $ Map.fromList [("style","form-vertical")]) $
   [ longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ newAd { caption = new })  output) (caption newAd)
   , longStringWidget "Image Hash"   (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)
-  , longStringWidget "Click link"   (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
+  , longStringWidget "Click URL"   (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
   , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd] $ text "Create Ad" ]
 
 createAdPage :: Behavior (Maybe JSString) ->IO (Signal Html)
