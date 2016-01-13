@@ -1,7 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
-module PostSearch (searchPage) where
+module Pages.CreateAd (createAdPage) where
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -37,5 +37,23 @@ import BD.Data.Account (Account)
 import qualified BD.Data.Account as Ac
 import BD.Api
 
+data NewAd = NewAd { caption :: JSString,
+                     image_hash :: JSString,
+                     click_link :: JSString }
+
 createAdForm :: Widget NewAd (Submit NewAd)
-createAdForm output newAd
+createAdForm output newAd =  div (customAttrs $ Map.fromList [("style","form-vertical")]) $
+  [ longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ newAd { caption = new })  output) (caption newAd)
+  , longStringWidget "Image Hash"   (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)
+  , longStringWidget "Click link"   (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
+  , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd] $ text "Create Ad" ]
+
+createAdPage :: Behavior (Maybe JSString) ->IO (Signal Html)
+createAdPage mUserNameB = do
+  let initNewAd = NewAd "" "" ""
+  (view, adCreated) <- formComponent initNewAd createAdForm
+
+  subscribeEvent adCreated $ \newAd -> do
+    return ()
+
+  return view

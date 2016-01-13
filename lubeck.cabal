@@ -32,6 +32,7 @@ library
                      , BD.Data.Interaction
                      , BD.Data.SearchPost
                      , BD.Query.PostQuery
+                     , Pages.CreateAd
   build-depends:       base >=4.8 && <4.9
                      , ghcjs-vdom == 0.2.0.0
                      , ghcjs-ffiqq == 0.1.0.0

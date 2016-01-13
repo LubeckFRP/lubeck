@@ -45,6 +45,8 @@ import BD.Data.SearchPost(SearchPost)
 import BD.Data.Interaction
 import BD.Types
 
+import Pages.CreateAd (createAdPage)
+
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd
   deriving (Show, Eq)
 
@@ -119,9 +121,6 @@ campaignPageW sink (camp, ads) =
       , td () [text $ showJS $ Ad.current_budget ad]
       ]
 
-createAdPageW :: Widget () ()
-createAdPageW sink () = div () [text "nothign to see yet"]
-
 -- BACKEND
 
 getCampaigns :: Account.Account -> IO [AdCampaign.AdCampaign]
@@ -153,9 +152,8 @@ adPlatform = do
       userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
 
   -- Create ad page
-  (createAd, createAdE) <- newEvent
-  let unitS :: Signal () = pure ()
-  let createAdView :: Signal Html = fmap (createAdPageW createAd) unitS
+  createAdView <- createAdPage (fmap (fmap Account.username) $ current userS)
+
 
   -- Campaign page
   let adsE = reactimate $ snapshotWith loadAds (current userS) loadAdsE
