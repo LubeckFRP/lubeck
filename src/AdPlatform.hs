@@ -1,4 +1,5 @@
 
+
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, ScopedTypeVariables #-}
 
 module Main where
@@ -53,42 +54,52 @@ data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImage
   deriving (Show, Eq)
 
 menu :: Widget' Nav
-menu sink value = div ()
-  [ E.h2 () $ text "Menu"
-  , E.ul ()
-    [ E.li () $ E.a (click $ \_ -> sink $ NavSearch) [text "Search"]
-    , E.li () $ E.a (click $ \_ -> sink $ NavUser)   [text "User"]
-    , E.li () $ E.a (click $ \_ -> sink $ NavImages)   [text "Image Library"]
-    , E.li () $ E.a (click $ \_ -> sink $ NavCreateAd)   [text "Create Ad"]
-    , E.li () $ E.a (click $ \_ -> sink $ NavLogin)  [text "Logout"]
-    ]
+menu sink value =
+  div [class_ "row"] [
+    div [class_ "col-md-6 col-lg-5 center-block"]
+      [ E.ul [class_ "nav nav-pills"]
+        [ E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavSearch]  [text "Search"]
+        , E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavUser]    [text "User"]
+        , E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavImages]  [text "Image Library"]
+        , E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavCreateAd][text "Create Ad"]
+        , E.li () $ E.button [class_ "btn btn-warning", click $ \_ -> sink NavLogin]   [text "Logout"]
+        ]
+      ]
   ]
 
+
+
 loginPageW :: Widget JSString (Submit JSString)
-loginPageW sink name = form
-  [ submit $ \e -> preventDefault e >> return () ]
-  [ E.input [A.value name, change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
-   , button (click $ \_ -> sink (Submit name)) [text "Login"] ]
+loginPageW sink name =
+  div
+  [ class_ "row" ]
+    [ div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4" ]
+      [ form [ submit $ \e -> preventDefault e >> return () ]
+        [ div [class_ "form-group form-group-lg"]
+          [ E.input [class_ "form-control", A.value name, change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
+          , button [class_ "form-control btn btn-primary", click $ \_ -> sink (Submit name)] [text "Login"]
+          ]
+        ]
+      ]
+    ]
 
 -- | Display user information and current campaings.
 -- Emits campaign to view.
 userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) AdCampaign.AdCampaign
 userPageW sink (acc, camps) =
-  div
-  ( customAttrs $ Map.fromList [("style", "width: 600px; margin-left: auto; margin-right: auto") ])
-  [ h1 () [text "Hello"]
-  , div ()
-    [text $ Account.username acc ]
-  , div ()
-    [text $ showJS $ Account.latest_count acc ]
-  , div ()
-    [ text "number of campaigns: "
-    , text $ showJS (length camps)]
-  , campaignTable sink camps
-  ]
+  div [class_ "row"]
+    [ div [class_ "col-sm-12"]
+      [ E.ul [class_ "list-group"]
+        [ E.li [class_ "list-group-item"] [ E.h3 () [text $ Account.username acc ] ]
+        , E.li [class_ "list-group-item"] [ div () [text $ showJS $ Account.latest_count acc ] ]
+        , E.li [class_ "list-group-item"] [ div () [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
+        , E.li [class_ "list-group-item"] [ campaignTable sink camps ]
+        ]
+      ]
+    ]
   where
     campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
-    campaignTable sink camps = table () [
+    campaignTable sink camps = table [class_ "table"] [
         tableHeaders ["FB id", "Name", ""]
       , tbody () (map (campaignRow sink) $ zip [0..] camps)
       ]
@@ -97,22 +108,24 @@ userPageW sink (acc, camps) =
     campaignRow sink (ix, camp) = tr ()
       [ td () [text $ showJS $ AdCampaign.fbid camp]
       , td () [text $ AdCampaign.campaign_name camp]
-      , td () [E.a (click $ \_ -> sink camp) [text "view"]]
+      , td () [E.button [class_ "btn btn-default", click $ \_ -> sink camp] [text "view"]]
       ]
 
 -- | Display info about a campaign.
 campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()
 campaignPageW sink (camp, ads) =
-  div ()
-      [ h1 () [text $ AdCampaign.campaign_name camp]
-      , div ()
-        [text "daily budget:"
-        , text $ showJS $ AdCampaign.daily_budget camp ]
-      , renderAdList emptySink ads
+  div [class_ "row"]
+    [ div [class_ "col-sm-12"]
+      [ E.ul [class_ "list-group"]
+        [ E.li [class_ "list-group-item"] [ h1 () [text $ AdCampaign.campaign_name camp] ]
+        , E.li [class_ "list-group-item"] [ div () [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
+        , E.li [class_ "list-group-item"] [ renderAdList emptySink ads ]
+        ]
       ]
+    ]
   where
     renderAdList :: Widget [Ad.Ad] ()
-    renderAdList _ ads = table () [
+    renderAdList _ ads = table [class_ "table"] [
         tableHeaders ["FB adset id", "Name", "Budget"]
       , tbody () (map (adRow emptySink) ads)
       ]
@@ -125,11 +138,19 @@ campaignPageW sink (camp, ads) =
       ]
 
 imageLibraryPageW :: Widget [Im.Image] ()
-imageLibraryPageW _ [] = text "No images in library"
-imageLibraryPageW _ ims
-  = table [class_ "table table-striped table-hover"]
-       $ tbody ()
-          $ map (tr () . map imageCell) (divide 5 ims)
+imageLibraryPageW _ [] =
+  div [class_ "row"]
+    [ div [class_ "col-sm-12"] [ text "No images in library" ] ]
+
+
+imageLibraryPageW _ ims =
+  div [class_ "row"]
+    [ div [class_ "col-sm-12"]
+      [ table [class_ "table table-striped table-hover"]
+          $ tbody ()
+             $ map (tr () . map imageCell) (divide 5 ims)
+      ]
+    ]
 
 imageCell img = td () [ imgFromWidthAndUrl' 150 (Im.fb_thumb_url img) []
                       , br () ()
@@ -199,7 +220,13 @@ adPlatform = do
   -- Integrate post search
   searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
 
-  let view = nav <$> navS <*> menuView <*> loginView <*> userView <*> adsView <*> searchPageView <*> createAdView <*> imageLibView
+  let view = nav <$> navS <*> menuView
+                          <*> loginView
+                          <*> userView
+                          <*> adsView
+                          <*> searchPageView
+                          <*> createAdView
+                          <*> imageLibView
   return view
 
 nav x menu login user ads search createAd imlib = case x of
@@ -211,7 +238,10 @@ nav x menu login user ads search createAd imlib = case x of
   NavImages   -> wrap menu imlib
   where
     wrap menu page = div ()
-      [ h1 () [text "Ad platform"]
+      [ div [class_ "row"] [
+          div [class_ "col-md-10 col-lg-10"] [
+            div [class_ "page-header"] [ h1 () [text "Ad Platform"] ] ]
+          ]
       , menu
       , page
       ]

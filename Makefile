@@ -13,7 +13,7 @@ build-server:
 
 .PHONY: stop-server
 stop-server:
-	 if [ -f server.PID ]; then kill `cat server.PID`; fi
+	 if [ -f server.PID ]; then kill `cat server.PID` 2>/dev/null; fi
 
 .PHONY: run-server
 run-server: build-server stop-server

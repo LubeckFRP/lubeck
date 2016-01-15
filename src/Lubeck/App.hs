@@ -202,6 +202,7 @@ runAppS update render = do
     createRenderingNode = do
       root <- [js| (function(){
         var root = window.document.createElement('div');
+        root.className += " container-fluid";
         window.document.body.appendChild(root);
         return root;
       }()) |]

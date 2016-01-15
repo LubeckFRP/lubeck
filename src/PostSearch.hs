@@ -47,37 +47,41 @@ import BD.Utils
 
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm output query = div (customAttrs $ Map.fromList [("style","form-vertical")]) $
-  [
-    -- div () [text (showJS query)]
+searchForm output query =
+  div [class_ "row"]
+    [ div [class_ "col-md-4 col-lg-3"]
+      [ div [class_ "form-group form-group-sm"]
+        [ -- div () [text (showJS query)]
+          -- , rmapWidget DontSubmit $ subWidget (lens PQ.caption (\s b -> s {caption=b})) (longStringWidget "Caption") output query
+          longStringWidget "Caption:"  (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
+        , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
+        , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
+        , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
-  -- , rmapWidget DontSubmit $ subWidget (lens PQ.caption (\s b -> s {caption=b})) (longStringWidget "Caption") output query
-    longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
-  , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
-  , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
-  , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
+        , integerIntervalWidget "Poster followers" (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
+        , dateIntervalWidget    "Posting date"     (contramapSink (\new -> DontSubmit $ query { date = new }) output) (PQ.date query)
 
-  , integerIntervalWidget "Poster followers" (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
-  , dateIntervalWidget    "Posting date"     (contramapSink (\new -> DontSubmit $ query { date = new }) output) (PQ.date query)
-
-  , div [ class_ "form-group form-inline" ]
-    [ div [ class_ "form-group"  ]
-      [ label () [text "Sort by" ]
-      , selectWidget
-        [ (PostByFollowers, "Poster followers")
-        , (PostByLikes,     "Likes")
-        , (PostByComments,  "Comments")
-        , (PostByCreated,   "Posting time")
+        , div [ class_ "form-group form-inline" ]
+          [ div [ class_ "form-group"  ]
+            [ label () [text "Sort by" ]
+            , selectWidget
+              [ (PostByFollowers, "Poster followers")
+              , (PostByLikes,     "Likes")
+              , (PostByComments,  "Comments")
+              , (PostByCreated,   "Posting time")
+              ]
+              (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
+            , selectWidget
+              [ (Asc,   "from lowest to highest")
+              , (Desc,  "from highest to lowest")
+              ]
+              (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
+            ]
+          ]
+        , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query] $ text "Search!"
         ]
-        (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
-      , selectWidget
-        [ (Asc,   "from lowest to highest")
-        , (Desc,  "from highest to lowest")
-        ]
-        (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
       ]
     ]
-  , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query] $ text "Search!" ]
 
 
 type Post = SearchPost
@@ -87,11 +91,17 @@ data PostAction
 
 -- | Non-interactive post table (for search results).
 postSearchResult :: Widget [Post] PostAction
-postSearchResult output posts = div () [
-    h1 () [text "Search Results"]
-    , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
-    , postTable output posts
-  ]
+postSearchResult output posts =
+  div [class_ "row"]
+    [ div [class_ "col-md-4 col-lg-3"]
+      [ div ()
+        [ h1 () [text "Search Results"]
+        , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
+        , postTable output posts
+        ]
+      ]
+    ]
+
   where
     postTable :: Widget [Post] PostAction
     postTable output posts =
