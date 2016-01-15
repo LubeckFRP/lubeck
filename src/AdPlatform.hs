@@ -152,11 +152,15 @@ imageLibraryPageW _ ims =
       ]
     ]
 
-imageCell img = td () [ imgFromWidthAndUrl' 150 (Im.fb_thumb_url img) []
-                      , br () ()
-                      , showImagePred $ Im.prediction img
-                      , br () ()
-                      , text ("ID: " <> (showJS $ Im.id img)) ]
+imageCell img =
+  let imgUrl = case Im.fb_thumb_url img of
+        Nothing ->  Im.fb_image_url img
+        Just url -> Just url
+  in td () [ imgFromWidthAndUrl' 150 (imgUrl) []
+           , br () ()
+           , showImagePred $ Im.prediction img
+           , br () ()
+           , text ("Hash: " <> (fromMaybe "none" $ Im.fb_image_hash img)) ]
 
 showImagePred Nothing = text "No prediction"
 showImagePred (Just x) = text $ "Score: "<>showJS x

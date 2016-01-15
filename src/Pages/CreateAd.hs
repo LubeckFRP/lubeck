@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, DeriveGeneric #-}
 
 module Pages.CreateAd (createAdPage) where
 
@@ -13,6 +13,9 @@ import Control.Applicative
 import qualified Data.Map as Map
 import Data.Map(Map)
 import Control.Lens (over, set, view, lens)
+import Data.Aeson
+import qualified GHC.Generics as GHC
+
 
 import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
@@ -39,7 +42,10 @@ import BD.Api
 
 data NewAd = NewAd { caption :: JSString,
                      image_hash :: JSString,
-                     click_link :: JSString }
+                     click_link :: JSString } deriving (GHC.Generic)
+
+instance ToJSON NewAd
+instance FromJSON NewAd
 
 createAdForm :: Widget NewAd (Submit NewAd)
 createAdForm output newAd =
@@ -60,6 +66,12 @@ createAdPage mUserNameB = do
   (view, adCreated) <- formComponent initNewAd createAdForm
 
   subscribeEvent adCreated $ \newAd -> do
+    mUserName <- pollBehavior mUserNameB
+    case mUserName of
+      Just username ->  do
+        Right () <- postAPIEither (username <> "/create-ad") newAd
+        return ()
+      Nothing -> print "no username!"
     return ()
 
   return view
