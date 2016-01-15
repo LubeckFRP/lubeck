@@ -32,6 +32,7 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 baseURL :: JSString
+--baseURL = "http://localhost:3567/api/v1/"
 baseURL = "http://data.beautifuldestinations.com/api/v1/"
 
 {-|
