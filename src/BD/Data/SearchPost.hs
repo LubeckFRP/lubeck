@@ -15,8 +15,8 @@ import qualified GHC.Generics as GHC
 import BD.Types
 
 data SearchPost = SearchPost
-  { post_id          :: Int
-  , account_id       :: Int
+  { post_id          :: Integer
+  , account_id       :: Integer
   , thumbnail_url    :: Text
   , url              :: Text
   , description      :: Maybe Text

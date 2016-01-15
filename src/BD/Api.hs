@@ -31,6 +31,9 @@ import qualified Data.JSString
 import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 
+baseURL :: JSString
+baseURL = "http://data.beautifuldestinations.com/api/v1/"
+
 {-|
 Make a GET request into the BD API.
 
@@ -64,7 +67,7 @@ getAPI path = do
   where
     request = Request {
             reqMethod          = GET
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> path
+          , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
           , reqWithCredentials = False
@@ -102,7 +105,7 @@ postAPI path value = do
   where
     request body = Request {
             reqMethod          = POST
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/" <> path
+          , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
           , reqWithCredentials = False
