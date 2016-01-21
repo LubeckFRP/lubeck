@@ -13,12 +13,14 @@ module BD.Api (
   Ok(..),
   ) where
 
+import Control.Exception
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.IO.Class
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import qualified Data.Aeson
 import qualified Data.Aeson.Types
+import Data.ByteString
 import Data.Data
 import Data.Monoid
 import Data.Text(Text)
@@ -30,10 +32,14 @@ import GHCJS.Types(JSVal, JSString, jsval)
 import qualified Data.JSString
 import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Foreign.QQ (js, jsu, jsu')
+import Data.String (fromString)
 
 baseURL :: JSString
 --baseURL = "http://localhost:3567/api/v1/"
 baseURL = "http://data.beautifuldestinations.com/api/v1/"
+
+showJS :: Show a => a -> JSString
+showJS = fromString . show
 
 {-|
 Make a GET request into the BD API.
@@ -59,12 +65,14 @@ getAccount name = getAPI "\/" <> name <> "\/account"
 -}
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
 getAPI path = do
-  result <- liftIO $ xhrByteString request
-  case contents result of
-    Nothing          -> throwError "getAPI: No response"
-    Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> throwError "getAPI: Parse error"
-      Just x  -> return x
+  eitherResult <- liftIO $ (try $ xhrByteString request :: IO (Either XHRError (Response ByteString)) )
+  case eitherResult of
+    Left _ -> throwError "getAPI: other error"
+    Right result -> case contents result of
+      Nothing          -> throwError "getAPI: No response"
+      Just byteString  -> case Data.Aeson.decodeStrict byteString of
+        Nothing -> throwError "getAPI: Parse error"
+        Just x  -> return x
   where
     request = Request {
             reqMethod          = GET

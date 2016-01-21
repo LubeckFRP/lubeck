@@ -53,19 +53,35 @@ import Pages.CreateAd (createAdPage)
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
   deriving (Show, Eq)
 
+
+errorMsgW :: Widget' AppError
+errorMsgW sink value = do
+  div [class_ "row"]
+    [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"]
+        [ div [class_ "bg-danger text-center "] [text $ showError value] ]
+    ]
+
+  where
+    showError (ApiError s) = "API Error: " <> s
+    showError (BLError s) = "BL Error: " <> s
+
+
 menu :: Widget' Nav
 menu sink value =
   div [class_ "row"] [
     div [class_ "col-md-6 col-lg-5 center-block"]
       [ E.ul [class_ "nav nav-pills"]
-        [ E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavSearch]  [text "Search"]
-        , E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavUser]    [text "User"]
-        , E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavImages]  [text "Image Library"]
-        , E.li () $ E.button [class_ "btn btn-default", click $ \_ -> sink NavCreateAd][text "Create Ad"]
-        , E.li () $ E.button [class_ "btn btn-warning", click $ \_ -> sink NavLogin]   [text "Logout"]
+        [ E.li () $ E.button [class_ ("btn " <> markCurrent NavSearch value),   click $ \_ -> sink NavSearch]  [text "Search"]
+        , E.li () $ E.button [class_ ("btn " <> markCurrent NavUser value),     click $ \_ -> sink NavUser]    [text "User"]
+        , E.li () $ E.button [class_ ("btn " <> markCurrent NavImages value),   click $ \_ -> sink NavImages]  [text "Image Library"]
+        , E.li () $ E.button [class_ ("btn " <> markCurrent NavCreateAd value), click $ \_ -> sink NavCreateAd][text "Create Ad"]
+        , E.li () $ E.button [class_ "btn btn-warning",                 click $ \_ -> sink NavLogin]   [text "Logout"]
         ]
       ]
   ]
+
+  where
+    markCurrent x v = if x == v then "btn-primary" else "btn-default"
 
 
 
@@ -73,7 +89,7 @@ loginPageW :: Widget JSString (Submit JSString)
 loginPageW sink name =
   div
   [ class_ "row" ]
-    [ div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4" ]
+    [ div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4" ]
       [ form [ submit $ \e -> preventDefault e >> return () ]
         [ div [class_ "form-group form-group-lg"]
           [ E.input [class_ "form-control", A.value name, change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
@@ -187,9 +203,14 @@ adPlatform = do
   -- Menu
   (menuView, menuNavE) <- component NavLogin menu
 
+  -- Errors feedback
+  (errorsSink :: Sink (Maybe AppError), errorsE :: Events (Maybe AppError)) <- newEvent
+  errorsS <- stepperS Nothing errorsE :: IO (Signal (Maybe AppError))
+  let errorsView = fmap ((altW mempty errorMsgW) emptySink) errorsS
+
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
-  let userE       = reactimate $ fmap Account.getUser userLoginE
+  let userE       = filterJust $ reactimate $ fmap (Account.getUserOrError errorsSink) userLoginE
   let camapaignsE = reactimate $ fmap getCampaigns userE
   let imagesE = reactimate $ fmap getImages userE
   userS      <- stepperS Nothing (fmap Just userE)
@@ -225,6 +246,7 @@ adPlatform = do
   searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
 
   let view = nav <$> navS <*> menuView
+                          <*> errorsView
                           <*> loginView
                           <*> userView
                           <*> adsView
@@ -233,7 +255,7 @@ adPlatform = do
                           <*> imageLibView
   return view
 
-nav x menu login user ads search createAd imlib = case x of
+nav goTo menu errMsg login user ads search createAd imlib = case goTo of
   NavLogin    -> wrap mempty login
   NavUser     -> wrap menu user
   NavCampaign -> wrap menu ads
@@ -247,6 +269,7 @@ nav x menu login user ads search createAd imlib = case x of
             div [class_ "page-header"] [ h1 () [text "Ad Platform"] ] ]
           ]
       , menu
+      , errMsg
       , page
       ]
 
