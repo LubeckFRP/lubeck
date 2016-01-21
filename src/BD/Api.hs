@@ -67,7 +67,7 @@ getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSSt
 getAPI path = do
   eitherResult <- liftIO $ (try $ xhrByteString request :: IO (Either XHRError (Response ByteString)) )
   case eitherResult of
-    Left _ -> throwError "getAPI: other error"
+    Left s -> throwError ("getAPI: " <> showJS s)
     Right result -> case contents result of
       Nothing          -> throwError "getAPI: No response"
       Just byteString  -> case Data.Aeson.decodeStrict byteString of

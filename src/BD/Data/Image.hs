@@ -1,20 +1,26 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module BD.Data.Image where
 
-import Control.Monad
-import Data.Aeson -- TODO proper
-import Data.Data
-import Data.Time.Clock (UTCTime)
+import           Control.Monad
+import           Data.Aeson
 import qualified Data.Aeson.Types
-import qualified GHC.Generics as GHC
-import Data.Monoid
+import           Data.Data
+import           Data.Monoid
+import           Data.Time.Clock  (UTCTime)
+import qualified GHC.Generics     as GHC
 
-import GHCJS.Types (JSString)
+import           GHCJS.Types      (JSString)
 
-import BD.Api
-import BD.Types
-import BD.Data.AdTypes
+import           BD.Api
+import           BD.Data.AdTypes
+import           BD.Types
+
+import           Data.Bifunctor   (first)
 
 data Image = Image
   { id            :: Int
@@ -34,3 +40,6 @@ instance ToJSON Image
 
 getAllImages :: Text -> IO [Image]
 getAllImages unm = unsafeGetAPI $ unm <> "/ad-images"
+
+getAllImagesOrError :: Text -> IO (Either AppError [Image])
+getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError 

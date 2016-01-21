@@ -1,4 +1,9 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
 
 module BD.Data.Account
     ( Account(..)
@@ -6,21 +11,22 @@ module BD.Data.Account
     , getUserOrError
     ) where
 
-import Control.Monad
-import Data.Aeson -- TODO proper
-import Data.Data
-import Data.Time.Clock (UTCTime)
+import           Control.Monad
+import           Data.Aeson
 import qualified Data.Aeson.Types
-import qualified GHC.Generics as GHC
-import Data.Monoid
-import Data.String (fromString)
+import           Data.Data
+import           Data.Bifunctor (bimap)
+import           Data.Monoid
+import           Data.String      (fromString)
+import           Data.Time.Clock  (UTCTime)
+import qualified GHC.Generics     as GHC
 
-import GHCJS.Types (JSString)
+import           GHCJS.Types      (JSString)
 
-import BD.Api
-import BD.Types
+import           BD.Api
+import           BD.Types
 
-import Lubeck.FRP
+import           Lubeck.FRP
 
 -- import BD.Data.Count
 -- import BD.Data.Account
@@ -53,14 +59,5 @@ instance FromJSON Account
 getUser :: JSString -> IO Account
 getUser unm = fmap payload $ unsafeGetAPI $ unm <> "/account"
 
-showJS :: Show a => a -> JSString
-showJS = fromString . show
-
-getUserOrError :: Sink (Maybe AppError) -> JSString -> IO (Maybe Account)
-getUserOrError errorSink username = do
-  x <- getAPIEither $ username <> "/account"
-  case x of
-    Right y -> return $ Just $ payload y
-    Left z -> do
-      errorSink $ Just $ ApiError z
-      return Nothing
+getUserOrError :: JSString -> IO (Either AppError Account)
+getUserOrError unm = getAPIEither (unm <> "/account") >>= return . bimap ApiError payload

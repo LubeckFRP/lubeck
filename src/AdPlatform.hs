@@ -1,54 +1,60 @@
-
-
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Main where
 
-import Prelude hiding (div)
+import           Prelude              hiding (div)
 import qualified Prelude
 
-import Control.Applicative
-import Control.Concurrent (threadDelay, forkIO)
-import Control.Monad (forM_, forever, unless)
-import Data.String (fromString)
-import qualified Data.Map as Map
-import Data.Map(Map)
+import           Control.Applicative
+import           Control.Concurrent   (forkIO, threadDelay)
+import           Control.Lens         (over, set)
+import           Control.Lens.TH      (makeLenses)
+import           Control.Monad        (forM_, forever, unless)
+import           Data.Default         (def)
 import qualified Data.List
-import Data.Monoid
-import Data.Maybe(fromMaybe)
-import Data.Default (def)
-import Control.Lens (over, set)
-import Control.Lens.TH(makeLenses)
+import           Data.Map             (Map)
+import qualified Data.Map             as Map
+import           Data.Maybe           (fromMaybe)
+import           Data.Monoid
+import           Data.String          (fromString)
 
-import GHCJS.Foreign.QQ (js, jsu, jsu')
-import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, table, td, tr, th, tbody, thead, br)
-import GHCJS.VDOM.Attribute (src, width, class_)
-import qualified GHCJS.VDOM.Element as E
+import           Data.JSString.Text   (textFromJSString)
+import           GHCJS.Foreign.QQ     (js, jsu, jsu')
+import           GHCJS.Types          (JSString, jsval)
+import           GHCJS.VDOM.Attribute (class_, src, width)
 import qualified GHCJS.VDOM.Attribute as A
-import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
-import Data.JSString.Text (textFromJSString)
+import           GHCJS.VDOM.Element   (br, button, custom, div, form, h1, hr,
+                                       img, p, table, tbody, td, text, th,
+                                       thead, tr)
+import qualified GHCJS.VDOM.Element   as E
+import           GHCJS.VDOM.Event     (change, click, preventDefault,
+                                       stopPropagation, submit, value)
+import           GHCJS.VDOM.Unsafe    (Attributes', unsafeToAttributes)
 
-import Lubeck.FRP
-import Lubeck.App (Html, runApp, runAppReactive)
-import Lubeck.Forms
-import Lubeck.Web.URI (encodeURIComponent)
+import           Lubeck.App           (Html, runApp, runAppReactive)
+import           Lubeck.Forms
+import           Lubeck.FRP
+import           Lubeck.Web.URI       (encodeURIComponent)
 
-import PostSearch (searchPage)
+import           PostSearch           (searchPage)
 
-import qualified BD.Data.Account as Account
-import qualified BD.Data.AdCampaign as AdCampaign
-import qualified BD.Data.Ad as Ad
-import qualified BD.Data.Count as C
-import qualified BD.Data.Image as Im
-import qualified BD.Data.SearchPost as P
-import BD.Data.SearchPost(SearchPost)
-import BD.Data.Interaction
-import BD.Types
-import BD.Utils
+import qualified BD.Data.Account      as Account
+import qualified BD.Data.Ad           as Ad
+import qualified BD.Data.AdCampaign   as AdCampaign
+import qualified BD.Data.Count        as C
+import qualified BD.Data.Image        as Im
+import           BD.Data.Interaction
+import           BD.Data.SearchPost   (SearchPost)
+import qualified BD.Data.SearchPost   as P
+import           BD.Types
+import           BD.Utils
 
-import Pages.CreateAd (createAdPage)
+import           Pages.CreateAd       (createAdPage)
 
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
   deriving (Show, Eq)
@@ -76,11 +82,21 @@ menu sink value =
   div [class_ "row"] [
     div [class_ "col-md-6 col-lg-5 center-block"]
       [ E.ul [class_ "nav nav-pills"]
-        [ E.li () $ E.button [class_ ("btn " <> markCurrent NavSearch value),   click $ \_ -> sink NavSearch]  [text "Search"]
-        , E.li () $ E.button [class_ ("btn " <> markCurrent NavUser value),     click $ \_ -> sink NavUser]    [text "User"]
-        , E.li () $ E.button [class_ ("btn " <> markCurrent NavImages value),   click $ \_ -> sink NavImages]  [text "Image Library"]
-        , E.li () $ E.button [class_ ("btn " <> markCurrent NavCreateAd value), click $ \_ -> sink NavCreateAd][text "Create Ad"]
-        , E.li () $ E.button [class_ "btn btn-warning",                 click $ \_ -> sink NavLogin]   [text "Logout"]
+        [ E.li () $ E.button [ class_ ("btn " <> markCurrent NavSearch value)
+                             , click $ \_ -> sink NavSearch
+                             ] [text "Search"]
+        , E.li () $ E.button [ class_ ("btn " <> markCurrent NavUser value)
+                             , click $ \_ -> sink NavUser
+                             ] [text "User"]
+        , E.li () $ E.button [ class_ ("btn " <> markCurrent NavImages value)
+                             , click $ \_ -> sink NavImages
+                             ] [text "Image Library"]
+        , E.li () $ E.button [ class_ ("btn " <> markCurrent NavCreateAd value)
+                             , click $ \_ -> sink NavCreateAd
+                             ] [text "Create Ad"]
+        , E.li () $ E.button [ class_ "btn btn-warning"
+                             , click $ \_ -> sink NavLogin
+                             ] [text "Logout"]
         ]
       ]
   ]
@@ -97,8 +113,11 @@ loginPageW sink name =
     [ div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4" ]
       [ form [ submit $ \e -> preventDefault e >> return () ]
         [ div [class_ "form-group form-group-lg"]
-          [ E.input [class_ "form-control", A.value name, change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
-          , button [class_ "form-control btn btn-primary", click $ \_ -> sink (Submit name)] [text "Login"]
+          [ E.input [ class_ "form-control"
+                    , A.value name
+                    , change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
+          , button [ class_ "form-control btn btn-primary"
+                   , click $ \_ -> sink (Submit name)] [text "Login"]
           ]
         ]
       ]
@@ -111,10 +130,14 @@ userPageW sink (acc, camps) =
   div [class_ "row"]
     [ div [class_ "col-sm-12"]
       [ E.ul [class_ "list-group"]
-        [ E.li [class_ "list-group-item"] [ E.h3 () [text $ Account.username acc ] ]
-        , E.li [class_ "list-group-item"] [ div () [text $ showJS $ Account.latest_count acc ] ]
-        , E.li [class_ "list-group-item"] [ div () [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
-        , E.li [class_ "list-group-item"] [ campaignTable sink camps ]
+        [ E.li [class_ "list-group-item"]
+            [ E.h3 () [text $ Account.username acc ] ]
+        , E.li [class_ "list-group-item"]
+            [ div () [text $ showJS $ Account.latest_count acc ] ]
+        , E.li [class_ "list-group-item"]
+            [ div () [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
+        , E.li [class_ "list-group-item"]
+            [ campaignTable sink camps ]
         ]
       ]
     ]
@@ -138,9 +161,12 @@ campaignPageW sink (camp, ads) =
   div [class_ "row"]
     [ div [class_ "col-sm-12"]
       [ E.ul [class_ "list-group"]
-        [ E.li [class_ "list-group-item"] [ h1 () [text $ AdCampaign.campaign_name camp] ]
-        , E.li [class_ "list-group-item"] [ div () [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
-        , E.li [class_ "list-group-item"] [ renderAdList emptySink ads ]
+        [ E.li [class_ "list-group-item"]
+            [ h1 () [text $ AdCampaign.campaign_name camp] ]
+        , E.li [class_ "list-group-item"]
+            [ div () [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
+        , E.li [class_ "list-group-item"]
+            [ renderAdList emptySink ads ]
         ]
       ]
     ]
@@ -189,20 +215,23 @@ showImagePred (Just x) = text $ "Score: "<>showJS x
 
 -- BACKEND
 
-getCampaigns :: Sink (Maybe AppError) -> Account.Account -> IO (Maybe [AdCampaign.AdCampaign])
-getCampaigns errorSink acc = do
-  AdCampaign.getUserCampaignsOrError errorSink (Account.username acc)
+getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])
+getCampaigns acc = AdCampaign.getUserCampaignsOrError (Account.username acc)
 
-loadAds :: Sink (Maybe AppError) -> Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Maybe [Ad.Ad])
-loadAds errorSink account camp =  do
-  let campid = showJS $ AdCampaign.fbid camp
-      username = maybe "" Account.username $ account
-  -- Ad.getCampaignAds username campid
-  Ad.getCampaignAdsOrError errorSink username campid
+loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Either AppError [Ad.Ad])
+loadAds account camp = Ad.getCampaignAdsOrError username campid
+  where campid = showJS $ AdCampaign.fbid camp
+        username = maybe "" Account.username $ account
 
-getImages :: Account.Account -> IO [Im.Image]
-getImages acc = do
-  Im.getAllImages (Account.username acc)
+getImages :: Account.Account -> IO (Either AppError [Im.Image])
+getImages acc = Im.getAllImagesOrError (Account.username acc)
+
+eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
+eitherToError sink (Left x)  = sink (Just x) >> return Nothing
+eitherToError sink (Right x) = return (Just x)
+
+withErrorSink :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
+withErrorSink errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
@@ -210,18 +239,18 @@ adPlatform = do
   (menuView, menuNavE) <- component NavLogin menu
 
   -- Errors feedback
-  (errorSink :: Sink (Maybe AppError), errorsE :: Events (Maybe AppError)) <- newEvent
-  errorsS <- stepperS Nothing errorsE :: IO (Signal (Maybe AppError))
-  let errorsView = fmap (errorMsgW errorSink) errorsS
+  ( errorSink :: Sink (Maybe AppError), errorsE :: Events (Maybe AppError)) <- newEvent
+  errorsS         <- stepperS Nothing errorsE :: IO (Signal (Maybe AppError))
+  let errorsView  = fmap (errorMsgW errorSink) errorsS
 
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
-  let userE       = filterJust $ reactimate $ fmap (Account.getUserOrError errorSink) userLoginE
-  let camapaignsE = filterJust $ reactimate $ fmap (getCampaigns errorSink) userE
-  let imagesE = reactimate $ fmap getImages userE
-  userS      <- stepperS Nothing (fmap Just userE)
-  campaignsS <- stepperS Nothing (fmap Just camapaignsE)
-  imagesS <- stepperS Nothing (fmap Just imagesE)
+  let userE       = withErrorSink errorSink $ fmap Account.getUserOrError userLoginE
+  let camapaignsE = withErrorSink errorSink $ fmap getCampaigns userE
+  let imagesE     = withErrorSink errorSink $ fmap getImages userE
+  userS           <- stepperS Nothing (fmap Just userE)
+  campaignsS      <- stepperS Nothing (fmap Just camapaignsE)
+  imagesS         <- stepperS Nothing (fmap Just imagesE)
 
   -- User page
   (fetchCampaignAds :: Sink AdCampaign.AdCampaign, loadAdsE) <- newEvent
@@ -233,7 +262,7 @@ adPlatform = do
   createAdView <- createAdPage (fmap (fmap Account.username) $ current userS)
 
   -- Campaign page
-  let adsE = filterJust $ reactimate $ snapshotWith (loadAds errorSink) (current userS) loadAdsE
+  let adsE = withErrorSink errorSink $ snapshotWith loadAds (current userS) loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
   let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
