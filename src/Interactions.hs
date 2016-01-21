@@ -21,12 +21,12 @@ import Control.Lens.TH(makeLenses)
 
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
-import GHCJS.VDOM.Attribute (src, width, class_)
-import qualified GHCJS.VDOM.Element as E
-import qualified GHCJS.VDOM.Attribute as A
-import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
+import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
+import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src, style)
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
@@ -70,21 +70,22 @@ update = foldpR step initial
 
 render :: Widget Model Action
 render actions model = div
-  (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
-  [ h1 () [text "Shoutout browser"]
-  , div ()
+  -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
+  [ style "width: 900px; margin-left: auto; margin-right: auto" ]
+  [ h1 [] [text "Shoutout browser"]
+  , div []
     [buttonW actions (_requested model)]
   , div
-    ()
+    []
     [ interactionSetW actions (_interactions model) ]
   ]
 
 buttonW :: Widget (Maybe JSString, Maybe JSString) Action
 buttonW sink (x,y) = div
-  ()
-  [ div () $ E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] ()
-  , div () $ E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] ()
-  , div () $ button (click $ \e -> sink (LoadAction x y) >> preventDefault e) [text "Load shoutouts!"] ]
+  []
+  [ div [] $ pure $ E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+  , div [] $ pure $ E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+  , div [] $ pure $ button [click $ \e -> sink (LoadAction x y) >> preventDefault e] [text "Load shoutouts!"] ]
   where
     _1 f (x,y) = fmap (,y) $ f x
     _2 f (x,y) = fmap (x,) $ f y
@@ -98,21 +99,21 @@ buttonW sink (x,y) = div
 doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
-interactionSetW actions model = div ()
-  [ p () [ text $ "Showing" <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
+interactionSetW actions model = div []
+  [ p [] [ text $ "Showing" <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
          , text $ " to "    <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
-  , div () (Data.List.intersperse (hr () ()) $ fmap (interactionW actions) $ model .: I.interactions)
+  , div [] (Data.List.intersperse (hr [] []) $ fmap (interactionW actions) $ model .: I.interactions)
   ]
 
 interactionW :: Widget (Interaction SearchPost) Action
-interactionW actions model = div ()
-  [ p () [text (showJS $ model .: interaction_time)]
+interactionW actions model = div []
+  [ p [] [text (showJS $ model .: interaction_time)]
   -- Growth graph
   , div [class_ "row"]
-    [ div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] ()]
-    , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] ()]
+    [ div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] []]
+    , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
     ]
-  , p () [text "Estimated impact: (?)"]
+  , p [] [text "Estimated impact: (?)"]
   ]
 
 
@@ -137,11 +138,11 @@ showJS = fromString . show
 greyImgUrl :: JSString
 greyImgUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxQSEhQUEhQUFBQUFBQUFBQUFBQUFBQUFBQXFxQUFBQYHCggGBwlHBQUITEhJSksLi4uFx8zODMsNygtLiwBCgoKDAwMDgwMDiwZFBksLCwsKywsLDc3Kyw3LCwsLDcsNzcsNyssLCwsLDc3LDcsLCwsLDcsNyw3NzcsNyw3LP/AABEIAOEA4QMBIgACEQEDEQH/xAAYAAEBAQEBAAAAAAAAAAAAAAAAAQIDB//EABkQAQEBAQEBAAAAAAAAAAAAAAABEQJBMf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A9QoqIpCCwRKjVTAIBgGqIAqKKCsiKmqCoEBEqiAWhQBFQDVRoEZrVSgzgqCurLWIIKkUBFQBUxQQi4AoEFQVBC1FMASBAEVJABQERSAAoIjTPQM6ADrWWkAVFACmgAAAAsEUBFqABFoJaACCgIilBAAWEIAJ0RKDI1gDdSrUAVFAAACAAACiAqKlAEAFEAAoIKgBQAWJFARUoICA6AgC0KBSIsAAAIRQVAASqlBAAVCKAlWoBAQBFQFixIArPSpQAQHSoqAsEXAAAAAFQBQQACAgAJjSRQTRYgFhUKCKigasTFBWbFS0EEAbqWrTAIuoAoAARYBAqSAqVQEouIAYQoJGkKAioCFKYAgtBGmWoAlq1mgmAgOqKgEVFAABRFADFBAQCoqAuloaAGgIKgCAAqAEWJABK0zQTEVAdUWoAqAKIoKJFALQASqzQAUEKAAQ0AwAEpqAtBAWBIAanQz1QTFAHWpWqyAACiKAAABBQEEChQAQFgqABUAAAQoC2oADNarNBFAHWotQUEAUAQWCQFEoCoqUCAQAAAQAoqAAkAAoEXA0GUqs0AMUHRKpUEgaKCooqpagIoIClEBRAAVAAQFEUEAACgAmroJUWs0BWdAdgqVFRYigqUAFSKqBEUAogoEKIAgLUVAFqKCQADEUBAAGVqAgKK6JV1lBSJQFBAWNRICAgqqBoAqURAAAAAANRagLpqYAi6lQFZtWsgirig2lBBFQBTkFVYAIiwABAVq+FARKAKCAi0vxAFKACIAVmqClZUEAEH//2Q=="
 
--- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
--- This works around the issue. The value returned here should take the place of the standard
--- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
---
--- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
-customAttrs :: Map String String -> Attributes'
-customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
-  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
+-- -- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
+-- -- This works around the issue. The value returned here should take the place of the standard
+-- -- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
+-- --
+-- -- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
+-- customAttrs :: Map String String -> Attributes'
+-- customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+--   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]

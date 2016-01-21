@@ -9,9 +9,12 @@ import qualified Prelude
 import Data.Monoid ((<>))
 
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom)
-import GHCJS.VDOM.Attribute (src, width, class_)
+import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
+import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
+import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 import qualified Data.JSString
 
 import Lubeck.FRP
@@ -20,9 +23,9 @@ import Lubeck.Forms (Widget, Widget', component)
 import Lubeck.Drawing (drawTest)
 
 render :: Widget' JSString
-render output model = div ()
-  [ div () $ h1 () $ text model
-  , div () $ button
+render output model = div []
+  [ div [] $ pure $ h1 [] $ pure $ text model
+  , div [] $ pure $ button
     [ click (\_ -> output (model <> "!")) ]
     [ text "Click me" ]
   , drawTest (length $ Data.JSString.unpack $ model) ]

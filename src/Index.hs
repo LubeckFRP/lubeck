@@ -7,19 +7,22 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (a, p, h1, div, text, form, button, img, hr, ul, li, custom)
-import GHCJS.VDOM.Attribute (src, href, width, class_)
+import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label, ul, li)
+import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
+import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.App (Html, runAppStatic)
 
 page :: Html
-page = div () [h1 () [text "Index"]
-  , ul ()
-    [ li () [a (href "adplatform/")     [text "Ad platform"]]
-    , li () [a (href "interactions/")   [text "Interaction browser"]]
-    , li () [a (href "example-static/") [text "Example static page"]]
-    , li () [a (href "example/")        [text "Example reactive page"]]
+page = div [] [h1 [] [text "Index"]
+  , ul []
+    [ li [] [a [href "adplatform/"]     [text "Ad platform"]]
+    , li [] [a [href "interactions/"]   [text "Interaction browser"]]
+    , li [] [a [href "example-static/"] [text "Example static page"]]
+    , li [] [a [href "example/"]        [text "Example reactive page"]]
     ]
   ]
 

@@ -35,8 +35,11 @@ import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
-import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
-import GHCJS.VDOM.Event (initEventDelegation)
+-- import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
+-- import GHCJS.VDOM.Event (initEventDelegation)
+
+import qualified Web.VirtualDom as VD
+
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
 
@@ -107,40 +110,16 @@ runApp update render = do
 
   -- Enter rendering loop on main thread
   do
-    initEventDelegation []
-    renderingNode <- createRenderingNode
-    renderingLoop renderingNode $ do
+    -- initEventDelegation []
+    renderingLoop $ do
       atomically $ TChan.readTChan frpUpdated
       st <- atomically $ TVar.readTVar frpState
       return $ render (atomically . TChan.writeTChan frpIn) st
 
   where
-    createRenderingNode :: IO DOMNode
-    createRenderingNode = do
-      root <- [js| (function(){
-        var root = window.document.createElement('div');
-        window.document.body.appendChild(root);
-        return root;
-      }()) |]
-      return root
-
     -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
-    renderingLoop :: DOMNode -> IO VNode -> IO ()
-    renderingLoop domNode k = do
-      node1 <- k
-      vMount <- mount domNode node1
-      forever $ do
-        -- insist $ do -- TODO insist should not be needed
-          node <- k
-          delta <- diff vMount node
-          patch vMount delta
-
-    -- | Repeat a computation until it succeeds.
-    insist :: Monad m => m Bool -> m ()
-    insist k = do
-      r <- k
-      unless r (insist k)
-      return ()
+    renderingLoop :: IO VD.Node -> IO ()
+    renderingLoop = VD.renderingLoop VD.appendToBody
 
 
 -- TODO consolidate
@@ -190,38 +169,13 @@ runAppS update render = do
 
   -- Enter rendering loop on main thread
   do
-    initEventDelegation []
-    renderingNode <- createRenderingNode
-    renderingLoop renderingNode $ do
+    -- initEventDelegation []
+    renderingLoop $ do
       atomically $ TChan.readTChan frpUpdated
       st <- atomically $ TVar.readTVar frpState
       return $ render (atomically . TChan.writeTChan frpIn) st
 
   where
-    createRenderingNode :: IO DOMNode
-    createRenderingNode = do
-      root <- [js| (function(){
-        var root = window.document.createElement('div');
-        root.className += " container-fluid";
-        window.document.body.appendChild(root);
-        return root;
-      }()) |]
-      return root
-
     -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
-    renderingLoop :: DOMNode -> IO VNode -> IO ()
-    renderingLoop domNode k = do
-      node1 <- k
-      vMount <- mount domNode node1
-      forever $ do
-        -- insist $ do -- TODO insist should not be needed
-          node <- k
-          delta <- diff vMount node
-          patch vMount delta
-
-    -- | Repeat a computation until it succeeds.
-    insist :: Monad m => m Bool -> m ()
-    insist k = do
-      r <- k
-      unless r (insist k)
-      return ()
+    renderingLoop :: IO VD.Node -> IO ()
+    renderingLoop = VD.renderingLoop VD.appendToBody

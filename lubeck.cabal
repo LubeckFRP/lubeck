@@ -35,7 +35,7 @@ library
                      , BD.Utils
                      , Pages.CreateAd
   build-depends:       base >=4.8 && <4.9
-                     , ghcjs-vdom == 0.2.0.0
+                     , virtual-dom
                      , ghcjs-ffiqq == 0.1.0.0
                      , ghcjs-base ==0.2.0.0
                      , stm
@@ -68,7 +68,7 @@ executable bd-example-app
   main-is:             src/Example.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
-                     , ghcjs-vdom == 0.2.0.0
+                     , virtual-dom
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
@@ -76,7 +76,7 @@ executable bd-example-static-page
   main-is:             src/ExampleStatic.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
-                     , ghcjs-vdom == 0.2.0.0
+                     , virtual-dom
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
@@ -84,7 +84,7 @@ executable bd-interactions
   main-is:             src/Interactions.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
-                     , ghcjs-vdom == 0.2.0.0
+                     , virtual-dom
                      , ghcjs-base ==0.2.0.0
                      , ghcjs-ffiqq == 0.1.0.0
                      , stm
@@ -108,7 +108,7 @@ executable bd-adplatform
   main-is:             src/AdPlatform.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
-                     , ghcjs-vdom == 0.2.0.0
+                     , virtual-dom
                      , ghcjs-base ==0.2.0.0
                      , ghcjs-ffiqq == 0.1.0.0
                      , stm
@@ -132,7 +132,7 @@ executable bd-index
   main-is:             src/Index.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
-                     , ghcjs-vdom == 0.2.0.0
+                     , virtual-dom
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 

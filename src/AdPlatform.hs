@@ -26,15 +26,15 @@ import           Data.String          (fromString)
 import           Data.JSString.Text   (textFromJSString)
 import           GHCJS.Foreign.QQ     (js, jsu, jsu')
 import           GHCJS.Types          (JSString, jsval)
-import           GHCJS.VDOM.Attribute (class_, src, width)
-import qualified GHCJS.VDOM.Attribute as A
-import           GHCJS.VDOM.Element   (br, button, custom, div, form, h1, hr,
+import           Web.VirtualDom.Html.Attributes (class_, src, width)
+import qualified Web.VirtualDom.Html.Attributes as A
+import           Web.VirtualDom.Html   (Property, br, button, div, form, h1, hr,
                                        img, p, table, tbody, td, text, th,
                                        thead, tr)
-import qualified GHCJS.VDOM.Element   as E
-import           GHCJS.VDOM.Event     (change, click, preventDefault,
+import qualified Web.VirtualDom.Html   as E
+import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
                                        stopPropagation, submit, value)
-import           GHCJS.VDOM.Unsafe    (Attributes', unsafeToAttributes)
+-- import           GHCJS.VDOM.Unsafe    (Attributes', unsafeToAttributes)
 
 import           Lubeck.App           (Html, runApp, runAppReactive)
 import           Lubeck.Forms
@@ -67,7 +67,7 @@ errorMsgW sink (Just value) = do
     [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"]
         [ div [class_ "bg-danger text-center "]
           [ text $ showError value
-          , E.button [class_ "close", click $ \_ -> sink Nothing] [E.span () [text "×"]]
+          , E.button [class_ "close", click $ \_ -> sink Nothing] [E.span [] [text "×"]]
           ]
         ]
     ]
@@ -82,19 +82,19 @@ menu sink value =
   div [class_ "row"] [
     div [class_ "col-md-6 col-lg-5 center-block"]
       [ E.ul [class_ "nav nav-pills"]
-        [ E.li () $ E.button [ class_ ("btn " <> markCurrent NavSearch value)
+        [ E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavSearch value)
                              , click $ \_ -> sink NavSearch
                              ] [text "Search"]
-        , E.li () $ E.button [ class_ ("btn " <> markCurrent NavUser value)
+        , E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavUser value)
                              , click $ \_ -> sink NavUser
                              ] [text "User"]
-        , E.li () $ E.button [ class_ ("btn " <> markCurrent NavImages value)
+        , E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavImages value)
                              , click $ \_ -> sink NavImages
                              ] [text "Image Library"]
-        , E.li () $ E.button [ class_ ("btn " <> markCurrent NavCreateAd value)
+        , E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavCreateAd value)
                              , click $ \_ -> sink NavCreateAd
                              ] [text "Create Ad"]
-        , E.li () $ E.button [ class_ "btn btn-warning"
+        , E.li [] $ pure $ E.button [ class_ "btn btn-warning"
                              , click $ \_ -> sink NavLogin
                              ] [text "Logout"]
         ]
@@ -115,7 +115,7 @@ loginPageW sink name =
         [ div [class_ "form-group form-group-lg"]
           [ E.input [ class_ "form-control"
                     , A.value name
-                    , change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] ()
+                    , change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] []
           , button [ class_ "form-control btn btn-primary"
                    , click $ \_ -> sink (Submit name)] [text "Login"]
           ]
@@ -131,11 +131,11 @@ userPageW sink (acc, camps) =
     [ div [class_ "col-sm-12"]
       [ E.ul [class_ "list-group"]
         [ E.li [class_ "list-group-item"]
-            [ E.h3 () [text $ Account.username acc ] ]
+            [ E.h3 [] [text $ Account.username acc ] ]
         , E.li [class_ "list-group-item"]
-            [ div () [text $ showJS $ Account.latest_count acc ] ]
+            [ div [] [text $ showJS $ Account.latest_count acc ] ]
         , E.li [class_ "list-group-item"]
-            [ div () [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
+            [ div [] [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
         , E.li [class_ "list-group-item"]
             [ campaignTable sink camps ]
         ]
@@ -145,14 +145,14 @@ userPageW sink (acc, camps) =
     campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
     campaignTable sink camps = table [class_ "table"] [
         tableHeaders ["FB id", "Name", ""]
-      , tbody () (map (campaignRow sink) $ zip [0..] camps)
+      , tbody [] (map (campaignRow sink) $ zip [0..] camps)
       ]
 
     campaignRow :: Widget (Int, AdCampaign.AdCampaign) AdCampaign.AdCampaign
-    campaignRow sink (ix, camp) = tr ()
-      [ td () [text $ showJS $ AdCampaign.fbid camp]
-      , td () [text $ AdCampaign.campaign_name camp]
-      , td () [E.button [class_ "btn btn-default", click $ \_ -> sink camp] [text "view"]]
+    campaignRow sink (ix, camp) = tr []
+      [ td [] [text $ showJS $ AdCampaign.fbid camp]
+      , td [] [text $ AdCampaign.campaign_name camp]
+      , td [] [E.button [class_ "btn btn-default", click $ \_ -> sink camp] [text "view"]]
       ]
 
 -- | Display info about a campaign.
@@ -162,9 +162,9 @@ campaignPageW sink (camp, ads) =
     [ div [class_ "col-sm-12"]
       [ E.ul [class_ "list-group"]
         [ E.li [class_ "list-group-item"]
-            [ h1 () [text $ AdCampaign.campaign_name camp] ]
+            [ h1 [] [text $ AdCampaign.campaign_name camp] ]
         , E.li [class_ "list-group-item"]
-            [ div () [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
+            [ div [] [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
         , E.li [class_ "list-group-item"]
             [ renderAdList emptySink ads ]
         ]
@@ -174,14 +174,14 @@ campaignPageW sink (camp, ads) =
     renderAdList :: Widget [Ad.Ad] ()
     renderAdList _ ads = table [class_ "table"] [
         tableHeaders ["FB adset id", "Name", "Budget"]
-      , tbody () (map (adRow emptySink) ads)
+      , tbody [] (map (adRow emptySink) ads)
       ]
 
     adRow :: Widget Ad.Ad ()
-    adRow _ ad = tr ()
-      [ td () [text $ showJS $ Ad.fb_adset_id ad]
-      , td () [text $ Ad.ad_title ad]
-      , td () [text $ showJS $ Ad.current_budget ad]
+    adRow _ ad = tr []
+      [ td [] [text $ showJS $ Ad.fb_adset_id ad]
+      , td [] [text $ Ad.ad_title ad]
+      , td [] [text $ showJS $ Ad.current_budget ad]
       ]
 
 imageLibraryPageW :: Widget [Im.Image] ()
@@ -194,8 +194,8 @@ imageLibraryPageW _ ims =
   div [class_ "row"]
     [ div [class_ "col-sm-12"]
       [ table [class_ "table table-striped table-hover"]
-          $ tbody ()
-             $ map (tr () . map imageCell) (divide 5 ims)
+          $ pure $ tbody []
+             $ map (tr [] . map imageCell) (divide 5 ims)
       ]
     ]
 
@@ -203,10 +203,10 @@ imageCell img =
   let imgUrl = case Im.fb_thumb_url img of
         Nothing ->  Im.fb_image_url img
         Just url -> Just url
-  in td () [ imgFromWidthAndUrl' 150 (imgUrl) []
-           , br () ()
+  in td [] [ imgFromWidthAndUrl' 150 (imgUrl) []
+           , br [] []
            , showImagePred $ Im.prediction img
-           , br () ()
+           , br [] []
            , text ("Hash: " <> (fromMaybe "none" $ Im.fb_image_hash img)) ]
 
 showImagePred Nothing = text "No prediction"
@@ -298,10 +298,10 @@ nav goTo menu errMsg login user ads search createAd imlib = case goTo of
   NavCreateAd -> wrap menu createAd
   NavImages   -> wrap menu imlib
   where
-    wrap menu page = div ()
+    wrap menu page = div []
       [ div [class_ "row"] [
           div [class_ "col-md-10 col-lg-10"] [
-            div [class_ "page-header"] [ h1 () [text "Ad Platform"] ] ]
+            div [class_ "page-header"] [ h1 [] [text "Ad Platform"] ] ]
           ]
       , menu
       , errMsg
@@ -320,22 +320,22 @@ main = do
 
 -- UTILITY
 
-imgFromWidthAndUrl' :: Int -> Maybe JSString -> [A.Attribute] -> Html
-imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url]) ()
+imgFromWidthAndUrl' :: Int -> Maybe JSString -> [Property] -> Html
+imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url]) []
 imgFromWidthAndUrl' w Nothing attrs = text "No URL"
 
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show
 
--- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
--- This works around the issue. The value returned here should take the place of the standard
--- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
---
--- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
-customAttrs :: Map String String -> Attributes'
-customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
-  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
+-- -- | A limitation in ghcjs-vdom means that non-standard attributes aren't always defined properly.
+-- -- This works around the issue. The value returned here should take the place of the standard
+-- -- attribute definition, i.e. instead of (div () ..) or (div [..] ..), use (div (customAttrs []) ..).
+-- --
+-- -- If possible, use the functions exported by GHCJS.VDOM.Attribute instead.
+-- customAttrs :: Map String String -> Attributes'
+-- customAttrs attrs = let str = (fromString $ ("{"++) $ (++"}") $ drop 2 $ Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+--   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
 
 tableHeaders :: [JSString] -> Html
-tableHeaders hs = thead () [ tr () $ map (th () . (:[]) . text) hs]
+tableHeaders hs = thead [] [ tr [] $ map (th [] . (:[]) . text) hs]
