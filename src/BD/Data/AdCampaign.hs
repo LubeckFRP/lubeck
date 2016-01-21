@@ -12,6 +12,8 @@ import Data.Monoid
 
 import GHCJS.Types (JSString)
 
+import Lubeck.FRP (Sink)
+
 import BD.Api
 import BD.Types
 import BD.Data.AdTypes
@@ -31,3 +33,12 @@ instance ToJSON AdCampaign
 
 getUserCampaigns :: JSString -> IO [AdCampaign]
 getUserCampaigns unm = fmap payload $ unsafeGetAPI $ unm <> "/ad-campaigns"
+
+getUserCampaignsOrError :: Sink (Maybe AppError) -> JSString -> IO (Maybe [AdCampaign])
+getUserCampaignsOrError errorSink unm  = do
+  x <- getAPIEither $ unm <> "/ad-campaigns"
+  case x of
+    Right y -> return $ Just $ payload y
+    Left z -> do
+      errorSink $ Just $ ApiError z
+      return Nothing

@@ -54,11 +54,16 @@ data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImage
   deriving (Show, Eq)
 
 
-errorMsgW :: Widget' AppError
-errorMsgW sink value = do
+errorMsgW :: Widget' (Maybe AppError)
+errorMsgW _    Nothing = mempty
+errorMsgW sink (Just value) = do
   div [class_ "row"]
     [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"]
-        [ div [class_ "bg-danger text-center "] [text $ showError value] ]
+        [ div [class_ "bg-danger text-center "]
+          [ text $ showError value
+          , E.button [class_ "close", click $ \_ -> sink Nothing] [E.span () [text "×"]]
+          ]
+        ]
     ]
 
   where
@@ -184,15 +189,16 @@ showImagePred (Just x) = text $ "Score: "<>showJS x
 
 -- BACKEND
 
-getCampaigns :: Account.Account -> IO [AdCampaign.AdCampaign]
-getCampaigns acc = do
-  AdCampaign.getUserCampaigns $ Account.username acc
+getCampaigns :: Sink (Maybe AppError) -> Account.Account -> IO (Maybe [AdCampaign.AdCampaign])
+getCampaigns errorSink acc = do
+  AdCampaign.getUserCampaignsOrError errorSink (Account.username acc)
 
-loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO [Ad.Ad]
-loadAds account camp =  do
+loadAds :: Sink (Maybe AppError) -> Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Maybe [Ad.Ad])
+loadAds errorSink account camp =  do
   let campid = showJS $ AdCampaign.fbid camp
       username = maybe "" Account.username $ account
-  Ad.getCampaignAds username campid
+  -- Ad.getCampaignAds username campid
+  Ad.getCampaignAdsOrError errorSink username campid
 
 getImages :: Account.Account -> IO [Im.Image]
 getImages acc = do
@@ -204,14 +210,14 @@ adPlatform = do
   (menuView, menuNavE) <- component NavLogin menu
 
   -- Errors feedback
-  (errorsSink :: Sink (Maybe AppError), errorsE :: Events (Maybe AppError)) <- newEvent
+  (errorSink :: Sink (Maybe AppError), errorsE :: Events (Maybe AppError)) <- newEvent
   errorsS <- stepperS Nothing errorsE :: IO (Signal (Maybe AppError))
-  let errorsView = fmap ((altW mempty errorMsgW) emptySink) errorsS
+  let errorsView = fmap (errorMsgW errorSink) errorsS
 
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
-  let userE       = filterJust $ reactimate $ fmap (Account.getUserOrError errorsSink) userLoginE
-  let camapaignsE = reactimate $ fmap getCampaigns userE
+  let userE       = filterJust $ reactimate $ fmap (Account.getUserOrError errorSink) userLoginE
+  let camapaignsE = filterJust $ reactimate $ fmap (getCampaigns errorSink) userE
   let imagesE = reactimate $ fmap getImages userE
   userS      <- stepperS Nothing (fmap Just userE)
   campaignsS <- stepperS Nothing (fmap Just camapaignsE)
@@ -227,7 +233,7 @@ adPlatform = do
   createAdView <- createAdPage (fmap (fmap Account.username) $ current userS)
 
   -- Campaign page
-  let adsE = reactimate $ snapshotWith loadAds (current userS) loadAdsE
+  let adsE = filterJust $ reactimate $ snapshotWith (loadAds errorSink) (current userS) loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
   let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
