@@ -41,8 +41,6 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 import           Lubeck.Web.URI       (encodeURIComponent)
 
-import           PostSearch           (searchPage)
-
 import qualified BD.Data.Account      as Account
 import qualified BD.Data.Ad           as Ad
 import qualified BD.Data.AdCampaign   as AdCampaign
@@ -54,6 +52,7 @@ import qualified BD.Data.SearchPost   as P
 import           BD.Types
 import           BD.Utils
 
+import           Pages.PostSearch     (searchPage)
 import           Pages.CreateAd       (createAdPage)
 
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages

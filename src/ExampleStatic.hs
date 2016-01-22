@@ -15,12 +15,10 @@ import Lubeck.App (Html, runAppStatic)
 
 page :: Html
 page = div [] [h1 [] [text "Index"]
+  , h1 [] [text "Smaller index"]
   , ul []
-    [ li [] [a [href "adplatform/"]   [text "Ad platform"]]
-    , li [] [a [href "interactions/"] [text "Interaction browser"]]
-    , li [] [a [href "posts/"]        [text "Post search"]]
-    , li [] [a [href "campaigns/"]    [text "Campaigns"]]
-    , li [] [a [href "example/"]      [text "Example page"]]
+    [ li [] [text "First thing"]
+    , li [] [text "Second thing"]
     ]
   ]
 
