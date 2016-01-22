@@ -102,6 +102,7 @@ import qualified Data.Colour.Names as C
 import GHCJS.Types(JSString)
 import Data.JSString.Text (textFromJSString)
 
+import qualified Web.VirtualDom as VD
 import Web.VirtualDom.Svg (Svg)
 -- import Web.VirtualDom.Svg (p, h1, div, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
 -- import Web.VirtualDom.Svg.Events (click, change, submit, stopPropagation, preventDefault, value)
@@ -475,30 +476,28 @@ toSvg1 x = let
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
-
   in case x of
-    _ -> error "TODO restore"
-  Circle     -> single $ E.circle
-    []
-    [A.r "0.5", noScale]
-  Rect       -> single $ E.rect
-    [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]
-    []
-  Line -> single E.line
-    [A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]
-    []
-  Lines closed vs -> single (if closed then E.polygon else E.polyline)
-    [A.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale]
-    []
-  Text s -> single $ E.text' [A.x "0", A.y "0"] [Svg.text s]
-  Transf t x -> single $ E.g
-    [A.transform $ "matrix" <> showJS (negY t) <> ""]
-    (toSvg1 x)
-  Style s x  -> single $ E.custom "g"
-    [A.style $ styleToAttrString s]
-    (toSvg1 x)
-  Em         -> single $ E.g [] []
-  Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
+      Circle     -> single $ E.circle
+        []
+        [A.r "0.5", noScale]
+      Rect       -> single $ E.rect
+        [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]
+        []
+      Line -> single E.line
+        [A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]
+        []
+      Lines closed vs -> single (if closed then E.polygon else E.polyline)
+        [A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]
+        []
+      Text s -> single $ E.text' [A.x "0", A.y "0"] [E.text s]
+      Transf t x -> single $ E.g
+        [A.transform $ "matrix" <> showJS (negY t) <> ""]
+        (toSvg1 x)
+      Style s x  -> single $ E.g
+        [A.style $ styleToAttrString s]
+        (toSvg1 x)
+      Em         -> single $ E.g [] []
+      Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
 
 --     -- Lines closed vs ->
 --     -- then single $ E.custom (if closed then "polygon" else "polyline")
