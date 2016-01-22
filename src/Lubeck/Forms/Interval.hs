@@ -1,7 +1,14 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lubeck.Forms.Interval where
+module Lubeck.Forms.Interval
+  ( integerIntervalWidget
+  , dateIntervalWidget
+  , customIntervalWidget
+  -- TODO move
+  , hideableDateWidget
+  , hideableIntegerWidget
+  ) where
 
 import qualified Data.List
 import Numeric.Interval (Interval)

@@ -36,7 +36,9 @@ main :: IO ()
 main = runAppStatic page
 @
 -}
-module Lubeck.Html (Html) where
+module Lubeck.Html
+  ( Html
+  ) where
 
 #ifdef __GHCJS__
 import Web.VirtualDom.Html (Html)

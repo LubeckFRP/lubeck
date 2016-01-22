@@ -1,7 +1,9 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, DeriveGeneric #-}
 
-module Pages.CreateAd (createAdPage) where
+module Pages.CreateAd
+  ( createAdPage
+  ) where
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -25,7 +27,6 @@ import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, 
 import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
-import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 import Lubeck.FRP
 import Lubeck.Forms

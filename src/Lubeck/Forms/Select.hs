@@ -1,7 +1,9 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lubeck.Forms.Select where
+module Lubeck.Forms.Select
+  ( selectWidget
+  ) where
 
 import Lubeck.Forms
 import qualified Data.List
