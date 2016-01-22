@@ -30,6 +30,8 @@ main :: IO ()
 main = do
   let port          = 8090
   let indexHtmlFile = "static/index.html"
+  let bootstrapFile = "static/bootstrap.css"
+  let bootstrapThemeFile = "static/bootstrap-theme.css"
 
   -- Extracts environment with the Stack additions
   -- Uses some heuristics to find the location of the compiled code (see getJsExeBinPathFromEnv)
@@ -39,11 +41,11 @@ main = do
   case jsExeDir of
     Left msg -> print $ "Could not find compiled code: " ++ msg
     Right jsExeDir -> do
-      exampleServer       <- serveApp jsExeDir "bd-example-app"         indexHtmlFile
-      adplatformServer    <- serveApp jsExeDir "bd-adplatform"          indexHtmlFile
-      interactionsServer  <- serveApp jsExeDir "bd-interactions"        indexHtmlFile
-      exampleStaticServer <- serveApp jsExeDir "bd-example-static-page" indexHtmlFile
-      indexServer         <- serveApp jsExeDir "bd-index"               indexHtmlFile
+      exampleServer       <- serveApp jsExeDir "bd-example-app"         indexHtmlFile bootstrapFile bootstrapThemeFile
+      adplatformServer    <- serveApp jsExeDir "bd-adplatform"          indexHtmlFile bootstrapFile bootstrapThemeFile
+      interactionsServer  <- serveApp jsExeDir "bd-interactions"        indexHtmlFile bootstrapFile bootstrapThemeFile
+      exampleStaticServer <- serveApp jsExeDir "bd-example-static-page" indexHtmlFile bootstrapFile bootstrapThemeFile
+      indexServer         <- serveApp jsExeDir "bd-index"               indexHtmlFile bootstrapFile bootstrapThemeFile
 
       putStrLn $ "Listening on " ++ show port
       Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) $
@@ -53,10 +55,12 @@ main = do
           :<|> exampleStaticServer
           :<|> indexServer
 
-serveApp :: String -> String -> String -> IO (Server Raw)
-serveApp jsExeDir appName indexHtmlFile = do
+serveApp :: String -> String -> String -> String -> String -> IO (Server Raw)
+serveApp jsExeDir appName indexHtmlFile bootstrapFile bootstrapThemeFile  = do
   putStrLn $ "Serving app '" ++ appName ++ "', from"
   putStrLn $ " " ++ jsExeDir ++ "/" ++ appName ++ ".jsexe"
   putStrLn $ " index.html is '" ++ indexHtmlFile ++ "'"
   copyFile indexHtmlFile (jsExeDir ++ "/" ++ appName ++ ".jsexe/index.html")
+  copyFile bootstrapFile (jsExeDir ++ "/" ++ appName ++ ".jsexe/bootstrap.css")
+  copyFile bootstrapThemeFile (jsExeDir ++ "/" ++ appName ++ ".jsexe/bootstrap-theme.css")
   return $ serveDirectory $ jsExeDir ++ "/" ++ appName ++ ".jsexe"

@@ -43,6 +43,16 @@ import BD.Utils
 
 
 
+row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] content ]
+row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] content ]
+
+panel12H :: Html -> Html -> Html
+panel12H hd bd =
+  div [class_ "panel panel-default"]
+    [ --div [class_ "panel-heading"] hd
+      div [class_ "panel-body"] [bd]
+    ]
+
 
 -- TODO finish
 searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
@@ -81,7 +91,6 @@ searchForm output query =
         ]
       ]
     ]
-
 
 type Post = SearchPost
 

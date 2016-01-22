@@ -60,60 +60,70 @@ data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImage
   deriving (Show, Eq)
 
 
+row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
+row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
+
+panel12H :: Html -> Html
+panel12H bd =
+  div [class_ "panel panel-default"]
+    [ --div [class_ "panel-heading"] hd
+     div [class_ "panel-body"] [bd]
+    ]
+
+alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [content]
+contentPanel content = row12H $ panel12H content
+menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-top"]
+                               [ E.div [class_ "container col-xs-12"] [content] ]
+
 errorMsgW :: Widget' (Maybe AppError)
 errorMsgW _    Nothing = mempty
 errorMsgW sink (Just value) = do
-  div [class_ "row"]
-    [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"]
-        [ div [class_ "bg-danger text-center "]
-          [ text $ showError value
-          , E.button [class_ "close", click $ \_ -> sink Nothing] [E.span [] [text "×"]]
-          ]
-        ]
-    ]
+  alertPanel $
+    div [] [ text $ showError value
+           , E.button [class_ "close", click $ \_ -> sink Nothing] [E.span [] [text "×"]] ]
 
   where
     showError (ApiError s) = "API Error: " <> s
-    showError (BLError s) = "BL Error: " <> s
+    showError (BLError s)  = "BL Error: " <> s
 
 
 menu :: Widget' Nav
 menu sink value =
-  div [class_ "row"] [
-    div [class_ "col-md-6 col-lg-5 center-block"]
-      [ E.ul [class_ "nav nav-pills"]
-        [ E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavSearch value)
-                             , click $ \_ -> sink NavSearch
-                             ] [text "Search"]
-        , E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavUser value)
-                             , click $ \_ -> sink NavUser
-                             ] [text "User"]
-        , E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavImages value)
-                             , click $ \_ -> sink NavImages
-                             ] [text "Image Library"]
-        , E.li [] $ pure $ E.button [ class_ ("btn " <> markCurrent NavCreateAd value)
-                             , click $ \_ -> sink NavCreateAd
-                             ] [text "Create Ad"]
-        , E.li [] $ pure $ E.button [ class_ "btn btn-warning"
-                             , click $ \_ -> sink NavLogin
-                             ] [text "Logout"]
-        ]
-      ]
-  ]
+  menuPanel $
+    div []
+    [ E.div [class_ "navbar-header"] [ E.a [class_ "navbar-brand"] [ text "Ad Platform" ] ]
+    , E.div [class_ "navbar-collapse"]
+      [ E.ul [class_ "nav navbar-nav"]
+          [ E.li [ class_  (markActive NavSearch value)
+                 , click $ \_ -> sink NavSearch ]   [E.a [] [text "Search"]]
+          , E.li [ class_ (markActive NavUser value)
+                 , click $ \_ -> sink NavUser ]     [E.a [] [text "User"]]
+          , E.li [ class_ (markActive NavImages value)
+                 , click $ \_ -> sink NavImages ]   [E.a [] [text "Image Library"]]
+          , E.li [ class_ (markActive NavCreateAd value)
+                 , click $ \_ -> sink NavCreateAd ] [E.a [] [text "Create Ad"]]
+          ]
+      , E.ul [class_ "nav navbar-nav navbar-right"]
+          [ E.li [ class_ "btn-warning "
+                 , click $ \_ -> sink NavLogin ]    [E.a [] [text "Logout"]]
+          ]
+      ] ]
 
   where
-    markCurrent x v = if x == v then "btn-primary" else "btn-default"
-
+    markActive x v = if x == v then "active" else ""
 
 
 loginPageW :: Widget JSString (Submit JSString)
 loginPageW sink name =
   div
   [ class_ "row" ]
-    [ div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4" ]
+    [ div [class_ "jumbotron col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4"] [ h1 [] [ text "Ad Platform" ]
+                               , p  [] [ text "Welcome to Beautiful Destination's Ad Platform!" ] ]
+
+    , div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4" ]
       [ div [ submit $ \e -> preventDefault e >> return () ]
         [ div [class_ "form-group form-group-lg"]
-          [ E.input [ class_ "form-control"
+          [ E.input [ class_ "form-control bottom-buffer"
                     , A.value name
                     , change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] []
           , button [ class_ "form-control btn btn-primary"
@@ -127,20 +137,18 @@ loginPageW sink name =
 -- Emits campaign to view.
 userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) AdCampaign.AdCampaign
 userPageW sink (acc, camps) =
-  div [class_ "row"]
-    [ div [class_ "col-sm-12"]
-      [ E.ul [class_ "list-group"]
-        [ E.li [class_ "list-group-item"]
-            [ E.h3 [] [text $ Account.username acc ] ]
-        , E.li [class_ "list-group-item"]
-            [ div [] [text $ showJS $ Account.latest_count acc ] ]
-        , E.li [class_ "list-group-item"]
-            [ div [] [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
-        , E.li [class_ "list-group-item"]
-            [ campaignTable sink camps ]
-        ]
+  contentPanel $
+    E.ul [class_ "list-group"]
+      [ E.li [class_ "list-group-item"]
+          [ E.h3 [] [text $ Account.username acc ] ]
+      , E.li [class_ "list-group-item"]
+          [ div [] [text $ showJS $ Account.latest_count acc ] ]
+      , E.li [class_ "list-group-item"]
+          [ div [] [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
+      , E.li [class_ "list-group-item"]
+          [ campaignTable sink camps ]
       ]
-    ]
+
   where
     campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
     campaignTable sink camps = table [class_ "table"] [
@@ -158,18 +166,16 @@ userPageW sink (acc, camps) =
 -- | Display info about a campaign.
 campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()
 campaignPageW sink (camp, ads) =
-  div [class_ "row"]
-    [ div [class_ "col-sm-12"]
-      [ E.ul [class_ "list-group"]
-        [ E.li [class_ "list-group-item"]
-            [ h1 [] [text $ AdCampaign.campaign_name camp] ]
-        , E.li [class_ "list-group-item"]
-            [ div [] [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
-        , E.li [class_ "list-group-item"]
-            [ renderAdList emptySink ads ]
-        ]
+  contentPanel $
+    E.ul [class_ "list-group"]
+      [ E.li [class_ "list-group-item"]
+          [ h1 [] [text $ AdCampaign.campaign_name camp] ]
+      , E.li [class_ "list-group-item"]
+          [ div [] [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
+      , E.li [class_ "list-group-item"]
+          [ renderAdList emptySink ads ]
       ]
-    ]
+
   where
     renderAdList :: Widget [Ad.Ad] ()
     renderAdList _ ads = table [class_ "table"] [
@@ -186,18 +192,13 @@ campaignPageW sink (camp, ads) =
 
 imageLibraryPageW :: Widget [Im.Image] ()
 imageLibraryPageW _ [] =
-  div [class_ "row"]
-    [ div [class_ "col-sm-12"] [ text "No images in library" ] ]
-
+  contentPanel $ text "No images in library"
 
 imageLibraryPageW _ ims =
-  div [class_ "row"]
-    [ div [class_ "col-sm-12"]
-      [ table [class_ "table table-striped table-hover"]
-          $ pure $ tbody []
-             $ map (tr [] . map imageCell) (divide 5 ims)
-      ]
-    ]
+  contentPanel $
+    table [class_ "table table-striped table-hover"]
+      [ tbody [] $ map (tr [] . map imageCell) (divide 5 ims) ]
+
 
 imageCell img =
   let imgUrl = case Im.fb_thumb_url img of
@@ -298,14 +299,14 @@ nav goTo menu errMsg login user ads search createAd imlib = case goTo of
   NavCreateAd -> wrap menu createAd
   NavImages   -> wrap menu imlib
   where
-    wrap menu page = div [A.class_ "container-fluid"]
-      [ div [class_ "row"] [
-          div [class_ "col-md-10 col-lg-10"] [
-            div [class_ "page-header"] [ h1 [] [text "Ad Platform"] ] ]
-          ]
+    wrap menu page = div [class_ "container"]
+      [ div [] []
       , menu
-      , errMsg
-      , page
+      , div [class_ "col-xs-12 top-buffer"]
+        [ div [] []
+        , errMsg
+        , page
+        ]
       ]
 
 
@@ -321,8 +322,9 @@ main = do
 
 -- UTILITY
 
+
 imgFromWidthAndUrl' :: Int -> Maybe JSString -> [Property] -> Html
-imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url]) []
+imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url, class_ "img-thumbnail"]) []
 imgFromWidthAndUrl' w Nothing attrs = text "No URL"
 
 
