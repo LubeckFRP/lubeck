@@ -111,7 +111,7 @@ loginPageW sink name =
   div
   [ class_ "row" ]
     [ div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4" ]
-      [ form [ submit $ \e -> preventDefault e >> return () ]
+      [ div [ submit $ \e -> preventDefault e >> return () ]
         [ div [class_ "form-group form-group-lg"]
           [ E.input [ class_ "form-control"
                     , A.value name
@@ -312,10 +312,9 @@ nav goTo menu errMsg login user ads search createAd imlib = case goTo of
 -- MAIN
 
 main = do
-  -- adPlatformView <- adPlatform
-  -- runAppReactive adPlatformView
+  adPlatform >>= runAppReactive
 
-  searchPage (pure (pure "jacob")) >>= runAppReactive
+  -- searchPage (pure (pure "jacob")) >>= runAppReactive
 -- main :: IO ()
 -- main = runApp update render
 

@@ -10,6 +10,6 @@ packages:
     # commit: 69087b25d640e9a9f71417819fab8b1bae5af6da
 - location:
     git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: b204d5352d27f01f293f080fd7cfee8760aeb052
+    commit: ebc1fbafda19e8b5531004e43780044ed1a8a155
 extra-deps:
 resolver: nightly-2015-12-14
