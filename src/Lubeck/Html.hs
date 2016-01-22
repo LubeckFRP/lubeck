@@ -36,17 +36,15 @@ main :: IO ()
 main = runAppStatic page
 @
 -}
-module Lubeck.Html where
+module Lubeck.Html (Html) where
 
 #ifdef __GHCJS__
-import GHCJS.VDOM (VNode)
-import qualified GHCJS.VDOM.Element as E
-
-type Html = VNode
+import Web.VirtualDom.Html (Html)
+import qualified Web.VirtualDom.Html as E
 
 instance Monoid Html where
-  mempty      = E.div () ()
-  mappend x y = E.div () [x, y]
+  mempty      = E.div [] []
+  mappend x y = E.div [] [x, y]
 #else
 
 type Html = ()

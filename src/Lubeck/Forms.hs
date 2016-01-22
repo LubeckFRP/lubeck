@@ -51,12 +51,12 @@ import qualified Prelude
 
 import GHCJS.Types(JSString, jsval)
 
-import GHCJS.VDOM.Event (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input, label)
-import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
-import qualified GHCJS.VDOM.Element as E
-import qualified GHCJS.VDOM.Attribute as A
-import qualified GHCJS.VDOM.Event as Ev
+import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
+import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
+import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 
 import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
 import qualified Control.Lens
@@ -212,7 +212,7 @@ submits = filterJust . fmap g
 longStringWidget :: JSString -> Widget' JSString
 longStringWidget title update value = div
   [ class_ "form-group" ]
-  [ label () [text title]
+  [ label [] [text title]
   , input
     [ A.type_ "search"
     -- TODO size
@@ -220,7 +220,7 @@ longStringWidget title update value = div
     , A.value value
     , change  $ contramapSink Ev.value update
     , keyup $ contramapSink Ev.value update
-    ] ()
+    ] []
   ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.

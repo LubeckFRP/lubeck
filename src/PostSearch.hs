@@ -16,13 +16,12 @@ import Control.Lens (over, set, view, lens)
 
 import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
-import GHCJS.VDOM.Event (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input, label)
-import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
-import qualified GHCJS.VDOM.Element as E
-import qualified GHCJS.VDOM.Attribute as A
-import qualified GHCJS.VDOM.Event as Ev
-import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+import Web.VirtualDom.Html (Property, p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
+import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
+import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 import Lubeck.FRP
@@ -31,7 +30,7 @@ import Lubeck.Forms.Select
 import Lubeck.Forms.Interval
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Web.URI (getURIParameter)
-import Lubeck.Util(customAttrs)
+import Lubeck.Util()
 
 import BD.Data.Account (Account)
 import qualified BD.Data.Account as Ac
@@ -51,7 +50,7 @@ searchForm output query =
   div [class_ "row"]
     [ div [class_ "col-md-4 col-lg-3"]
       [ div [class_ "form-group form-group-sm"]
-        [ -- div () [text (showJS query)]
+        [ -- div [] [text (showJS query)]
           -- , rmapWidget DontSubmit $ subWidget (lens PQ.caption (\s b -> s {caption=b})) (longStringWidget "Caption") output query
           longStringWidget "Caption:"  (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
         , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
@@ -63,7 +62,7 @@ searchForm output query =
 
         , div [ class_ "form-group form-inline" ]
           [ div [ class_ "form-group"  ]
-            [ label () [text "Sort by" ]
+            [ label [] [text "Sort by" ]
             , selectWidget
               [ (PostByFollowers, "Poster followers")
               , (PostByLikes,     "Likes")
@@ -78,7 +77,7 @@ searchForm output query =
               (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
             ]
           ]
-        , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query] $ text "Search!"
+        , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query] [text "Search!"]
         ]
       ]
     ]
@@ -94,9 +93,9 @@ postSearchResult :: Widget [Post] PostAction
 postSearchResult output posts =
   div [class_ "row"]
     [ div [class_ "col-md-4 col-lg-3"]
-      [ div ()
-        [ h1 () [text "Search Results"]
-        , div () [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
+      [ div []
+        [ h1 [] [text "Search Results"]
+        , div [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
         , postTable output posts
         ]
       ]
@@ -105,24 +104,25 @@ postSearchResult output posts =
   where
     postTable :: Widget [Post] PostAction
     postTable output posts =
-      table [class_ "table table-striped table-hover"] $ tbody () $
-        fmap (tr () . fmap (postTableCell output)) (divide 5 posts)
+      table [class_ "table table-striped table-hover"] $
+        pure $ tbody [] $
+          fmap (tr [] . fmap (postTableCell output)) (divide 5 posts)
 
     postTableCell :: Widget Post PostAction
-    postTableCell output post = td ()
+    postTableCell output post = td []
       [ a [ target "_blank",
             href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
             -- , class_ "hh-brighten-image"
             ]
           [ imgFromWidthAndUrl' 150 (P.thumbnail_url post) [{-fixMissingImage-}] ],
-        div () [
+        div [] [
           a [href "#"
           ] [text $ "@" <> P.username post]
           ],
-        div () [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
-        div () [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
+        div [] [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
+        div [] [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
         -- For uploading to marketing api
-        div () [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)] [text "Upload Image"]]
+        div [] [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)] [text "Upload Image"]]
         ]
 
 
@@ -144,7 +144,7 @@ searchPage mUserNameB = do
   results <- stepperS Nothing searchResultReceived                   :: IO (Signal (Maybe [Post]))
   let resultView = fmap ((altW (text "") postSearchResult) uploadImage) results :: Signal Html
 
-  let view = liftA2 (\x y -> div () [x,y]) searchView resultView     :: Signal Html
+  let view = liftA2 (\x y -> div [] [x,y]) searchView resultView     :: Signal Html
 
   -- API calls
 
@@ -187,8 +187,8 @@ searchPage mUserNameB = do
 
 -- UTILITY
 
-imgFromWidthAndUrl' :: Int -> JSString -> [Attribute] -> Html
-imgFromWidthAndUrl' w url attrs = img (attrs ++ [width w, src url]) ()
+imgFromWidthAndUrl' :: Int -> JSString -> [Property] -> Html
+imgFromWidthAndUrl' w url attrs = img (attrs ++ [width w, src url]) []
 
 -- imgFromWidthAndUrlCircle' : Int -> String -> List Html.Attribute -> Html
 -- imgFromWidthAndUrlCircle' width url attrs = img (attrs ++ [class_ "img-circle", width width, src url]) []

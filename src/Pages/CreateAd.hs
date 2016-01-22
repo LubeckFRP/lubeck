@@ -19,13 +19,12 @@ import qualified GHC.Generics as GHC
 
 import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
-import GHCJS.VDOM.Event (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, text, form, button, img, hr, custom, a, table, tbody, th, tr, td, input, label)
-import GHCJS.VDOM.Attribute (Attribute, src, width, class_, href, target, width, src)
-import qualified GHCJS.VDOM.Element as E
-import qualified GHCJS.VDOM.Attribute as A
-import qualified GHCJS.VDOM.Event as Ev
-import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
+import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
+import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 import Lubeck.FRP
@@ -34,7 +33,7 @@ import Lubeck.Forms.Select
 import Lubeck.Forms.Interval
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Web.URI (getURIParameter)
-import Lubeck.Util(customAttrs)
+import Lubeck.Util()
 
 import BD.Data.Account (Account)
 import qualified BD.Data.Account as Ac
@@ -55,7 +54,7 @@ createAdForm output newAd =
         [ longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ newAd { caption = new })  output) (caption newAd)
         , longStringWidget "Image Hash"   (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)
         , longStringWidget "Click URL"   (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
-        , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd] $ text "Create Ad"
+        , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd] $ pure $ text "Create Ad"
         ]
       ]
     ]

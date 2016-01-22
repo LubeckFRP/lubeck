@@ -10,16 +10,16 @@ import Data.Time.Calendar (Day(..))
 
 import Data.JSString (JSString, pack, unpack)
 
-import qualified GHCJS.VDOM.Event as Ev
-import qualified GHCJS.VDOM.Element as E
-import qualified GHCJS.VDOM.Attribute as A
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 
 import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
 import qualified Control.Lens
 
 import Lubeck.Forms
 import Lubeck.Forms.Select
-import Lubeck.Util(customAttrs)
+import Lubeck.Util()
 import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
 
@@ -31,7 +31,7 @@ dateIntervalWidget = customIntervalWidget (ModifiedJulianDay 0) hideableDateWidg
 
 customIntervalWidget :: Ord a => a -> (Bool -> Widget' a) -> JSString -> Widget' (Interval (Maybe a))
 customIntervalWidget z numW title = id
-    $ mapHtmlWidget (\x -> E.div [A.class_ "form-group form-inline"] $ E.label () [E.text title, x])
+    $ mapHtmlWidget (\x -> E.div [A.class_ "form-group form-inline"] $ pure $ E.label [] [E.text title, x])
     $ lmapWidget fromInterval
     $ rmapWidget toInterval
     $ spanWidget2
@@ -81,7 +81,7 @@ hideableIntegerWidget True s v = E.input
   , Ev.change $ \e -> s $ read $ unpack $ Ev.value e
   , A.value (pack $ show v)
   ]
-  ()
+  []
 
 hideableDateWidget :: Bool -> Widget' Day
 hideableDateWidget False _ _ = mempty
@@ -91,7 +91,7 @@ hideableDateWidget True s v = E.input
   , Ev.change $ \e -> s $ readDate $ unpack $ Ev.value e
   , A.value (pack $ showDate v)
   ]
-  ()
+  []
   where
     readDate x = case parseDateUTC x of { Just x -> x }
     showDate = formatDateUTC

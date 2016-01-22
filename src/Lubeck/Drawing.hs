@@ -102,15 +102,15 @@ import qualified Data.Colour.Names as C
 import GHCJS.Types(JSString)
 import Data.JSString.Text (textFromJSString)
 
-import GHCJS.VDOM (VNode)
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (p, h1, div, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
-import GHCJS.VDOM.Attribute (src, width, class_)
-import qualified GHCJS.VDOM.Element as E
-import qualified GHCJS.VDOM.Attribute as A
+import Web.VirtualDom.Svg (Svg)
+-- import Web.VirtualDom.Svg (p, h1, div, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
+-- import Web.VirtualDom.Svg.Events (click, change, submit, stopPropagation, preventDefault, value)
+-- import Web.VirtualDom.Svg.Attributes (src, width, class_)
+import qualified Web.VirtualDom.Svg as E
+import qualified Web.VirtualDom.Svg.Attributes as A
 
 -- TODO consolidate (see below)
-import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
+-- import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 
 #else
@@ -465,7 +465,6 @@ pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.L
     pointToSvgString (Point {x,y}) = show x ++ "," ++ show y
 
 
-type Svg = VNode
 svgNamespace = Data.Map.fromList[("namespace","http://www.w3.org/2000/svg")]
                 -- ("xmlns","http://www.w3.org/2000/svg"),
 
@@ -478,32 +477,33 @@ toSvg1 x = let
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
 
   in case x of
-  Circle     -> single $ E.custom "circle"
-    (customProps svgNamespace$Data.Map.fromList[("r","0.5"), noScale])
-    ()
-  Rect       -> single $ E.custom "rect"
-    (customProps svgNamespace$Data.Map.fromList[("x","-0.5"),("y","-0.5"),("width","1"),("height","1"), noScale])
-    ()
-  Line -> single $ E.custom "line"
-    (customProps svgNamespace$Data.Map.fromList[("x1","0"), ("y1","0"), ("x2","1"), ("y2","0"), noScale])
-    ()
-    -- Lines closed vs ->
-    -- then single $ E.custom (if closed then "polygon" else "polyline")
-    -- TODO rest
-    --     then single $ Svg.polygon  [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
-    --     else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
-    --
-    --   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
-    --
-  Transf t x -> single $ E.custom "g"
-    (customProps svgNamespace$Data.Map.fromList[("transform", "matrix" ++ show (negY t) ++ "")])
-    (toSvg1 x)
-  Style s x  -> single $ E.custom "g"
-    (customProps svgNamespace$Data.Map.fromList[("style", Data.JSString.unpack $ styleToAttrString s)])
-    (toSvg1 x)
---
-  Em         -> single $ n_g' []
-  Ap x y     -> single $ n_g' (toSvg1 x ++ toSvg1 y)
+    _ -> error "TODO restore"
+--   Circle     -> single $ E.custom "circle"
+--     (customProps svgNamespace$Data.Map.fromList[("r","0.5"), noScale])
+--     ()
+--   Rect       -> single $ E.custom "rect"
+--     (customProps svgNamespace$Data.Map.fromList[("x","-0.5"),("y","-0.5"),("width","1"),("height","1"), noScale])
+--     ()
+--   Line -> single $ E.custom "line"
+--     (customProps svgNamespace$Data.Map.fromList[("x1","0"), ("y1","0"), ("x2","1"), ("y2","0"), noScale])
+--     ()
+--     -- Lines closed vs ->
+--     -- then single $ E.custom (if closed then "polygon" else "polyline")
+--     -- TODO rest
+--     --     then single $ Svg.polygon  [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
+--     --     else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
+--     --
+--     --   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
+--     --
+--   Transf t x -> single $ E.custom "g"
+--     (customProps svgNamespace$Data.Map.fromList[("transform", "matrix" ++ show (negY t) ++ "")])
+--     (toSvg1 x)
+--   Style s x  -> single $ E.custom "g"
+--     (customProps svgNamespace$Data.Map.fromList[("style", Data.JSString.unpack $ styleToAttrString s)])
+--     (toSvg1 x)
+-- --
+--   Em         -> single $ n_g' []
+--   Ap x y     -> single $ n_g' (toSvg1 x ++ toSvg1 y)
 
 
 {-| -}
@@ -523,7 +523,10 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
         Center      -> translateX (x/2) . translateY (y/(-2))
         BottomLeft  -> translateY (y*(-1))
     in
-    n_svg (show $ floor x) (show $ floor y) ("0 0 " ++ show (floor x) ++ " " ++ show (floor y)) (toSvg1 $ placeOrigo $ drawing)
+    -- TODO
+    undefined
+    -- n_svg (show $ floor x) (show $ floor y) ("0 0 " ++ show (floor x) ++ " " ++ show (floor y)) (toSvg1 $ placeOrigo $ drawing)
+
     -- svg [
     --   width  $ toString dimensions.x,
     --   height $ toString dimensions.y,
@@ -547,36 +550,36 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
 -- a_style
 --
 
-n_svg :: String -> String -> String -> [Svg] -> Svg
-n_svg w h vb dr = E.custom "svg" (customProps svgNamespace$Data.Map.fromList[
-  -- ("xmlns","http://www.w3.org/2000/svg"),
-  ("width",w),("height",h),("viewBox",vb)]) dr
--- n_circle
--- n_rect
--- n_line
--- n_polygon
--- n_polyline
--- n_text'
--- n_g
-n_g' :: [Svg] -> Svg
-n_g' = E.custom "g" (customProps svgNamespace$Data.Map.fromList[])
-
--- TODO consolidate
-customPropsAttrs :: Map String String -> Attributes'
-customPropsAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
-  in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
-
-customProps :: Map String String -> Map String String -> Attributes'
-customProps props attrs =
-  let attrStr = (("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: String
-      propStr = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" props) :: JSString
-  in unsafeToAttributes [jsu'| (function(){
-      var props = JSON.parse(`propStr);
-      var attrs = JSON.parse(`attrStr);
-      props.attributes = attrs;
-      //console.log(JSON.stringify(props));
-      return props;
-    }()) |]
+-- n_svg :: String -> String -> String -> [Svg] -> Svg
+-- n_svg w h vb dr = E.custom "svg" (customProps svgNamespace$Data.Map.fromList[
+--   -- ("xmlns","http://www.w3.org/2000/svg"),
+--   ("width",w),("height",h),("viewBox",vb)]) dr
+-- -- n_circle
+-- -- n_rect
+-- -- n_line
+-- -- n_polygon
+-- -- n_polyline
+-- -- n_text'
+-- -- n_g
+-- n_g' :: [Svg] -> Svg
+-- n_g' = E.custom "g" (customProps svgNamespace$Data.Map.fromList[])
+--
+-- -- TODO consolidate
+-- customPropsAttrs :: Map String String -> Attributes'
+-- customPropsAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
+--   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
+--
+-- customProps :: Map String String -> Map String String -> Attributes'
+-- customProps props attrs =
+--   let attrStr = (("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: String
+--       propStr = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" props) :: JSString
+--   in unsafeToAttributes [jsu'| (function(){
+--       var props = JSON.parse(`propStr);
+--       var attrs = JSON.parse(`attrStr);
+--       props.attributes = attrs;
+--       //console.log(JSON.stringify(props));
+--       return props;
+--     }()) |]
 
 
 drawTest :: Int -> Svg

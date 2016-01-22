@@ -5,13 +5,14 @@ module Lubeck.Forms.Select where
 
 import Lubeck.Forms
 import qualified Data.List
-import Lubeck.Util(customAttrs)
+import Lubeck.Util()
 import qualified Data.Map
 import Data.JSString (JSString, pack, unpack)
 
-import qualified GHCJS.VDOM.Event as Ev
-import qualified GHCJS.VDOM.Element as E
-import qualified GHCJS.VDOM.Attribute as A
+import qualified Web.VirtualDom as VD
+import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events as Ev
 
 selectWidget :: Eq a => [(a, JSString)] -> Widget' a
 selectWidget xs = dimapWidget (pack . show . toInt) (fromInt . read . unpack) $ selectWidget' (zip count names)
@@ -35,4 +36,8 @@ selectWidget' valuesLabels s x =
         valuesLabels)
 
 -- optAttrs v selected = [A.value v]{-++ if v == x then [Attr.selected True]  else []-})
-optAttrs v x = customAttrs $ Data.Map.fromList $ [("value", unpack v)] ++ if v == x then [("selected", "true")]  else []
+
+optAttrs v x = [A.value v] ++ if v == x then [selected "true"]  else []
+  where
+    selected = VD.attribute "selected"
+-- optAttrs v x = customAttrs $ Data.Map.fromList $ [("value", unpack v)] ++ if v == x then [("selected", "true")]  else []
