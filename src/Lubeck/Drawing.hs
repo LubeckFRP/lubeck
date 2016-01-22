@@ -471,22 +471,35 @@ svgNamespace = Data.Map.fromList[("namespace","http://www.w3.org/2000/svg")]
 toSvg1 :: Drawing -> [Svg]
 toSvg1 x = let
     single x = [x]
-    noScale = ("vector-effect", "non-scaling-stroke")
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
 
   in case x of
     _ -> error "TODO restore"
---   Circle     -> single $ E.custom "circle"
---     (customProps svgNamespace$Data.Map.fromList[("r","0.5"), noScale])
---     ()
---   Rect       -> single $ E.custom "rect"
---     (customProps svgNamespace$Data.Map.fromList[("x","-0.5"),("y","-0.5"),("width","1"),("height","1"), noScale])
---     ()
---   Line -> single $ E.custom "line"
---     (customProps svgNamespace$Data.Map.fromList[("x1","0"), ("y1","0"), ("x2","1"), ("y2","0"), noScale])
---     ()
+  Circle     -> single $ E.circle
+    []
+    [A.r "0.5", noScale]
+  Rect       -> single $ E.rect
+    [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]
+    []
+  Line -> single E.line
+    [A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]
+    []
+  Lines closed vs -> single (if closed then E.polygon else E.polyline)
+    [A.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale]
+    []
+  Text s -> single $ E.text' [A.x "0", A.y "0"] [Svg.text s]
+  Transf t x -> single $ E.g
+    [A.transform $ "matrix" <> showJS (negY t) <> ""]
+    (toSvg1 x)
+  Style s x  -> single $ E.custom "g"
+    [A.style $ styleToAttrString s]
+    (toSvg1 x)
+  Em         -> single $ E.g [] []
+  Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
+
 --     -- Lines closed vs ->
 --     -- then single $ E.custom (if closed then "polygon" else "polyline")
 --     -- TODO rest
@@ -523,9 +536,19 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
         Center      -> translateX (x/2) . translateY (y/(-2))
         BottomLeft  -> translateY (y*(-1))
     in
-    -- TODO
-    undefined
-    -- n_svg (show $ floor x) (show $ floor y) ("0 0 " ++ show (floor x) ++ " " ++ show (floor y)) (toSvg1 $ placeOrigo $ drawing)
+      svg'
+        (showJS $ floor x)
+        (showJS $ floor y)
+        ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
+        (toSvg1 $ placeOrigo $ drawing)
+
+svg' :: JSString -> JSString -> JSString -> [Svg] -> Svg
+svg' w h vb = E.svg
+  [ A.width w
+  , A.height h
+  , A.viewBox vb ]
+
+    -- svg' (show $ floor x) (show $ floor y) ("0 0 " ++ show (floor x) ++ " " ++ show (floor y)) (toSvg1 $ placeOrigo $ drawing)
 
     -- svg [
     --   width  $ toString dimensions.x,
@@ -550,10 +573,7 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
 -- a_style
 --
 
--- n_svg :: String -> String -> String -> [Svg] -> Svg
--- n_svg w h vb dr = E.custom "svg" (customProps svgNamespace$Data.Map.fromList[
---   -- ("xmlns","http://www.w3.org/2000/svg"),
---   ("width",w),("height",h),("viewBox",vb)]) dr
+
 -- -- n_circle
 -- -- n_rect
 -- -- n_line
@@ -561,8 +581,9 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
 -- -- n_polyline
 -- -- n_text'
 -- -- n_g
+
 -- n_g' :: [Svg] -> Svg
--- n_g' = E.custom "g" (customProps svgNamespace$Data.Map.fromList[])
+-- n_g' = E.g []
 --
 -- -- TODO consolidate
 -- customPropsAttrs :: Map String String -> Attributes'
