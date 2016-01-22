@@ -298,7 +298,7 @@ nav goTo menu errMsg login user ads search createAd imlib = case goTo of
   NavCreateAd -> wrap menu createAd
   NavImages   -> wrap menu imlib
   where
-    wrap menu page = div []
+    wrap menu page = div [A.class_ "container-fluid"]
       [ div [class_ "row"] [
           div [class_ "col-md-10 col-lg-10"] [
             div [class_ "page-header"] [ h1 [] [text "Ad Platform"] ] ]
@@ -312,8 +312,10 @@ nav goTo menu errMsg login user ads search createAd imlib = case goTo of
 -- MAIN
 
 main = do
-  adPlatformView <- adPlatform
-  runAppReactive adPlatformView
+  -- adPlatformView <- adPlatform
+  -- runAppReactive adPlatformView
+
+  searchPage (pure (pure "jacob")) >>= runAppReactive
 -- main :: IO ()
 -- main = runApp update render
 
