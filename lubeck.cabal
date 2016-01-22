@@ -34,6 +34,7 @@ library
                      , BD.Query.PostQuery
                      , BD.Utils
                      , Pages.CreateAd
+                     , Pages.PostSearch
   build-depends:       base >=4.8 && <4.9
                      , virtual-dom
                      , ghcjs-ffiqq == 0.1.0.0
@@ -135,14 +136,3 @@ executable bd-index
                      , virtual-dom
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
-
--- executable bd-post-search
---   main-is:             src/PostSearch.hs
---   build-depends:       base >=4.8 && <4.9
---                      , lubeck
---                      , ghcjs-vdom == 0.2.0.0
---                      , ghcjs-base ==0.2.0.0
---                      , ghcjs-ffiqq == 0.1.0.0
---                      , containers
---                      , lens
---   default-language:    Haskell2010

@@ -1,7 +1,9 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
-module PostSearch (searchPage) where
+module Pages.PostSearch
+  ( searchPage
+  ) where
 
 import Prelude hiding (div)
 import qualified Prelude
