@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, QuasiQuotes, CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, QuasiQuotes, CPP, NoMonomorphismRestriction #-}
 
 {-|
 
@@ -478,15 +478,15 @@ toSvg1 x = let
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
   in case x of
       Circle     -> single $ E.circle
-        []
         [A.r "0.5", noScale]
+        []
       Rect       -> single $ E.rect
         [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]
         []
-      Line -> single E.line
+      Line -> single $ E.line
         [A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]
         []
-      Lines closed vs -> single (if closed then E.polygon else E.polyline)
+      (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
         [A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]
         []
       Text s -> single $ E.text' [A.x "0", A.y "0"] [E.text s]
