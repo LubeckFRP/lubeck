@@ -7,6 +7,6 @@ packages:
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 - location:
     git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: f6cf290c6e40d68185bb3f6ebaaf7ff78cb7cd96
+    commit: 838fb0eec0d08b27c1f66450c1baeee63b9272dd
 extra-deps:
 resolver: nightly-2015-12-14
