@@ -239,9 +239,7 @@ adPlatform = do
   (menuView, menuNavE) <- component NavLogin menu
 
   -- Errors feedback
-  ( errorSink :: Sink (Maybe AppError), errorsE :: Events (Maybe AppError)) <- newEvent
-  errorsS         <- stepperS Nothing errorsE :: IO (Signal (Maybe AppError))
-  let errorsView  = fmap (errorMsgW errorSink) errorsS
+  (errorsView, errorSink) <- componentW Nothing errorMsgW
 
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW

@@ -31,6 +31,10 @@ module Lubeck.Forms
 
   -- * Components
   , component
+  , componentRW
+  , componentR
+  , componentW
+  , componentXRW
   , formComponent
 
   -- ** Submit type
@@ -166,18 +170,48 @@ mapMWidget k w o is = k $ fmap (w o) is
 -- [intW, stringW, maybeW] = undefined
 
 
--- | Create a component from a widget and an initial value.
--- The component starts out in an initial state determined by the first argument.
+-- | "internal read-write" component.
+-- Initialized with initial state and widget, returns signal of html,
+-- sink to accept new values and events stream to put user events to and
+-- eventually provide them upstream
 --
--- Both the state and the view signals are updated whenever the user interacts
--- with the component.
-component :: a -> Widget' a -> IO (Signal Html, Events a)
-component z w = do
-  -- Value changed
-  (aSink,aEvent) <- newEvent -- Events a
-  aS <- stepperS z aEvent
-  let htmlS = fmap (w aSink) aS
-  return (htmlS, aEvent)
+-- This is a basic and full-featured component. All other are just wrappers
+-- around this one.
+componentRW :: a -> Widget' a -> IO (Signal Html, Events a, Sink a)
+componentRW initialState widget = do
+  (internalSink, internalEvents) <- newEvent
+  aS              <- stepperS initialState internalEvents
+  let htmlS       = fmap (widget internalSink) aS
+  return (htmlS, internalEvents, internalSink)
+
+-- "internal read" component
+-- Initialized with initial state and widget, returns signal of html and
+-- events to read user events from.
+componentR :: a -> Widget' a -> IO (Signal Html, Events a)
+componentR initialState widget = do
+  (htmlS, internalEvents, _) <- componentRW initialState widget
+  return (htmlS, internalEvents)
+
+-- | Alias for `componentR`
+component = componentR
+
+-- | "internal write" component.
+-- Initialized with initial state and widget, returns signal of html and
+-- sink to accept new values
+componentW :: a -> Widget' a -> IO (Signal Html, Sink a)
+componentW initialState widget = do
+  (htmlS, _, internalSink) <- componentRW initialState widget
+  return (htmlS, internalSink)
+
+-- | "external write, internal read" component.
+-- Initialized with initial state, widget and external events.
+-- Returns signal of html, events stream to read user events from, and unsubscribe action
+componentXRW :: a -> Widget' a -> Events a -> IO (Signal Html, Events a, UnsubscribeAction)
+componentXRW initialState widget externalEvents = do
+  (htmlS, internalEvents, internalSink) <- componentRW initialState widget
+  unsubscribe <- subscribeEvent externalEvents internalSink
+  return (htmlS, internalEvents, unsubscribe)
+
 
 -- | A variant of component that supports chanching its value internally without
 -- sending on any updates.
