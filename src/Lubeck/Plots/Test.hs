@@ -1,4 +1,6 @@
 
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, QuasiQuotes, CPP, NoMonomorphismRestriction #-}
+
 {-|
 
 
@@ -66,6 +68,8 @@ type Color = Colour Double
 
 -- TODO rename
 scaleVector (D.Vector ax ay) (D.Vector bx by) = D.Vector (ax * bx) (ay * by)
+-- TODO rename
+scalePoint (D.Vector dx dy) (D.Point x y) = D.Point (dx*x) (dy*y)
 
 (%%) = D.Vector
 (~~) = D.Point
@@ -75,17 +79,17 @@ plotPoints :: Maybe Color -> Plot ([] D.Point)
 plotPoints mColor xs = let
     circleColor = fromMaybe Colors.red mColor
   in D.stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. zeroP)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
---
--- plotGrowth : { color : Maybe String } -> Plot (List Point)
--- plotGrowth opts xs = let
---     lineColor = Maybe.withDefault "blue" opts.color
---     init = case List.head xs of
---       Nothing -> zeroV -- OK?
---       Just p  -> p .-. zeroP
---   in
---   translate (scaleVector (600^300) init) $ style (styleNamed "fill-opacity" (toString 0)) $ strokeColor lineColor $
--- strokeWidth 1.5 $ segments $
---   List.map (scaleVector (600^300)) $ betweenPoints xs
+
+plotGrowth :: Maybe Color -> Plot ([] D.Point)
+plotGrowth mColor xs = let
+    lineColor = fromMaybe Colors.blue mColor
+    init = case xs of
+      []    -> zeroV -- OK?
+      (p:_) -> p .-. zeroP
+  in
+  D.translate (scaleVector (600%%300) init) $ D.style (D.styleNamed "fill-opacity" "0") $ D.strokeColor lineColor $
+    D.strokeWidth 1.5 $ D.segments $
+    fmap (scaleVector (600%%300)) $ D.betweenPoints xs
 
 
 {-|
@@ -104,39 +108,34 @@ data DataPlot a b c = DataPlot {
 
 
 -- Should not be given []
--- fitSq : List Point -> Point -> Point
--- fitSq ps p = let
-  -- mx = Maybe.withDefault 0 $ List.minimum $ List.map .x ps
-  -- my = Maybe.withDefault 0 $ List.minimum $ List.map .y ps
-  -- nx = Maybe.withDefault 0 $ List.maximum $ List.map .x ps
-  -- ny = Maybe.withDefault 0 $ List.maximum $ List.map .y ps
-  -- sq = {dx=1/(nx-mx), dy=1/(ny-my)}
-  -- in scalePoint sq $ p .+^ {dx=-mx, dy=-my}
-
--- basicAdPlot : DataPlot (List (Date.Date, Float)) (List Point) ()
--- basicAdPlot = uf
+fitSq :: [] D.Point -> D.Point -> D.Point
+fitSq ps p = let
+  mx = minimum $ fmap D.x ps
+  my = minimum $ fmap D.y ps
+  nx = maximum $ fmap D.x ps
+  ny = maximum $ fmap D.y ps
+  sq = let {dx=1/(nx-mx); dy=1/(ny-my)} in D.Vector dx dy
+  in scalePoint sq $ p .+^ (let {dx=negate mx; dy=negate my} in D.Vector dx dy)
 
 {-| -}
 drawDataPlot :: DataPlot a b c -> Drawing
-drawDataPlot = undefined
--- drawDataPlot dp = let
---   (data,axis) = dp.fit dp.data
---   in (dp.plot data `over` dp.axisPlot axis)
---
+drawDataPlot dp = let
+  (dat,axis) = dp_fit dp (dp_data dp)
+  in (dp_plot dp dat `D.over` dp_axisPlot dp axis)
+
 -- {-| -}
-basicDataGrowth :: (a -> Point) -> [] a -> DataPlot ([] a) ([] Point) ()
-basicDataGrowth = undefined
--- basicDataGrowth f x = let
---     ps = List.map f x
---
---   in {
---   name = "",
---   data = x,
---   fit xs = (List.map (fitSq ps) ps, ()),
---   plot = plotGrowth { color = Nothing },
---   axisPlot _ = transparent
---   }
---
+basicDataGrowth :: (a -> D.Point) -> [] a -> DataPlot ([] a) ([] D.Point) ()
+basicDataGrowth f x = let
+    ps = fmap f x
+      in
+    DataPlot {
+      dp_name       = "",
+      dp_data       = x,
+      dp_fit        = const (fmap (fitSq ps) ps, ()),
+      dp_plot       = plotGrowth Nothing,
+      dp_axisPlot   = const D.transparent
+      }
+
 -- {-| -}
 plotDrawingToSvg :: Drawing -> Svg
 plotDrawingToSvg x = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $ D.translate (20%%20) x

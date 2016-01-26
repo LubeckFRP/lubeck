@@ -48,6 +48,7 @@ module Lubeck.Drawing (
     emptyStyle,
     styleNamed,
     apStyle,
+    style,
     fillColor,
     strokeColor,
     strokeWidth,
