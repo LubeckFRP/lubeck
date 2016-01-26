@@ -117,13 +117,15 @@ data DataPlot a b c = DataPlot {
 -- basicAdPlot = uf
 
 {-| -}
--- drawDataPlot : DataPlot a b c -> Drawing
+drawDataPlot :: DataPlot a b c -> Drawing
+drawDataPlot = undefined
 -- drawDataPlot dp = let
 --   (data,axis) = dp.fit dp.data
 --   in (dp.plot data `over` dp.axisPlot axis)
 --
 -- {-| -}
--- basicDataGrowth : (a -> Point) -> List a -> DataPlot (List a) (List Point) ()
+basicDataGrowth :: (a -> Point) -> [] a -> DataPlot ([] a) ([] Point) ()
+basicDataGrowth = undefined
 -- basicDataGrowth f x = let
 --     ps = List.map f x
 --
