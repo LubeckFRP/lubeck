@@ -509,7 +509,7 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
         (showJS $ floor x)
         (showJS $ floor y)
         ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
-        (toSvg1 $ placeOrigo $ drawing)
+        (toSvg1 [] $ placeOrigo $ drawing)
   where
     Point {x,y} = dimensions
 
