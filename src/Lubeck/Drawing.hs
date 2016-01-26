@@ -429,11 +429,11 @@ shearXY   a b = transform $ Transformation (1, b, a, 1, 0, 0)
 -- ```
 -- -}
 smokeBackground :: Drawing
-smokeBackground = fillColor C.whitesmoke $ scale 50 $ square
+smokeBackground = fillColor C.whitesmoke $ scale 500 $ square
 --
 {-| Draw the X and Y axis (their intersection is the origin). -}
 xyAxis :: Drawing
-xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 50 $ stack [horizontalLine, verticalLine]
+xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 500 $ stack [horizontalLine, verticalLine]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
