@@ -289,10 +289,8 @@ type Drawing = DrawingBase
 type Envelope = Maybe (Vector -> Float)
 -- Max monoid
 -- Transform by inverse-transforming argument and transforming (scaling) result
+-- Transformable
 
--- transformEnvelope =
-
--- TODO polygon/polyline support
 -- TODO path support (generalizes all others! including text?)
 -- TODO masks
 -- TODO better font support
@@ -499,24 +497,6 @@ toSvg1 x = let
       Em         -> single $ E.g [] []
       Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
 
---     -- Lines closed vs ->
---     -- then single $ E.custom (if closed then "polygon" else "polyline")
---     -- TODO rest
---     --     then single $ Svg.polygon  [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
---     --     else single $ Svg.polyline [Svg.Attributes.points (pointsToSvgString $ offsetVectorsWithOrigin {x=0,y=0} (List.map reflY vs)), noScale] []
---     --
---     --   Text s     -> single $ text' [x_ "0", y_ "0"] [Svg.text s]
---     --
---   Transf t x -> single $ E.custom "g"
---     (customProps svgNamespace$Data.Map.fromList[("transform", "matrix" ++ show (negY t) ++ "")])
---     (toSvg1 x)
---   Style s x  -> single $ E.custom "g"
---     (customProps svgNamespace$Data.Map.fromList[("style", Data.JSString.unpack $ styleToAttrString s)])
---     (toSvg1 x)
--- --
---   Em         -> single $ n_g' []
---   Ap x y     -> single $ n_g' (toSvg1 x ++ toSvg1 y)
-
 
 {-| -}
 data OrigoPlacement = TopLeft | BottomLeft | Center
@@ -528,79 +508,24 @@ data RenderingOptions = RenderingOptions { dimensions :: Point, origoPlacement :
 {-| -}
 toSvg :: RenderingOptions -> Drawing -> Svg
 toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
-    let
-      Point {x,y} = dimensions
-      placeOrigo  = case origoPlacement of
-        TopLeft     -> id
-        Center      -> translateX (x/2) . translateY (y/(-2))
-        BottomLeft  -> translateY (y*(-1))
-    in
       svg'
         (showJS $ floor x)
         (showJS $ floor y)
         ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
         (toSvg1 $ placeOrigo $ drawing)
+  where
+    Point {x,y} = dimensions
 
-svg' :: JSString -> JSString -> JSString -> [Svg] -> Svg
-svg' w h vb = E.svg
-  [ A.width w
-  , A.height h
-  , A.viewBox vb ]
+    placeOrigo  = case origoPlacement of
+      TopLeft     -> id
+      Center      -> translateX (x/2) . translateY (y/(-2))
+      BottomLeft  -> translateY (y*(-1))
 
-    -- svg' (show $ floor x) (show $ floor y) ("0 0 " ++ show (floor x) ++ " " ++ show (floor y)) (toSvg1 $ placeOrigo $ drawing)
-
-    -- svg [
-    --   width  $ toString dimensions.x,
-    --   height $ toString dimensions.y,
-    --   viewBox $ "0 0 " ++ toString dimensions.x ++ " " ++ toString dimensions.y] $
-    --     toSvg1 $ placeOrigo $ drawing
-
-
--- a_width
--- a_height
--- a_viewBox
--- a_"vector-effect" "non-scaling-stroke"
--- a_x
--- a_y
--- a_x1
--- a_x2
--- a_y1
--- a_y2
--- a_r
--- a_points
--- a_transform
--- a_style
---
-
-
--- -- n_circle
--- -- n_rect
--- -- n_line
--- -- n_polygon
--- -- n_polyline
--- -- n_text'
--- -- n_g
-
--- n_g' :: [Svg] -> Svg
--- n_g' = E.g []
---
--- -- TODO consolidate
--- customPropsAttrs :: Map String String -> Attributes'
--- customPropsAttrs attrs = let str = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: JSString
---   in unsafeToAttributes [jsu'| {attributes:JSON.parse(`str)} |]
---
--- customProps :: Map String String -> Map String String -> Attributes'
--- customProps props attrs =
---   let attrStr = (("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" attrs) :: String
---       propStr = (Data.JSString.pack $ ("{"++) $ (++"}") $ drop 2 $ Data.Map.foldWithKey (\k v s -> s++", "++show k++":"++show v) "" props) :: JSString
---   in unsafeToAttributes [jsu'| (function(){
---       var props = JSON.parse(`propStr);
---       var attrs = JSON.parse(`attrStr);
---       props.attributes = attrs;
---       //console.log(JSON.stringify(props));
---       return props;
---     }()) |]
-
+    svg' :: JSString -> JSString -> JSString -> [Svg] -> Svg
+    svg' w h vb = E.svg
+      [ A.width w
+      , A.height h
+      , A.viewBox vb ]
 
 drawTest :: Int -> Svg
 drawTest n = toSvg (RenderingOptions (Point 500 500) Center)
@@ -608,32 +533,10 @@ drawTest n = toSvg (RenderingOptions (Point 500 500) Center)
   $ translateX ((100/13)*fromIntegral n)
   $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) -- <> xyAxis <> smokeBackground
   --  $ scale 1.1 $ (scale 200 $ fillColor C.blue circle) <> (scale 250 $ fillColor C.red square) <> smokeBackground
+
+
+
 {-
-
--- TODO move
-flipV = scaleY (-1)
-zeroP = { x = 0, y = 0 }
-(^*) = flip (*^)
-
--- TODO move
-for : number -> (number -> a) -> List a
-for n f = List.map f [0..n-1]
-
-(&) : Float -> Float -> Point
-(&) x y = { x = x, y = y }
-
-(^) : Float -> Float -> Vector
-(^) x y = { dx = x, dy = y }
-
-scalePoint : Vector -> Point -> Point
-scalePoint {dx,dy} {x,y} = Point (dx*x) (dy*y)
-
-scaleVector : Vector -> Vector -> Vector
-scaleVector a b = Vector (a.dx * b.dx) (a.dy * b.dy)
-
-
-
-
 -- PLOTTING (TODO Move)
 
 {-|
