@@ -456,8 +456,8 @@ pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.L
 svgNamespace = Data.Map.fromList[("namespace","http://www.w3.org/2000/svg")]
                 -- ("xmlns","http://www.w3.org/2000/svg"),
 
-toSvg1 :: Drawing -> [Svg]
-toSvg1 x = let
+toSvg1 :: [E.Property] -> Drawing -> [Svg]
+toSvg1 ps x = let
     single x = [x]
     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
@@ -465,27 +465,34 @@ toSvg1 x = let
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
   in case x of
       Circle     -> single $ E.circle
-        [A.r "0.5", noScale]
+        ([A.r "0.5", noScale]++ps)
         []
       Rect       -> single $ E.rect
-        [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]
+        ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
         []
       Line -> single $ E.line
-        [A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]
+        ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
         []
       (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-        [A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]
+        ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]++ps)
         []
-      Text s -> single $ E.text' [A.x "0", A.y "0"] [E.text s]
+      Text s -> single $ E.text'
+        ([A.x "0", A.y "0"]++ps)
+        [E.text s]
+
+      -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
+      -- As long as it is just event handlers, it doesn't matter
       Transf (Transformation t) x -> single $ E.g
         [A.transform $ "matrix" <> showJS (negY t) <> ""]
-        (toSvg1 x)
+        (toSvg1 ps x)
       Style s x  -> single $ E.g
         [A.style $ styleToAttrString s]
-        (toSvg1 x)
-      Prop p x   -> toSvg1 x
-      Em         -> single $ E.g [] []
-      Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
+        (toSvg1 ps x)
+      Prop p x   -> toSvg1 (p:ps) x
+      -- No point in embedding handlers to empty groups, but render anyway
+      Em         -> single $ E.g ps []
+      -- Event handlers applied to a group go on the g node
+      Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
 
 
 {-| -}
