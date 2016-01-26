@@ -256,6 +256,13 @@ apStyle = Data.Map.union
 styleToAttrString :: Style -> JSString
 styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) ""
 
+{-| Embed an SVG property on a drawing.
+    Intended to be used with the event handlers in "Web.VirtualDom.Svg.Events".
+    -}
+addProperty :: E.Property -> Drawing -> Drawing
+addProperty = Prop
+
+
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
 
