@@ -28,6 +28,7 @@ import qualified Lubeck.Drawing as D
 
 import Data.Monoid
 import Control.Applicative
+import Data.Maybe(fromMaybe)
 import Data.VectorSpace
 import Data.AffineSpace
 import Data.AffineSpace.Point hiding (Point)
@@ -35,7 +36,7 @@ import Data.Colour (Colour)
 -- import qualified Data.Colour
 -- import qualified Data.Colour.SRGB
 -- import qualified Data.String
-import qualified Data.Colour.Name as Colors
+import qualified Data.Colour.Names as Colors
 import qualified Data.JSString
 import Data.Map(Map)
 import qualified Data.Map
@@ -61,15 +62,15 @@ type Plot a = a -> Drawing
 type Color = Colour Double
 
 -- TODO rename
-scaleVector (Vector ax ay) (Vector bx by) = Vector (ax * bx) (ay * by)
+scaleVector (D.Vector ax ay) (D.Vector bx by) = D.Vector (ax * bx) (ay * by)
 
 (%%) = D.Vector
 (~~) = D.Point
 
-plotPoints :: Maybe Color -> Plot (List Point)
+plotPoints :: Maybe Color -> Plot ([] D.Point)
 plotPoints mColor xs = let
     circleColor = fromMaybe Colors.red mColor
-  in stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. origo)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
+  in stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. origin)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
 --
 -- plotGrowth : { color : Maybe String } -> Plot (List Point)
 -- plotGrowth opts xs = let
