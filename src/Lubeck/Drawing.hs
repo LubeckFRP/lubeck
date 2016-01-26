@@ -14,8 +14,8 @@ Essentially a stripped-down version of Diagrams:
 -}
 module Lubeck.Drawing (
     -- ** Basics
-    Point,
-    Vector,
+    Point(..),
+    Vector(..),
     Dimension(..),
     Angle,
     offsetVectors,
@@ -126,26 +126,6 @@ import Numeric.Interval (Interval)
 
 -- TODO svg, html nodes
 
-  {-
-
--- All Floats below are in (0 < x < 1), cartesian relative plot size
-{-| -}
-type alias GrowthPlot = {
-    xName  : String,
-    xScale : List (Float, String),
-    yName  : String,
-    yScale : List (Float, String),
-    data   : List (String, Color, List (Float, Float)) -- (x,y)
-  }
-
-
-{-| -}
-examplePlot : GrowthPlot
-examplePlot =
-  {
-    xName = "A", yName = "B", xScale = [], yScale = [], data = []
-  }
--}
 
 
 {-| A point in 2D space. -}

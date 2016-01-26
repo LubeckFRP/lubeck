@@ -1,9 +1,29 @@
 
+{-|
+
+
+Plotting conventions:
+
+  All data points/values are received unformatted. Each axis has a definition with sensible defaults that tells us
+    - The bounds of the axis (min,max).
+    - The type of scale (only linear for now)
+    - Where the labels go.
+  The axis and data give rise to a number of points inside the square (0,0) to (1,1).
+    This is scaled to the requested dimensions of the plotting area (not necessarily a square).
+  Axes defs are used to generate legend (if necessary).
+  Axes are generated from their defs and the plotting area.
+  Data plotting:
+    Points:   List Point
+    Lines:    LinearEquation
+    Growth:   List Point
+      (show as line segments, with or without area)
+ -}
 module Lubeck.Plots.Test
     (
     ) where
 
 import Lubeck.Drawing(Drawing)
+import Web.VirtualDom.Svg(Svg)
 import qualified Lubeck.Drawing as D
 
 import Data.Monoid
@@ -48,7 +68,8 @@ type Plot a = a -> Drawing
 --       Nothing -> zeroV -- OK?
 --       Just p  -> p .-. zeroP
 --   in
---   translate (scaleVector (600^300) init) $ style (styleNamed "fill-opacity" (toString 0)) $ strokeColor lineColor $ strokeWidth 1.5 $ segments $
+--   translate (scaleVector (600^300) init) $ style (styleNamed "fill-opacity" (toString 0)) $ strokeColor lineColor $
+-- strokeWidth 1.5 $ segments $
 --   List.map (scaleVector (600^300)) $ betweenPoints xs
 
 
@@ -103,35 +124,61 @@ data DataPlot a b c = DataPlot {
 -- plotDrawingToSvg : Drawing -> Svg
 -- plotDrawingToSvg x = toSvg { origoPlacement = BottomLeft, dimensions = { x = 640, y = 340 } } $ translate (20^20) x
 
+-- TODO rename
+type Color = Colour Double
 
 {-| -}
-plotTest :: GrowthPlot -> Svg
-plotTest _ = toSvg { origoPlacement = BottomLeft, dimensions = { x = 640, y = 340 } } $ translate (20^20) $ scale 1 $
+data GrowthPlot = GrowthPlot {
+    gp_xName  :: String,
+    gp_xScale :: [] (Float, String),
+    gp_yName  :: String,
+    gp_yScale :: [] (Float, String),
+    gp_data   :: [] (String, Color, [] (Float, Float)) -- (x,y)
+  }
 
-      -- (scale 50 $ fillColor "blue" $ style (styleNamed "fill-opacity" (toString 0.5)) $ polygon [Vector 1 0, Vector (-0.5) 0.8660254037844386, Vector (-0.5) (-0.8660254037844386)])
-        -- `over`
-      -- (strokeColor "darkred" $ strokeWidth 1.5 $ translateY 10 $ rotate (turn/12) $ scaleX 800 $ horizontalLine)
-        -- `over`
-      (plotPoints {color=Just "red"}
-        (List.take 200 $ List.map (scalePoint $ (1/10)^(1/10)) $ List.map2 Point [0..10] [0..10])
-        )
-        `over`
-      (plotPoints {color=Just "yellow"}
-        (List.take 200 $ List.map ((\x-> x .+^ (0.1^0.05)) << scalePoint ((1/10)^(1/10))) $ List.map2 Point [0..10] [0..10])
-        )
+  {-
 
-        `over`
-      (plotGrowth {color=Just "blue"}
-        (List.take 200 $ List.map (scalePoint $ (1/10)^(1/10)) $ List.map2 Point [0..12] [6,3,10,5,4,2,1,2.2,3,-2,100000,1000,0])
-        )
-        `over`
-      (plotGrowth {color=Just "darkblue"}
-        [1&1,0&0,0&0.5,0.85&0.7,0.65&0.35]
-        )
-        `over`
-      (plotGrowth {color=Just "pink"}
-        [0.0&1.0, 0.1&0.1, 0.22&0.2, 0.3&0.32]
-        )
+-- All Floats below are in (0 < x < 1), cartesian relative plot size
+
+
+{-| -}
+examplePlot : GrowthPlot
+examplePlot =
+  {
+    xName = "A", yName = "B", xScale = [], yScale = [], data = []
+  }
+-}
+
+
+(%%) = D.Vector
+(~~) = D.Point
+
+{-| -}
+plotTest :: a -> Svg
+plotTest _ = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $
+  D.translate (20%%20) $ D.scale 1 $
+      D.transparent
+      -- (plotPoints {color=Just "red"}
+      --   (List.take 200 $ List.map (scalePoint $ (1/10)^(1/10)) $ List.map2 Point [0..10] [0..10])
+      --   )
+      --   `over`
+      -- (plotPoints {color=Just "yellow"}
+      --   (List.take 200 $ List.map ((\x-> x .+^ (0.1^0.05)) << scalePoint ((1/10)^(1/10))) $ List.map2 Point [0..10] [0..10])
+      --   )
+      --
+      --   `over`
+      -- (plotGrowth {color=Just "blue"}
+      --   (List.take 200 $ List.map (scalePoint $ (1/10)^(1/10)) $ List.map2 Point [0..12] [6,3,10,5,4,2,1,2.2,3,-2,100000,1000,0])
+      --   )
+      --   `over`
+      -- (plotGrowth {color=Just "darkblue"}
+      --   [1&1,0&0,0&0.5,0.85&0.7,0.65&0.35]
+      --   )
+      --   `over`
+      -- (plotGrowth {color=Just "pink"}
+      --   [0.0&1.0, 0.1&0.1, 0.22&0.2, 0.3&0.32]
+      --   )
+
         -- [
         -- {dx=10  , dy=10},
         -- {dx=3   , dy=-5},
@@ -145,8 +192,9 @@ plotTest _ = toSvg { origoPlacement = BottomLeft, dimensions = { x = 640, y = 34
         -- {dx=3   , dy=-5},
         -- {dx=3   , dy=-7}
         -- ]
-        `over`
-      -- let plot = (translateX (-200) $ scale 4 $ style (styleNamed "fill-opacity" (toString 0.5)) $ fillColor "lightblue" $ strokeColor "blue" $ strokeWidth 1.5 $ Lines False
+        `D.over`
+      -- let plot = (translateX (-200) $ scale 4 $ style (styleNamed "fill-opacity" (toString 0.5)) $ fillColor "lightblue" $
+        -- strokeColor "blue" $ strokeWidth 1.5 $ Lines False
       --       [
       --         {dx=10  , dy=10},
       --         {dx=10  , dy=1},
@@ -162,27 +210,7 @@ plotTest _ = toSvg { origoPlacement = BottomLeft, dimensions = { x = 640, y = 34
       --       ])
       --   in (stack [plot, scale 1.1 plot, scale 1.3 plot])
       --   `over`
-      xyAxis
-        `over`
-      smokeBackground
+      D.xyAxis
+        `D.over`
+      D.smokeBackground
         -- (translateX 1 $ Style "fill: red" Circle)
-
-
-{- Plotting conventions:
-  All data points/values are received unformatted. Each axis has a definition with sensible defaults that tells us
-    - The bounds of the axis (min,max).
-    - The type of scale (only linear for now)
-    - Where the labels go.
-  The axis and data give rise to a number of points inside the square (0,0) to (1,1).
-    This is scaled to the requested dimensions of the plotting area (not necessarily a square).
-  Axes defs are used to generate legend (if necessary).
-  Axes are generated from their defs and the plotting area.
-  Data plotting:
-    Points:   List Point
-    Lines:    LinearEquation
-    Growth:   List Point
-      (show as line segments, with or without area)
-
-
-
- -}
