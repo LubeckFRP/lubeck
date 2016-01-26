@@ -364,17 +364,17 @@ This is the most general way to transform an image. Most of the functions
 below are more convenient to use, but can not be used to transform arbitrary
 objects.
 
-```elm
+@
 transform (rotation x)   image = rotate x image
 transform (stretching x) image = stretch x image
-```
+@
 
 Composing transformations has the same effect as carrying out the
 transformation one at a time:
 
-```elm
+@
 transform s (transform t image) = transform (s <> t) image
-```
+@
  -}
 transform :: Transformation -> Drawing -> Drawing
 transform = Transf
