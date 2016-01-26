@@ -43,6 +43,7 @@ import qualified Data.Map
 import qualified Data.List
 -- import qualified Data.Colour.Names as C
 
+-- TODO use type class methods where appropriate, i.e. mconcat instead of D.stack
 
 {-|
   A way to draw normalized data.
@@ -66,11 +67,12 @@ scaleVector (D.Vector ax ay) (D.Vector bx by) = D.Vector (ax * bx) (ay * by)
 
 (%%) = D.Vector
 (~~) = D.Point
+zeroP = D.Point 0 0
 
 plotPoints :: Maybe Color -> Plot ([] D.Point)
 plotPoints mColor xs = let
     circleColor = fromMaybe Colors.red mColor
-  in stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. origin)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
+  in D.stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. zeroP)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
 --
 -- plotGrowth : { color : Maybe String } -> Plot (List Point)
 -- plotGrowth opts xs = let
