@@ -21,7 +21,10 @@ Plotting conventions:
       (show as line segments, with or without area)
  -}
 module Lubeck.Plots.Test
-    ( drawDataPlot
+    ( DataPlot(..)
+    , Fit(..)
+    , Plot(..)
+    , drawDataPlot
     , basicDataGrowth
     , plotDrawingToSvg
     ) where
@@ -75,12 +78,12 @@ scalePoint (D.Vector dx dy) (D.Point x y) = D.Point (dx*x) (dy*y)
 (~~) = D.Point
 zeroP = D.Point 0 0
 
-plotPoints :: Maybe Color -> Plot ([] D.Point)
+plotPoints :: Maybe Color -> Plot ([D.Point])
 plotPoints mColor xs = let
     circleColor = fromMaybe Colors.red mColor
   in D.stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. zeroP)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
 
-plotGrowth :: Maybe Color -> Plot ([] D.Point)
+plotGrowth :: Maybe Color -> Plot ([D.Point])
 plotGrowth mColor xs = let
     lineColor = fromMaybe Colors.blue mColor
     init = case xs of
@@ -108,7 +111,7 @@ data DataPlot a b c = DataPlot {
 
 
 -- Should not be given []
-fitSq :: [] D.Point -> D.Point -> D.Point
+fitSq :: [D.Point] -> D.Point -> D.Point
 fitSq ps p = let
   mx = minimum $ fmap D.x ps
   my = minimum $ fmap D.y ps
@@ -124,7 +127,7 @@ drawDataPlot dp = let
   in (dp_plot dp dat `D.over` dp_axisPlot dp axis)
 
 -- {-| -}
-basicDataGrowth :: (a -> D.Point) -> [] a -> DataPlot ([] a) ([] D.Point) ()
+basicDataGrowth :: (a -> D.Point) -> [a] -> DataPlot [a] [D.Point] ()
 basicDataGrowth f x = let
     ps = fmap f x
       in
@@ -144,10 +147,10 @@ plotDrawingToSvg x = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLe
 {-| -}
 data GrowthPlot = GrowthPlot {
     gp_xName  :: String,
-    gp_xScale :: [] (Float, String),
+    gp_xScale :: [(Float, String)],
     gp_yName  :: String,
-    gp_yScale :: [] (Float, String),
-    gp_data   :: [] (String, Color, [] (Float, Float)) -- (x,y)
+    gp_yScale :: [(Float, String)],
+    gp_data   :: [(String, Color, [] (Float, Float))] -- (x,y)
   }
 
   {-
