@@ -55,6 +55,9 @@ module Lubeck.Drawing (
     -- *** Rendering
     styleToAttrString,
 
+    -- ** Events
+    addProperty,
+
     -- ** Envelopes
     Envelope,
     -- ** Drawings
