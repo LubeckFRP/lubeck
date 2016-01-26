@@ -483,7 +483,7 @@ toSvg1 x = let
       Style s x  -> single $ E.g
         [A.style $ styleToAttrString s]
         (toSvg1 x)
-      Prop p x   -> toSvg1 p
+      Prop p x   -> toSvg1 x
       Em         -> single $ E.g [] []
       Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
 
