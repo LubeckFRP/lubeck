@@ -19,7 +19,9 @@ Plotting conventions:
       (show as line segments, with or without area)
  -}
 module Lubeck.Plots.Test
-    (
+    ( drawDataPlot
+    , basicDataGrowth
+    , plotDrawingToSvg
     ) where
 
 import Lubeck.Drawing(Drawing)
@@ -134,8 +136,8 @@ data DataPlot a b c = DataPlot {
 --   }
 --
 -- {-| -}
--- plotDrawingToSvg : Drawing -> Svg
--- plotDrawingToSvg x = toSvg { origoPlacement = BottomLeft, dimensions = { x = 640, y = 340 } } $ translate (20^20) x
+plotDrawingToSvg :: Drawing -> Svg
+plotDrawingToSvg x = D.toSvg (D.DrawingOptions { origoPlacement = BottomLeft, dimensions = { x = 640, y = 340 } }) $ D.translate (20%%20) x
 
 
 {-| -}
