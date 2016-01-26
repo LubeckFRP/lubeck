@@ -288,6 +288,10 @@ data DrawingBase
   | Text JSString
   | Transf Transformation Drawing
   | Style Style Drawing
+
+  -- Embed arbitrary SVG property (typically used for event handlers)
+  | Prop E.Property Drawing
+
   | Em
   | Ap Drawing Drawing
   -- deriving (Eq, Ord)
@@ -479,6 +483,7 @@ toSvg1 x = let
       Style s x  -> single $ E.g
         [A.style $ styleToAttrString s]
         (toSvg1 x)
+      Prop p x   -> toSvg1 p
       Em         -> single $ E.g [] []
       Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
 
