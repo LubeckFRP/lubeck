@@ -26,4 +26,4 @@ page = div [] [h1 [] [text "Index"]
 -- MAIN
 
 main :: IO ()
-main = runAppReactive (pure page)
+main = runAppStatic page
