@@ -212,10 +212,11 @@ angleToDegrees :: Angle -> Float
 angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 {-| -}
-type Transformation =
+newtype Transformation = Transformation { getTransformation ::
     (Float,Float,
      Float,Float,
      Float,Float)
+     }
 
 -- We use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
 --
@@ -230,17 +231,20 @@ type Transformation =
 -- TODO
 {-| -}
 emptyTransformation :: Transformation
-emptyTransformation = (1,0,0,1,0,0)
+emptyTransformation = Transformation (1,0,0,1,0,0)
 
 {-| -}
 apTransformation :: Transformation -> Transformation -> Transformation
-apTransformation (a1,b1,c1,d1,e1,f1) (a2,b2,c2,d2,e2,f2) =
-    (a1*a2 + c1*b2,
-     b1*a2 + d1*b2,
-     a1*c2 + c1*d2,
-     b1*c2 + d1*d2,
-     a1*e2 + c1*f2 + e1,
-     b1*e2 + d1*f2 + f1)
+apTransformation
+  (Transformation (a1,b1,c1,d1,e1,f1))
+  (Transformation (a2,b2,c2,d2,e2,f2)) =
+    Transformation
+      (a1*a2 + c1*b2,
+       b1*a2 + d1*b2,
+       a1*c2 + c1*d2,
+       b1*c2 + d1*d2,
+       a1*e2 + c1*f2 + e1,
+       b1*e2 + d1*f2 + f1)
 
 infixr 6 !<>
 
@@ -250,7 +254,7 @@ infixr 6 !<>
 
 {-| -}
 transformationToMatrix :: Transformation -> (Float, Float, Float, Float, Float, Float)
-transformationToMatrix x = x
+transformationToMatrix = getTransformation
 
 {-| -}
 type Style = Map JSString JSString
@@ -382,7 +386,7 @@ transform = Transf
 
 {-| Translate (move) an image. -}
 translate :: Vector -> Drawing -> Drawing
-translate (Vector { dx, dy }) = transform (1,0,0,1,dx,dy)
+translate (Vector { dx, dy }) = transform $ Transformation (1,0,0,1,dx,dy)
 
 {-| Translate (move) an image along the horizonal axis.
 A positive argument will move the image to the right. -}
@@ -396,7 +400,7 @@ translateY y = translate (Vector 0 y)
 
 {-| Scale (stretch) an image. -}
 scaleXY :: Float -> Float -> Drawing -> Drawing
-scaleXY     x y = transform (x,0,0,y,0,0)
+scaleXY     x y = transform $ Transformation (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
 scale :: Float -> Drawing -> Drawing
@@ -412,12 +416,12 @@ scaleY      y = scaleXY 1 y
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
 rotate :: Angle -> Drawing -> Drawing
-rotate    a   = transform (cos a, 0 - sin a, sin a, cos a, 0, 0)
+rotate    a   = transform $ Transformation (cos a, 0 - sin a, sin a, cos a, 0, 0)
 -- The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
 shearXY :: Float -> Float -> Drawing -> Drawing
-shearXY   a b = transform (1, b, a, 1, 0, 0)
+shearXY   a b = transform $ Transformation (1, b, a, 1, 0, 0)
 
 
 
@@ -488,7 +492,7 @@ toSvg1 x = let
         [A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]
         []
       Text s -> single $ E.text' [A.x "0", A.y "0"] [E.text s]
-      Transf t x -> single $ E.g
+      Transf (Transformation t) x -> single $ E.g
         [A.transform $ "matrix" <> showJS (negY t) <> ""]
         (toSvg1 x)
       Style s x  -> single $ E.g
