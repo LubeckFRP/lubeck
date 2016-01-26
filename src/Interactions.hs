@@ -115,7 +115,8 @@ interactionW actions model = div []
     [
     ((Plotting.plotDrawingToSvg $
       (\x -> Drawing.stack [x,Drawing.xyAxis]) $ Plotting.drawDataPlot $ Plotting.basicDataGrowth id
-        [ Drawing.Point 10 20
+        [ Drawing.Point 10   20
+        , Drawing.Point 45  30
         , Drawing.Point 100 200
         , Drawing.Point 200 0
         ]))
