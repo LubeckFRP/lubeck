@@ -31,6 +31,8 @@ import qualified Web.VirtualDom.Html.Events as Ev
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
+import qualified Lubeck.Plots.Test as Plotting
+import qualified Lubeck.Drawing as Drawing
 
 import qualified BD.Data.Account as A
 import qualified BD.Data.Count as C
@@ -110,7 +112,15 @@ interactionW actions model = div []
   [ p [] [text (showJS $ model .: interaction_time)]
   -- Growth graph
   , div [class_ "row"]
-    [ div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] []]
+    [
+    ((Plotting.plotDrawingToSvg $
+      (\x -> Drawing.stack [x,Drawing.xyAxis]) $ Plotting.drawDataPlot $ Plotting.basicDataGrowth id
+        [ Drawing.Point 10 20
+        , Drawing.Point 100 200
+        , Drawing.Point 200 0
+        ]))
+
+      -- div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] []]
     , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
     ]
   , p [] [text "Estimated impact: (?)"]
