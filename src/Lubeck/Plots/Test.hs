@@ -137,7 +137,7 @@ data DataPlot a b c = DataPlot {
 --
 -- {-| -}
 plotDrawingToSvg :: Drawing -> Svg
-plotDrawingToSvg x = D.toSvg (D.DrawingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $ D.translate (20%%20) x
+plotDrawingToSvg x = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $ D.translate (20%%20) x
 
 
 {-| -}
