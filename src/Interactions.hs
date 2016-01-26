@@ -115,10 +115,10 @@ interactionW actions model = div []
     [
     ((Plotting.plotDrawingToSvg $
       (\x -> Drawing.stack [x,Drawing.xyAxis]) $ Plotting.drawDataPlot $ Plotting.basicDataGrowth id
-        [ Drawing.Point 10   20
-        , Drawing.Point 45  30
-        , Drawing.Point 100 200
-        , Drawing.Point 200 0
+        [ flip Drawing.Point 10   20
+        , flip Drawing.Point 45  30
+        , flip Drawing.Point 100 200
+        , flip Drawing.Point 200 0
         ]))
 
       -- div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] []]
