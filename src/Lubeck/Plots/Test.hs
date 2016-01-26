@@ -35,6 +35,7 @@ import Data.Colour (Colour)
 -- import qualified Data.Colour
 -- import qualified Data.Colour.SRGB
 -- import qualified Data.String
+import qualified Data.Colour.Name as Colors
 import qualified Data.JSString
 import Data.Map(Map)
 import qualified Data.Map
@@ -56,10 +57,19 @@ import qualified Data.List
 -}
 type Plot a = a -> Drawing
 
--- plotPoints :: { color : Maybe String } -> Plot (List Point)
--- plotPoints opts xs = let
---     circleColor = Maybe.withDefault "red" opts.color
---   in stack $ List.map (\p -> translate (scaleVector (600^300) (p .-. zeroP)) $ (scale 5 $ fillColor circleColor circle)) $ xs
+-- TODO rename
+type Color = Colour Double
+
+-- TODO rename
+scaleVector (Vector ax ay) (Vector bx by) = Vector (ax * bx) (ay * by)
+
+(%%) = D.Vector
+(~~) = D.Point
+
+plotPoints :: Maybe Color -> Plot (List Point)
+plotPoints mColor xs = let
+    circleColor = fromMaybe Colors.red mColor
+  in stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. origo)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
 --
 -- plotGrowth : { color : Maybe String } -> Plot (List Point)
 -- plotGrowth opts xs = let
@@ -124,8 +134,6 @@ data DataPlot a b c = DataPlot {
 -- plotDrawingToSvg : Drawing -> Svg
 -- plotDrawingToSvg x = toSvg { origoPlacement = BottomLeft, dimensions = { x = 640, y = 340 } } $ translate (20^20) x
 
--- TODO rename
-type Color = Colour Double
 
 {-| -}
 data GrowthPlot = GrowthPlot {
@@ -150,8 +158,7 @@ examplePlot =
 -}
 
 
-(%%) = D.Vector
-(~~) = D.Point
+
 
 {-| -}
 plotTest :: a -> Svg
