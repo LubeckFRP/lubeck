@@ -30,17 +30,14 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 
 import           BD.Types
-import Lib.Helpers
-
+import           Lib.Helpers
 
 
 alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [content]
 
 errorMsgW :: Widget [AppError] Int
-errorMsgW _    [] = mempty
-errorMsgW sink errs = do
-  alertPanel $ div [] (map (errorItem sink) (zip [0..] errs))
-
+errorMsgW _    []   = mempty
+errorMsgW sink errs = alertPanel $ div [] (map (errorItem sink) (zip [0..] errs))
   where
     errorItem sink (idx, value) =
       div [class_ "clearfix"]
@@ -62,20 +59,22 @@ errorMessagesComponent initialErrorMessages = do
   (internalSink :: Sink Int, internalEvents :: Events Int) <- newEvent
   (externalSink :: Sink (Maybe AppError), externalEvents :: Events (Maybe AppError)) <- newEvent
 
-  let justExternal = fmap externalToInternal externalEvents :: Events ([AppError] -> [AppError])
-  let justInternal = fmap filterByIdx internalEvents :: Events ([AppError] -> [AppError])
-  let allEvents    = merge justExternal justInternal :: Events ([AppError] -> [AppError])
+  let inputE    = fmap externalToInternal externalEvents :: Events ([AppError] -> [AppError])
+  let filterE   = fmap filterByIdx internalEvents :: Events ([AppError] -> [AppError])
+  let allEvents = merge inputE filterE :: Events ([AppError] -> [AppError])
 
-  aS              <- accumS initialErrorMessages allEvents :: IO (Signal [AppError])
-  let htmlS       = fmap (errorMsgW internalSink) aS
+  errorsS       <- accumS initialErrorMessages allEvents :: IO (Signal [AppError])
+  let htmlS     = fmap (errorMsgW internalSink) errorsS
 
   return (htmlS, externalSink)
 
   where
+    -- inserts new error into internal errors list
     externalToInternal :: Maybe a -> ([a] -> [a])
     externalToInternal Nothing oldAs = oldAs
     externalToInternal (Just a) oldAs = oldAs <> [a]
 
+    -- filters out errors from internal errors list
     filterByIdx :: Int -> [a] -> [a]
     filterByIdx idxToRemove oldAs =
       fmap fst $ Prelude.filter ((/= idxToRemove) . snd) (zip oldAs [0..])
