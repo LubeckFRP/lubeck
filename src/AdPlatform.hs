@@ -57,9 +57,7 @@ import           Pages.CreateAd       (createAdPage)
 
 import Components.ErrorMessages (errorMessagesComponent)
 import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
-
-data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
-  deriving (Show, Eq)
+import Components.MainMenu (mainMenuComponent)
 
 
 row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
@@ -72,36 +70,7 @@ panel12H bd =
      div [class_ "panel-body"] [bd]
     ]
 
-alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [content]
 contentPanel content = row12H $ panel12H content
-menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-top"]
-                               [ E.div [class_ "container col-xs-12"] [content] ]
-
-menu :: Widget' Nav
-menu sink value =
-  menuPanel $
-    div []
-    [ E.div [class_ "navbar-header"] [ E.a [class_ "navbar-brand"] [ text "Ad Platform" ] ]
-    , E.div [class_ "navbar-collapse"]
-      [ E.ul [class_ "nav navbar-nav"]
-          [ E.li [ class_  (markActive NavSearch value)
-                 , click $ \_ -> sink NavSearch ]   [E.a [] [text "Search"]]
-          , E.li [ class_ (markActive NavUser value)
-                 , click $ \_ -> sink NavUser ]     [E.a [] [text "User"]]
-          , E.li [ class_ (markActive NavImages value)
-                 , click $ \_ -> sink NavImages ]   [E.a [] [text "Image Library"]]
-          , E.li [ class_ (markActive NavCreateAd value)
-                 , click $ \_ -> sink NavCreateAd ] [E.a [] [text "Create Ad"]]
-          ]
-      , E.ul [class_ "nav navbar-nav navbar-right"]
-          [ E.li [ class_ "btn-warning "
-                 , click $ \_ -> sink NavLogin ]    [E.a [] [text "Logout"]]
-          ]
-      ] ]
-
-  where
-    markActive x v = if x == v then "active" else ""
-
 
 loginPageW :: Widget JSString (Submit JSString)
 loginPageW sink name =
@@ -237,14 +206,19 @@ withBusy2 sink f = \x y -> do
   sink PopBusy
   return z
 
+menuItems =
+  [ (NavUser,     "User")
+  , (NavSearch,   "Search")
+  , (NavImages,   "Image Library")
+  , (NavCreateAd, "Create Ad")
+  , (NavLogin, "  Logout")
+  ]
+
 adPlatform :: IO (Signal Html)
 adPlatform = do
-  -- Menu
-  (menuView, menuNavE) <- component NavLogin menu
-
-  -- Errors feedback
+  (menuView, menuNavE)    <- mainMenuComponent menuItems NavLogin
   (errorsView, errorSink) <- errorMessagesComponent ([] :: [AppError])
-  (busyView, busySink) <- busyIndicatorComponent []
+  (busyView, busySink)    <- busyIndicatorComponent []
 
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW

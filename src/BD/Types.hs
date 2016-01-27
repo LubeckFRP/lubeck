@@ -24,3 +24,7 @@ instance FromJSON JSString where
 
 data AppError = ApiError JSString | BLError JSString
   -- deriving (Show)
+
+-- FIXME should be in Ad Platform types probably
+data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
+  deriving (Show, Eq)
