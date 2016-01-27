@@ -8,3 +8,4 @@ dist/
 .vagrant/
 cabal.sandbox.config
 *.PID
+Vagrantfile
