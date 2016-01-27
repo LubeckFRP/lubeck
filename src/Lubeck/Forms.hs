@@ -34,7 +34,6 @@ module Lubeck.Forms
   , componentRW
   , componentR
   , componentW
-  , componentXRW
   , formComponent
 
   -- ** Submit type
@@ -202,15 +201,6 @@ componentW :: a -> Widget' a -> IO (Signal Html, Sink a)
 componentW initialState widget = do
   (htmlS, _, internalSink) <- componentRW initialState widget
   return (htmlS, internalSink)
-
--- | "external write, internal read" component.
--- Initialized with initial state, widget and external events.
--- Returns signal of html, events stream to read user events from, and unsubscribe action
-componentXRW :: a -> Widget' a -> Events a -> IO (Signal Html, Events a, UnsubscribeAction)
-componentXRW initialState widget externalEvents = do
-  (htmlS, internalEvents, internalSink) <- componentRW initialState widget
-  unsubscribe <- subscribeEvent externalEvents internalSink
-  return (htmlS, internalEvents, unsubscribe)
 
 
 -- | A variant of component that supports chanching its value internally without

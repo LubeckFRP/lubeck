@@ -55,6 +55,9 @@ module Lubeck.Drawing (
     -- *** Rendering
     styleToAttrString,
 
+    -- ** Events
+    addProperty,
+
     -- ** Envelopes
     Envelope,
     -- ** Drawings
@@ -256,6 +259,13 @@ apStyle = Data.Map.union
 styleToAttrString :: Style -> JSString
 styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) ""
 
+{-| Embed an SVG property on a drawing.
+    Intended to be used with the event handlers in "Web.VirtualDom.Svg.Events".
+    -}
+addProperty :: E.Property -> Drawing -> Drawing
+addProperty = Prop
+
+
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
 
@@ -288,6 +298,10 @@ data DrawingBase
   | Text JSString
   | Transf Transformation Drawing
   | Style Style Drawing
+
+  -- Embed arbitrary SVG property (typically used for event handlers)
+  | Prop E.Property Drawing
+
   | Em
   | Ap Drawing Drawing
   -- deriving (Eq, Ord)
@@ -415,11 +429,11 @@ shearXY   a b = transform $ Transformation (1, b, a, 1, 0, 0)
 -- ```
 -- -}
 smokeBackground :: Drawing
-smokeBackground = fillColor C.whitesmoke $ scale 50 $ square
+smokeBackground = fillColor C.whitesmoke $ scale 500 $ square
 --
 {-| Draw the X and Y axis (their intersection is the origin). -}
 xyAxis :: Drawing
-xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 50 $ stack [horizontalLine, verticalLine]
+xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 500 $ stack [horizontalLine, verticalLine]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
@@ -452,8 +466,8 @@ pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.L
 svgNamespace = Data.Map.fromList[("namespace","http://www.w3.org/2000/svg")]
                 -- ("xmlns","http://www.w3.org/2000/svg"),
 
-toSvg1 :: Drawing -> [Svg]
-toSvg1 x = let
+toSvg1 :: [E.Property] -> Drawing -> [Svg]
+toSvg1 ps x = let
     single x = [x]
     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
@@ -461,26 +475,34 @@ toSvg1 x = let
     reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
   in case x of
       Circle     -> single $ E.circle
-        [A.r "0.5", noScale]
+        ([A.r "0.5", noScale]++ps)
         []
       Rect       -> single $ E.rect
-        [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]
+        ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
         []
       Line -> single $ E.line
-        [A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]
+        ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
         []
       (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-        [A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]
+        ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]++ps)
         []
-      Text s -> single $ E.text' [A.x "0", A.y "0"] [E.text s]
+      Text s -> single $ E.text'
+        ([A.x "0", A.y "0"]++ps)
+        [E.text s]
+
+      -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
+      -- As long as it is just event handlers, it doesn't matter
       Transf (Transformation t) x -> single $ E.g
         [A.transform $ "matrix" <> showJS (negY t) <> ""]
-        (toSvg1 x)
+        (toSvg1 ps x)
       Style s x  -> single $ E.g
         [A.style $ styleToAttrString s]
-        (toSvg1 x)
-      Em         -> single $ E.g [] []
-      Ap x y     -> single $ E.g [] (toSvg1 x ++ toSvg1 y)
+        (toSvg1 ps x)
+      Prop p x   -> toSvg1 (p:ps) x
+      -- No point in embedding handlers to empty groups, but render anyway
+      Em         -> single $ E.g ps []
+      -- Event handlers applied to a group go on the g node
+      Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
 
 
 {-| -}
@@ -497,7 +519,7 @@ toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
         (showJS $ floor x)
         (showJS $ floor y)
         ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
-        (toSvg1 $ placeOrigo $ drawing)
+        (toSvg1 [] $ placeOrigo $ drawing)
   where
     Point {x,y} = dimensions
 

@@ -15,12 +15,17 @@ import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, 
 import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
+import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
 
 import Lubeck.FRP
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms (Widget, Widget', component)
-import Lubeck.Drawing (drawTest)
+-- import Lubeck.Drawing (drawTest)
+import Lubeck.Drawing hiding (text)
+
+import qualified Data.Colour.Names as Colors
+
 
 render :: Widget' JSString
 render output model = div []
@@ -28,7 +33,15 @@ render output model = div []
   , div [] $ pure $ button
     [ click (\_ -> output (model <> "!")) ]
     [ text "Click me" ]
-  , drawTest (length $ Data.JSString.unpack $ model) ]
+  ,
+
+  -- drawTest (length $ Data.JSString.unpack $ model)
+  toSvg (RenderingOptions (Point 400 400) Center) drawing
+
+  ]
+
+drawing = (addProperty (SvgEv.onClick $ \_ -> print "Clicked!") redCircle) <> xyAxis <> smokeBackground
+redCircle = fillColor Colors.red (scale 20 circle)
 
 -- MAIN
 

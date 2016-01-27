@@ -55,6 +55,9 @@ import           BD.Utils
 import           Pages.PostSearch     (searchPage)
 import           Pages.CreateAd       (createAdPage)
 
+import Components.ErrorMessages (errorMessagesComponent)
+import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
+
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
   deriving (Show, Eq)
 
@@ -73,18 +76,6 @@ alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [con
 contentPanel content = row12H $ panel12H content
 menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-top"]
                                [ E.div [class_ "container col-xs-12"] [content] ]
-
-errorMsgW :: Widget' (Maybe AppError)
-errorMsgW _    Nothing = mempty
-errorMsgW sink (Just value) = do
-  alertPanel $
-    div [] [ text $ showError value
-           , E.button [class_ "close", click $ \_ -> sink Nothing] [E.span [] [text "×"]] ]
-
-  where
-    showError (ApiError s) = "API Error: " <> s
-    showError (BLError s)  = "BL Error: " <> s
-
 
 menu :: Widget' Nav
 menu sink value =
@@ -233,19 +224,34 @@ eitherToError sink (Right x) = return (Just x)
 withErrorSink :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
 withErrorSink errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
 
+-- aka wrapWithBusy
+-- FIXME what about lazyness etc?
+wwb sink f = \x -> do
+  sink PushBusy
+  y <- f x
+  sink PopBusy
+  return y
+
+wwb2 sink f = \x y -> do
+  sink PushBusy
+  z <- f x y
+  sink PopBusy
+  return z
+
 adPlatform :: IO (Signal Html)
 adPlatform = do
   -- Menu
   (menuView, menuNavE) <- component NavLogin menu
 
   -- Errors feedback
-  (errorsView, errorSink) <- componentW Nothing errorMsgW
+  (errorsView, errorSink) <- errorMessagesComponent ([] :: [AppError])
+  (busyView, busySink) <- busyIndicatorComponent []
 
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
-  let userE       = withErrorSink errorSink $ fmap Account.getUserOrError userLoginE
-  let camapaignsE = withErrorSink errorSink $ fmap getCampaigns userE
-  let imagesE     = withErrorSink errorSink $ fmap getImages userE
+  let userE       = withErrorSink errorSink $ fmap (wwb busySink Account.getUserOrError) userLoginE
+  let camapaignsE = withErrorSink errorSink $ fmap (wwb busySink getCampaigns) userE
+  let imagesE     = withErrorSink errorSink $ fmap (wwb busySink getImages) userE
   userS           <- stepperS Nothing (fmap Just userE)
   campaignsS      <- stepperS Nothing (fmap Just camapaignsE)
   imagesS         <- stepperS Nothing (fmap Just imagesE)
@@ -257,10 +263,10 @@ adPlatform = do
       userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
 
   -- Create ad page
-  createAdView <- createAdPage (fmap (fmap Account.username) $ current userS)
+  createAdView <- createAdPage busySink (fmap (fmap Account.username) $ current userS)
 
   -- Campaign page
-  let adsE = withErrorSink errorSink $ snapshotWith loadAds (current userS) loadAdsE
+  let adsE = withErrorSink errorSink $ snapshotWith (wwb2 busySink loadAds) (current userS) loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
   let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
@@ -276,10 +282,11 @@ adPlatform = do
   navS <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
 
   -- Integrate post search
-  searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
+  searchPageView <- searchPage busySink (fmap (fmap Account.username) $ current userS)
 
   let view = nav <$> navS <*> menuView
                           <*> errorsView
+                          <*> busyView
                           <*> loginView
                           <*> userView
                           <*> adsView
@@ -288,7 +295,7 @@ adPlatform = do
                           <*> imageLibView
   return view
 
-nav goTo menu errMsg login user ads search createAd imlib = case goTo of
+nav goTo menu errMsg busy login user ads search createAd imlib = case goTo of
   NavLogin    -> wrap mempty login
   NavUser     -> wrap menu user
   NavCampaign -> wrap menu ads
@@ -301,6 +308,7 @@ nav goTo menu errMsg login user ads search createAd imlib = case goTo of
       , menu
       , div [class_ "col-xs-12 top-buffer"]
         [ div [] []
+        , busy
         , errMsg
         , page
         ]
