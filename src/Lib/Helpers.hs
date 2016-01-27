@@ -23,6 +23,7 @@ import qualified Prelude
 
 import           BD.Types
 
+
 eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
 eitherToError sink (Left x)  = sink (Just x) >> return Nothing
 eitherToError sink (Right x) = return (Just x)

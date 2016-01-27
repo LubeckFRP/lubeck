@@ -3,7 +3,8 @@
 {-# LANGUAGE TupleSections       #-}
 
 module Pages.ImageLibrary
-  (imageLibraryPage
+  ( imageLibraryPage
+  , getImages
   ) where
 
 import           Prelude                        hiding (div)
@@ -29,6 +30,7 @@ import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.FRP
 
+import qualified BD.Data.Account                as Account
 import qualified BD.Data.Image                  as Im
 
 
@@ -36,6 +38,9 @@ import           BD.Types
 import           BD.Utils
 import           Lib.Helpers
 
+
+getImages :: Account.Account -> IO (Either AppError [Im.Image])
+getImages acc = Im.getAllImagesOrError (Account.username acc)
 
 imageLibraryPageW :: Widget [Im.Image] ()
 imageLibraryPageW _ [] =

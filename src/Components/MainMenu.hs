@@ -32,9 +32,8 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 
 import           BD.Types
+import           Lib.Helpers
 
-
-row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
 
 menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-top"]
                                [ E.div [class_ "container col-xs-12"] [content] ]

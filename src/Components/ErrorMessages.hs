@@ -30,10 +30,10 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 
 import           BD.Types
+import Lib.Helpers
 
 
 
-row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
 alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [content]
 
 errorMsgW :: Widget [AppError] Int

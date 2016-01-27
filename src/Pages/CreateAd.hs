@@ -1,65 +1,66 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Pages.CreateAd
   ( createAdPage
   ) where
 
-import Prelude hiding (div)
+import           Prelude                        hiding (div)
 import qualified Prelude
 
-import           Data.Bifunctor (bimap)
-import qualified Data.Maybe
+import           Control.Applicative
+import           Control.Lens                   (lens, over, set, view)
+import           Data.Aeson
+import           Data.Bifunctor                 (bimap)
 import qualified Data.List
-import Data.Monoid
-import Control.Applicative
-import qualified Data.Map as Map
-import Data.Map(Map)
-import Control.Lens (over, set, view, lens)
-import Data.Aeson
-import qualified GHC.Generics as GHC
+import           Data.Map                       (Map)
+import qualified Data.Map                       as Map
+import qualified Data.Maybe
+import           Data.Monoid
+import qualified GHC.Generics                   as GHC
 
 
-import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
-import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
-import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
-import qualified Web.VirtualDom.Html as E
+import           GHCJS.Types                    (JSString, jsval)
+import           Web.VirtualDom.Html            (a, button, div, form, h1, hr,
+                                                 img, input, label, p, table,
+                                                 tbody, td, text, th, tr)
+import qualified Web.VirtualDom.Html            as E
+import           Web.VirtualDom.Html.Attributes (class_, href, src, src, target,
+                                                 width, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import qualified Web.VirtualDom.Html.Events as Ev
+import           Web.VirtualDom.Html.Events     (change, click, keyup,
+                                                 preventDefault,
+                                                 stopPropagation, submit, value)
+import qualified Web.VirtualDom.Html.Events     as Ev
 
-import Lubeck.FRP
-import Lubeck.Forms
-import Lubeck.Forms.Select
-import Lubeck.Forms.Interval
-import Lubeck.App (Html, runAppReactive)
-import Lubeck.Web.URI (getURIParameter)
-import Lubeck.Util()
+import           Lubeck.App                     (Html, runAppReactive)
+import           Lubeck.Forms
+import           Lubeck.Forms.Interval
+import           Lubeck.Forms.Select
+import           Lubeck.FRP
+import           Lubeck.Util                    ()
+import           Lubeck.Web.URI                 (getURIParameter)
 
-import BD.Data.Account (Account)
-import qualified BD.Data.Account as Ac
-import BD.Api
-import BD.Types
+import           BD.Api
+import           BD.Data.Account                (Account)
+import qualified BD.Data.Account                as Ac
+import           BD.Types
 
-import Components.BusyIndicator (BusyCmd(..))
+import           Components.BusyIndicator       (BusyCmd (..))
+import           Lib.Helpers
 
-data NewAd = NewAd { caption :: JSString,
+data NewAd = NewAd { caption    :: JSString,
                      image_hash :: JSString,
                      click_link :: JSString } deriving (GHC.Generic)
 
 instance ToJSON NewAd
 instance FromJSON NewAd
-
-row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
-row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
-
-panel12H :: Html -> Html
-panel12H bd =
-  div [class_ "panel panel-default"]
-    [ --div [class_ "panel-heading"] hd
-      div [class_ "panel-body"] [bd]
-    ]
 
 
 createAdForm :: Widget NewAd (Submit NewAd)
@@ -79,11 +80,6 @@ postNewAd sink unm newAd = do
   sink PopBusy
 
   return $ bimap ApiError payload res
-
--- TODO extract to some kind of utils
-eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
-eitherToError sink (Left x)  = sink (Just x) >> return Nothing
-eitherToError sink (Right x) = return (Just x)
 
 createAdPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Behavior (Maybe JSString) ->IO (Signal Html)
 createAdPage busySink errorSink mUserNameB = do

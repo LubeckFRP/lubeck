@@ -3,7 +3,8 @@
 {-# LANGUAGE TupleSections       #-}
 
 module Pages.Campaign
-  (campaignPage
+  ( campaignPage
+  , getCampaigns
   ) where
 
 import           Prelude                        hiding (div)
@@ -38,6 +39,8 @@ import           BD.Utils
 import           Lib.Helpers
 
 
+getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])
+getCampaigns acc = AdCampaign.getUserCampaignsOrError (Account.username acc)
 
 -- | Display info about a campaign.
 campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()

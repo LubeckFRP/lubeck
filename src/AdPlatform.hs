@@ -1,8 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
 module Main where
@@ -11,7 +7,6 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-
 import           Data.Monoid
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -38,15 +33,14 @@ import qualified BD.Data.SearchPost             as P
 import           BD.Types
 import           BD.Utils
 
-import           Pages.Campaign                 (campaignPage)
+import           Pages.Campaign                 (campaignPage, getCampaigns)
 import           Pages.CreateAd                 (createAdPage)
-import           Pages.ImageLibrary             (imageLibraryPage)
+import           Pages.ImageLibrary             (imageLibraryPage, getImages)
 import           Pages.Login                    (loginPage)
 import           Pages.PostSearch               (searchPage)
 import           Pages.User                     (userPage)
 
-import           Components.BusyIndicator       (BusyCmd (..),
-                                                 withBusy,
+import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
 import           Components.ErrorMessages       (errorMessagesComponent)
 import           Components.MainMenu            (mainMenuComponent)
@@ -54,19 +48,33 @@ import           Components.MainMenu            (mainMenuComponent)
 import           Lib.Helpers
 
 
-getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])
-getCampaigns acc = AdCampaign.getUserCampaignsOrError (Account.username acc)
-
-getImages :: Account.Account -> IO (Either AppError [Im.Image])
-getImages acc = Im.getAllImagesOrError (Account.username acc)
+defaultUsername = "forbestravelguide"
 
 menuItems =
   [ (NavUser,     "User")
   , (NavSearch,   "Search")
   , (NavImages,   "Image Library")
   , (NavCreateAd, "Create Ad")
-  , (NavLogin, "  Logout")
+  , (NavLogin,    "Logout") -- last item is special in that it will be positioned far right
   ]
+
+rootLayout goTo menu err busy login user ads search createAd imlib = case goTo of
+  NavLogin    -> layout mempty busy err login
+  NavUser     -> layout menu   busy err user
+  NavCampaign -> layout menu   busy err ads
+  NavSearch   -> layout menu   busy err search
+  NavCreateAd -> layout menu   busy err createAd
+  NavImages   -> layout menu   busy err imlib
+  where
+    layout menu busy err page =
+      div [class_ "container"]
+        [ menu
+        , div [class_ "col-xs-12 top-buffer"]
+          [ busy
+          , err
+          , page
+          ] ]
+
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
@@ -74,7 +82,7 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent ([] :: [AppError])
   (busyView, busySink)    <- busyIndicatorComponent []
 
-  (loginView, userLoginE) <- loginPage "forbestravelguide"
+  (loginView, userLoginE) <- loginPage defaultUsername
 
   let userE               = withErrorSink errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
   let camapaignsE         = withErrorSink errorSink $ fmap (withBusy busySink getCampaigns) userE
@@ -95,7 +103,8 @@ adPlatform = do
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)
   navS                    <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
 
-  let view = nav <$> navS <*> menuView
+  let mainView = rootLayout <$> navS
+                          <*> menuView
                           <*> errorsView
                           <*> busyView
                           <*> loginView
@@ -105,24 +114,6 @@ adPlatform = do
                           <*> createAdView
                           <*> imageLibView
 
-  return view
-
-nav goTo menu errMsg busy login user ads search createAd imlib = case goTo of
-  NavLogin    -> wrap mempty login
-  NavUser     -> wrap menu user
-  NavCampaign -> wrap menu ads
-  NavSearch   -> wrap menu search
-  NavCreateAd -> wrap menu createAd
-  NavImages   -> wrap menu imlib
-  where
-    wrap menu page =
-      div [class_ "container"]
-        [ menu
-        , div [class_ "col-xs-12 top-buffer"]
-          [ busy
-          , errMsg
-          , page
-          ] ]
-
+  return mainView
 
 main = adPlatform >>= runAppReactive
