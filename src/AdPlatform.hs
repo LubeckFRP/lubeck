@@ -224,15 +224,14 @@ eitherToError sink (Right x) = return (Just x)
 withErrorSink :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
 withErrorSink errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
 
--- aka wrapWithBusy
 -- FIXME what about lazyness etc?
-wwb sink f = \x -> do
+withBusy sink f = \x -> do
   sink PushBusy
   y <- f x
   sink PopBusy
   return y
 
-wwb2 sink f = \x y -> do
+withBusy2 sink f = \x y -> do
   sink PushBusy
   z <- f x y
   sink PopBusy
@@ -249,9 +248,9 @@ adPlatform = do
 
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
-  let userE       = withErrorSink errorSink $ fmap (wwb busySink Account.getUserOrError) userLoginE
-  let camapaignsE = withErrorSink errorSink $ fmap (wwb busySink getCampaigns) userE
-  let imagesE     = withErrorSink errorSink $ fmap (wwb busySink getImages) userE
+  let userE       = withErrorSink errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
+  let camapaignsE = withErrorSink errorSink $ fmap (withBusy busySink getCampaigns) userE
+  let imagesE     = withErrorSink errorSink $ fmap (withBusy busySink getImages) userE
   userS           <- stepperS Nothing (fmap Just userE)
   campaignsS      <- stepperS Nothing (fmap Just camapaignsE)
   imagesS         <- stepperS Nothing (fmap Just imagesE)
@@ -263,10 +262,10 @@ adPlatform = do
       userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
 
   -- Create ad page
-  createAdView <- createAdPage busySink (fmap (fmap Account.username) $ current userS)
+  createAdView <- createAdPage busySink errorSink (fmap (fmap Account.username) $ current userS)
 
   -- Campaign page
-  let adsE = withErrorSink errorSink $ snapshotWith (wwb2 busySink loadAds) (current userS) loadAdsE
+  let adsE = withErrorSink errorSink $ snapshotWith (withBusy2 busySink loadAds) (current userS) loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
   let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))

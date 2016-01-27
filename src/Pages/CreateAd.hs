@@ -8,6 +8,7 @@ module Pages.CreateAd
 import Prelude hiding (div)
 import qualified Prelude
 
+import           Data.Bifunctor (bimap)
 import qualified Data.Maybe
 import qualified Data.List
 import Data.Monoid
@@ -39,6 +40,7 @@ import Lubeck.Util()
 import BD.Data.Account (Account)
 import qualified BD.Data.Account as Ac
 import BD.Api
+import BD.Types
 
 import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
 
@@ -70,14 +72,21 @@ createAdForm output newAd =
       , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd] $ pure $ text "Create Ad"
       ]
 
-wwb2 sink f = \x y -> do
+postNewAd :: Sink BusyCmd -> JSString -> NewAd -> IO (Either AppError Ok)
+postNewAd sink unm newAd = do
   sink PushBusy
-  z <- f x y
+  res <- postAPIEither (unm <> "/create-ad") newAd
   sink PopBusy
-  return z
 
-createAdPage :: Sink BusyCmd -> Behavior (Maybe JSString) ->IO (Signal Html)
-createAdPage busySink mUserNameB = do
+  return $ bimap ApiError payload res
+
+-- TODO extract to some kind of utils
+eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
+eitherToError sink (Left x)  = sink (Just x) >> return Nothing
+eitherToError sink (Right x) = return (Just x)
+
+createAdPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Behavior (Maybe JSString) ->IO (Signal Html)
+createAdPage busySink errorSink mUserNameB = do
   let initNewAd = NewAd "" "" ""
   (view, adCreated) <- formComponent initNewAd createAdForm
 
@@ -85,8 +94,10 @@ createAdPage busySink mUserNameB = do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
       Just username ->  do
-        Right () <- (wwb2 busySink postAPIEither) (username <> "/create-ad") newAd
+        res <- (postNewAd busySink username newAd) >>= (eitherToError errorSink)
+        -- print $ show res
         return ()
+
       Nothing -> print "no username!"
     return ()
 
