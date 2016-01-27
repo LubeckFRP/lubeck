@@ -56,6 +56,7 @@ import           Pages.PostSearch     (searchPage)
 import           Pages.CreateAd       (createAdPage)
 import           Pages.Login          (loginPage)
 import           Pages.User           (userPage)
+import           Pages.Campaign           (campaignPage)
 
 import Components.ErrorMessages (errorMessagesComponent)
 import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
@@ -74,32 +75,6 @@ panel12H bd =
 
 contentPanel content = row12H $ panel12H content
 
--- | Display info about a campaign.
-campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()
-campaignPageW sink (camp, ads) =
-  contentPanel $
-    E.ul [class_ "list-group"]
-      [ E.li [class_ "list-group-item"]
-          [ h1 [] [text $ AdCampaign.campaign_name camp] ]
-      , E.li [class_ "list-group-item"]
-          [ div [] [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
-      , E.li [class_ "list-group-item"]
-          [ renderAdList emptySink ads ]
-      ]
-
-  where
-    renderAdList :: Widget [Ad.Ad] ()
-    renderAdList _ ads = table [class_ "table"] [
-        tableHeaders ["FB adset id", "Name", "Budget"]
-      , tbody [] (map (adRow emptySink) ads)
-      ]
-
-    adRow :: Widget Ad.Ad ()
-    adRow _ ad = tr []
-      [ td [] [text $ showJS $ Ad.fb_adset_id ad]
-      , td [] [text $ Ad.ad_title ad]
-      , td [] [text $ showJS $ Ad.current_budget ad]
-      ]
 
 imageLibraryPageW :: Widget [Im.Image] ()
 imageLibraryPageW _ [] =
@@ -130,11 +105,6 @@ showImagePred (Just x) = text $ "Score: "<>showJS x
 getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])
 getCampaigns acc = AdCampaign.getUserCampaignsOrError (Account.username acc)
 
-loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Either AppError [Ad.Ad])
-loadAds account camp = Ad.getCampaignAdsOrError username campid
-  where campid = showJS $ AdCampaign.fbid camp
-        username = maybe "" Account.username $ account
-
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
 getImages acc = Im.getAllImagesOrError (Account.username acc)
 
@@ -152,11 +122,7 @@ withBusy sink f = \x -> do
   sink PopBusy
   return y
 
-withBusy2 sink f = \x y -> do
-  sink PushBusy
-  z <- f x y
-  sink PopBusy
-  return z
+
 
 menuItems =
   [ (NavUser,     "User")
@@ -190,11 +156,8 @@ adPlatform = do
   createAdView <- createAdPage busySink errorSink (fmap (fmap Account.username) $ current userS)
 
   -- Campaign page
-  let adsE = withErrorSink errorSink $ snapshotWith (withBusy2 busySink loadAds) (current userS) loadAdsE
-  latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
-  adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
-  let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
-  let adsView = fmap ((altW mempty campaignPageW) emptySink) lastestAndAdsS
+  adsView <- campaignPage errorSink busySink loadAdsE (current userS)
+
 
   -- Image library page
   let imageLibView = fmap ((altW mempty imageLibraryPageW) emptySink) imagesS

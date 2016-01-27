@@ -37,6 +37,7 @@ library
                      , Pages.PostSearch
                      , Pages.Login
                      , Pages.User
+                     , Pages.Campaign
                      , Components.ErrorMessages
                      , Components.BusyIndicator
                      , Components.MainMenu
