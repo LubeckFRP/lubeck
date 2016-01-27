@@ -55,6 +55,8 @@ import           BD.Utils
 import           Pages.PostSearch     (searchPage)
 import           Pages.CreateAd       (createAdPage)
 
+import Components.ErrorMessages (errorMessagesComponent)
+
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
   deriving (Show, Eq)
 
@@ -73,18 +75,6 @@ alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [con
 contentPanel content = row12H $ panel12H content
 menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-top"]
                                [ E.div [class_ "container col-xs-12"] [content] ]
-
-errorMsgW :: Widget' (Maybe AppError)
-errorMsgW _    Nothing = mempty
-errorMsgW sink (Just value) = do
-  alertPanel $
-    div [] [ text $ showError value
-           , E.button [class_ "close", click $ \_ -> sink Nothing] [E.span [] [text "×"]] ]
-
-  where
-    showError (ApiError s) = "API Error: " <> s
-    showError (BLError s)  = "BL Error: " <> s
-
 
 menu :: Widget' Nav
 menu sink value =
@@ -239,7 +229,7 @@ adPlatform = do
   (menuView, menuNavE) <- component NavLogin menu
 
   -- Errors feedback
-  (errorsView, errorSink) <- componentW Nothing errorMsgW
+  (errorsView, errorSink) <- errorMessagesComponent ([] :: [AppError])
 
   -- Login form
   (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
