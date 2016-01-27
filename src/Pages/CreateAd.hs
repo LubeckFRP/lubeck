@@ -40,6 +40,8 @@ import BD.Data.Account (Account)
 import qualified BD.Data.Account as Ac
 import BD.Api
 
+import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
+
 data NewAd = NewAd { caption :: JSString,
                      image_hash :: JSString,
                      click_link :: JSString } deriving (GHC.Generic)
@@ -68,8 +70,14 @@ createAdForm output newAd =
       , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd] $ pure $ text "Create Ad"
       ]
 
-createAdPage :: Behavior (Maybe JSString) ->IO (Signal Html)
-createAdPage mUserNameB = do
+wwb2 sink f = \x y -> do
+  sink PushBusy
+  z <- f x y
+  sink PopBusy
+  return z
+
+createAdPage :: Sink BusyCmd -> Behavior (Maybe JSString) ->IO (Signal Html)
+createAdPage busySink mUserNameB = do
   let initNewAd = NewAd "" "" ""
   (view, adCreated) <- formComponent initNewAd createAdForm
 
@@ -77,7 +85,7 @@ createAdPage mUserNameB = do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
       Just username ->  do
-        Right () <- postAPIEither (username <> "/create-ad") newAd
+        Right () <- (wwb2 busySink postAPIEither) (username <> "/create-ad") newAd
         return ()
       Nothing -> print "no username!"
     return ()

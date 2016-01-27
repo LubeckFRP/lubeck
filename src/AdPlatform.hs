@@ -263,7 +263,7 @@ adPlatform = do
       userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
 
   -- Create ad page
-  createAdView <- createAdPage (fmap (fmap Account.username) $ current userS)
+  createAdView <- createAdPage busySink (fmap (fmap Account.username) $ current userS)
 
   -- Campaign page
   let adsE = withErrorSink errorSink $ snapshotWith (wwb2 busySink loadAds) (current userS) loadAdsE
@@ -282,7 +282,7 @@ adPlatform = do
   navS <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
 
   -- Integrate post search
-  searchPageView <- searchPage (fmap (fmap Account.username) $ current userS)
+  searchPageView <- searchPage busySink (fmap (fmap Account.username) $ current userS)
 
   let view = nav <$> navS <*> menuView
                           <*> errorsView

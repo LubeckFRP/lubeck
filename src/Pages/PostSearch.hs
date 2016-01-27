@@ -43,6 +43,8 @@ import qualified BD.Query.PostQuery as PQ
 import BD.Api
 import BD.Utils
 
+import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
+
 
 
 row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] content ]
@@ -136,9 +138,14 @@ postSearchResult output posts =
         div [] [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)] [text "Upload Image"]]
         ]
 
+wwb2 sink f = \x y -> do
+  sink PushBusy
+  z <- f x y
+  sink PopBusy
+  return z
 
-searchPage :: Behavior (Maybe JSString) -> IO (Signal Html)
-searchPage mUserNameB = do
+searchPage :: Sink BusyCmd -> Behavior (Maybe JSString) -> IO (Signal Html)
+searchPage busySink mUserNameB = do
   let initPostQuery = defSimplePostQuery
 
   -- Search event (from user)
@@ -166,7 +173,7 @@ searchPage mUserNameB = do
     case mUserName of
       Nothing -> print "No account to upload post to"
       Just userName -> do
-        res <- postAPIEither (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+        res <- (wwb2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
           Left _   -> print "Failed to upload post to ad library"
           Right Ok -> print "Uploaded post"
@@ -174,7 +181,7 @@ searchPage mUserNameB = do
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
     let complexQuery = PostQuery $ complexifyPostQuery query
-    eQueryId <- postAPIEither "internal/queries" $ complexQuery
+    eQueryId <- (wwb2 busySink postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
       Left _ -> print "Failed posting query"
       Right queryId -> do
