@@ -42,20 +42,19 @@ menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-t
 type MenuItem = (Nav, JSString)
 type MenuItems = [MenuItem]
 
-mainMenuComponent :: MenuItems -> Nav -> IO (Signal Html, Events Nav)
-mainMenuComponent items z = do
-  (menuView, menuNavE) <- component z (menuW items)
+mainMenuComponent :: MenuItems -> JSString -> Nav -> IO (Signal Html, Events Nav)
+mainMenuComponent items brand z = do
+  (menuView, menuNavE) <- component z (menuW items brand)
   return (menuView, menuNavE)
 
-menuW :: MenuItems -> Widget' Nav
-menuW [] _ _ = mempty
-menuW menuItems sink value =
+menuW :: MenuItems -> JSString -> Widget' Nav
+menuW [] _ _ _ = mempty
+menuW menuItems brand sink value =
   menuPanel $
     div []
-    [ E.div [class_ "navbar-header"] [ E.a [class_ "navbar-brand"] [ text "Ad Platform" ] ]
+    [ E.div [class_ "navbar-header"] [ E.a [class_ "navbar-brand"] [ text brand ] ]
     , E.div [class_ "navbar-collapse"]
       [ E.ul [class_ "nav navbar-nav"] (fmap menuItem (init menuItems))
-
       , E.ul [class_ "nav navbar-nav navbar-right"] [ (lastMenuItem (last menuItems)) ]
       ] ]
 
@@ -66,6 +65,6 @@ menuW menuItems sink value =
 
     lastMenuItem (nav, title) =
       E.li [ class_ "btn-warning "
-           , click $ \_ -> sink nav ]    [E.a [] [text title]]
+           , click $ \_ -> sink nav ] [E.a [] [text title]]
 
     markActive x v = if x == v then "active" else ""

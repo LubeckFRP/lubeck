@@ -78,8 +78,8 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
-  (menuView, menuNavE)    <- mainMenuComponent menuItems NavLogin
-  (errorsView, errorSink) <- errorMessagesComponent ([] :: [AppError])
+  (menuView, menuNavE)    <- mainMenuComponent menuItems "Ad Platform" NavLogin
+  (errorsView, errorSink) <- errorMessagesComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
   (loginView, userLoginE) <- loginPage                       defaultUsername

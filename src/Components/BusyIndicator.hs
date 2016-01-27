@@ -70,8 +70,8 @@ busyIndicatorComponent initialBusyStack = do
 
   let busyCmds = fmap applyBusyCmd externalEvents :: Events (BusyStack -> BusyStack)
 
-  busyStackS <- accumS initialBusyStack busyCmds :: IO (Signal BusyStack)
-  let htmlS = fmap (busyW emptySink) busyStackS
+  busyStackS   <- accumS initialBusyStack busyCmds :: IO (Signal BusyStack)
+  let htmlS    = fmap (busyW emptySink) busyStackS
 
   return (htmlS, externalSink)
 
