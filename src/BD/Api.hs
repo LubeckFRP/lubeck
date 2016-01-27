@@ -104,13 +104,15 @@ postAPI path value = do
   -- liftIO $ putStrLn "DEBUG encoding body"
   body <- liftIO $ encodeJSString value
   -- liftIO $ putStrLn "DEBUG making request"
-  result <- liftIO $ xhrByteString (request body)
+  eitherResult <- liftIO $ (try $ xhrByteString (request body) :: IO (Either XHRError (Response ByteString)))
   -- liftIO $ putStrLn "DEBUG decoding result"
-  case contents result of
-    Nothing          -> throwError "getAPI: No response"
-    Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> throwError "getAPI: Parse error"
-      Just x  -> return x
+  case eitherResult of
+    Left s -> throwError ("postAPI: " <> showJS s)
+    Right result -> case contents result of
+      Nothing          -> throwError "getAPI: No response"
+      Just byteString  -> case Data.Aeson.decodeStrict byteString of
+        Nothing -> throwError "getAPI: Parse error"
+        Just x  -> return x
   where
     request body = Request {
             reqMethod          = POST

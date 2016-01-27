@@ -263,7 +263,7 @@ adPlatform = do
       userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
 
   -- Create ad page
-  createAdView <- createAdPage busySink (fmap (fmap Account.username) $ current userS)
+  createAdView <- createAdPage busySink errorSink (fmap (fmap Account.username) $ current userS)
 
   -- Campaign page
   let adsE = withErrorSink errorSink $ snapshotWith (wwb2 busySink loadAds) (current userS) loadAdsE
