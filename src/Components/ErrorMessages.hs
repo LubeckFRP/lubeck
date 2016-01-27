@@ -50,7 +50,7 @@ errorMsgW sink errs = do
     showError (ApiError s) = "API Error: " <> s
     showError (BLError s)  = "BL Error: " <> s
 
--- | Hopefully reusable error messages component.
+-- | Hopefully a reusable error messages component.
 -- It is initialized with initial list of error messages,
 -- and returns a signal of html of error messages and a sink
 -- to put new error messages in.
