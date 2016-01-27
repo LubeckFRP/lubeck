@@ -24,6 +24,8 @@ type Layout =
     :<|>
   "example-static" :> Raw
     :<|>
+  "example-static-thomasd" :> Raw
+    :<|>
   Raw
 
 main :: IO ()
@@ -45,6 +47,7 @@ main = do
       adplatformServer    <- serveApp jsExeDir "bd-adplatform"          indexHtmlFile bootstrapFile bootstrapThemeFile
       interactionsServer  <- serveApp jsExeDir "bd-interactions"        indexHtmlFile bootstrapFile bootstrapThemeFile
       exampleStaticServer <- serveApp jsExeDir "bd-example-static-page" indexHtmlFile bootstrapFile bootstrapThemeFile
+      exampleStaticServerThomasD <- serveApp jsExeDir "bd-example-static-page-thomasd" indexHtmlFile bootstrapFile bootstrapThemeFile
       indexServer         <- serveApp jsExeDir "bd-index"               indexHtmlFile bootstrapFile bootstrapThemeFile
 
       putStrLn $ "Listening on " ++ show port
@@ -53,6 +56,7 @@ main = do
           :<|> adplatformServer
           :<|> interactionsServer
           :<|> exampleStaticServer
+          :<|> exampleStaticServerThomasD
           :<|> indexServer
 
 serveApp :: String -> String -> String -> String -> String -> IO (Server Raw)
