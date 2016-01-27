@@ -54,6 +54,7 @@ import           BD.Utils
 
 import           Pages.PostSearch     (searchPage)
 import           Pages.CreateAd       (createAdPage)
+import           Pages.Login          (loginPage)
 
 import Components.ErrorMessages (errorMessagesComponent)
 import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
@@ -71,26 +72,6 @@ panel12H bd =
     ]
 
 contentPanel content = row12H $ panel12H content
-
-loginPageW :: Widget JSString (Submit JSString)
-loginPageW sink name =
-  div
-  [ class_ "row" ]
-    [ div [class_ "jumbotron col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4"] [ h1 [] [ text "Ad Platform" ]
-                               , p  [] [ text "Welcome to Beautiful Destination's Ad Platform!" ] ]
-
-    , div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4" ]
-      [ div [ submit $ \e -> preventDefault e >> return () ]
-        [ div [class_ "form-group form-group-lg"]
-          [ E.input [ class_ "form-control bottom-buffer"
-                    , A.value name
-                    , change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] []
-          , button [ class_ "form-control btn btn-primary"
-                   , click $ \_ -> sink (Submit name)] [text "Login"]
-          ]
-        ]
-      ]
-    ]
 
 -- | Display user information and current campaings.
 -- Emits campaign to view.
@@ -221,7 +202,8 @@ adPlatform = do
   (busyView, busySink)    <- busyIndicatorComponent []
 
   -- Login form
-  (loginView, userLoginE) <- formComponent "forbestravelguide" loginPageW
+  (loginView, userLoginE) <- loginPage "forbestravelguide"
+
   let userE       = withErrorSink errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
   let camapaignsE = withErrorSink errorSink $ fmap (withBusy busySink getCampaigns) userE
   let imagesE     = withErrorSink errorSink $ fmap (withBusy busySink getImages) userE
