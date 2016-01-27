@@ -39,7 +39,7 @@ row6H content = div [class_ "row busy-indicator"] [ div [class_ "col-md-6 col-lg
 infoPanel content = row6H $ div [class_ "alert alert-info text-center "] [content]
 
 data BusyCmd = PushBusy | PopBusy deriving (Show)
-type BusyStack = [Bool]
+type BusyStack = [Bool] -- can be Int, for example, but the idea is to save some additional info about busy actions later
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show
@@ -60,8 +60,8 @@ busyIndicatorComponent initialBusyStack = do
 
   let busyCmds = fmap applyBusyCmd externalEvents :: Events (BusyStack -> BusyStack)
 
-  busyStackS              <- accumS initialBusyStack busyCmds :: IO (Signal BusyStack)
-  let htmlS       = fmap (busyW emptySink) busyStackS
+  busyStackS <- accumS initialBusyStack busyCmds :: IO (Signal BusyStack)
+  let htmlS = fmap (busyW emptySink) busyStackS
 
   return (htmlS, externalSink)
 
