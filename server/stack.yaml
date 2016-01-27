@@ -2,5 +2,5 @@ flags: {}
 compiler: ghc-7.10.2
 packages:
 - '.'
-extra-deps:
+extra-deps: []
 resolver: nightly-2015-12-14
