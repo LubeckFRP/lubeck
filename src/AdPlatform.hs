@@ -11,21 +11,9 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import           Control.Concurrent             (forkIO, threadDelay)
-import           Control.Lens                   (over, set)
-import           Control.Lens.TH                (makeLenses)
-import           Control.Monad                  (forM_, forever, unless)
-import           Data.Default                   (def)
-import qualified Data.List
-import           Data.Map                       (Map)
-import qualified Data.Map                       as Map
 
 import           Data.Monoid
-import           Data.String                    (fromString)
 
-import           Data.JSString.Text             (textFromJSString)
-import           GHCJS.Foreign.QQ               (js, jsu, jsu')
-import           GHCJS.Types                    (JSString, jsval)
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
                                                  tbody, td, text, th, thead, tr)
@@ -34,12 +22,10 @@ import           Web.VirtualDom.Html.Attributes (class_, src, width)
 import qualified Web.VirtualDom.Html.Attributes as A
 import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
                                                  stopPropagation, submit, value)
--- import           GHCJS.VDOM.Unsafe    (Attributes', unsafeToAttributes)
 
-import           Lubeck.App                     (Html, runApp, runAppReactive)
+import           Lubeck.App                     (Html, runAppReactive)
 import           Lubeck.Forms
 import           Lubeck.FRP
-import           Lubeck.Web.URI                 (encodeURIComponent)
 
 import qualified BD.Data.Account                as Account
 import qualified BD.Data.Ad                     as Ad
@@ -60,9 +46,12 @@ import           Pages.PostSearch               (searchPage)
 import           Pages.User                     (userPage)
 
 import           Components.BusyIndicator       (BusyCmd (..),
+                                                 withBusy,
                                                  busyIndicatorComponent)
 import           Components.ErrorMessages       (errorMessagesComponent)
 import           Components.MainMenu            (mainMenuComponent)
+
+import           Lib.Helpers
 
 
 getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])
@@ -70,20 +59,6 @@ getCampaigns acc = AdCampaign.getUserCampaignsOrError (Account.username acc)
 
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
 getImages acc = Im.getAllImagesOrError (Account.username acc)
-
-eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
-eitherToError sink (Left x)  = sink (Just x) >> return Nothing
-eitherToError sink (Right x) = return (Just x)
-
-withErrorSink :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
-withErrorSink errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
-
--- FIXME what about lazyness etc?
-withBusy sink f = \x -> do
-  sink PushBusy
-  y <- f x
-  sink PopBusy
-  return y
 
 menuItems =
   [ (NavUser,     "User")
@@ -112,12 +87,10 @@ adPlatform = do
 
   (userView, loadAdsE)    <- userPage userAndCampaignsS
   createAdView            <- createAdPage busySink errorSink usernameB
-  adsView                 <- campaignPage errorSink busySink loadAdsE (current userS)
+  adsView                 <- campaignPage busySink errorSink loadAdsE (current userS)
   imageLibView            <- imageLibraryPage imagesS
   searchPageView          <- searchPage busySink usernameB
 
-
-  -- Determines what page we are viewing
   let postLoginNavE       = fmap (const NavUser) (updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)
   navS                    <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
@@ -142,16 +115,14 @@ nav goTo menu errMsg busy login user ads search createAd imlib = case goTo of
   NavCreateAd -> wrap menu createAd
   NavImages   -> wrap menu imlib
   where
-    wrap menu page = div [class_ "container"]
-      [ div [] []
-      , menu
-      , div [class_ "col-xs-12 top-buffer"]
-        [ div [] []
-        , busy
-        , errMsg
-        , page
-        ]
-      ]
+    wrap menu page =
+      div [class_ "container"]
+        [ menu
+        , div [class_ "col-xs-12 top-buffer"]
+          [ busy
+          , errMsg
+          , page
+          ] ]
 
 
 main = adPlatform >>= runAppReactive

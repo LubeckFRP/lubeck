@@ -11,9 +11,9 @@ import qualified Prelude
 
 import           Control.Applicative
 import qualified Data.List
+import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid
 import           Data.String                    (fromString)
-import           Data.Maybe           (fromMaybe)
 
 import           GHCJS.Types                    (JSString)
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -34,18 +34,7 @@ import qualified BD.Data.Image                  as Im
 
 import           BD.Types
 import           BD.Utils
-
-
-row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
-
-panel12H :: Html -> Html
-panel12H bd =
-  div [class_ "panel panel-default"]
-    [ --div [class_ "panel-heading"] hd
-     div [class_ "panel-body"] [bd]
-    ]
-
-contentPanel content = row12H $ panel12H content
+import           Lib.Helpers
 
 
 imageLibraryPageW :: Widget [Im.Image] ()
@@ -68,16 +57,12 @@ imageCell img =
            , br [] []
            , text ("Hash: " <> (fromMaybe "none" $ Im.fb_image_hash img)) ]
 
-showImagePred Nothing = text "No prediction"
+showImagePred Nothing  = text "No prediction"
 showImagePred (Just x) = text $ "Score: "<> showJS x
 
 imgFromWidthAndUrl' :: Int -> Maybe JSString -> [Property] -> Html
 imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url, class_ "img-thumbnail"]) []
 imgFromWidthAndUrl' w Nothing attrs    = text "No URL"
-
-showJS :: Show a => a -> JSString
-showJS = fromString . show
-
 
 imageLibraryPage :: Signal (Maybe [Im.Image]) -> IO (Signal Html)
 imageLibraryPage imagesS = do

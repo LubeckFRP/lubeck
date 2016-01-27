@@ -1,61 +1,61 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Pages.PostSearch
   ( searchPage
   ) where
 
-import Prelude hiding (div)
+import           Prelude                        hiding (div)
 import qualified Prelude
 
-import qualified Data.Maybe
+import           Control.Applicative
+import           Control.Lens                   (lens, over, set, view)
 import qualified Data.List
-import Data.Monoid
-import Control.Applicative
-import qualified Data.Map as Map
-import Data.Map(Map)
-import Control.Lens (over, set, view, lens)
+import           Data.Map                       (Map)
+import qualified Data.Map                       as Map
+import qualified Data.Maybe
+import           Data.Monoid
 
-import GHCJS.Types(JSString, jsval)
 import qualified Data.JSString
-import Web.VirtualDom.Html (Property, p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
-import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
-import qualified Web.VirtualDom.Html as E
+import           GHCJS.Types                    (JSString)
+import           Web.VirtualDom.Html            (Property, a, button, div, form,
+                                                 h1, hr, img, input, label, p,
+                                                 table, tbody, td, text, th, tr)
+import qualified Web.VirtualDom.Html            as E
+import           Web.VirtualDom.Html.Attributes (class_, href, src, src, target,
+                                                 width, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import qualified Web.VirtualDom.Html.Events as Ev
-import GHCJS.Foreign.QQ (js, jsu, jsu')
+import           Web.VirtualDom.Html.Events     (change, click, keyup,
+                                                 preventDefault,
+                                                 stopPropagation, submit, value)
+import qualified Web.VirtualDom.Html.Events     as Ev
 
-import Lubeck.FRP
-import Lubeck.Forms
-import Lubeck.Forms.Select
-import Lubeck.Forms.Interval
-import Lubeck.App (Html, runAppReactive)
-import Lubeck.Web.URI (getURIParameter)
-import Lubeck.Util()
+import           Lubeck.App                     (Html, runAppReactive)
+import           Lubeck.Forms
+import           Lubeck.Forms.Interval
+import           Lubeck.Forms.Select
+import           Lubeck.FRP
+import           Lubeck.Util                    ()
+import           Lubeck.Web.URI                 (getURIParameter)
 
-import BD.Data.Account (Account)
-import qualified BD.Data.Account as Ac
-import BD.Data.SearchPost (SearchPost)
-import qualified BD.Data.SearchPost as P
-import BD.Query.PostQuery
-import qualified BD.Query.PostQuery as PQ
-import BD.Api
-import BD.Utils
+import           BD.Api
+import           BD.Data.Account                (Account)
+import qualified BD.Data.Account                as Ac
+import           BD.Data.SearchPost             (SearchPost)
+import qualified BD.Data.SearchPost             as P
+import           BD.Query.PostQuery
+import qualified BD.Query.PostQuery             as PQ
+import           BD.Utils
+import           Components.BusyIndicator       (withBusy2)
 
-import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
+import           Components.BusyIndicator       (BusyCmd (..),
+                                                 busyIndicatorComponent)
 
-
-
-row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] content ]
-row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] content ]
-
-panel12H :: Html -> Html -> Html
-panel12H hd bd =
-  div [class_ "panel panel-default"]
-    [ --div [class_ "panel-heading"] hd
-      div [class_ "panel-body"] [bd]
-    ]
+import           Lib.Helpers
 
 
 -- TODO finish
@@ -138,12 +138,6 @@ postSearchResult output posts =
         div [] [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)] [text "Upload Image"]]
         ]
 
-wwb2 sink f = \x y -> do
-  sink PushBusy
-  z <- f x y
-  sink PopBusy
-  return z
-
 searchPage :: Sink BusyCmd -> Behavior (Maybe JSString) -> IO (Signal Html)
 searchPage busySink mUserNameB = do
   let initPostQuery = defSimplePostQuery
@@ -173,7 +167,7 @@ searchPage busySink mUserNameB = do
     case mUserName of
       Nothing -> print "No account to upload post to"
       Just userName -> do
-        res <- (wwb2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+        res <- (withBusy2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
           Left _   -> print "Failed to upload post to ad library"
           Right Ok -> print "Uploaded post"
@@ -181,7 +175,7 @@ searchPage busySink mUserNameB = do
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
     let complexQuery = PostQuery $ complexifyPostQuery query
-    eQueryId <- (wwb2 busySink postAPIEither) "internal/queries" $ complexQuery
+    eQueryId <- (withBusy2 busySink postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
       Left _ -> print "Failed posting query"
       Right queryId -> do
@@ -217,6 +211,3 @@ showWithThousandSeparator n = Data.JSString.pack $ concat $ Data.List.interspers
 -- | Like newEvent with a type hint.
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf _ = newEvent
-
-showJS :: Show a => a -> JSString
-showJS = Data.JSString.pack . show

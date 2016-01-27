@@ -12,7 +12,6 @@ import qualified Prelude
 import           Control.Applicative
 import qualified Data.List
 import           Data.Monoid
-import           Data.String                    (fromString)
 
 import           GHCJS.Types                    (JSString)
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -32,28 +31,13 @@ import qualified BD.Data.Account                as Account
 import qualified BD.Data.Ad                     as Ad
 import qualified BD.Data.AdCampaign             as AdCampaign
 
-import           Components.BusyIndicator       (BusyCmd (..))
+import           Components.BusyIndicator       (withBusy2, BusyCmd (..))
 
 import           BD.Types
 import           BD.Utils
+import           Lib.Helpers
 
-row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
-row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
 
-panel12H :: Html -> Html
-panel12H bd =
-  div [class_ "panel panel-default"]
-    [ --div [class_ "panel-heading"] hd
-     div [class_ "panel-body"] [bd]
-    ]
-
-contentPanel content = row12H $ panel12H content
-
-showJS :: Show a => a -> JSString
-showJS = fromString . show
-
-tableHeaders :: [JSString] -> Html
-tableHeaders hs = thead [] [ tr [] $ map (th [] . (:[]) . text) hs]
 
 -- | Display info about a campaign.
 campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()
@@ -82,30 +66,17 @@ campaignPageW sink (camp, ads) =
       , td [] [text $ showJS $ Ad.current_budget ad]
       ]
 
-withBusy2 sink f = \x y -> do
-  sink PushBusy
-  z <- f x y
-  sink PopBusy
-  return z
-
 loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Either AppError [Ad.Ad])
 loadAds account camp = Ad.getCampaignAdsOrError username campid
   where campid = showJS $ AdCampaign.fbid camp
         username = maybe "" Account.username $ account
 
-eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
-eitherToError sink (Left x)  = sink (Just x) >> return Nothing
-eitherToError sink (Right x) = return (Just x)
-
-withErrorSink :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
-withErrorSink errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
-
-campaignPage :: Sink (Maybe AppError)
-             -> Sink BusyCmd
+campaignPage :: Sink BusyCmd
+             -> Sink (Maybe AppError)
              -> Events AdCampaign.AdCampaign
              -> Behavior (Maybe Account.Account)
              -> IO (Signal Html)
-campaignPage errorSink busySink loadAdsE userB = do
+campaignPage busySink errorSink loadAdsE userB = do
   let adsE = withErrorSink errorSink $ snapshotWith (withBusy2 busySink loadAds) userB loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))

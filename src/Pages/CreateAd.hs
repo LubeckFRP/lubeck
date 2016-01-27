@@ -42,7 +42,7 @@ import qualified BD.Data.Account as Ac
 import BD.Api
 import BD.Types
 
-import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
+import Components.BusyIndicator (BusyCmd(..))
 
 data NewAd = NewAd { caption :: JSString,
                      image_hash :: JSString,

@@ -33,24 +33,8 @@ import qualified BD.Data.AdCampaign             as AdCampaign
 
 import           BD.Types
 import           BD.Utils
+import           Lib.Helpers
 
-row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
-row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
-
-panel12H :: Html -> Html
-panel12H bd =
-  div [class_ "panel panel-default"]
-    [ --div [class_ "panel-heading"] hd
-     div [class_ "panel-body"] [bd]
-    ]
-
-contentPanel content = row12H $ panel12H content
-
-showJS :: Show a => a -> JSString
-showJS = fromString . show
-
-tableHeaders :: [JSString] -> Html
-tableHeaders hs = thead [] [ tr [] $ map (th [] . (:[]) . text) hs]
 
 -- | Display user information and current campaings.
 -- Emits campaign to view.
