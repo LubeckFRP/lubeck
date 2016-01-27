@@ -1,0 +1,86 @@
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
+
+module Pages.ImageLibrary
+  (imageLibraryPage
+  ) where
+
+import           Prelude                        hiding (div)
+import qualified Prelude
+
+import           Control.Applicative
+import qualified Data.List
+import           Data.Monoid
+import           Data.String                    (fromString)
+import           Data.Maybe           (fromMaybe)
+
+import           GHCJS.Types                    (JSString)
+import           Web.VirtualDom.Html            (Property, br, button, div,
+                                                 form, h1, hr, img, p, table,
+                                                 tbody, td, text, th, thead, tr)
+import qualified Web.VirtualDom.Html            as E
+import           Web.VirtualDom.Html.Attributes (class_, src, width)
+import qualified Web.VirtualDom.Html.Attributes as A
+import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
+                                                 stopPropagation, submit, value)
+
+import           Lubeck.App                     (Html)
+import           Lubeck.Forms
+import           Lubeck.FRP
+
+import qualified BD.Data.Image                  as Im
+
+
+import           BD.Types
+import           BD.Utils
+
+
+row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
+
+panel12H :: Html -> Html
+panel12H bd =
+  div [class_ "panel panel-default"]
+    [ --div [class_ "panel-heading"] hd
+     div [class_ "panel-body"] [bd]
+    ]
+
+contentPanel content = row12H $ panel12H content
+
+
+imageLibraryPageW :: Widget [Im.Image] ()
+imageLibraryPageW _ [] =
+  contentPanel $ text "No images in library"
+
+imageLibraryPageW _ ims =
+  contentPanel $
+    table [class_ "table table-striped table-hover"]
+      [ tbody [] $ map (tr [] . map imageCell) (divide 5 ims) ]
+
+
+imageCell img =
+  let imgUrl = case Im.fb_thumb_url img of
+        Nothing ->  Im.fb_image_url img
+        Just url -> Just url
+  in td [] [ imgFromWidthAndUrl' 150 (imgUrl) []
+           , br [] []
+           , showImagePred $ Im.prediction img
+           , br [] []
+           , text ("Hash: " <> (fromMaybe "none" $ Im.fb_image_hash img)) ]
+
+showImagePred Nothing = text "No prediction"
+showImagePred (Just x) = text $ "Score: "<> showJS x
+
+imgFromWidthAndUrl' :: Int -> Maybe JSString -> [Property] -> Html
+imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url, class_ "img-thumbnail"]) []
+imgFromWidthAndUrl' w Nothing attrs    = text "No URL"
+
+showJS :: Show a => a -> JSString
+showJS = fromString . show
+
+
+imageLibraryPage :: Signal (Maybe [Im.Image]) -> IO (Signal Html)
+imageLibraryPage imagesS = do
+  let imageLibView = fmap ((altW mempty imageLibraryPageW) emptySink) imagesS
+
+  return imageLibView

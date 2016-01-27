@@ -38,6 +38,7 @@ library
                      , Pages.Login
                      , Pages.User
                      , Pages.Campaign
+                     , Pages.ImageLibrary
                      , Components.ErrorMessages
                      , Components.BusyIndicator
                      , Components.MainMenu
