@@ -28,8 +28,8 @@ eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
 eitherToError sink (Left x)  = sink (Just x) >> return Nothing
 eitherToError sink (Right x) = return (Just x)
 
-withErrorSink :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
-withErrorSink errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
+withError :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
+withError errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show

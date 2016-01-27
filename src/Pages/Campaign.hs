@@ -80,7 +80,7 @@ campaignPage :: Sink BusyCmd
              -> Behavior (Maybe Account.Account)
              -> IO (Signal Html)
 campaignPage busySink errorSink loadAdsE userB = do
-  let adsE = withErrorSink errorSink $ snapshotWith (withBusy2 busySink loadAds) userB loadAdsE
+  let adsE = withError errorSink $ snapshotWith (withBusy2 busySink loadAds) userB loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
   let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))

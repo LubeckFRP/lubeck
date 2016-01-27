@@ -82,22 +82,22 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent ([] :: [AppError])
   (busyView, busySink)    <- busyIndicatorComponent []
 
-  (loginView, userLoginE) <- loginPage defaultUsername
+  (loginView, userLoginE) <- loginPage                       defaultUsername
 
-  let userE               = withErrorSink errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
-  let camapaignsE         = withErrorSink errorSink $ fmap (withBusy busySink getCampaigns) userE
-  let imagesE             = withErrorSink errorSink $ fmap (withBusy busySink getImages) userE
+  let userE               = withError errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
+  let camapaignsE         = withError errorSink $ fmap (withBusy busySink getCampaigns) userE
+  let imagesE             = withError errorSink $ fmap (withBusy busySink getImages) userE
   userS                   <- stepperS Nothing (fmap Just userE)
   campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
   imagesS                 <- stepperS Nothing (fmap Just imagesE)
   let userAndCampaignsS   = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
   let usernameB           = fmap (fmap Account.username) $ current userS
 
-  (userView, loadAdsE)    <- userPage userAndCampaignsS
+  (userView, loadAdsE)    <- userPage                        userAndCampaignsS
   createAdView            <- createAdPage busySink errorSink usernameB
   adsView                 <- campaignPage busySink errorSink loadAdsE (current userS)
-  imageLibView            <- imageLibraryPage imagesS
-  searchPageView          <- searchPage busySink usernameB
+  imageLibView            <- imageLibraryPage                imagesS
+  searchPageView          <- searchPage   busySink           usernameB
 
   let postLoginNavE       = fmap (const NavUser) (updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)
