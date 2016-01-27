@@ -17,7 +17,9 @@ wget -qO- https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 echo 'deb https://deb.nodesource.com/node_0.10 trusty main' > /etc/apt/sources.list.d/nodesource.list
 echo 'deb-src https://deb.nodesource.com/node_0.10 trusty main' >> /etc/apt/sources.list.d/nodesource.list
 
-sudo apt-get install -y cabal-install-1.22 ghc-7.10.2 stack zile libtinfo-dev nodejs alex-3.1.4 happy-1.19.5 dh-autoreconf zopfli
+apt-get update
+
+apt-get install -y cabal-install-1.22 ghc-7.10.2 stack zile libtinfo-dev nodejs alex-3.1.4 happy-1.19.5 dh-autoreconf zopfli
 
 npm install closurecompiler -g
 
@@ -26,7 +28,7 @@ export PATH="/home/vagrant/.cabal/bin:/home/vagrant/.local/bin:/opt/happy/1.19.5
 
 EOF
 
-su vagrant -c 'cd ghcjs-test && bash setup_ghcjs.sh'
+su vagrant -c 'cd lubeck && bash setup_ghcjs.sh'
 
 SCRIPT
 
@@ -35,7 +37,7 @@ Vagrant.configure("2") do |config|
   config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box"
 
   config.vm.synced_folder ".", "/home/vagrant/lubeck"
-  config.vm.synced_folder "../ghcjs-vdom", "/home/vagrant/ghcjs-vdom"
+  config.vm.synced_folder "../virtual-dom", "/home/vagrant/virtual-dom"
   config.vm.synced_folder "../ghcjs-ffiqq", "/home/vagrant/ghcjs-ffiqq"
 
 
