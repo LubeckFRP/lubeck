@@ -16,6 +16,15 @@
 .top-buffer { margin-top: 80px !important; }
 .bottom-buffer { margin-bottom: 20px; }
 
+.busy-indicator {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2050;
+}
+
 .btn-default,
 .btn-primary,
 .btn-success,

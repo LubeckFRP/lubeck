@@ -35,7 +35,7 @@ import           Lubeck.FRP
 import           BD.Types
 
 
-row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
+row6H content = div [class_ "row busy-indicator"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
 infoPanel content = row6H $ div [class_ "alert alert-info text-center "] [content]
 
 data BusyCmd = PushBusy | PopBusy deriving (Show)
