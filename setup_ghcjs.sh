@@ -10,7 +10,7 @@ stack setup && stack install -j2
 
 ghcjs-boot --dev
 
-cd ~/ghcjs-test
+cd ~/lubeck
 
 cabal update
 
@@ -18,7 +18,7 @@ cabal sandbox delete || true
 
 cabal sandbox init
 
-cabal sandbox add-source ../ghcjs-vdom
+cabal sandbox add-source ../virtual-dom
 
 cabal sandbox add-source ../ghcjs-ffiqq
 
