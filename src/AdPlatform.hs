@@ -55,6 +55,7 @@ import           BD.Utils
 import           Pages.PostSearch     (searchPage)
 import           Pages.CreateAd       (createAdPage)
 import           Pages.Login          (loginPage)
+import           Pages.User           (userPage)
 
 import Components.ErrorMessages (errorMessagesComponent)
 import Components.BusyIndicator (busyIndicatorComponent, BusyCmd(..))
@@ -72,36 +73,6 @@ panel12H bd =
     ]
 
 contentPanel content = row12H $ panel12H content
-
--- | Display user information and current campaings.
--- Emits campaign to view.
-userPageW :: Widget (Account.Account, [AdCampaign.AdCampaign]) AdCampaign.AdCampaign
-userPageW sink (acc, camps) =
-  contentPanel $
-    E.ul [class_ "list-group"]
-      [ E.li [class_ "list-group-item"]
-          [ E.h3 [] [text $ Account.username acc ] ]
-      , E.li [class_ "list-group-item"]
-          [ div [] [text $ showJS $ Account.latest_count acc ] ]
-      , E.li [class_ "list-group-item"]
-          [ div [] [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
-      , E.li [class_ "list-group-item"]
-          [ campaignTable sink camps ]
-      ]
-
-  where
-    campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
-    campaignTable sink camps = table [class_ "table"] [
-        tableHeaders ["FB id", "Name", ""]
-      , tbody [] (map (campaignRow sink) $ zip [0..] camps)
-      ]
-
-    campaignRow :: Widget (Int, AdCampaign.AdCampaign) AdCampaign.AdCampaign
-    campaignRow sink (ix, camp) = tr []
-      [ td [] [text $ showJS $ AdCampaign.fbid camp]
-      , td [] [text $ AdCampaign.campaign_name camp]
-      , td [] [E.button [class_ "btn btn-default", click $ \_ -> sink camp] [text "view"]]
-      ]
 
 -- | Display info about a campaign.
 campaignPageW :: Widget (AdCampaign.AdCampaign, [Ad.Ad]) ()
@@ -212,10 +183,8 @@ adPlatform = do
   imagesS         <- stepperS Nothing (fmap Just imagesE)
 
   -- User page
-  (fetchCampaignAds :: Sink AdCampaign.AdCampaign, loadAdsE) <- newEvent
   let userAndCampaignsS = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
-  let userView :: Signal Html
-      userView = fmap ((altW mempty userPageW) fetchCampaignAds) userAndCampaignsS
+  (userView, loadAdsE) <- userPage userAndCampaignsS
 
   -- Create ad page
   createAdView <- createAdPage busySink errorSink (fmap (fmap Account.username) $ current userS)
@@ -274,10 +243,6 @@ nav goTo menu errMsg busy login user ads search createAd imlib = case goTo of
 
 main = do
   adPlatform >>= runAppReactive
-
-  -- searchPage (pure (pure "jacob")) >>= runAppReactive
--- main :: IO ()
--- main = runApp update render
 
 
 -- UTILITY
