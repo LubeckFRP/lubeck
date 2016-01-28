@@ -43,4 +43,4 @@ getCampaignAds :: JSString -> JSString -> IO [Ad]
 getCampaignAds unm campid =  unsafeGetAPI $ unm <> "/ads/" <> campid
 
 getCampaignAdsOrError :: JSString -> JSString -> IO (Either AppError [Ad])
-getCampaignAdsOrError unm campid = getAPIEither (unm <> "/ads/" <> campid) >>= return . bimap ApiError payload
+getCampaignAdsOrError unm campid = getAPIEither (unm <> "/ads/" <> campid) >>= return . bimap ApiError id

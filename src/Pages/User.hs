@@ -11,6 +11,7 @@ import qualified Prelude
 
 import           Control.Applicative
 import qualified Data.List
+import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid
 import           Data.String                    (fromString)
 
@@ -43,9 +44,18 @@ userPageW sink (acc, camps) =
   contentPanel $
     E.ul [class_ "list-group"]
       [ E.li [class_ "list-group-item"]
-          [ E.h3 [] [text $ Account.username acc ] ]
+          [ div [class_ "media"]
+              [ div [class_ "media-left"]
+                  [ (profilePicture $ Account.profile_picture acc) ]
+
+              , div [class_ "media-body"]
+                  [ E.h2 [ class_ "account-username" ] [ text $ Account.username acc ]
+                  , p [] [ text $ fromMaybe "" (Account.bio acc) ]
+                  , p [] [ E.a [ A.href (fromMaybe "" (Account.website acc)) ] [ text $ fromMaybe "" (Account.website acc) ] ]
+                  ]
+              ] ]
       , E.li [class_ "list-group-item"]
-          [ div [] [text $ showJS $ Account.latest_count acc ] ]
+          [ div [] [text "Latest count: ", text $ fromMaybe "unknown" (fmap showJS $ Account.latest_count acc) ] ]
       , E.li [class_ "list-group-item"]
           [ div [] [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
       , E.li [class_ "list-group-item"]
@@ -53,6 +63,9 @@ userPageW sink (acc, camps) =
       ]
 
   where
+    profilePicture Nothing = mempty
+    profilePicture (Just url) = E.img [class_ "pull-left account-picture", src url] []
+
     campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
     campaignTable sink camps = table [class_ "table"] [
         tableHeaders ["FB id", "Name", ""]

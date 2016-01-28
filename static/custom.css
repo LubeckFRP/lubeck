@@ -91,3 +91,8 @@
 .navbar-nav, .navbar-nav li, .navbar-nav li a {
   cursor: pointer;
 }
+
+.account-username {
+  margin-top: 10px;
+  margin-bottom: 25px;
+}
