@@ -47,27 +47,27 @@ imageLibraryPageW _ [] =
   contentPanel $ text "No images in library"
 
 imageLibraryPageW _ ims =
-  contentPanel $
-    table [class_ "table table-striped table-hover"]
-      [ tbody [] $ map (tr [] . map imageCell) (divide 5 ims) ]
-
+  contentPanel $ div [] (map imageCell ims)
 
 imageCell img =
   let imgUrl = case Im.fb_thumb_url img of
-        Nothing ->  Im.fb_image_url img
+        Nothing  -> Im.fb_image_url img
         Just url -> Just url
-  in td [] [ imgFromWidthAndUrl' 150 (imgUrl) []
-           , br [] []
-           , showImagePred $ Im.prediction img
-           , br [] []
-           , text ("Hash: " <> (fromMaybe "none" $ Im.fb_image_hash img)) ]
+  in div [class_ "thumbnail custom-thumbnail-1 fit-text"]
+      [ imgWithAttrs imgUrl []
+      , p [class_ "image-prediction"] [ showImagePred $ Im.prediction img ]
+      , p [class_ "image-hash"]       (showImageHash $ Im.fb_image_hash img)
+      ]
 
 showImagePred Nothing  = text "No prediction"
 showImagePred (Just x) = text $ "Score: "<> showJS x
 
-imgFromWidthAndUrl' :: Int -> Maybe JSString -> [Property] -> Html
-imgFromWidthAndUrl' w (Just url) attrs = img (attrs ++ [width w, src url, class_ "img-thumbnail"]) []
-imgFromWidthAndUrl' w Nothing attrs    = text "No URL"
+showImageHash Nothing  = [text "No hash"]
+showImageHash (Just x) = [E.span [] [text "Hash: "], E.span [class_ "image-hash-value"] [text x]]
+
+imgWithAttrs :: Maybe JSString -> [Property] -> Html
+imgWithAttrs (Just url) attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
+imgWithAttrs Nothing attrs    = text "No URL"
 
 imageLibraryPage :: Signal (Maybe [Im.Image]) -> IO (Signal Html)
 imageLibraryPage imagesS = do

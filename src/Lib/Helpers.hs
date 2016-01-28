@@ -35,7 +35,7 @@ showJS :: Show a => a -> JSString
 showJS = fromString . show
 
 row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
-row12H content = div [class_ "row"] [ div [class_ "col-xs-12"] [content] ]
+row12H content = div [class_ "row"] [ div [class_ "col-xs-12 col-sm-12 col-md-12 col-lg-12"] [content] ]
 
 panel12H :: Html -> Html
 panel12H bd =

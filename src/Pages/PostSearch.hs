@@ -105,39 +105,40 @@ data PostAction
 -- | Non-interactive post table (for search results).
 postSearchResult :: Widget [Post] PostAction
 postSearchResult output posts =
-  div [class_ "row"]
-    [ div [class_ "col-md-4 col-lg-3"]
-      [ div []
-        [ h1 [] [text "Search Results"]
-        , div [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
-        , postTable output posts
-        ]
+  contentPanel $
+    div []
+      [ h1 [] [text "Search Results"]
+      , div [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
+      , postTable output posts
       ]
-    ]
+
+
 
   where
     postTable :: Widget [Post] PostAction
     postTable output posts =
-      table [class_ "table table-striped table-hover"] $
-        pure $ tbody [] $
-          fmap (tr [] . fmap (postTableCell output)) (divide 5 posts)
+      div [] (map (postTableCell output) posts)
+      -- table [class_ "table table-striped table-hover"] $
+        -- pure $ tbody [] $
+          -- fmap (tr [] . fmap (postTableCell output)) (divide 5 posts)
 
     postTableCell :: Widget Post PostAction
-    postTableCell output post = td []
-      [ a [ target "_blank",
-            href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)
-            -- , class_ "hh-brighten-image"
-            ]
-          [ imgFromWidthAndUrl' 150 (P.thumbnail_url post) [{-fixMissingImage-}] ],
-        div [] [
-          a [href "#"
-          ] [text $ "@" <> P.username post]
-          ],
-        div [] [text $ "(l) " <> showWithThousandSeparator (P.like_count post)],
-        div [] [text $ "(c) " <> showWithThousandSeparator (P.comment_count post)],
-        -- For uploading to marketing api
-        div [] [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)] [text "Upload Image"]]
+    postTableCell output post =
+      div [ class_ "thumbnail custom-thumbnail-1 fit-text" ]
+        [ a [ target "_blank"
+            , href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post) ]
+            [ imgFromWidthAndUrl (P.thumbnail_url post) [{-fixMissingImage-}] ]
+        , div [] [ a [href "#"] [text $ "@" <> P.username post] ]
+        , div [] [ text $ "Likes count: " <> showWithThousandSeparator (P.like_count post) ]
+        , div [] [ text $ "Comments count: " <> showWithThousandSeparator (P.comment_count post) ]
+
+          -- For uploading to marketing api
+        , div [] [ button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)]
+                          [text "Upload Image"]]
         ]
+
+    imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
+
 
 searchPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Behavior (Maybe JSString) -> IO (Signal Html)
 searchPage busySink errorSink mUserNameB = do
@@ -189,23 +190,7 @@ searchPage busySink errorSink mUserNameB = do
   return view
 
 
--- MAIN
-
--- main :: IO ()
--- main = do
---   mUserName <- getURIParameter "user"
---   let mUserNameB = pure mUserName :: Behavior (Maybe JSString)
---   searchPage mUserNameB >>= runAppReactive
-
-
-
 -- UTILITY
-
-imgFromWidthAndUrl' :: Int -> JSString -> [Property] -> Html
-imgFromWidthAndUrl' w url attrs = img (attrs ++ [width w, src url]) []
-
--- imgFromWidthAndUrlCircle' : Int -> String -> List Html.Attribute -> Html
--- imgFromWidthAndUrlCircle' width url attrs = img (attrs ++ [class_ "img-circle", width width, src url]) []
 
 showWithThousandSeparator :: Int -> JSString
 showWithThousandSeparator n = Data.JSString.pack $ concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show n
