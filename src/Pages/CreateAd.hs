@@ -65,7 +65,7 @@ instance FromJSON NewAd
 
 createAdForm :: Widget NewAd (Submit NewAd)
 createAdForm output newAd =
-  row6H $ panel12H $
+  contentPanel $
     div [class_ "form-group form-group-sm"]
       [ longStringWidget "Caption"    (contramapSink (\new -> DontSubmit $ newAd { caption = new })     output) (caption newAd)
       , longStringWidget "Image Hash" (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)

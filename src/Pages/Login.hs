@@ -32,20 +32,22 @@ import           BD.Utils
 
 loginPageW :: Widget JSString (Submit JSString)
 loginPageW sink name =
-  div
-  [ class_ "row" ]
-    [ div [class_ "jumbotron col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4"]
-      [ h1 [] [ text "Ad Platform" ]
-      , p  [] [ text "Welcome to Beautiful Destination's Ad Platform!" ] ]
-
-    , div [ class_ "col-xs-12 col-sm-8 col-md-6 col-lg-4 col-sm-offset-2 col-md-offset-3 col-lg-offset-4" ]
-      [ div [ submit $ \e -> preventDefault e >> return () ]
-        [ div [class_ "form-group form-group-lg"]
-          [ E.input [ class_ "form-control bottom-buffer"
-                    , A.value name
-                    , change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] []
-          , button [ class_ "form-control btn btn-primary"
-                   , click $ \_ -> sink (Submit name)] [text "Login"]
+  div [] [
+    div [ class_ "row" ]
+      [ div [class_ "jumbotron col-xs-10 col-sm-6 col-md-5 col-lg-4 col-xs-offset-1 col-sm-offset-3 col-md-offset-3 col-lg-offset-4"]
+        [ h1 [] [ text "Ad Platform" ]
+        , p  [] [ text "Welcome to Beautiful Destination's Ad Platform!" ] ]
+      ]
+    , div [class_ "row"]
+      [ div [ class_ "col-xs-10 col-sm-6 col-md-5 col-lg-4 col-xs-offset-1 col-sm-offset-3 col-md-offset-3 col-lg-offset-4" ]
+        [ div [ submit $ \e -> preventDefault e >> return () ]
+          [ div [class_ "form-group form-group-lg"]
+            [ E.input [ class_ "form-control bottom-buffer"
+                      , A.value name
+                      , change $ \e -> preventDefault e >> sink (DontSubmit $ value e)] []
+            , button [ class_ "form-control btn btn-primary"
+                     , click $ \_ -> sink (Submit name)] [text "Login"]
+            ]
           ]
         ]
       ]

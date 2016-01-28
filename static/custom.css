@@ -51,8 +51,22 @@
   height: 150px;
   min-width: 150px;
   min-height: 150px;
-  background-color: #eee;
+  /*background-color: #eee;*/
   border: 0px solid black;
+  box-shadow: none;
+}
+.thumbnail-wrapper {
+  border: 0px solid red;
+  padding: 0px;
+  margin: 0px;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 150px;
+  height: 150px;
+  min-width: 150px;
+  min-height: 150px;
+  background-color: #eee;
 }
 
 .image-hash-value {
@@ -72,4 +86,8 @@
 .list-group {
   border: 0px solid red;
   box-shadow: none;
+}
+
+.navbar-nav, .navbar-nav li, .navbar-nav li a {
+  cursor: pointer;
 }

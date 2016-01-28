@@ -54,7 +54,7 @@ imageCell img =
         Nothing  -> Im.fb_image_url img
         Just url -> Just url
   in div [class_ "thumbnail custom-thumbnail-1 fit-text"]
-      [ imgWithAttrs imgUrl []
+      [ div [class_ "thumbnail-wrapper"] [ imgWithAttrs imgUrl [] ]
       , p [class_ "image-prediction"] [ showImagePred $ Im.prediction img ]
       , p [class_ "image-hash"]       (showImageHash $ Im.fb_image_hash img)
       ]
