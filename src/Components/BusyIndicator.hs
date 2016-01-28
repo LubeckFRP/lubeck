@@ -56,7 +56,9 @@ withBusy2 sink f = \x y -> do
 
 busyW :: Widget' BusyStack
 busyW _ [] = mempty
-busyW _ bs = infoPanel $ div [] [text $ "Working... (" <> showJS (length bs) <> ")"]
+busyW _ bs = infoPanel $ div []
+                          [ E.img [class_ "loader-img", A.src "ajax-loader.gif"] [] 
+                          , text $ "Working... (" <> showJS (length bs) <> ")" ]
 
 -- | Hopefully a reusable busy indicator component.
 -- It is initialized with initial stack of busy tasks,
