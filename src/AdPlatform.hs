@@ -97,7 +97,7 @@ adPlatform = do
   createAdView            <- createAdPage busySink errorSink usernameB
   adsView                 <- campaignPage busySink errorSink loadAdsE (current userS)
   imageLibView            <- imageLibraryPage                imagesS
-  searchPageView          <- searchPage   busySink           usernameB
+  searchPageView          <- searchPage   busySink errorSink usernameB
 
   let postLoginNavE       = fmap (const NavUser) (updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)

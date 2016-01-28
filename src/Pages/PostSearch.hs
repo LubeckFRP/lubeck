@@ -49,8 +49,9 @@ import           BD.Data.SearchPost             (SearchPost)
 import qualified BD.Data.SearchPost             as P
 import           BD.Query.PostQuery
 import qualified BD.Query.PostQuery             as PQ
+import           BD.Types
 import           BD.Utils
-import           Components.BusyIndicator       (withBusy2)
+import           Components.BusyIndicator       (withBusy2, withBusy)
 
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent)
@@ -138,8 +139,8 @@ postSearchResult output posts =
         div [] [button [A.class_ "btn btn-default btn-block", click $ \_ -> output (UploadImage post)] [text "Upload Image"]]
         ]
 
-searchPage :: Sink BusyCmd -> Behavior (Maybe JSString) -> IO (Signal Html)
-searchPage busySink mUserNameB = do
+searchPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Behavior (Maybe JSString) -> IO (Signal Html)
+searchPage busySink errorSink mUserNameB = do
   let initPostQuery = defSimplePostQuery
 
   -- Search event (from user)
@@ -153,10 +154,10 @@ searchPage busySink mUserNameB = do
 
   -- Signal holding the results of the lastest search, or Nothing if no
   -- search has been performed yet
-  results <- stepperS Nothing searchResultReceived                   :: IO (Signal (Maybe [Post]))
+  results <- stepperS Nothing searchResultReceived                              :: IO (Signal (Maybe [Post]))
   let resultView = fmap ((altW (text "") postSearchResult) uploadImage) results :: Signal Html
 
-  let view = liftA2 (\x y -> div [] [x,y]) searchView resultView     :: Signal Html
+  let view = liftA2 (\x y -> div [] [x,y]) searchView resultView                :: Signal Html
 
   -- API calls
 
@@ -165,23 +166,24 @@ searchPage busySink mUserNameB = do
     -- print (userName, P.ig_web_url post)
     mUserName <- pollBehavior mUserNameB
     case mUserName of
-      Nothing -> print "No account to upload post to"
+      Nothing -> errorSink . Just . BLError $ "No account to upload post to"
       Just userName -> do
         res <- (withBusy2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
-          Left _   -> print "Failed to upload post to ad library"
-          Right Ok -> print "Uploaded post"
+          Left e   -> errorSink . Just . ApiError $ "Failed to upload post to ad library" <> showJS e
+          Right Ok -> print "Uploaded post" -- TODO success messages
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 busySink postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
-      Left _ -> print "Failed posting query"
+      Left e        -> errorSink . Just . ApiError $ "Failed posting query: " <> showJS e
       Right queryId -> do
-        -- print (queryId :: JSString)
-        posts <- unsafeGetAPI $ "internal/queries/" <> queryId <> "/results"
-        receiveSearchResult $ Just posts
+        eitherPosts <- (withBusy busySink getAPIEither) $ "internal/queries/" <> queryId <> "/results"
+        case eitherPosts of
+          Left e   -> errorSink . Just . ApiError $ "Failed getting query results: " <> showJS e
+          Right ps -> receiveSearchResult $ Just ps
     return ()
 
   return view

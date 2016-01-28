@@ -67,9 +67,9 @@ createAdForm :: Widget NewAd (Submit NewAd)
 createAdForm output newAd =
   row6H $ panel12H $
     div [class_ "form-group form-group-sm"]
-      [ longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ newAd { caption = new })  output) (caption newAd)
-      , longStringWidget "Image Hash"   (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)
-      , longStringWidget "Click URL"   (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
+      [ longStringWidget "Caption"    (contramapSink (\new -> DontSubmit $ newAd { caption = new })     output) (caption newAd)
+      , longStringWidget "Image Hash" (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)
+      , longStringWidget "Click URL"  (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
       , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd] $ pure $ text "Create Ad"
       ]
 
@@ -94,7 +94,7 @@ createAdPage busySink errorSink mUserNameB = do
         -- print $ show res
         return ()
 
-      Nothing -> print "no username!"
+      Nothing -> errorSink . Just . BLError $ "no username!"
     return ()
 
   return view
