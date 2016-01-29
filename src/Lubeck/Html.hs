@@ -2,9 +2,12 @@
 {-# LANGUAGE CPP, TypeSynonymInstances #-}
 
 {-|
-Provides a HTML representation.
+Provides a HTML representation. This is just a wrapper around @virtual-dom@.
 
-Currently we use the virtual-dom bindings directly, so you want to import modules from @ghcjs-vdom@ to construct these nodes.
+For details, see:
+
+- "Web.VirtualDom.Html"
+- "Web.VirtualDom.Svg"
 
 Here is a complete example, from @ExampleStatic.hs@.
 
@@ -15,9 +18,9 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import GHCJS.Types(JSString, jsval)
-import GHCJS.VDOM.Event (click, change, submit, stopPropagation, preventDefault, value)
-import GHCJS.VDOM.Element (a, p, h1, div, text, form, button, img, hr, ul, li, custom)
-import GHCJS.VDOM.Attribute (src, href, width, class_)
+import Web.VirtualDom.Html (a, p, h1, div, text, form, button, img, hr, ul, li, custom)
+import Web.VirtualDom.Html.Events (click, change, submit, stopPropagation, preventDefault, value)
+import Web.VirtualDom.Html.Attributes (src, href, width, class_)
 
 import Lubeck.App (Html, runAppStatic)
 
