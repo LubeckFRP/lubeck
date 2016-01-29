@@ -27,25 +27,27 @@ import Lubeck.Drawing hiding (text)
 import qualified Data.Colour.Names as Colors
 
 
-render :: Widget' JSString
+render :: Widget' Int
 render output model = div []
-  [ div [] $ pure $ h1 [] $ pure $ text model
+  [ div [] $ pure $ h1 [] $ pure $ text (Data.JSString.pack $ replicate model '!')
   , div [] $ pure $ button
-    [ click (\_ -> output (model <> "!")) ]
+    [ click (\_ -> output (succ model)) ]
     [ text "Click me" ]
   ,
 
   -- drawTest (length $ Data.JSString.unpack $ model)
-  toSvg (RenderingOptions (Point 400 400) Center) $ drawing (Data.JSString.length model)
+  toSvg (RenderingOptions (Point 400 400) Center) $ drawing output model
 
   ]
 
-drawing n = (addProperty (SvgEv.onClick $ \_ -> print "Clicked!") (redCircle n)) <> xyAxis <> smokeBackground
+drawing output n = (addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)) <> xyAxis <> smokeBackground
 redCircle n = fillColor Colors.red (scale (15 + 5 * fromIntegral n) circle)
+
+cmap = contramapSink
 
 -- MAIN
 
 main :: IO ()
 main = do
-  (view, _) <- component "!" render
+  (view, _) <- component 1 render
   runAppReactive view
