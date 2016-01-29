@@ -36,7 +36,7 @@ render output model = div []
   ,
 
   -- drawTest (length $ Data.JSString.unpack $ model)
-  toSvg (RenderingOptions (Point 400 400) Center) $ drawing (length model)
+  toSvg (RenderingOptions (Point 400 400) Center) $ drawing (Data.JSString.length model)
 
   ]
 
