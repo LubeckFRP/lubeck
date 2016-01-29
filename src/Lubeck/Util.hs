@@ -46,7 +46,10 @@ withError errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eith
 showJS :: Show a => a -> JSString
 showJS = fromString . show
 
+row6H :: Html -> Html
 row6H content = div [class_ "row"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
+
+row12H :: Html -> Html
 row12H content = div [class_ "row"] [ div [class_ "col-xs-12 col-sm-12 col-md-12 col-lg-12"] [content] ]
 
 panel12H :: Html -> Html
@@ -56,9 +59,13 @@ panel12H bd =
      div [class_ "panel-body"] [bd]
     ]
 
+contentPanel :: Html -> Html
 contentPanel content = row12H $ panel12H content
 
+row6Hbusy :: Html -> Html
 row6Hbusy content = div [class_ "row busy-indicator"] [ div [class_ "col-md-6 col-lg-4 col-md-offset-3 col-lg-offset-4"] [content] ]
+
+infoPanel :: Html -> Html
 infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center "] [content]
 
 tableHeaders :: [JSString] -> Html
