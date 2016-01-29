@@ -29,6 +29,7 @@ import Lubeck.Forms.Select
 import Lubeck.Util()
 import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
+data WRange = Any | LessThen | GreaterThen | Between deriving (Show, Eq)
 
 integerIntervalWidget :: JSString -> Widget' (Interval (Maybe Int))
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
@@ -46,33 +47,33 @@ customIntervalWidget z numW title = id
     -- fromInterval :: Ord a => Interval (Maybe a) -> (String, (a, a))
     -- toInterval   :: Ord a => (String, (a, a))   -> Interval (Maybe a)
     fromInterval i
-      | I.null i = (("inf-inf"), (z,z))
+      | I.null i = ((Any), (z,z))
       | otherwise = case (I.inf i, I.sup i) of
-        (Just x,  Nothing) -> (("fin-inf"), (x,x))
-        (Nothing, Just y)  -> (("inf-fin"), (y,y))
-        (Just x,  Just y)  -> (("fin-fin"), (x,y))
-        _                  -> (("inf-inf"), (z,z))
+        (Just x,  Nothing) -> (GreaterThen, (x,x))
+        (Nothing, Just y)  -> (LessThen,    (y,y))
+        (Just x,  Just y)  -> (Between,     (x,y))
+        _                  -> (Any,         (z,z))
     toInterval x = case x of
-      (("inf-inf"), (_,_)) -> Nothing I.... Nothing
-      (("fin-inf"), (x,_)) -> Just x  I.... Nothing
-      (("inf-fin"), (_,y)) -> Nothing I.... Just y
-      (("fin-fin"), (x,y)) -> Just x  I.... Just y
+      (Any,         (_,_)) -> Nothing I.... Nothing
+      (GreaterThen, (x,_)) -> Just x  I.... Nothing
+      (LessThen,    (_,y)) -> Nothing I.... Just y
+      (Between,     (x,y)) -> Just x  I.... Just y
 
     -- spanWidget2 :: Widget' (JSString, (a, a))
     -- spanTypeW :: Widget' JSString
     -- numsW :: JSString -> Widget' (a, a)
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
     spanTypeW = selectWidget
-      [ ("inf-inf", "Any")
-      , ("inf-fin", "Less than")
-      , ("fin-inf", "Greater than")
-      , ("fin-fin", "Between")
+      [ (Any,         "Any")
+      , (LessThen,    "Less than")
+      , (GreaterThen, "Greater than")
+      , (Between,     "Between")
       ]
     visible x = case x of
-      "inf-inf" -> (False, False)
-      "fin-inf" -> (True,  False)
-      "inf-fin" -> (False, True)
-      _         -> (True, True)
+      Any         -> (False, False)
+      GreaterThen -> (True, False)
+      LessThen    -> (False, True)
+      Between     -> (True, True)
     numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
 
 -- TODO is the (Monoid Html) instance what we need?
@@ -81,24 +82,29 @@ composeWidget a b = bothWidget mappend (subWidget Control.Lens._1 a) (subWidget 
 
 hideableIntegerWidget :: Bool -> Widget' Int
 hideableIntegerWidget False _ _ = mempty
-hideableIntegerWidget True s v = E.input
+hideableIntegerWidget True sink val = E.input
   [ A.class_ "form-control"
   , A.type_ "number"
   -- , A.style_ $ if enabled then "" else "visibility:hidden"
-  , Ev.change $ \e -> s $ read $ unpack $ Ev.value e
-  , A.value (pack $ show v)
+  , Ev.change $ \e -> sink $ read $ unpack $ Ev.value e
+  , A.value (pack $ show val)
   ]
   []
 
 hideableDateWidget :: Bool -> Widget' Day
 hideableDateWidget False _ _ = mempty
-hideableDateWidget True s v = E.input
+hideableDateWidget True sink val = E.input
   [ A.class_ "form-control"
   , A.type_ "date"
-  , Ev.change $ \e -> s $ readDate $ unpack $ Ev.value e
-  , A.value (pack $ showDate v)
+  , Ev.change $ \e -> maybeSink sink $ parseDateUTC $ unpack $ Ev.value e
+  , A.value (pack $ showDate val)
   ]
   []
   where
-    readDate x = case parseDateUTC x of { Just x -> x }
+    maybeSink sink val = case val of
+      Just x -> sink x
+      -- <input>'s value can be set to ""
+      -- we probably should not ignore this, but pass upstream and cancel given date boundary?
+      Nothing -> return ()
+
     showDate = formatDateUTC
