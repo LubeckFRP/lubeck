@@ -19,6 +19,8 @@ import           Data.Map                       (Map)
 import qualified Data.Map                       as Map
 import qualified Data.Maybe
 import           Data.Monoid
+import           Data.Time.Calendar             (Day (..))
+import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
 import qualified Data.JSString
 import           GHCJS.Types                    (JSString)
@@ -51,7 +53,7 @@ import           BD.Query.PostQuery
 import qualified BD.Query.PostQuery             as PQ
 import           BD.Types
 import           BD.Utils
-import           Components.BusyIndicator       (withBusy2, withBusy)
+import           Components.BusyIndicator       (withBusy, withBusy2)
 
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent)
@@ -60,8 +62,8 @@ import           Lib.Helpers
 
 
 -- TODO finish
-searchForm :: Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm output query =
+searchForm :: Day -> Widget SimplePostQuery (Submit SimplePostQuery)
+searchForm dayNow output query =
   contentPanel $
     div [class_ "form-group form-group-sm"]
       [ -- div [] [text (showJS query)]
@@ -72,7 +74,7 @@ searchForm output query =
       , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
       , integerIntervalWidget "Poster followers" (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
-      , dateIntervalWidget    "Posting date"     (contramapSink (\new -> DontSubmit $ query { date = new }) output) (PQ.date query)
+      , dateIntervalWidget    dayNow "Posting date"     (contramapSink (\new -> DontSubmit $ query { date = new }) output) (PQ.date query)
 
       , div [ class_ "form-group form-inline" ]
         [ div [ class_ "form-group"  ]
@@ -115,9 +117,6 @@ postSearchResult output posts =
     postTable :: Widget [Post] PostAction
     postTable output posts =
       div [] (map (postTableCell output) posts)
-      -- table [class_ "table table-striped table-hover"] $
-        -- pure $ tbody [] $
-          -- fmap (tr [] . fmap (postTableCell output)) (divide 5 posts)
 
     postTableCell :: Widget Post PostAction
     postTableCell output post =
@@ -141,8 +140,10 @@ searchPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Behavior (Maybe JSString)
 searchPage busySink errorSink mUserNameB = do
   let initPostQuery = defSimplePostQuery
 
+  now <- getCurrentTime
+
   -- Search event (from user)
-  (searchView, searchRequested) <- formComponent initPostQuery searchForm
+  (searchView, searchRequested) <- formComponent initPostQuery (searchForm $ utctDay now)
 
   -- Create ad event (from user)
   (uploadImage, uploadedImage) <- newEventOf (undefined :: PostAction)

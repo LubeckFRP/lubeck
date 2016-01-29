@@ -96,3 +96,10 @@
   margin-top: 10px;
   margin-bottom: 25px;
 }
+
+.form-control {
+  margin-top: 3px;
+  margin-left: 0px;
+  margin-right: 10px;
+  margin-bottom: 3px;
+}
