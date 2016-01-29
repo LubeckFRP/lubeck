@@ -36,12 +36,12 @@ render output model = div []
   ,
 
   -- drawTest (length $ Data.JSString.unpack $ model)
-  toSvg (RenderingOptions (Point 400 400) Center) drawing
+  toSvg (RenderingOptions (Point 400 400) Center) $ drawing (length model)
 
   ]
 
-drawing = (addProperty (SvgEv.onClick $ \_ -> print "Clicked!") redCircle) <> xyAxis <> smokeBackground
-redCircle = fillColor Colors.red (scale 20 circle)
+drawing n = (addProperty (SvgEv.onClick $ \_ -> print "Clicked!") (redCircle n)) <> xyAxis <> smokeBackground
+redCircle n = fillColor Colors.red (scale (15 + 5 * fromIntegral n) circle)
 
 -- MAIN
 
