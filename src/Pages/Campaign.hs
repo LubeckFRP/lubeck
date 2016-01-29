@@ -36,7 +36,7 @@ import           Components.BusyIndicator       (withBusy2, BusyCmd (..))
 
 import           BD.Types
 import           BD.Utils
-import           Lib.Helpers
+import           Lubeck.Util
 
 
 getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])

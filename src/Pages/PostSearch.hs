@@ -58,7 +58,7 @@ import           Components.BusyIndicator       (withBusy, withBusy2)
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent)
 
-import           Lib.Helpers
+import           Lubeck.Util
 
 
 -- TODO finish

@@ -36,7 +36,7 @@ import qualified BD.Data.Image                  as Im
 
 import           BD.Types
 import           BD.Utils
-import           Lib.Helpers
+import           Lubeck.Util
 
 
 getImages :: Account.Account -> IO (Either AppError [Im.Image])

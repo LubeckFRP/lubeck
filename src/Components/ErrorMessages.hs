@@ -30,7 +30,7 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 
 import           BD.Types
-import           Lib.Helpers
+import           Lubeck.Util
 
 
 alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [content]

@@ -32,7 +32,7 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 
 import           BD.Types
-import           Lib.Helpers
+import           Lubeck.Util
 
 
 menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-top"]

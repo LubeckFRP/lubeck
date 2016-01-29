@@ -45,7 +45,7 @@ import           Components.BusyIndicator       (BusyCmd (..), withBusy,
 import           Components.ErrorMessages       (errorMessagesComponent)
 import           Components.MainMenu            (mainMenuComponent)
 
-import           Lib.Helpers
+import           Lubeck.Util
 
 
 defaultUsername = "forbestravelguide"

@@ -34,7 +34,7 @@ import qualified BD.Data.AdCampaign             as AdCampaign
 
 import           BD.Types
 import           BD.Utils
-import           Lib.Helpers
+import           Lubeck.Util
 
 
 -- | Display user information and current campaings.
