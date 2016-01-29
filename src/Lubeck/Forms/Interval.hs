@@ -86,7 +86,13 @@ hideableIntegerWidget True sink val = E.input
   [ A.class_ "form-control"
   , A.type_ "number"
   -- , A.style_ $ if enabled then "" else "visibility:hidden"
-  , Ev.change $ \e -> sink $ read $ unpack $ Ev.value e
+  , Ev.change $ \e -> do
+      case Ev.value e of
+        "" -> do
+          print "Empty value for Int, ignoring."
+          return ()
+        s -> sink $ read $ unpack $ Ev.value e
+
   , A.value (pack $ show val)
   ]
   []
