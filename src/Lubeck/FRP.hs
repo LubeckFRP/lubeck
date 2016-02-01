@@ -446,10 +446,18 @@ reactimate (E ioAProvider) = E $ \aSink ->
   ioAProvider $ (>>= aSink)
 
 reactimateIO :: Events (IO a) -> IO (Events a)
-reactimateIO = share . reactimate
+reactimateIO (E ioAProvider) = do
+  v <- TVar.newTVarIO undefined
+  ioAProvider $ \ioA -> do
+    a <- ioA
+    atomically $ TVar.writeTVar v a
+  return $ E $ \aSink ->
+    ioAProvider $ \_ -> do
+      a <- TVar.readTVarIO v
+      aSink a
 
-share :: Events a -> IO (Events a)
-share e = fmap (`sample` e) (stepper (error "Lubeck.FRP.share sampled prematurely") e)
+-- share :: Events a -> IO (Events a)
+-- share e = fmap (`sample` e) (stepper (error "Lubeck.FRP.share sampled prematurely") e)
 
 
 -- DERIVED
