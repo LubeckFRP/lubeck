@@ -45,8 +45,8 @@ withError errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eith
 
 withErrorIO :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> IO (Events a)
 withErrorIO errorSink bl = do
-  b1 <- reactimate $ fmap (fmap (eitherToError errorSink)) bl
-  b2 <- reactimate b1
+  b1 <- reactimateIO $ fmap (fmap (eitherToError errorSink)) bl
+  b2 <- reactimateIO b1
   return $ filterJust b2
 
 showJS :: Show a => a -> JSString
