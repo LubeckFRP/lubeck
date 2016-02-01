@@ -41,7 +41,10 @@ render output model = div []
   ]
 
 drawing output n = (addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)) <> xyAxis <> smokeBackground
-redCircle n = fillColor Colors.red (scale (15 + 5 * fromIntegral n) circle)
+redCircle n = fillColor Colors.red $
+  translateY (5 * fromIntegral n) $ translateX (10 * fromIntegral n) $
+  scale (50 + 5 * fromIntegral n) $
+  circle
 
 cmap = contramapSink
 
