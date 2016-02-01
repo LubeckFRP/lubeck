@@ -1,7 +1,7 @@
 
 module Lubeck.FRP.Events
     ( overs
-    , lookup
+    , lookups
     , oversG
     ) where
 
