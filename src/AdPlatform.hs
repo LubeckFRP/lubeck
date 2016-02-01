@@ -84,9 +84,9 @@ adPlatform = do
 
   (loginView, userLoginE) <- loginPage                       defaultUsername
 
-  let userE               = withError errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
-  let camapaignsE         = withError errorSink $ fmap (withBusy busySink getCampaigns) userE
-  let imagesE             = withError errorSink $ fmap (withBusy busySink getImages) userE
+  userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
+  camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
+  imagesE                 <- withErrorIO errorSink $ fmap (withBusy busySink getImages) userE
   userS                   <- stepperS Nothing (fmap Just userE)
   campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
   imagesS                 <- stepperS Nothing (fmap Just imagesE)

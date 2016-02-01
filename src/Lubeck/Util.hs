@@ -4,6 +4,7 @@
 module Lubeck.Util
   ( eitherToError
   , withError
+  , withErrorIO
   , showJS
   , row6H
   , row12H
