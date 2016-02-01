@@ -103,7 +103,7 @@ module Lubeck.FRP (
     newEvent,
     subscribeEvent,
     pollBehavior,
-    reactimate,
+    -- reactimate,
     reactimateIO,
 
     -- ** FRP system
@@ -441,10 +441,11 @@ pollBehavior (R aProvider) = do
   TVar.readTVarIO v
 
 -- | /Experimental/. Execute an 'IO' action whenever an event occurs.
-reactimate :: Events (IO a) -> Events a
-reactimate (E ioAProvider) = E $ \aSink ->
-  ioAProvider $ (>>= aSink)
+-- reactimate :: Events (IO a) -> Events a
+-- reactimate (E ioAProvider) = E $ \aSink ->
+--   ioAProvider $ (>>= aSink)
 
+-- | Execute an 'IO' action whenever an event occurs, and broadcast results.
 reactimateIO :: Events (IO a) -> IO (Events a)
 reactimateIO (E ioAProvider) = do
   v <- TVar.newTVarIO undefined
