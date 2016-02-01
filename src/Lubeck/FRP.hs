@@ -104,6 +104,7 @@ module Lubeck.FRP (
     subscribeEvent,
     pollBehavior,
     reactimate,
+    reactimateIO,
 
     -- ** FRP system
     FRPSystem(..),
@@ -444,6 +445,11 @@ reactimate :: Events (IO a) -> Events a
 reactimate (E ioAProvider) = E $ \aSink ->
   ioAProvider $ (>>= aSink)
 
+reactimateIO :: E (IO a) -> IO (E a)
+reactimateIO = share . reactimate
+
+share :: E a -> IO (E a)
+share e = fmap (`sample` e) (stepper (error "Lubeck.FRP.share sampled prematurely") e)
 
 
 -- DERIVED
