@@ -445,10 +445,10 @@ reactimate :: Events (IO a) -> Events a
 reactimate (E ioAProvider) = E $ \aSink ->
   ioAProvider $ (>>= aSink)
 
-reactimateIO :: E (IO a) -> IO (E a)
+reactimateIO :: Events (IO a) -> IO (Events a)
 reactimateIO = share . reactimate
 
-share :: E a -> IO (E a)
+share :: Events a -> IO (Events a)
 share e = fmap (`sample` e) (stepper (error "Lubeck.FRP.share sampled prematurely") e)
 
 
