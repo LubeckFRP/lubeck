@@ -107,3 +107,52 @@
 .account-picture {
   padding-right: 15px;
 }
+
+.score-container {
+  width: 140px;
+  height: 17px;
+  padding: 0px;
+  border: 1px solid white;
+  margin: auto;
+  background-color: #efefef;
+  font-size: 8px;
+}
+
+.neg-score {
+  display: inline-block;
+  width: 68px;
+  height: 15px;
+  text-align: right;
+  padding: 3px 0px;
+  margin: 0px;
+  border: 0px;
+}
+.pos-score {
+  display: inline-block;
+  width: 68px;
+  height: 15px;
+  border: 0px;
+  border-left: 1px solid black;
+  margin: 0px;
+  text-align: left;
+  padding: 3px 0px;
+}
+
+.bad-score-bar:after { clear: both }
+.bad-score-bar {
+  background-color: red;
+  height: 10px;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-right: 0px;
+  float: right;
+}
+
+.good-score-bar:after { clear: both }
+.good-score-bar {
+  background-color: green;
+  height: 10px;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-right: 0px;
+}

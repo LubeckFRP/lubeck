@@ -60,7 +60,28 @@ imageCell img =
       ]
 
 showImagePred Nothing  = text "No prediction"
-showImagePred (Just x) = text $ "Score: "<> showJS x
+showImagePred (Just x) = renderScore x
+
+renderScore :: Double -> Html
+renderScore x =
+  div [class_ "score-container", A.title $ "Score: " <> showJS x]
+    [ div [class_ "neg-score"] [ (if x < 0 then negativeScore x else mempty) ]
+    , div [class_ "pos-score"] [ (if x >= 0 then positiveScore x else mempty) ]
+    ]
+
+  where
+    positiveScore x = div [ class_ "good-score-bar"
+                          , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px"
+                          ]
+                          []
+    negativeScore x = div [ class_ "bad-score-bar"
+                          , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px"
+                          ]
+                          []
+
+    -- current value, max width in px, max value
+    calcScoreBarWidthPx :: Double -> Int -> Double -> Int
+    calcScoreBarWidthPx x maxpx maxscale = abs . round $ (fromIntegral maxpx) * x / maxscale
 
 showImageHash Nothing  = [text "No hash"]
 showImageHash (Just x) = [E.span [] [text "Hash: "], E.span [class_ "image-hash-value"] [text x]]
