@@ -82,7 +82,7 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
-  (loginView, userLoginE) <- loginPage                       defaultUsername
+  (loginView, userLoginE) <- loginPage defaultUsername
 
   userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
   camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
