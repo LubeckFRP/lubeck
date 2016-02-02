@@ -15,10 +15,8 @@ module BD.Query.PostQuery (
 
 import Data.Aeson (ToJSON(..), Value(..), object)
 import Data.Time.Calendar (Day(..))
--- import Numeric.Interval (Interval, whole, (...))
 import qualified Data.Time.Format
 import qualified Data.Vector as V
--- import qualified Numeric.Interval as I
 import Data.Interval (Interval, interval, whole, Extended(..), lowerBound, upperBound)
 
 import qualified Data.JSString
@@ -174,10 +172,3 @@ intervalToOrderings arbitrary i = case (a, b) of
   where
     (a, b) = (lowerBound i, upperBound i)
 -- TODO arguaby wrong behavior w.r.t. open/closed
-
-  -- | I.null i  = [(GT,arbitrary),(LT,arbitrary)] -- empty
-  -- | otherwise = case (I.inf i, I.sup i) of
-  --   (Nothing, Nothing) -> [] -- full
-  --   (Nothing, Just b)  -> [(LT, b)] -- max
-  --   (Just a,  Nothing) -> [(GT, a)] -- min
-  --   (Just a,  Just b)  -> [(GT, a), (LT, b)] -- min,max
