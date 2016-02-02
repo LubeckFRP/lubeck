@@ -1,3 +1,28 @@
+@-moz-keyframes fadeIn {
+    from {opacity:0;}
+    to {opacity:1;}
+}
+
+@-webkit-keyframes fadeIn {
+    from {opacity:0;}
+    to {opacity:1;}
+}
+
+@keyframes fadeIn {
+    from {opacity:0;}
+    to {opacity:1;}
+}
+
+
+div, h1, h2, img, p, span {
+  -webkit-animation: fadeIn 500ms;
+  -moz-animation: fadeIn 500ms;
+  animation: fadeIn 500ms;
+
+  transition: opacity 500ms;
+
+}
+
 .container {
   width: 100%;
 }
