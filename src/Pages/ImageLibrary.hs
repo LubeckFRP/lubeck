@@ -155,8 +155,8 @@ imageLibraryPage busySink errorSink userE = do
   (actionsSink :: Sink ImgLibraryActions, actionsE :: Events ImgLibraryActions) <- newEvent
 
 
-  let galleryE    = withError errorSink $ fmap (withBusy busySink getImages) userE :: Events [Im.Image]
-  galleryS        <- stepperS Nothing (fmap Just galleryE)                        :: IO (Signal (Maybe [Im.Image]))
+  galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) userE :: IO (Events [Im.Image])
+  galleryS        <- stepperS Nothing (fmap Just galleryE)                            :: IO (Signal (Maybe [Im.Image]))
 
   let imageE      = fmap (processActions busySink errorSink) actionsE             :: Events (Maybe Im.Image)
 
