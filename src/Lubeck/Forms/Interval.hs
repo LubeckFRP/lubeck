@@ -14,15 +14,14 @@ import qualified Data.List
 import Numeric.Interval (Interval)
 import qualified Numeric.Interval as I
 import Data.Time.Calendar (Day(..))
+import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
+import qualified Control.Lens
 
 import Data.JSString (JSString, pack, unpack)
 
 import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
-
-import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
-import qualified Control.Lens
 
 import Lubeck.Forms
 import Lubeck.Forms.Select
@@ -83,7 +82,7 @@ customIntervalWidget z numW title = id
     -- fromInterval :: Ord a => Interval (Maybe a) -> (String, (a, a))
     -- toInterval   :: Ord a => (String, (a, a))   -> Interval (Maybe a)
     fromInterval i
-      | I.null i = ((Any), (z,z))
+      | I.null i = (Any, (z,z))
       | otherwise = case (I.inf i, I.sup i) of
         (Just x,  Nothing) -> (GreaterThen, (x,x))
         (Nothing, Just y)  -> (LessThen,    (y,y))
@@ -95,7 +94,7 @@ customIntervalWidget z numW title = id
       (LessThen,    (_,y)) -> Nothing I.... Just y
       (Between,     (x,y)) -> Just x  I.... Just y
 
-    -- spanWidget2 :: Widget' (JSString, (a, a))
+    -- spanWidget2 :: Widget' (WRange, (a, a))
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
 
     -- spanTypeW :: Widget' WRange
@@ -111,7 +110,7 @@ customIntervalWidget z numW title = id
       LessThen    -> (False, True)
       Between     -> (True, True)
 
-    -- numsW :: JSString -> Widget' (a, a)
+    -- numsW :: WRange -> Widget' (a, a)
     numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
 
 -- TODO is the (Monoid Html) instance what we need?

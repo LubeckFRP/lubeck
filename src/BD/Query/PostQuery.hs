@@ -165,9 +165,9 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
 --  First argument is an arbitrary value of the type.
 intervalToOrderings :: a -> Interval (Maybe a) -> [(Ordering, a)]
 intervalToOrderings arbitrary i
-  | I.null i  = [(GT,arbitrary),(LT,arbitrary)]
+  | I.null i  = [(GT,arbitrary),(LT,arbitrary)] -- empty
   | otherwise = case (I.inf i, I.sup i) of
-    (Nothing, Nothing) -> []
-    (Nothing, Just b)  -> [(LT, b)]
-    (Just a,  Nothing) -> [(GT, a)]
-    (Just a,  Just b)  -> [(GT, a), (LT, b)]
+    (Nothing, Nothing) -> [] -- full
+    (Nothing, Just b)  -> [(LT, b)] -- max
+    (Just a,  Nothing) -> [(GT, a)] -- min
+    (Just a,  Just b)  -> [(GT, a), (LT, b)] -- min,max

@@ -126,8 +126,6 @@ type JSString = String
 import Data.Time.Calendar (Day)
 -- import Time
 
-import Numeric.Interval (Interval)
-
 -- TODO svg, html nodes
 
 
