@@ -24,6 +24,8 @@ type Layout =
     :<|>
   "example-static" :> Raw
     :<|>
+  "example-widget-composition" :> Raw
+    :<|>
   "example-static-thomasd" :> Raw
     :<|>
   Raw
@@ -52,6 +54,7 @@ main = do
       adplatformServer    <- serveApp jsExeDir "bd-adplatform"
       interactionsServer  <- serveApp jsExeDir "bd-interactions"
       exampleStaticServer <- serveApp jsExeDir "bd-example-static-page"
+      exampleWidgetComposition <- serveApp jsExeDir "bd-example-widget-composition"
       exampleStaticServerThomasD <- serveApp jsExeDir "bd-example-static-page-thomasd"
       indexServer         <- serveApp jsExeDir "bd-index"
 
@@ -61,6 +64,7 @@ main = do
           :<|> adplatformServer
           :<|> interactionsServer
           :<|> exampleStaticServer
+          :<|> exampleWidgetComposition
           :<|> exampleStaticServerThomasD
           :<|> indexServer
 

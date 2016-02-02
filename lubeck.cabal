@@ -90,6 +90,14 @@ executable bd-example-static-page
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
+executable bd-example-widget-composition
+  main-is:             src/ExampleWidgetComposition.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
 executable bd-example-static-page-thomasd
   main-is:             src/ExampleStatic2.hs
   build-depends:       base >=4.8 && <4.9
