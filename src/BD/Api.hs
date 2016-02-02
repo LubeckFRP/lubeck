@@ -9,6 +9,10 @@ module BD.Api (
   postAPI,
   postAPIEither,
   unsafePostAPI,
+
+  deleteAPI,
+  deleteAPIEither,
+
   Envelope(..),
   Ok(..),
   ) where
@@ -122,6 +126,56 @@ postAPI path value = do
           , reqWithCredentials = False
           , reqData            = (StringData $ body)
           }
+
+
+{-|
+Make a DELETE request into the BD API.
+
+API specification
+<https://github.com/BeautifulDestinations/beautilytics/wiki/API-specification>
+
+The @path@ parameter is everything after the @...\/api\/v1\/@ part. You must specify
+the correct return type (as determined by the specification) or the request will
+fail with a parse error. Note that most endpoints are wrapped in an 'Envelope'
+(see example below).
+
+Usage:
+
+@
+data Api
+instance MonadError JSString Api
+instance MonadIO Api
+
+getAccount :: JSString -> Api (Envelope Account)
+getAccount name = getAPI "\/" <> name <> "\/account"
+@
+-}
+deleteAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
+deleteAPI path = do
+  eitherResult <- liftIO $ (try $ xhrByteString request :: IO (Either XHRError (Response ByteString)) )
+  case eitherResult of
+    Left s -> throwError ("deleteAPI: " <> showJS s)
+    Right result -> case contents result of
+      Nothing          -> throwError "deleteAPI: No response"
+      Just byteString  -> case Data.Aeson.decodeStrict byteString of
+        Nothing -> throwError "deleteAPI: Parse error"
+        Just x  -> return x
+  where
+    request = Request {
+            reqMethod          = DELETE
+          , reqURI             = baseURL <> path
+          , reqLogin           = Nothing
+          , reqHeaders         = []
+          , reqWithCredentials = False
+          , reqData            = NoData
+          }
+
+{-|
+Same as 'deleteAPI', with the 'MonadError' specialized to 'Either'.
+-}
+deleteAPIEither :: FromJSON a => JSString -> IO (Either JSString a)
+deleteAPIEither = runExceptT . deleteAPI
+
 
 {-|
 Same as 'getAPI', with the 'MonadError' specialized to 'Either'.
