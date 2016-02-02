@@ -11,8 +11,6 @@ module Lubeck.Forms.Interval
   ) where
 
 import qualified Data.List
--- import Numeric.Interval (Interval)
--- import qualified Numeric.Interval as I
 import Data.Interval (Interval, interval, Extended(..), lowerBound, upperBound)
 import Data.Time.Calendar (Day(..))
 import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
@@ -29,10 +27,8 @@ import Lubeck.Forms.Select
 import Lubeck.Util()
 import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
-data IntervalRange = Any | LessThan | GreaterThan | Between deriving (Show, Eq)
-
--- data EndPoint a =  NegInf | Fin a | PosInf
-  -- deriving (Eq, Ord, Read, Show)
+data IntervalRange = Any | LessThan | GreaterThan | Between
+  deriving (Show, Eq)
 
 integerIntervalWidget :: JSString -> Widget' (Interval Int)
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
@@ -83,15 +79,6 @@ customIntervalWidget z numW title = id
     $ rmapWidget toInterval
     $ spanWidget2
   where
-    -- fromInterval :: Ord a => Interval (Maybe a) -> (String, (a, a))
-    -- toInterval   :: Ord a => (String, (a, a))   -> Interval (Maybe a)
-    -- fromInterval i
-    --   | I.null i = (Any, (z,z))
-    --   | otherwise = case (I.inf i, I.sup i) of
-    --     (Just x,  Nothing) -> (GreaterThan, (x,x))
-    --     (Nothing, Just y)  -> (LessThan,    (y,y))
-    --     (Just x,  Just y)  -> (Between,     (x,y))
-    --     _                  -> (Any,         (z,z))
     fromInterval i = case (lowerBound i, upperBound i) of
       (NegInf,    PosInf)     -> (Any,          (z,z))
       (NegInf,    Finite b)   -> (LessThan,     (b,b))
@@ -109,12 +96,6 @@ customIntervalWidget z numW title = id
         if x > y
             then interval (Finite x,True) (Finite x,True)
             else interval (Finite x,True) (Finite y,True)
-
-    -- toInterval x = case x of
-    --   (Any,         (_,_)) -> Nothing I.... Nothing
-    --   (GreaterThan, (x,_)) -> Just x  I.... Nothing -- nothing sorts as smaller than Just, hence this becomes empty
-    --   (LessThan,    (_,y)) -> Nothing I.... Just y
-    --   (Between,     (x,y)) -> Just x  I.... Just y
 
     -- spanWidget2 :: Widget' (IntervalRange, (a, a))
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
