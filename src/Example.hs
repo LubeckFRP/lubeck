@@ -26,28 +26,26 @@ import qualified Data.Colour.Names as Colors
 
 
 render :: Widget' Int
-render output model = H.div []
-  [ H.div [] $ pure $ H.h1 [] $ pure $ H.text (Data.JSString.pack $ replicate model '!')
-  , H.div [] $ pure $ H.button
-    [ H.click (\_ -> output (succ model)) ]
-    [ H.text "Click me" ]
-  ,
-  -- drawTest (length $ Data.JSString.unpack $ model)
-  toSvg (RenderingOptions (Point 400 400) Center) $ drawing output model
+render = bothWidget mappend intW svgW
 
-  ]
+intW = rangeWidget 0 100 1
+svgW output model = toSvg (RenderingOptions (Point 1200 1200) Center) $ drawing output model
+
 
 drawing :: Sink Int -> Int -> Drawing
 drawing output n = mempty
+  <> circles
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
   <> xyAxis
   <> smokeBackground
   where
+    circles = mconcat $ fmap (\i -> rotate (turn/100*fromIntegral (negate i)) $ translateX (100+fromIntegral i+fromIntegral n) ci) [1..100]
+      where ci = fillColorA (Colors.green `withOpacity` 0.5) $ scale 10 $ scaleX 0.5 $ square
     blueRect = fillColorA (Colors.blue `withOpacity` 0.5) $ scale 50 $ scaleX 1.2 $ square
     redCircle n = fillColor Colors.red $
-      translateY (5 * fromIntegral n) $ translateX (10 * fromIntegral n) $
+      translateY (negate $ 5 * fromIntegral n) $ translateX (10 * fromIntegral n) $
       scale (50 + 5 * fromIntegral n) $
       circle
 
