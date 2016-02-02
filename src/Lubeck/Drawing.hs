@@ -50,6 +50,7 @@ module Lubeck.Drawing (
     apStyle,
     style,
     fillColor,
+    fillColorA,
     strokeColor,
     strokeWidth,
     -- *** Rendering
@@ -92,7 +93,7 @@ import Control.Applicative
 import Data.VectorSpace
 import Data.AffineSpace
 import Data.AffineSpace.Point hiding (Point)
-import Data.Colour (Colour)
+import Data.Colour (Colour, AlphaColour)
 import qualified Data.Colour
 import qualified Data.Colour.SRGB
 import qualified Data.String
@@ -446,6 +447,20 @@ strokeColor :: Colour Double -> Drawing -> Drawing
 strokeColor x = style (Data.Map.singleton "stroke" $ showColor x)
 
 showColor = Data.JSString.pack . Data.Colour.SRGB.sRGB24show
+
+{-| -}
+fillColorA :: AlphaColour Double -> Drawing -> Drawing
+fillColorA x = fillColor c . alpha a
+  where
+    alpha a = style (Data.Map.singleton "fill-opacity" $ showJS a)
+    c = Data.Colour.over x C.black
+    a = Data.Colour.alphaChannel x
+
+-- {-| -}
+-- strokeColorA :: Colour Double -> Drawing -> Drawing
+-- strokeColorA x = style (Data.Map.singleton "stroke" $ showColor x)
+
+
 {-| -}
 strokeWidth :: Float -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
