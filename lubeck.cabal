@@ -16,6 +16,7 @@ library
                      , Lubeck.Drawing
                      , Lubeck.Util
                      , Lubeck.Forms
+                     , Lubeck.Forms.Basic
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Plots.Test

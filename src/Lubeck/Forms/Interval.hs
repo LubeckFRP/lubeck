@@ -5,9 +5,6 @@ module Lubeck.Forms.Interval
   ( integerIntervalWidget
   , dateIntervalWidget
   , customIntervalWidget
-  -- TODO move
-  , hideableDateWidget
-  , hideableIntegerWidget
   ) where
 
 import qualified Data.List
@@ -23,9 +20,8 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.Forms
+import Lubeck.Forms.Basic
 import Lubeck.Forms.Select
-import Lubeck.Util()
-import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
 data IntervalRange = Any | LessThan | GreaterThan | Between
   deriving (Show, Eq)
@@ -35,41 +31,6 @@ integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
 
 dateIntervalWidget :: Day -> JSString -> Widget' (Interval Day)
 dateIntervalWidget dayNow = customIntervalWidget dayNow hideableDateWidget
-
-hideableIntegerWidget :: Bool -> Widget' Int
-hideableIntegerWidget False _ _ = mempty
-hideableIntegerWidget True sink val = E.input
-  [ A.class_ "form-control"
-  , A.type_ "number"
-  -- , A.style_ $ if enabled then "" else "visibility:hidden"
-  , Ev.change $ \e -> do
-      case Ev.value e of
-        "" -> do
-          print "Empty value for Int, ignoring."
-          return ()
-        s -> sink $ read $ unpack $ Ev.value e
-
-  , A.value (pack $ show val)
-  ]
-  []
-
-hideableDateWidget :: Bool -> Widget' Day
-hideableDateWidget False _ _ = mempty
-hideableDateWidget True sink val = E.input
-  [ A.class_ "form-control"
-  , A.type_ "date"
-  , Ev.change $ \e -> maybeSink sink $ parseDateUTC $ unpack $ Ev.value e
-  , A.value (pack $ showDate val)
-  ]
-  []
-  where
-    maybeSink sink val = case val of
-      Just x -> sink x
-      -- <input>'s value can be set to ""
-      -- we probably should not ignore this, but pass upstream and cancel given date boundary?
-      Nothing -> return ()
-
-    showDate = formatDateUTC
 
 -- |
 -- Create a widget for intervals of arbitrary ordered type, based on an underlying widget.
