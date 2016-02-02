@@ -29,12 +29,18 @@ rangeWidget :: Int -> Int -> Int -> Widget' Int
 rangeWidget minBound maxBound step
   sink val = E.input
   [ A.class_ "form-control"
-  , A.type_ "number"
+  , A.type_ "range"
   , A.min minBound
   , A.max maxBound
   , A.step step
   -- , A.style_ $ if enabled then "" else "visibility:hidden"
   , Ev.change $ \e -> do
+      case Ev.value e of
+        "" -> do
+          print "Empty value for Int, ignoring."
+          return ()
+        s -> sink $ read $ unpack $ Ev.value e
+  , Ev.mousemove $ \e -> do
       case Ev.value e of
         "" -> do
           print "Empty value for Int, ignoring."
