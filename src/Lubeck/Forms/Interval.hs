@@ -71,8 +71,19 @@ hideableDateWidget True sink val = E.input
 
     showDate = formatDateUTC
 
-
-customIntervalWidget :: Ord a => a -> (Bool -> Widget' a) -> JSString -> Widget' (Interval a)
+-- |
+-- Create a widget for intervals of arbitrary ordered type, based on an underlying widget.
+--
+-- Displayed as a menu with the alternatives "Any", "Less than", "Greater than" and "Between" followed
+-- by two sub-widgets representing endpoints.
+--
+customIntervalWidget
+  :: Ord a
+  => a                      -- ^ Default value, used i.e. when switching from \"Any\" to an interval with endpoints.
+  -> (Bool -> Widget' a)    -- ^ Underlying widget type. Argument is @False@ whenever the widget disabled,
+                            --   i.e. because the endpoint is not in use.
+  -> JSString               -- ^ Title
+  -> Widget' (Interval a)
 customIntervalWidget z numW title = id
     $ mapHtmlWidget (\x -> E.div [A.class_ "form-group form-inline"] $ pure $ E.label [] [E.text title, x])
     $ lmapWidget fromInterval
