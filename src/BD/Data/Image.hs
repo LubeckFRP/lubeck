@@ -32,7 +32,7 @@ data Image = Image
   , localpath     :: Maybe Text
   , prediction    :: Maybe Double
 
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Show)
 
 
 instance FromJSON Image
@@ -42,4 +42,4 @@ getAllImages :: Text -> IO [Image]
 getAllImages unm = unsafeGetAPI $ unm <> "/ad-images"
 
 getAllImagesOrError :: Text -> IO (Either AppError [Image])
-getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError 
+getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError

@@ -42,9 +42,19 @@ import           Components.BusyIndicator (BusyCmd(..), withBusy)
 type ImgIndex = Int
 type ImgHash = Text
 
-data ImgLibraryActions = ViewPrevImg Im.Image | ViewNextImg Im.Image
-                       | DeleteImg (Maybe ImgHash) | ViewGalleryIndex | EnhanceImg (Maybe ImgHash)
-                       | UploadImg | ViewImg Im.Image
+data ImgLibraryActions = ViewPrevImg Im.Image | ViewNextImg Im.Image | ViewGalleryIndex
+                       | DeleteImg Im.Image | EnhanceImg Im.Image
+                       | UploadImg
+                       | ViewImg Im.Image
+
+instance Show ImgLibraryActions where
+  show (ViewPrevImg i)  = "ViewPrevImg " <> show (Im.id i)
+  show (ViewNextImg i)  = "ViewNextImg " <> show (Im.id i)
+  show ViewGalleryIndex = "ViewGalleryIndex"
+  show (DeleteImg i)    = "DeleteImg "   <> show (Im.id i)
+  show (EnhanceImg i)   = "EnhanceImg "  <> show (Im.id i)
+  show UploadImg        = "UploadImg"
+  show (ViewImg i)      = "ViewImg "     <> show (Im.id i)
 
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
 getImages acc = Im.getAllImagesOrError (Account.username acc)
@@ -53,12 +63,23 @@ viewImageW :: Widget Im.Image ImgLibraryActions
 viewImageW sink image = do
   contentPanel $
     div [class_ "library-image-view"]
-      [ E.img [src imgUrl, class_ "library-image-view-img"] []
-      , button [click $ \_ -> sink $ ViewPrevImg image] [text "<-"]
-      , button [click $ \_ -> sink $ ViewNextImg image] [text "->"]
-      , button [click $ \_ -> sink $ ViewGalleryIndex] [text "x"]
-      , button [click $ \_ -> sink $ EnhanceImg (Im.fb_image_hash image)] [text "Enhance"]
-      , button [click $ \_ -> sink $ DeleteImg (Im.fb_image_hash image)] [text "Delete"]
+      [ div [class_ "btn-toolbar"]
+          [ div [class_ "btn-group"]
+              [ button [class_ "btn btn-default", click $ \_ -> sink $ ViewPrevImg image] [ text "← Prev image" ]
+              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewNextImg image] [ text "Next image →" ]
+              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewGalleryIndex]  [ text "Back to library"] ]
+
+          , div [class_ "btn-group"]
+              [ div [class_ "btn"] [ text "Prediction score:" ]
+              , div [class_ "btn image-prediction"]
+                  [showImagePred $ Im.prediction image] ]
+
+          , div [class_ "btn-group"]
+              [ button [class_ "btn btn-primary", click $ \_ -> sink $ EnhanceImg image] [ text "Enhance"]
+              , button [class_ "btn btn-danger", click $ \_ -> sink $ DeleteImg image]   [ text "Delete"] ]
+          ]
+
+      , div [class_ "x-media"] [ E.img [src imgUrl, class_ "library-image-view-img"] [] ]
       ]
 
   where
@@ -70,7 +91,9 @@ galleryW _ [] =
 
 galleryW actionsSink ims =
   contentPanel $ div []
-    ([ div [class_ "toolbar"] [ button [ click (\_ -> actionsSink UploadImg) ] [ text "Upload" ] ] ]
+    ([ div [class_ "btn-toolbar"] [ button [ class_ "btn btn-default"
+                                           , click (\_ -> actionsSink UploadImg) ]
+                                           [ text "Upload" ] ] ]
     <> (map (imageCell actionsSink) ims))
 
 imageCell actionsSink image =
@@ -121,22 +144,26 @@ processActions :: Sink BusyCmd
                -> Sink (Maybe AppError)
               --  -> Behavior (Maybe [Im.Image])
                -> ImgLibraryActions
-               -> Maybe Im.Image
+               -> IO (Maybe Im.Image)
+processActions busySink errorSink x@(ViewPrevImg image) = (notImp errorSink x) >> return (Just image)
 -- processActions busySink errorSink ims (ViewPrevImg img) = Just findPrev
   -- where
     -- findPrev = if idx - 1 < 0 then maxIdx else idx - 1
     -- [(_, idx)] = filter (\(img, idx) -> img == image ) (zip ims' [0..])
     -- maxIdx = length ims' - 1
     -- ims' = pollBehavior ims
--- processActions busySink errorSink ims (ViewNextImg img) = Just $ getImg img
--- processActions busySink errorSink ims (DeleteImg hash) = reactimate $ do
+processActions busySink errorSink x@(ViewNextImg image) = (notImp errorSink x) >> return (Just image)
+processActions busySink errorSink x@(EnhanceImg image)  = (notImp errorSink x) >> return (Just image)
+processActions busySink errorSink x@(DeleteImg image)   = (notImp errorSink x) >> return (Just image)
+-- processActions busySink errorSink (DeleteImg hash) = reactimate $ do
 --   busySink PushBusy
 --   res <- Im.deleteByHash hash
 --   errorSink res
 --   busySink PopBusy
-processActions busySink errorSink ViewGalleryIndex = Nothing
-processActions busySink errorSink (ViewImg i) = Just i
--- processActions busySink errorSink ims UploadImg = reactimate $ do
+processActions busySink errorSink ViewGalleryIndex = return Nothing
+processActions busySink errorSink (ViewImg i) = return $ Just i
+processActions busySink errorSink x@UploadImg = notImp errorSink x
+-- processActions busySink errorSink UploadImg = reactimate $ do
 --   -- forkIO?
 --   form <- showForm
 --   busySink PushBusy
@@ -146,6 +173,10 @@ processActions busySink errorSink (ViewImg i) = Just i
 --     Left e -> errorSink $ "Upload failed: " <> showJS e
 --     Right x -> reloadLibrary
 --   return Nothing
+
+notImp errorSink x = do
+  errorSink . Just . NotImplementedError . showJS $ x
+  return Nothing
 
 imageLibraryPage :: Sink BusyCmd
                  -> Sink (Maybe AppError)
@@ -158,7 +189,7 @@ imageLibraryPage busySink errorSink userE = do
   galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) userE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                            :: IO (Signal (Maybe [Im.Image]))
 
-  let imageE      = fmap (processActions busySink errorSink) actionsE             :: Events (Maybe Im.Image)
+  imageE          <- reactimateIO $ fmap (processActions busySink errorSink) actionsE :: IO (Events (Maybe Im.Image))
 
   imageViewS      <- stepperS Nothing imageE                                      :: IO (Signal (Maybe Im.Image))
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS               :: Signal (Maybe Html)

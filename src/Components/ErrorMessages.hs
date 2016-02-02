@@ -44,8 +44,9 @@ errorMsgW sink errs = alertPanel $ div [] (map (errorItem sink) (zip [0..] errs)
         [ E.span [class_ "pull-left"] [text $ showError value]
         , E.button [class_ "close pull-right", click $ \_ -> sink idx] [E.span [] [text "×"]] ]
 
-    showError (ApiError s) = "API Error: " <> s
-    showError (BLError s)  = "BL Error: " <> s
+    showError (ApiError s)            = "API Error: "       <> s
+    showError (BLError s)             = "BL Error: "        <> s
+    showError (NotImplementedError s) = "Not implemented: " <> s
 
 -- | Hopefully a reusable error messages component.
 -- It is initialized with initial list of error messages,

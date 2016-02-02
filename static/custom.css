@@ -110,28 +110,29 @@
 
 .score-container {
   width: 140px;
-  height: 17px;
+  height: 21px;
   padding: 0px;
   border: 1px solid white;
   margin: auto;
   background-color: #efefef;
-  font-size: 8px;
+  /*font-size: 8px;*/
 }
 
 .neg-score {
   display: inline-block;
   width: 68px;
-  height: 15px;
+  height: 19px;
   text-align: right;
-  padding: 3px 0px;
+  padding: 4px 0px;
   margin: 0px;
-  border: 0px;
+  border: 0px solid transparent;
+  border-right: 0px solid black;
 }
 .pos-score {
   display: inline-block;
   width: 68px;
-  height: 15px;
-  border: 0px;
+  height: 19px;
+  border: 1px solid transparent;
   border-left: 1px solid black;
   margin: 0px;
   text-align: left;
@@ -141,7 +142,8 @@
 .bad-score-bar:after { clear: both }
 .bad-score-bar {
   background-color: red;
-  height: 10px;
+  height: 11px;
+  border: 0px;
   margin-top: auto;
   margin-bottom: auto;
   margin-right: 0px;
@@ -151,8 +153,19 @@
 .good-score-bar:after { clear: both }
 .good-score-bar {
   background-color: green;
-  height: 10px;
+  height: 11px;
+  border: 0px;
   margin-top: auto;
   margin-bottom: auto;
   margin-right: 0px;
+}
+
+.library-image-view-img {
+  max-width: 100%;
+  margin: auto;
+  cursor: pointer;
+}
+
+.x-media {
+  padding-top: 40px;
 }
