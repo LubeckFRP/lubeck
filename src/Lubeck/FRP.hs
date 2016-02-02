@@ -103,7 +103,8 @@ module Lubeck.FRP (
     newEvent,
     subscribeEvent,
     pollBehavior,
-    reactimate,
+    -- reactimate,
+    reactimateIO,
 
     -- ** FRP system
     FRPSystem(..),
@@ -440,10 +441,24 @@ pollBehavior (R aProvider) = do
   TVar.readTVarIO v
 
 -- | /Experimental/. Execute an 'IO' action whenever an event occurs.
-reactimate :: Events (IO a) -> Events a
-reactimate (E ioAProvider) = E $ \aSink ->
-  ioAProvider $ (>>= aSink)
+-- reactimate :: Events (IO a) -> Events a
+-- reactimate (E ioAProvider) = E $ \aSink ->
+--   ioAProvider $ (>>= aSink)
 
+-- | Execute an 'IO' action whenever an event occurs, and broadcast results.
+reactimateIO :: Events (IO a) -> IO (Events a)
+reactimateIO (E ioAProvider) = do
+  v <- TVar.newTVarIO undefined
+  ioAProvider $ \ioA -> do
+    a <- ioA
+    atomically $ TVar.writeTVar v a
+  return $ E $ \aSink ->
+    ioAProvider $ \_ -> do
+      a <- TVar.readTVarIO v
+      aSink a
+
+-- share :: Events a -> IO (Events a)
+-- share e = fmap (`sample` e) (stepper (error "Lubeck.FRP.share sampled prematurely") e)
 
 
 -- DERIVED

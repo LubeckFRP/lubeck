@@ -82,14 +82,13 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
-  (loginView, userLoginE) <- loginPage                       defaultUsername
+  (loginView, userLoginE) <- loginPage defaultUsername
 
-  let userE               = withError errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
-  let camapaignsE         = withError errorSink $ fmap (withBusy busySink getCampaigns) userE
-  -- let imagesE             = withError errorSink $ fmap (withBusy busySink getImages) userE
+  userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
+  camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
+
   userS                   <- stepperS Nothing (fmap Just userE)
   campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
-  -- imagesS                 <- stepperS Nothing (fmap Just imagesE)
   let userAndCampaignsS   = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
   let usernameB           = fmap (fmap Account.username) $ current userS
 

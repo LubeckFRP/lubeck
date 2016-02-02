@@ -3,7 +3,8 @@
 
 module Lubeck.Util
   ( eitherToError
-  , withError
+  -- , withError
+  , withErrorIO
   , showJS
   , row6H
   , row12H
@@ -40,8 +41,14 @@ eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
 eitherToError sink (Left x)  = sink (Just x) >> return Nothing
 eitherToError sink (Right x) = return (Just x)
 
-withError :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
-withError errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
+-- withError :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
+-- withError errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
+
+withErrorIO :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> IO (Events a)
+withErrorIO errorSink bl = do
+  b1 <- reactimateIO $ fmap (fmap (eitherToError errorSink)) bl
+  b2 <- reactimateIO b1
+  return $ filterJust b2
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show

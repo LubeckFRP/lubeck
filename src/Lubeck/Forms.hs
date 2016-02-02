@@ -103,8 +103,7 @@ mapHtmlWidget f w = \s -> f . w s
 --
 -- @
 -- subWidget _1     :: Widget' a -> Widget' (a, b)
--- subWidget (at 1) :: Widget' Just a -> Widget' (Map Int a)
--- subWidget inside :: Widget' (e -> a) -> Widget' (e -> s)
+-- subWidget (at 1) :: Widget' (Just a) -> Widget' (Map Int a)
 -- @
 subWidget :: Lens' s a -> Widget' a -> Widget' s
 subWidget l w o i = w (contramapSink (\x -> set l x i) o) (view l i)
@@ -154,19 +153,6 @@ maybeW z = possW (const z) Control.Lens._Just
 
 mapMWidget :: ([Html] -> Html) -> Widget a a -> Widget [a] a
 mapMWidget k w o is = k $ fmap (w o) is
-
---
--- data Many = Many { _foo :: Int, _bar :: Maybe String }
--- makeLenses ''Many
---
--- manyW :: Widget Many Many
--- manyW = multiWidget (\x y -> x)
---   [subWidget foo intW, subWidget bar (maybeW stringW)]
---
--- intW :: Widget' Int
--- stringW :: Widget' String
--- maybeW :: Widget' a -> Widget' (Maybe a)
--- [intW, stringW, maybeW] = undefined
 
 
 -- | "internal read-write" component.
