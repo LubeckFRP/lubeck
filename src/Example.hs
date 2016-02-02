@@ -29,7 +29,7 @@ import qualified Data.Colour.Names as Colors
 render :: Widget' Int
 render = bothWidget mappend intW svgW
 
-intW = rangeWidget 0 100 1
+intW = rangeWidget 0 200 1
 svgW output model = toSvg (RenderingOptions (Point 1200 1200) Center) $ drawing output model
 
 
@@ -39,15 +39,16 @@ drawing output n = mempty
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
-  <> xyAxis
-  <> smokeBackground
+  <> scale 10 xyAxis
+  <> scale 10 smokeBackground
   where
-    circles = mconcat $ fmap (\i -> rotate (turn/100*fromIntegral (negate i)) $ translateX (100+fromIntegral i+fromIntegral n) ci) [1..100]
+    nCircles = 40
+    circles = mconcat $ fmap (\i -> rotate (turn/fromIntegral nCircles*fromIntegral (negate i)) $ translateX (100+fromIntegral i+fromIntegral n) ci) [1..nCircles]
       where ci = fillColorA (Colors.green `withOpacity` 0.5) $ scale 10 $ scaleX 0.5 $ square
     blueRect = fillColorA (Colors.blue `withOpacity` 0.5) $ scale 50 $ scaleX 1.2 $ square
     redCircle n = fillColor Colors.red $
-      translateY (negate $ 5 * fromIntegral n) $ translateX (10 * fromIntegral n) $
-      scale (50 + 5 * fromIntegral n) $
+      translateY (negate $ 3 * fromIntegral n) $ translateX (4 * fromIntegral n) $
+      scale (50 + 4 * fromIntegral n) $
       circle
 
 

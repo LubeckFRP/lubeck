@@ -25,6 +25,9 @@ import Lubeck.Forms
 import Lubeck.Forms.Select
 import Lubeck.Util(formatDateUTC, parseDateUTC)
 
+-- TODO the text varieties (password, search, textarea)
+-- TODO double rational version of integer/range
+
 rangeWidget :: Int -> Int -> Int -> Widget' Int
 rangeWidget minBound maxBound step
   sink val = E.input
