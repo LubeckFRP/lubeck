@@ -37,26 +37,47 @@ import qualified BD.Data.Image                  as Im
 import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
+import           Components.BusyIndicator (BusyCmd(..), withBusy)
 
+type ImgIndex = Int
+type ImgHash = Text
+
+data ImgLibraryActions = ViewPrevImg Im.Image | ViewNextImg Im.Image
+                       | DeleteImg (Maybe ImgHash) | ViewGalleryIndex | EnhanceImg (Maybe ImgHash)
+                       | UploadImg | ViewImg Im.Image
 
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
 getImages acc = Im.getAllImagesOrError (Account.username acc)
 
-imageLibraryPageW :: Widget [Im.Image] ()
-imageLibraryPageW _ [] =
+viewImageW :: Widget Im.Image ImgLibraryActions
+viewImageW sink image = do
+  contentPanel $
+    div [class_ "library-image-view"]
+      [ E.img [src imgUrl, class_ "library-image-view-img"] []
+      , button [click $ \_ -> sink $ ViewPrevImg image] [text "<-"]
+      , button [click $ \_ -> sink $ ViewNextImg image] [text "->"]
+      , button [click $ \_ -> sink $ ViewGalleryIndex] [text "x"]
+      , button [click $ \_ -> sink $ EnhanceImg (Im.fb_image_hash image)] [text "Enhance"]
+      , button [click $ \_ -> sink $ DeleteImg (Im.fb_image_hash image)] [text "Delete"]
+      ]
+
+  where
+    imgUrl = fromMaybe "no url" (Im.fb_image_url image)
+
+galleryW :: Widget [Im.Image] ImgLibraryActions
+galleryW _ [] =
   contentPanel $ text "No images in library"
 
-imageLibraryPageW _ ims =
-  contentPanel $ div [] (map imageCell ims)
+galleryW actionsSink ims =
+  contentPanel $ div []
+    ([ div [class_ "toolbar"] [ button [ click (\_ -> actionsSink UploadImg) ] [ text "Upload" ] ] ]
+    <> (map (imageCell actionsSink) ims))
 
-imageCell img =
-  let imgUrl = case Im.fb_thumb_url img of
-        Nothing  -> Im.fb_image_url img
-        Just url -> Just url
-  in div [class_ "thumbnail custom-thumbnail-1 fit-text"]
-      [ div [class_ "thumbnail-wrapper"] [ imgWithAttrs imgUrl [] ]
-      , p [class_ "image-prediction"] [ showImagePred $ Im.prediction img ]
-      , p [class_ "image-hash"]       (showImageHash $ Im.fb_image_hash img)
+imageCell actionsSink image =
+  div [class_ "thumbnail custom-thumbnail-1 fit-text"]
+      [ div [class_ "thumbnail-wrapper"] [ imgWithAttrs actionsSink image [] ]
+      , p [class_ "image-prediction"] [ showImagePred $ Im.prediction image ]
+      , p [class_ "image-hash"]       (showImageHash $ Im.fb_image_hash image)
       ]
 
 showImagePred Nothing  = text "No prediction"
@@ -72,12 +93,10 @@ renderScore x =
   where
     positiveScore x = div [ class_ "good-score-bar"
                           , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px"
-                          ]
-                          []
+                          ] []
     negativeScore x = div [ class_ "bad-score-bar"
                           , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px"
-                          ]
-                          []
+                          ] []
 
     -- current value, max width in px, max value
     calcScoreBarWidthPx :: Double -> Int -> Double -> Int
@@ -86,12 +105,68 @@ renderScore x =
 showImageHash Nothing  = [text "No hash"]
 showImageHash (Just x) = [E.span [] [text "Hash: "], E.span [class_ "image-hash-value"] [text x]]
 
-imgWithAttrs :: Maybe JSString -> [Property] -> Html
-imgWithAttrs (Just url) attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
-imgWithAttrs Nothing attrs    = text "No URL"
+imgWithAttrs :: Sink ImgLibraryActions -> Im.Image -> [Property] -> Html
+imgWithAttrs actionsSink image attrs =
+  let imgUrl = case Im.fb_thumb_url image of
+        Nothing  -> Im.fb_image_url image
+        Just url -> Just url
+  in img ([ class_ "img-thumbnail"
+          , click (\_ -> actionsSink (ViewImg image))
+          , src (imgOrDefault imgUrl)] ++ attrs) []
+  where
+    imgOrDefault Nothing = "No URL"
+    imgOrDefault (Just x) = x
 
-imageLibraryPage :: Signal (Maybe [Im.Image]) -> IO (Signal Html)
-imageLibraryPage imagesS = do
-  let imageLibView = fmap ((altW mempty imageLibraryPageW) emptySink) imagesS
+processActions :: Sink BusyCmd
+               -> Sink (Maybe AppError)
+              --  -> Behavior (Maybe [Im.Image])
+               -> ImgLibraryActions
+               -> Maybe Im.Image
+-- processActions busySink errorSink ims (ViewPrevImg img) = Just findPrev
+  -- where
+    -- findPrev = if idx - 1 < 0 then maxIdx else idx - 1
+    -- [(_, idx)] = filter (\(img, idx) -> img == image ) (zip ims' [0..])
+    -- maxIdx = length ims' - 1
+    -- ims' = pollBehavior ims
+-- processActions busySink errorSink ims (ViewNextImg img) = Just $ getImg img
+-- processActions busySink errorSink ims (DeleteImg hash) = reactimate $ do
+--   busySink PushBusy
+--   res <- Im.deleteByHash hash
+--   errorSink res
+--   busySink PopBusy
+processActions busySink errorSink ViewGalleryIndex = Nothing
+processActions busySink errorSink (ViewImg i) = Just i
+-- processActions busySink errorSink ims UploadImg = reactimate $ do
+--   -- forkIO?
+--   form <- showForm
+--   busySink PushBusy
+--   res <- Im.uploadImg form.img
+--   busySink PopBusy
+--   case res of
+--     Left e -> errorSink $ "Upload failed: " <> showJS e
+--     Right x -> reloadLibrary
+--   return Nothing
 
-  return imageLibView
+imageLibraryPage :: Sink BusyCmd
+                 -> Sink (Maybe AppError)
+                 -> Events Account.Account
+                 -> IO (Signal Html)
+imageLibraryPage busySink errorSink userE = do
+  (actionsSink :: Sink ImgLibraryActions, actionsE :: Events ImgLibraryActions) <- newEvent
+
+
+  let galleryE    = withError errorSink $ fmap (withBusy busySink getImages) userE :: Events [Im.Image]
+  galleryS        <- stepperS Nothing (fmap Just galleryE)                        :: IO (Signal (Maybe [Im.Image]))
+
+  let imageE      = fmap (processActions busySink errorSink) actionsE             :: Events (Maybe Im.Image)
+
+  imageViewS      <- stepperS Nothing imageE                                      :: IO (Signal (Maybe Im.Image))
+  let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS               :: Signal (Maybe Html)
+  let galleryView = fmap ((altW mempty galleryW) actionsSink) galleryS            :: Signal Html
+
+  return $ layout <$> galleryView <*> imageView
+
+  where
+    layout indexView imageView = case imageView of
+      Nothing -> indexView
+      Just v  -> v
