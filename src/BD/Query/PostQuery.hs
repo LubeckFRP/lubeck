@@ -15,10 +15,11 @@ module BD.Query.PostQuery (
 
 import Data.Aeson (ToJSON(..), Value(..), object)
 import Data.Time.Calendar (Day(..))
-import Numeric.Interval (Interval, whole, (...))
+-- import Numeric.Interval (Interval, whole, (...))
 import qualified Data.Time.Format
 import qualified Data.Vector as V
-import qualified Numeric.Interval as I
+-- import qualified Numeric.Interval as I
+import Data.Interval (Interval, interval, whole, Extended(..), lowerBound, upperBound)
 
 import qualified Data.JSString
 
@@ -111,14 +112,14 @@ data SimplePostQuery = SimplePostQuery {
     hashTag      :: Text,
     userName     :: Text,
 
-    followers    :: Interval (Maybe Int), -- Nothing for inf
-    date         :: Interval (Maybe Day),
+    followers    :: Interval Int, -- Nothing for inf
+    date         :: Interval Day,
     location     :: Maybe Int,
 
     orderBy     :: PostOrder,
     direction   :: SortDirection
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show)
 
 data PostOrder
   = PostByCreated
@@ -138,8 +139,8 @@ defSimplePostQuery = SimplePostQuery {
     comment   = "",
     hashTag   = "",
     userName  = "",
-    followers = Nothing ... Nothing,
-    date      = Nothing ... Nothing,
+    followers = whole,
+    date      = whole,
     location  = Nothing,
     orderBy   = PostByLikes,
     direction = Asc
@@ -163,11 +164,20 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
 -- |
 -- Convert an interval to a list of restrictions.
 --  First argument is an arbitrary value of the type.
-intervalToOrderings :: a -> Interval (Maybe a) -> [(Ordering, a)]
-intervalToOrderings arbitrary i
-  | I.null i  = [(GT,arbitrary),(LT,arbitrary)] -- empty
-  | otherwise = case (I.inf i, I.sup i) of
-    (Nothing, Nothing) -> [] -- full
-    (Nothing, Just b)  -> [(LT, b)] -- max
-    (Just a,  Nothing) -> [(GT, a)] -- min
-    (Just a,  Just b)  -> [(GT, a), (LT, b)] -- min,max
+intervalToOrderings :: a -> Interval a -> [(Ordering, a)]
+intervalToOrderings arbitrary i = case (a, b) of
+  (NegInf, PosInf) -> [] -- full
+  (NegInf, Finite b)  -> [(LT, b)] -- max
+  (Finite a,  PosInf) -> [(GT, a)] -- min
+  (Finite a,  Finite b)  -> [(GT, a), (LT, b)] -- min,max
+  _                -> [(GT, arbitrary), (LT, arbitrary)] -- empty
+  where
+    (a, b) = (lowerBound i, upperBound i)
+-- TODO arguaby wrong behavior w.r.t. open/closed
+
+  -- | I.null i  = [(GT,arbitrary),(LT,arbitrary)] -- empty
+  -- | otherwise = case (I.inf i, I.sup i) of
+  --   (Nothing, Nothing) -> [] -- full
+  --   (Nothing, Just b)  -> [(LT, b)] -- max
+  --   (Just a,  Nothing) -> [(GT, a)] -- min
+  --   (Just a,  Just b)  -> [(GT, a), (LT, b)] -- min,max
