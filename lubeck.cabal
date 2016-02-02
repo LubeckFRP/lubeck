@@ -58,6 +58,7 @@ library
                      , containers
                      , lens
                      , intervals
+                     , data-interval
                      , vector-space
                      , vector-space-points
                      , colour

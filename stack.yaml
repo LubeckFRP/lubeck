@@ -8,5 +8,11 @@ packages:
 - location:
     git: git@github.com:BeautifulDestinations/virtual-dom.git
     commit: 838fb0eec0d08b27c1f66450c1baeee63b9272dd
+- location:
+    git: git@github.com:msakai/data-interval.git
+    commit: f57e950e53e5499f1cbc2609382521bf52105b5e
+- location:
+    git: git@github.com:msakai/extended-reals.git
+    commit: c724f6fcece279873354f576b9099579cb42f8ec
 extra-deps: []
 resolver: nightly-2015-12-14
