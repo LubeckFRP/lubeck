@@ -32,7 +32,7 @@ import           Lubeck.FRP
 import qualified BD.Data.Account                as Account
 import qualified BD.Data.Image                  as Im
 
-
+import           BD.Api
 import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
@@ -175,23 +175,28 @@ processActions busySink errorSink imsB accB (DeleteImg image) = do
       res <- (withBusy2 busySink deleteImage) acc image
       case res of
         Left e -> (errorSink $ Just e) >> (return $ Just image)
-        Right _ -> do
+        Right Ok -> do
           {- TODO reload gallery -}
+          notImp errorSink "deleted ok, but TODO reload library"
           return Nothing
 
 processActions busySink errorSink imsB accB ViewGalleryIndex = return Nothing
 processActions busySink errorSink imsB accB (ViewImg i) = return $ Just i
-processActions busySink errorSink imsB accB x@UploadImg = notImp errorSink x
--- processActions busySink errorSink UploadImg = reactimate $ do
---   -- forkIO?
---   form <- showForm
---   busySink PushBusy
---   res <- Im.uploadImg form.img
---   busySink PopBusy
---   case res of
---     Left e -> errorSink $ "Upload failed: " <> showJS e
---     Right x -> reloadLibrary
---   return Nothing
+processActions busySink errorSink imsB accB x@(UploadImg) = notImp errorSink x
+-- processActions busySink errorSink imsB accB UploadImg = do
+--   mbUsr <- pollBehavior accB
+--   case mbUsr of
+--     Nothing -> do
+--       errorSink . Just . BLError $ "can't upload an image: no user."
+--       return $ Just image
+--
+--     Just acc -> do
+--       res <- (withBusy2 busySink uploadImages) acc files
+--       case res of
+--         Left e -> (errorSink $ Just e) >> (return $ Just image)
+--         Right imgId -> do
+--           {- TODO reload gallery >>= return (imgFrom imgId) -}
+--           return $ Just image
 
 notImp errorSink x = do
   errorSink . Just . NotImplementedError . showJS $ x
@@ -202,8 +207,11 @@ notImp errorSink x = do
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
 getImages acc = Im.getAllImagesOrError (Account.username acc)
 
-deleteImage :: Account.Account -> Im.Image -> IO (Either AppError ())
+deleteImage :: Account.Account -> Im.Image -> IO (Either AppError Ok)
 deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id image)
+
+-- uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
+-- uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
 
 -- main entry point
 
@@ -214,7 +222,7 @@ imageLibraryPage :: Sink BusyCmd
 imageLibraryPage busySink errorSink userE = do
   (actionsSink :: Sink ImgLibraryActions, actionsE :: Events ImgLibraryActions) <- newEvent
 
-  userB           <- stepper Nothing (fmap Just userE) :: IO (Behavior (Maybe Account.Account))
+  userB           <- stepper Nothing (fmap Just userE)                                :: IO (Behavior (Maybe Account.Account))
 
   galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) userE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                            :: IO (Signal (Maybe [Im.Image]))
@@ -224,6 +232,10 @@ imageLibraryPage busySink errorSink userE = do
   imageViewS      <- stepperS Nothing imageE                                          :: IO (Signal (Maybe Im.Image))
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)
   let galleryView = fmap ((altW mempty galleryW) actionsSink) galleryS                :: Signal Html
+
+  -- let uploadE = filter (UploadImg ==) actionsE
+  -- uploadS <- stepperS Nothing (fmap Just uploadE)
+  -- let uploadView  = fmap ((altW mempty uploadW) actionsSink) uploadS :: Signal (Maybe Html)
 
   return $ layout <$> galleryView <*> imageView
 
