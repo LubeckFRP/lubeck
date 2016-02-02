@@ -104,8 +104,11 @@ customIntervalWidget z numW title = id
       (Any,         (_,_)) -> interval (NegInf,True) (PosInf,True)
       (GreaterThan, (x,_)) -> interval (Finite x,True) (PosInf,True)
       (LessThan,    (_,y)) -> interval (NegInf,True) (Finite y,True)
-      -- Note that if x > y, this will generate empty, and thus default to the full range
-      (Between,     (x,y)) -> interval (Finite x,True) (Finite y,True)
+      -- If x > y, we don't want to generate empty, so increase upper bound to match lower bound
+      (Between,     (x,y)) ->
+        if x > y
+            then interval (Finite x,True) (Finite x,True)
+            else interval (Finite x,True) (Finite y,True)
 
     -- toInterval x = case x of
     --   (Any,         (_,_)) -> Nothing I.... Nothing
