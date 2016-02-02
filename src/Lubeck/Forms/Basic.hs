@@ -20,8 +20,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.Forms
 import Lubeck.Forms.Select
-import Lubeck.Util()
-import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
+import Lubeck.Util(formatDateUTC, parseDateUTC)
 
 hideableIntegerWidget :: Bool -> Widget' Int
 hideableIntegerWidget False _ _ = mempty

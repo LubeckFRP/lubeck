@@ -9,19 +9,17 @@ module BD.Query.PostQuery (
   SortDirection(..),
   defSimplePostQuery,
   complexifyPostQuery,
-  formatDateUTC,
-  parseDateUTC,
 ) where
 
 import Data.Aeson (ToJSON(..), Value(..), object)
 import Data.Time.Calendar (Day(..))
-import qualified Data.Time.Format
 import qualified Data.Vector as V
 import Data.Interval (Interval, interval, whole, Extended(..), lowerBound, upperBound)
 
 import qualified Data.JSString
 
 import BD.Types
+import Lubeck.Util (formatDateUTC)
 
 data Query
   = PostQuery PostQuery
@@ -89,18 +87,6 @@ sortDirectionEnc x = String $ case x of
   Asc   -> "asc"
   Desc  -> "desc"
 dateEnc = toJSON . formatDateUTC
-
-parseDateUTC :: String -> Maybe Day
-parseDateUTC = Data.Time.Format.parseTimeM True l f
-  where
-    l = Data.Time.Format.defaultTimeLocale
-    f = Data.Time.Format.iso8601DateFormat Nothing
-
-formatDateUTC :: Day -> String
-formatDateUTC = Data.Time.Format.formatTime l f
-  where
-    l = Data.Time.Format.defaultTimeLocale
-    f = Data.Time.Format.iso8601DateFormat Nothing
 
 
 -- | Non-recursive version of 'PostQuery', suitable for use in forms.

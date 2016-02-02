@@ -13,12 +13,16 @@ module Lubeck.Util
   , infoPanel
   , contentPanel
   , tableHeaders
+
+  , formatDateUTC
+  , parseDateUTC
   ) where
 
 import           Data.Maybe
 import           Data.JSString
 import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString)
+import qualified Data.Time.Format
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -77,3 +81,16 @@ infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center "] [co
 
 tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
+
+
+parseDateUTC :: String -> Maybe Day
+parseDateUTC = Data.Time.Format.parseTimeM True l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
+
+formatDateUTC :: Day -> String
+formatDateUTC = Data.Time.Format.formatTime l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
