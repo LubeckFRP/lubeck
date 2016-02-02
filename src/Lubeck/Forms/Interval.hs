@@ -28,7 +28,7 @@ import Lubeck.Forms.Select
 import Lubeck.Util()
 import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
-data WRange = Any | LessThen | GreaterThen | Between deriving (Show, Eq)
+data IntervalRange = Any | LessThen | GreaterThen | Between deriving (Show, Eq)
 
 -- data EndPoint a =  NegInf | Fin a | PosInf
   -- deriving (Eq, Ord, Read, Show)
@@ -97,10 +97,10 @@ customIntervalWidget z numW title = id
       (LessThen,    (_,y)) -> Nothing I.... Just y
       (Between,     (x,y)) -> Just x  I.... Just y
 
-    -- spanWidget2 :: Widget' (WRange, (a, a))
+    -- spanWidget2 :: Widget' (IntervalRange, (a, a))
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
 
-    -- spanTypeW :: Widget' WRange
+    -- spanTypeW :: Widget' IntervalRange
     spanTypeW = selectWidget
       [ (Any,         "Any")
       , (GreaterThen, "Greater than")
@@ -113,7 +113,7 @@ customIntervalWidget z numW title = id
       LessThen    -> (False, True)
       Between     -> (True, True)
 
-    -- numsW :: WRange -> Widget' (a, a)
+    -- numsW :: IntervalRange -> Widget' (a, a)
     numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
 
 -- TODO is the (Monoid Html) instance what we need?
