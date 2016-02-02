@@ -176,7 +176,7 @@ processActions busySink errorSink imsB accB (DeleteImg image) = do
       case res of
         Left e -> (errorSink $ Just e) >> (return $ Just image)
         Right _ -> do
-          {- reload gallery -}
+          {- TODO reload gallery -}
           return Nothing
 
 processActions busySink errorSink imsB accB ViewGalleryIndex = return Nothing
