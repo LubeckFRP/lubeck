@@ -171,6 +171,7 @@ processActions busySink errorSink imsB accB (DeleteImg image) = do
       return $ Just image
 
     Just acc -> do
+      -- XXX TODO ask for confirmation!
       res <- (withBusy2 busySink deleteImage) acc image
       case res of
         Left e -> (errorSink $ Just e) >> (return $ Just image)
