@@ -22,7 +22,7 @@ instance ToJSON JSString where
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
 
-data AppError = ApiError JSString | BLError JSString
+data AppError = ApiError JSString | BLError JSString | NotImplementedError JSString
   -- deriving (Show)
 
 -- FIXME should be in Ad Platform types probably

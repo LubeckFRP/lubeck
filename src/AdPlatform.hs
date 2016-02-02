@@ -35,7 +35,7 @@ import           BD.Utils
 
 import           Pages.Campaign                 (campaignPage, getCampaigns)
 import           Pages.CreateAd                 (createAdPage)
-import           Pages.ImageLibrary             (imageLibraryPage, getImages)
+import           Pages.ImageLibrary             (imageLibraryPage)
 import           Pages.Login                    (loginPage)
 import           Pages.PostSearch               (searchPage)
 import           Pages.User                     (userPage)
@@ -86,17 +86,16 @@ adPlatform = do
 
   userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
   camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
-  imagesE                 <- withErrorIO errorSink $ fmap (withBusy busySink getImages) userE
+
   userS                   <- stepperS Nothing (fmap Just userE)
   campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
-  imagesS                 <- stepperS Nothing (fmap Just imagesE)
   let userAndCampaignsS   = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
   let usernameB           = fmap (fmap Account.username) $ current userS
 
   (userView, loadAdsE)    <- userPage                        userAndCampaignsS
   createAdView            <- createAdPage busySink errorSink usernameB
   adsView                 <- campaignPage busySink errorSink loadAdsE (current userS)
-  imageLibView            <- imageLibraryPage                imagesS
+  imageLibView            <- imageLibraryPage busySink errorSink userE
   searchPageView          <- searchPage   busySink errorSink usernameB
 
   let postLoginNavE       = fmap (const NavUser) (updates userS)
