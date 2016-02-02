@@ -36,7 +36,7 @@ import qualified BD.Data.Image                  as Im
 import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
-import           Components.BusyIndicator (BusyCmd(..), withBusy)
+import           Components.BusyIndicator (BusyCmd(..), withBusy, withBusy2)
 
 type ImgIndex = Int
 type ImgHash = Text
@@ -141,9 +141,10 @@ imgWithAttrs actionsSink image attrs =
 processActions :: Sink BusyCmd
                -> Sink (Maybe AppError)
                -> Behavior (Maybe [Im.Image])
+               -> Behavior (Maybe Account.Account)
                -> ImgLibraryActions
                -> IO (Maybe Im.Image)
-processActions busySink errorSink imsB (ViewPrevImg image) = do
+processActions busySink errorSink imsB accB (ViewPrevImg image) = do
   mbIms <- pollBehavior imsB
   let prevImg = case mbIms of
                   Nothing -> image
@@ -152,7 +153,7 @@ processActions busySink errorSink imsB (ViewPrevImg image) = do
                                   Just x  -> ims !! (if x - 1 < 0 then (length ims) - 1 else x - 1)
   return (Just prevImg)
 
-processActions busySink errorSink imsB (ViewNextImg image) = do
+processActions busySink errorSink imsB accB (ViewNextImg image) = do
   mbIms <- pollBehavior imsB
   let nextImg = case mbIms of
                   Nothing -> image
@@ -161,17 +162,25 @@ processActions busySink errorSink imsB (ViewNextImg image) = do
                                   Just x  -> ims !! (if x + 1 >= length ims then 0 else x + 1)
   return (Just nextImg)
 
-processActions busySink errorSink imsB x@(EnhanceImg image)  = (notImp errorSink x) >> return (Just image)
-processActions busySink errorSink imsB x@(DeleteImg image)   = (notImp errorSink x) >> return (Just image)
--- processActions busySink errorSink (DeleteImg image) = do
---   busySink PushBusy
---   res <- deleteImage image
---   errorSink res
---   busySink PopBusy
---   return Nothing
-processActions busySink errorSink imsB ViewGalleryIndex = return Nothing
-processActions busySink errorSink imsB (ViewImg i) = return $ Just i
-processActions busySink errorSink imsB x@UploadImg = notImp errorSink x
+processActions busySink errorSink imsB accB x@(EnhanceImg image)  = (notImp errorSink x) >> return (Just image)
+processActions busySink errorSink imsB accB (DeleteImg image) = do
+  mbUsr <- pollBehavior accB
+  case mbUsr of
+    Nothing -> do
+      errorSink . Just . BLError $ "can't delete an image: no user."
+      return $ Just image
+
+    Just acc -> do
+      res <- (withBusy2 busySink deleteImage) acc image
+      case res of
+        Left e -> (errorSink $ Just e) >> (return $ Just image)
+        Right _ -> do
+          {- reload gallery -}
+          return Nothing
+
+processActions busySink errorSink imsB accB ViewGalleryIndex = return Nothing
+processActions busySink errorSink imsB accB (ViewImg i) = return $ Just i
+processActions busySink errorSink imsB accB x@UploadImg = notImp errorSink x
 -- processActions busySink errorSink UploadImg = reactimate $ do
 --   -- forkIO?
 --   form <- showForm
@@ -192,8 +201,8 @@ notImp errorSink x = do
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
 getImages acc = Im.getAllImagesOrError (Account.username acc)
 
--- deleteImage :: Im.Image -> IO (Either AppError ())
--- deleteImage image = Im.deleteImageOrError (Im.id image)
+deleteImage :: Account.Account -> Im.Image -> IO (Either AppError ())
+deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id image)
 
 -- main entry point
 
@@ -204,11 +213,12 @@ imageLibraryPage :: Sink BusyCmd
 imageLibraryPage busySink errorSink userE = do
   (actionsSink :: Sink ImgLibraryActions, actionsE :: Events ImgLibraryActions) <- newEvent
 
+  userB           <- stepper Nothing (fmap Just userE) :: IO (Behavior (Maybe Account.Account))
 
   galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) userE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                            :: IO (Signal (Maybe [Im.Image]))
 
-  imageE          <- reactimateIO $ fmap (processActions busySink errorSink (current galleryS)) actionsE :: IO (Events (Maybe Im.Image))
+  imageE          <- reactimateIO $ fmap (processActions busySink errorSink (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
 
   imageViewS      <- stepperS Nothing imageE                                          :: IO (Signal (Maybe Im.Image))
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)

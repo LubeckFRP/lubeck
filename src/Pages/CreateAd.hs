@@ -94,7 +94,7 @@ createAdPage busySink errorSink mUserNameB = do
         -- print $ show res
         return ()
 
-      Nothing -> errorSink . Just . BLError $ "no username!"
+      Nothing -> errorSink . Just . BLError $ "can't create ad: no username!"
     return ()
 
   return view

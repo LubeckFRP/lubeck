@@ -11,6 +11,7 @@ import           Data.Aeson
 import qualified Data.Aeson.Types
 import           Data.Data
 import           Data.Monoid
+import           Data.String      (fromString)
 import           Data.Time.Clock  (UTCTime)
 import qualified GHC.Generics     as GHC
 
@@ -35,6 +36,9 @@ data Image = Image
   } deriving (GHC.Generic, Show)
 
 
+showJS :: Show a => a -> JSString
+showJS = fromString . show
+
 instance FromJSON Image
 instance ToJSON Image
 
@@ -44,5 +48,5 @@ getAllImages unm = unsafeGetAPI $ unm <> "/ad-images"
 getAllImagesOrError :: Text -> IO (Either AppError [Image])
 getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError
 
--- deleteImageOrError :: Int -> IO (Either AppError ())
--- deleteImageOrError imageId = deleteAPIEither <endpoint missing> >>= return . first ApiError
+deleteImageOrError :: Text -> Int -> IO (Either AppError ())
+deleteImageOrError unm imageId = deleteAPIEither (unm <> "/ad-image/" <> showJS imageId) >>= return . first ApiError
