@@ -30,6 +30,9 @@ import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
 data WRange = Any | LessThen | GreaterThen | Between deriving (Show, Eq)
 
+-- data EndPoint a =  NegInf | Fin a | PosInf
+  -- deriving (Eq, Ord, Read, Show)
+
 integerIntervalWidget :: JSString -> Widget' (Interval (Maybe Int))
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
 
@@ -90,7 +93,7 @@ customIntervalWidget z numW title = id
         _                  -> (Any,         (z,z))
     toInterval x = case x of
       (Any,         (_,_)) -> Nothing I.... Nothing
-      (GreaterThen, (x,_)) -> Just x  I.... Nothing
+      (GreaterThen, (x,_)) -> Just x  I.... Nothing -- nothing sorts as smaller than Just, hence this becomes empty
       (LessThen,    (_,y)) -> Nothing I.... Just y
       (Between,     (x,y)) -> Just x  I.... Just y
 
@@ -100,8 +103,8 @@ customIntervalWidget z numW title = id
     -- spanTypeW :: Widget' WRange
     spanTypeW = selectWidget
       [ (Any,         "Any")
-      , (LessThen,    "Less than")
       , (GreaterThen, "Greater than")
+      , (LessThen,    "Less than")
       , (Between,     "Between")
       ]
     visible x = case x of
