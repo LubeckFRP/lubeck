@@ -175,7 +175,7 @@ processActions busySink errorSink imsB accB (DeleteImg image) = do
       res <- (withBusy2 busySink deleteImage) acc image
       case res of
         Left e -> (errorSink $ Just e) >> (return $ Just image)
-        Right Ok -> do
+        Right () -> do
           {- TODO reload gallery -}
           notImp errorSink "deleted ok, but TODO reload library"
           return Nothing
@@ -207,7 +207,7 @@ notImp errorSink x = do
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
 getImages acc = Im.getAllImagesOrError (Account.username acc)
 
-deleteImage :: Account.Account -> Im.Image -> IO (Either AppError Ok)
+deleteImage :: Account.Account -> Im.Image -> IO (Either AppError ())
 deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id image)
 
 -- uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
