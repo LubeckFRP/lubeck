@@ -43,3 +43,6 @@ getAllImages unm = unsafeGetAPI $ unm <> "/ad-images"
 
 getAllImagesOrError :: Text -> IO (Either AppError [Image])
 getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError
+
+-- deleteImageOrError :: Int -> IO (Either AppError ())
+-- deleteImageOrError imageId = deleteAPIEither <endpoint missing> >>= return . first ApiError

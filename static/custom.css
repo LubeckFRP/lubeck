@@ -54,6 +54,7 @@
   /*background-color: #eee;*/
   border: 0px solid black;
   box-shadow: none;
+  cursor: pointer;
 }
 .thumbnail-wrapper {
   border: 0px solid red;

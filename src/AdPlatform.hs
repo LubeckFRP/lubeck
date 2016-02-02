@@ -35,7 +35,7 @@ import           BD.Utils
 
 import           Pages.Campaign                 (campaignPage, getCampaigns)
 import           Pages.CreateAd                 (createAdPage)
-import           Pages.ImageLibrary             (imageLibraryPage, getImages)
+import           Pages.ImageLibrary             (imageLibraryPage)
 import           Pages.Login                    (loginPage)
 import           Pages.PostSearch               (searchPage)
 import           Pages.User                     (userPage)
