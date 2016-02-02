@@ -21,6 +21,7 @@ import Lubeck.Forms (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 -- import Lubeck.Drawing (drawTest)
 import Lubeck.Drawing hiding (text)
+import qualified Lubeck.Drawing
 
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
@@ -36,9 +37,10 @@ svgW output model = toSvg (RenderingOptions (Point 1200 1200) Center) $ drawing 
 drawing :: Sink Int -> Int -> Drawing
 drawing output n = mempty
   <> circles
-  <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (scale 0.8 $ redCircle $ negate n)
+  <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
+  <> shearXY (fromIntegral n/200) 0 (scale 40 (Lubeck.Drawing.text "Hans"))
   <> scale 10 xyAxis
   <> scale 10 smokeBackground
   where
