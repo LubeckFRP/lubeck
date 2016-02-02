@@ -31,7 +31,7 @@ render :: Widget' Int
 render = bothWidget mappend intW svgW
 
 intW = rangeWidget 0 200 1
-svgW output model = toSvg (RenderingOptions (Point 1200 1200) Center) $ drawing output model
+svgW output model = toSvg (RenderingOptions (Point (1400) (900)) Center) $ drawing output model
 
 
 drawing :: Sink Int -> Int -> Drawing
