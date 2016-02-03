@@ -40,7 +40,7 @@ drawing output n = mempty
   <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
-  <> shearXY (fromIntegral n/200) 0 (scale 40 (style (styleNamed "user-select" "none") $ Lubeck.Drawing.text "Hans"))
+  <> shearXY (fromIntegral n/200) 0 (scale 40 (unselectable $ Lubeck.Drawing.text "Hans"))
   <> scale 10 xyAxis
   <> scale 10 smokeBackground
   where
@@ -52,6 +52,16 @@ drawing output n = mempty
       translateY (negate $ 3 * fromIntegral n) $ translateX (4 * fromIntegral n) $
       scale (50 + 4 * fromIntegral n) $
       circle
+
+unselectable = style $ mconcat $ fmap (uncurry $ styleNamed)
+  [ ("-webkit-touch-callout", "none")
+  , ("-webkit-user-select",   "none")
+  , ("-khtml-user-select",    "none")
+  , ("-moz-user-select",      "none")
+  , ("-ms-user-select",       "none")
+  , ("-o-user-select",        "none")
+  , ("user-select",           "none")
+  ]
 
 
 -- MAIN

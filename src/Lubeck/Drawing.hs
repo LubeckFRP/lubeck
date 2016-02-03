@@ -241,6 +241,8 @@ transformationToMatrix = getTransformation
 
 {-| -}
 type Style = Map JSString JSString
+-- TODO newtype wrapper
+-- Monoid
 
 {-| -}
 emptyStyle :: Style
