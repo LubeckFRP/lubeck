@@ -32,11 +32,12 @@ import           BD.Data.SearchPost             (SearchPost)
 import qualified BD.Data.SearchPost             as P
 import           BD.Types
 import           BD.Utils
+import           BD.Api
 
 import           Pages.Campaign                 (campaignPage, getCampaigns)
 import           Pages.CreateAd                 (createAdPage)
 import           Pages.ImageLibrary             (imageLibraryPage)
-import           Pages.Login                    (loginPage)
+import           Pages.Login                    (loginPage, Username)
 import           Pages.PostSearch               (searchPage)
 import           Pages.User                     (userPage)
 
@@ -75,6 +76,7 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
           , page
           ] ]
 
+useAuth = False
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
@@ -82,9 +84,18 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
-  (loginView, userLoginE) <- loginPage defaultUsername
+  (loginView, userLoginE) <- loginPage (defaultUsername, "")
+  userLoginB              <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
-  userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
+  authOk                  <- withErrorIO errorSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Ok)
+  let validUserLoginE     = sample userLoginB authOk :: Events (Maybe Username)
+
+  let bypassAuthUserE     = fmap fst userLoginE
+  userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError)
+                                                          (if useAuth then (filterJust validUserLoginE)
+                                                                      else bypassAuthUserE)
+
+  -- userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError) (filterJust validUserLoginE)
   camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
 
   userS                   <- stepperS Nothing (fmap Just userE)

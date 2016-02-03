@@ -2,6 +2,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable, QuasiQuotes #-}
 
 module BD.Api (
+  getAPI',
+  getAPIEither',
+
   getAPI,
   getAPIEither,
   unsafeGetAPI,
@@ -43,10 +46,12 @@ import Data.String (fromString)
 
 baseURL :: JSString
 --baseURL = "http://localhost:3567/api/v1/"
-baseURL = "http://data.beautifuldestinations.com/api/v1/"
+baseURL = "https://data.beautifuldestinations.com/api/v1/"
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show
+
+type Header = (JSString, JSString) -- JavaScript.Web.XMLHttpRequest uses it internally, but not exports
 
 {-|
 Make a GET request into the BD API.
@@ -70,25 +75,35 @@ getAccount :: JSString -> Api (Envelope Account)
 getAccount name = getAPI "\/" <> name <> "\/account"
 @
 -}
-getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
-getAPI path = do
+getAPI' :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> [Header] -> m a
+getAPI' path headers = do
   eitherResult <- liftIO $ (try $ xhrByteString request :: IO (Either XHRError (Response ByteString)) )
   case eitherResult of
-    Left s -> throwError ("getAPI: " <> showJS s)
+    Left s -> throwError ("getAPI': " <> showJS s)
     Right result -> case contents result of
-      Nothing          -> throwError "getAPI: No response"
+      Nothing          -> throwError "getAPI': No response"
       Just byteString  -> case Data.Aeson.decodeStrict byteString of
-        Nothing -> throwError "getAPI: Parse error"
+        Nothing -> throwError "getAPI': Parse error"
         Just x  -> return x
   where
     request = Request {
             reqMethod          = GET
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
-          , reqHeaders         = []
-          , reqWithCredentials = False
+          , reqHeaders         = headers
+          , reqWithCredentials = True
           , reqData            = NoData
           }
+
+getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
+getAPI = \path -> getAPI' path []
+
+{-|
+Same as `getAPI'`, with the `MonadError` specialized to `Either`.
+-}
+getAPIEither' :: FromJSON a => JSString -> [Header] -> IO (Either JSString a)
+getAPIEither' = \p h -> runExceptT $ getAPI' p h
+
 
 {-|
 Make a POST request into the BD API.
