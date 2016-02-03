@@ -100,8 +100,10 @@ lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ 
 
 -- Box plot.
 boxData :: [Double] -> Drawing
-boxData ps = scale 300 $ fmap (\p -> scaleX (1/fromIntegral $ length ps) $ scaleY p $ base) ps
+boxData ps = scale 300 $ mconcat $
+    fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
   where
+    -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
 ticks :: [(Double, JSString)] -> [(Double, JSString)] -> Drawing
@@ -134,7 +136,7 @@ main = do
               [ mempty
               , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
               , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              , boxData [1,2]
+              , boxData [0.5,1,0.05]
               , ticks
                   (zip [0.1,0.2..1] (fmap showJS [1..]))
                   (zip [0.1,0.2..1] (fmap showJS [1..]))
