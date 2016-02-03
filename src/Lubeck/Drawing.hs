@@ -3,13 +3,11 @@
 
 {-|
 
-High-level graphics library with an SVG backend.
+High-level vector graphics library. Renders to as SVG using "Web.VirtualDom.Svg".
 
-Essentially a stripped-down version of Diagrams:
+The API is a rather stripped-down version of Diagrams.
 
 [diagrams]: http://projects.haskell.org/diagrams
-
-/Experimental/
 
 -}
 module Lubeck.Drawing (
@@ -521,10 +519,16 @@ toSvg1 ps x = let
 
 
 {-| -}
-data OrigoPlacement = TopLeft | BottomLeft | Center
+data OrigoPlacement
+  = TopLeft
+  | BottomLeft
+  | Center
   deriving (Eq, Ord, Show)
 {-| -}
-data RenderingOptions = RenderingOptions { dimensions :: Point, origoPlacement :: OrigoPlacement }
+data RenderingOptions = RenderingOptions
+  { dimensions     :: Point                   -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
+  , origoPlacement :: OrigoPlacement          -- ^ Where to place origo in the generated image.
+  }
   deriving (Eq, Ord, Show)
 
 {-| -}
