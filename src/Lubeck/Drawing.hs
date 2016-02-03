@@ -23,9 +23,11 @@ module Lubeck.Drawing (
     angleToDegrees,
 
     -- ** Transformations
-    Transformation,
+    Transformation(..), -- TODO hide internals
     emptyTransformation,
     apTransformation,
+    transformVector,
+    transformPoint,
     (!<>),
     transformationToMatrix,
 
@@ -217,6 +219,12 @@ apTransformation
        b1*e2 + d1*f2 + f1)
 
 infixr 6 !<>
+
+transformVector :: Transformation -> Vector -> Vector
+transformVector (Transformation (a,b,c,d,e,f)) (Vector x y) = Vector (a*x+c*y) (b*x+d*y)
+
+transformPoint :: Transformation -> Point -> Point
+transformPoint (Transformation (a,b,c,d,e,f)) (Point x y) = Point (a*x+c*y+e) (b*x+d*y+f)
 
 {-| Compose two transformations. -}
 (!<>) :: Transformation -> Transformation -> Transformation

@@ -83,6 +83,7 @@ executable bd-example-app
                      , lubeck
                      , virtual-dom
                      , colour
+                     , vector-space
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 

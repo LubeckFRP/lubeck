@@ -26,6 +26,8 @@ import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
+import Data.VectorSpace
+import Data.AffineSpace
 import qualified Lubeck.Drawing
 
 import Data.Colour (withOpacity)
@@ -72,6 +74,12 @@ circleWithMouseOver output state =
     , axisX
     ]
 
+scatterData :: [Point] -> Drawing
+scatterData ps = mconcat $ fmap (\p -> translate ((transformPoint (scaling 300 300) p) .-. origin) base) ps
+  where
+    base = fillColor Colors.red $ scale 20 circle
+    scaling a b = Transformation (a,0,0,b,0,0)
+    origin = Point 0 0
 
 labeledAxis :: JSString -> JSString -> Drawing
 labeledAxis labelX labelY = mconcat
@@ -126,7 +134,12 @@ main = do
   -- (view, _) <- component 1 render
   -- runAppReactive view
 
+
+
+
+
 -- Work around 'blocked indefinitely' issue by embedding a dummy handler
+runAppReactive2 :: Signal Html -> IO ()
 runAppReactive2 x = do
   (s,e) <- newEvent
   s2 <- fmap (x <>) $ stepperS mempty e
