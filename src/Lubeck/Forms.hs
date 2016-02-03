@@ -11,6 +11,8 @@ module Lubeck.Forms
   -- * Widget type
     Widget
   , Widget'
+  , WidgetT
+  , WidgetT'
 
   -- ** Mapping over widgets
   , lmapWidget
@@ -71,7 +73,7 @@ Provides a way of:
 - Rendering a value of some type @i@
 - Sending updates of some type @o@ in response to user interaction.
 -}
-type Widget = WidgetT Html
+type Widget i o = WidgetT Html i o
 
 {-|
 A variant of 'Widget' where input and output is the same.
