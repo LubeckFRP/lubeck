@@ -31,7 +31,7 @@ render :: Widget' Int
 render = bothWidget mappend intW svgW
 
 intW = rangeWidget 0 200 1
-svgW output model = toSvg (RenderingOptions (Point (1400) (900)) Center) $ drawing output model
+svgW output model = toSvg (RenderingOptions (Point (1400) (1200)) Center) $ drawing output model
 
 
 drawing :: Sink Int -> Int -> Drawing
@@ -40,7 +40,7 @@ drawing output n = mempty
   <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
-  <> shearXY (fromIntegral n/200) 0 (scale 40 (Lubeck.Drawing.text "Hans"))
+  <> shearXY (fromIntegral n/200) 0 (scale 40 (style (styleNamed "pointer-events" "none") $ Lubeck.Drawing.text "Hans"))
   <> scale 10 xyAxis
   <> scale 10 smokeBackground
   where
