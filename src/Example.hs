@@ -140,8 +140,9 @@ axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 ho
 main :: IO ()
 main = do
   let staticPlot = mconcat
-              [ scatterData (zipWith Point rand1 rand2)
-              , lineData [Point 0 0, Point 0.2 0.6, Point 1 1]
+              [ mempty
+                -- scatterData (zipWith Point rand1 rand2)
+              , lineData [Point 0 0, Point 0.1 0.3, Point 0.2 0.6, Point 1 1]
               , labeledAxis "Usually time" "Interesting stuff"
               ]
 
