@@ -19,7 +19,6 @@ import Lubeck.FRP
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
--- import Lubeck.Drawing (drawTest)
 import Lubeck.Drawing hiding (text)
 import qualified Lubeck.Drawing
 
