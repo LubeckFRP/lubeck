@@ -120,37 +120,6 @@ axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 ho
 
 
 
--- drawing :: Sink Int -> Int -> Drawing
--- drawing output n = mempty
---   <> circles
---   <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
---   <> blueRect
---   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
---   <> shearXY (fromIntegral n/200) 0 (scale 40 (unselectable $ Lubeck.Drawing.text "Hans"))
---   <> scale 10 xyAxis
---   <> scale 10 smokeBackground
---   where
---     nCircles = 40
---     circles = mconcat $ fmap (\i -> rotate (turn/fromIntegral nCircles*fromIntegral (negate i)) $ translateX (100+fromIntegral i+fromIntegral n) ci) [1..nCircles]
---       where ci = fillColorA (Colors.green `withOpacity` 0.5) $ scale 10 $ scaleX 0.5 $ square
---     blueRect = fillColorA (Colors.blue `withOpacity` 0.5) $ scale 50 $ scaleX 1.2 $ square
---     redCircle n = fillColor Colors.red $
---       translateY (negate $ 3 * fromIntegral n) $ translateX (4 * fromIntegral n) $
---       scale (50 + 4 * fromIntegral n) $
---       circle
-
--- unselectable = style $ mconcat $ fmap (uncurry $ styleNamed)
---   [ ("-webkit-touch-callout", "none")
---   , ("-webkit-user-select",   "none")
---   , ("-khtml-user-select",    "none")
---   , ("-moz-user-select",      "none")
---   , ("-ms-user-select",       "none")
---   , ("-o-user-select",        "none")
---   , ("user-select",           "none")
---   -- No mouse pointer
---   , ("pointer-events",        "none")
---   ]
-
 
 -- MAIN
 
@@ -158,17 +127,20 @@ main :: IO ()
 main = do
   let staticPlot = mconcat
               [ mempty
-              , scatterData [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              , lineData    [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
               , ticks
                   (zip [0.1,0.2..1] (fmap showJS [1..]))
                   (zip [0.1,0.2..1] (fmap showJS [1..]))
               , labeledAxis "Usually time" "Interesting stuff"
+              , scale 10 $ xyAxis
+              , smokeBackground
               ]
 
   let x = pure staticPlot
   runAppReactive2 $ fmap (toSvg defaultRenderingOptions) x
-
+  where
+    ps = zipWith Point rand1 rand2
 
 
 
