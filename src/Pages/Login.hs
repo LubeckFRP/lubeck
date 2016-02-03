@@ -3,7 +3,8 @@
 {-# LANGUAGE TupleSections              #-}
 
 module Pages.Login
-  (loginPage
+  ( Username
+  , loginPage
   ) where
 
 import           Prelude                        hiding (div)
