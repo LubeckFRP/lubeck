@@ -16,6 +16,10 @@ import qualified Web.VirtualDom.Html.Events as H
 import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
 
+-- TODO move
+import Data.Time (UTCTime, DiffTime, Days)
+
+
 -- TODO Debug
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
@@ -131,7 +135,69 @@ axisY = strokeWidth 2 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
 
 
--- simpleLinePlot [(a,b)] ->
+simpleLinePlot
+  :: (a -> JSString)
+  -> (b -> JSString)
+  -> (a -> Double) -> (Double -> a)
+  -> (b -> Double) -> (Double -> b)
+  -> Int
+  -> Int
+  -> [(a,b)]
+  -> Drawing
+simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
+  [ lineData points
+  , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
+  , labeledAxis "" ""
+  ]
+  where
+    tickLabelsA  = fmap (showA . d2a) ticksA
+    tickLabelsB  = fmap (showB . d2b) ticksB
+    tickOffsetsA = fmap normA ticksA
+    tickOffsetsB = fmap normB ticksB
+    nAs = fmap normA as
+    nBs = fmap normB bs
+    points = zipWith Point nAs nBs
+
+    -- ticksA, ticksB :: [Double]
+    ticksA = tickCalc numTicksA (lba,uba)
+    ticksB = tickCalc numTicksB (lbb,ubb)
+
+    -- normA... :: Double -> Double
+    (normA, _) = normalizerFromBounds (lba, uba)
+    (normB, _) = normalizerFromBounds (lbb, ubb)
+
+    -- lba... :: Double
+    (lba,uba) = (minimum as, maximum as)
+    (lbb,ubb) = (minimum bs, maximum bs)
+
+    -- as, bs :: [Double]
+    as = fmap a2d as'
+    bs = fmap b2d bs'
+    -- as' :: [a], bs' :: [b]
+    (as', bs') = unzip xs
+
+    unzip xs = (fmap fst xs, fmap snd xs)
+
+normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
+normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
+
+--from here http://stackoverflow.com/questions/326679/choosing-an-attractive-linear-scale-for-a-graphs-y-axis
+-- see also http://stackoverflow.com/questions/361681/algorithm-for-nice-grid-line-intervals-on-a-graph
+
+-- number of ticks, interval, outpouts ticks
+tickCalc :: Int -> (Double, Double) -> [Double]
+tickCalc tickCount (lo, hi) =
+  let range = hi - lo :: Double
+      unroundedTickSize = range/(realToFrac $ tickCount-1) :: Double
+      x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) :: Double
+      pow10x = 10**x -- Math.pow(10, x);
+      stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
+      lb = stepSize * realToFrac (floor (lo / stepSize))
+      ub = stepSize * realToFrac (ceiling (hi / stepSize))
+
+  in [lb, lb+stepSize..ub]
+  where
+    exrng = (2.1, 11.5)
 
 -- Find an approximate Iso between each dimension (i.e. UTCTime, Int, Double) and Double
 -- Convert data to double
