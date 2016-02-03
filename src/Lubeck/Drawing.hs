@@ -130,11 +130,11 @@ import Data.Time.Calendar (Day)
 
 
 {-| A point in 2D space. -}
-data Point = Point { x :: Float, y :: Float }
+data Point = Point { x :: Double, y :: Double }
   deriving (Eq, Ord, Show)
 
 {-| A vector (distance between two points) in 2D space. -}
-data Vector = Vector { dx :: Float, dy :: Float }
+data Vector = Vector { dx :: Double, dy :: Double }
   deriving (Eq, Ord, Show)
 
 instance AdditiveGroup Vector where
@@ -143,7 +143,7 @@ instance AdditiveGroup Vector where
   Vector xa ya ^+^ Vector xb yb = Vector (xa + xb) (ya + yb)
 
 instance VectorSpace Vector where
-  type Scalar Vector = Float
+  type Scalar Vector = Double
   a *^ Vector x y = Vector (a*x) (a*y)
 
 instance AffineSpace Point where
@@ -177,7 +177,7 @@ can be expressed as `turn/2`, three quarters of a turn by `turn*3/4` and so on.
 To convert to radians or degrees, use
 
  -}
-type Angle = Float
+type Angle = Double
 
 {-| The value representing a full turn.
 This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
@@ -185,18 +185,18 @@ turn :: Angle
 turn = pi * 2
 
 {-| Convert an angle to radians. -}
-angleToRadians :: Angle -> Float
+angleToRadians :: Angle -> Double
 angleToRadians x = x
 
 {-| Convert an angle to degrees. -}
-angleToDegrees :: Angle -> Float
+angleToDegrees :: Angle -> Double
 angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 {-| -}
 newtype Transformation = Transformation { getTransformation ::
-    (Float,Float,
-     Float,Float,
-     Float,Float)
+    (Double,Double,
+     Double,Double,
+     Double,Double)
      }
 
 -- We use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
@@ -234,7 +234,7 @@ infixr 6 !<>
 (!<>) = apTransformation
 
 {-| -}
-transformationToMatrix :: Transformation -> (Float, Float, Float, Float, Float, Float)
+transformationToMatrix :: Transformation -> (Double, Double, Double, Double, Double, Double)
 transformationToMatrix = getTransformation
 
 {-| -}
@@ -280,7 +280,7 @@ addProperty = Prop
 -}
 type Drawing = DrawingBase
 
-type Envelope = Maybe (Vector -> Float)
+type Envelope = Maybe (Vector -> Double)
 -- Max monoid
 -- Transform by inverse-transforming argument and transforming (scaling) result
 -- Transformable
@@ -384,28 +384,28 @@ translate (Vector { dx, dy }) = transform $ Transformation (1,0,0,1,dx,dy)
 
 {-| Translate (move) an image along the horizonal axis.
 A positive argument will move the image to the right. -}
-translateX :: Float -> Drawing -> Drawing
+translateX :: Double -> Drawing -> Drawing
 translateX x = translate (Vector x 0)
 
 {-| Translate (move) an image along the vertical axis.
 A positive argument will move the image upwards (as opposed to standard SVG behavior). -}
-translateY :: Float -> Drawing -> Drawing
+translateY :: Double -> Drawing -> Drawing
 translateY y = translate (Vector 0 y)
 
 {-| Scale (stretch) an image. -}
-scaleXY :: Float -> Float -> Drawing -> Drawing
+scaleXY :: Double -> Double -> Drawing -> Drawing
 scaleXY     x y = transform $ Transformation (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
-scale :: Float -> Drawing -> Drawing
+scale :: Double -> Drawing -> Drawing
 scale    x   = scaleXY x x
 
 {-| Scale (stretch) an image horizontally. -}
-scaleX :: Float -> Drawing -> Drawing
+scaleX :: Double -> Drawing -> Drawing
 scaleX    x   = scaleXY x 1
 
 {-| Scale (stretch) an image vertically. -}
-scaleY :: Float -> Drawing -> Drawing
+scaleY :: Double -> Drawing -> Drawing
 scaleY      y = scaleXY 1 y
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
@@ -414,7 +414,7 @@ rotate    a   = transform $ Transformation (cos a, 0 - sin a, sin a, cos a, 0, 0
 -- The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
-shearXY :: Float -> Float -> Drawing -> Drawing
+shearXY :: Double -> Double -> Drawing -> Drawing
 shearXY   a b = transform $ Transformation (1, b, a, 1, 0, 0)
 
 
@@ -462,7 +462,7 @@ fillColorA x = fillColor c . alpha a
 
 
 {-| -}
-strokeWidth :: Float -> Drawing -> Drawing
+strokeWidth :: Double -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
   where
 -- TODO move
