@@ -87,47 +87,32 @@ module Lubeck.Drawing (
     drawTest,
   ) where
 
-import Data.Monoid
 import Control.Applicative
-import Data.VectorSpace
 import Data.AffineSpace
 import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour, AlphaColour)
-import qualified Data.Colour
-import qualified Data.Colour.SRGB
-import qualified Data.String
-import qualified Data.JSString
 import Data.Map(Map)
-import qualified Data.Map
-import qualified Data.List
+import Data.Monoid
+import Data.VectorSpace
+import qualified Data.Colour
 import qualified Data.Colour.Names as C
+import qualified Data.Colour.SRGB
+import qualified Data.JSString
+import qualified Data.List
+import qualified Data.Map
+import qualified Data.String
 
 #ifdef __GHCJS__
 import GHCJS.Types(JSString)
-import Data.JSString.Text (textFromJSString)
-
 import qualified Web.VirtualDom as VD
 import Web.VirtualDom.Svg (Svg)
--- import Web.VirtualDom.Svg (p, h1, div, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
--- import Web.VirtualDom.Svg.Events (click, change, submit, stopPropagation, preventDefault, value)
--- import Web.VirtualDom.Svg.Attributes (src, width, class_)
 import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
-
--- TODO consolidate (see below)
--- import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
-import GHCJS.Foreign.QQ (js, jsu, jsu')
-
 #else
 type JSString = String
 #endif
 
--- TODO remove
-import Data.Time.Calendar (Day)
--- import Time
-
--- TODO svg, html nodes
-
+import Lubeck.Util(showJS)
 
 
 {-| A point in 2D space. -}
@@ -462,12 +447,13 @@ fillColorA x = fillColor c . alpha a
 -- strokeColorA x = style (Data.Map.singleton "stroke" $ showColor x)
 
 
-{-| -}
+{-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
+
+    TODO this can be overriden by setting the non-scaling-stroke attribute. Wrap in nice API?
+-}
 strokeWidth :: Double -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
   where
--- TODO move
-showJS = Data.JSString.pack . show
 
 -- TODO internal
 pointsToSvgString :: [Point] -> JSString
