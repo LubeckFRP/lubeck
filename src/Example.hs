@@ -116,7 +116,7 @@ axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 ho
 main :: IO ()
 main = do
   -- x <- compoS_ circleWithMouseOver (pure False)
-  let x = pure (labeledAxis "usually time" "interesting stuff")
+  let x = pure (labeledAxis "Usually time" "Interesting stuff")
   runAppReactive $ fmap (toSvg defaultRenderingOptions) x
   -- (view, _) <- component 1 render
   -- runAppReactive view
