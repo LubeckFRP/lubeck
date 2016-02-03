@@ -64,8 +64,8 @@ circleWithMouseOver output state =
 
 
 
-axisY = strokeWidth 2 $ strokeColor Color.black $ scale 300 $ translateY 0.5 verticalLine
-axisX = strokeWidth 2 $ strokeColor Color.black $ scale 300 $ translateX 0.5 horizontalLine
+axisY = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateY 0.5 verticalLine
+axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 horizontalLine
 
 
 
