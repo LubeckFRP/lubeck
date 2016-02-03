@@ -40,7 +40,7 @@ drawing output n = mempty
   <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
-  <> shearXY (fromIntegral n/200) 0 (scale 40 (style (styleNamed "pointer-events" "none") $ Lubeck.Drawing.text "Hans"))
+  <> shearXY (fromIntegral n/200) 0 (scale 40 (style (styleNamed "user-select" "none") $ Lubeck.Drawing.text "Hans"))
   <> scale 10 xyAxis
   <> scale 10 smokeBackground
   where
