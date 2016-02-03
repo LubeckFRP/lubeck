@@ -450,65 +450,16 @@ fillColorA x = fillColor c . alpha a
 -}
 strokeWidth :: Double -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
-  where
-
--- TODO internal
-pointsToSvgString :: [Point] -> JSString
-pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
-  where
-    toJSString = Data.JSString.pack
-    pointToSvgString (Point {x,y}) = show x ++ "," ++ show y
 
 
-svgNamespace = Data.Map.fromList[("namespace","http://www.w3.org/2000/svg")]
-                -- ("xmlns","http://www.w3.org/2000/svg"),
-
-toSvg1 :: [E.Property] -> Drawing -> [Svg]
-toSvg1 ps x = let
-    single x = [x]
-    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-    reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
-  in case x of
-      Circle     -> single $ E.circle
-        ([A.r "0.5", noScale]++ps)
-        []
-      Rect       -> single $ E.rect
-        ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
-        []
-      Line -> single $ E.line
-        ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
-        []
-      (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-        ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]++ps)
-        []
-      Text s -> single $ E.text'
-        ([A.x "0", A.y "0"]++ps)
-        [E.text s]
-
-      -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
-      -- As long as it is just event handlers, it doesn't matter
-      Transf (Transformation t) x -> single $ E.g
-        [A.transform $ "matrix" <> showJS (negY t) <> ""]
-        (toSvg1 ps x)
-      Style s x  -> single $ E.g
-        [A.style $ styleToAttrString s]
-        (toSvg1 ps x)
-      Prop p x   -> toSvg1 (p:ps) x
-      -- No point in embedding handlers to empty groups, but render anyway
-      Em         -> single $ E.g ps []
-      -- Event handlers applied to a group go on the g node
-      Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
-
-
-{-| -}
+{-| Where to place origo in the generated SVG. -}
 data OrigoPlacement
   = TopLeft
   | BottomLeft
   | Center
   deriving (Eq, Ord, Show)
-{-| -}
+
+{-| Specifies how to generate an SVG from a Drawing. -}
 data RenderingOptions = RenderingOptions
   { dimensions     :: Point                   -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
   , origoPlacement :: OrigoPlacement          -- ^ Where to place origo in the generated image.
@@ -518,24 +469,69 @@ data RenderingOptions = RenderingOptions
 defaultRenderingOptions :: RenderingOptions
 defaultRenderingOptions = RenderingOptions (Point 400 400) Center
 
-{-| -}
+{-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
-toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
-      svg'
-        (showJS $ floor x)
-        (showJS $ floor y)
-        ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
-        (toSvg1 [] $ placeOrigo $ drawing)
+toSvg (RenderingOptions {dimensions, origoPlacement}) drawing =
+  svgTopNode
+    (showJS $ floor x)
+    (showJS $ floor y)
+    ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
+    (toSvg1 [] $ placeOrigo $ drawing)
   where
     Point {x,y} = dimensions
 
+    svgTopNode :: JSString -> JSString -> JSString -> [Svg] -> Svg
+    svgTopNode w h vb = E.svg
+      [ A.width w
+      , A.height h
+      , A.viewBox vb ]
+
+    placeOrigo :: OrigoPlacement -> Drawing -> Drawing
     placeOrigo  = case origoPlacement of
       TopLeft     -> id
       Center      -> translateX (x/2) . translateY (y/(-2))
       BottomLeft  -> translateY (y*(-1))
 
-    svg' :: JSString -> JSString -> JSString -> [Svg] -> Svg
-    svg' w h vb = E.svg
-      [ A.width w
-      , A.height h
-      , A.viewBox vb ]
+    pointsToSvgString :: [Point] -> JSString
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = Data.JSString.pack
+        pointToSvgString (Point {x,y}) = show x ++ "," ++ show y
+
+    toSvg1 :: [E.Property] -> Drawing -> [Svg]
+    toSvg1 ps x = let
+        single x = [x]
+        noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+        negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+        offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+        reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
+      in case x of
+          Circle     -> single $ E.circle
+            ([A.r "0.5", noScale]++ps)
+            []
+          Rect       -> single $ E.rect
+            ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
+            []
+          Line -> single $ E.line
+            ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
+            []
+          (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
+            ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]++ps)
+            []
+          Text s -> single $ E.text'
+            ([A.x "0", A.y "0"]++ps)
+            [E.text s]
+
+          -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
+          -- As long as it is just event handlers, it doesn't matter
+          Transf (Transformation t) x -> single $ E.g
+            [A.transform $ "matrix" <> showJS (negY t) <> ""]
+            (toSvg1 ps x)
+          Style s x  -> single $ E.g
+            [A.style $ styleToAttrString s]
+            (toSvg1 ps x)
+          Prop p x   -> toSvg1 (p:ps) x
+          -- No point in embedding handlers to empty groups, but render anyway
+          Em         -> single $ E.g ps []
+          -- Event handlers applied to a group go on the g node
+          Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
