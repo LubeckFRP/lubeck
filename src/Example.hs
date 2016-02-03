@@ -46,11 +46,17 @@ compoS_ w i = do
 -- TODO the most general version
 -- (b -> a -> a) -> (c -> a -> a) -> a -> WT r a b -> E c -> IO (S r, S a)
 
+-- TODO nicer conventions for event listeners
+-- * Standarize Names
+-- * Add more of them
+-- * Variants without the event (i.e. for "mouseover", "mouseout" etc)
 
 -- Basic non-interactive plots
 circleWithMouseOver :: WidgetT Drawing Bool Bool
-circleWithMouseOver output state = pure $ pure $
-  fillColor (if state Colors.lightgreen else Colors.green) $ scale 300 square
+circleWithMouseOver output state =
+  addProperty (SvgEv.onMouseOver $ const $ output True) $
+  addProperty (SvgEv.onMouseOut $ const $ output False) $
+  fillColor (if state then Colors.lightgreen else Colors.green) $ scale 300 square
 
 
 
