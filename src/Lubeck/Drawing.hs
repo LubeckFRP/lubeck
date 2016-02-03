@@ -469,7 +469,7 @@ data RenderingOptions = RenderingOptions
   deriving (Eq, Ord, Show)
 
 defaultRenderingOptions :: RenderingOptions
-defaultRenderingOptions = RenderingOptions (Point 400 400) Center
+defaultRenderingOptions = RenderingOptions (Point 800 800) Center
 
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
