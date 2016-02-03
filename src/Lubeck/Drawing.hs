@@ -80,6 +80,7 @@ module Lubeck.Drawing (
     -- * Render
     OrigoPlacement(..),
     RenderingOptions(..),
+    defaultRenderingOptions,
     toSvg,
 
     -- * Debug
@@ -530,6 +531,9 @@ data RenderingOptions = RenderingOptions
   , origoPlacement :: OrigoPlacement          -- ^ Where to place origo in the generated image.
   }
   deriving (Eq, Ord, Show)
+
+defaultRenderingOptions :: RenderingOptions
+defaultRenderingOptions = RenderingOptions (Point 400 400) Center
 
 {-| -}
 toSvg :: RenderingOptions -> Drawing -> Svg
