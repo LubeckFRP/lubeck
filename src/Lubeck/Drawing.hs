@@ -95,6 +95,7 @@ import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour, AlphaColour)
 import Data.Map(Map)
 import Data.Monoid
+import Data.Semigroup(Max(..))
 import Data.VectorSpace
 import qualified Data.Colour
 import qualified Data.Colour.Names as C
@@ -255,10 +256,10 @@ addProperty = Prop
 -- | Defines how far an object extends in any direction.
 --   @Nothing@ means the object has no extent (i.e. the empty image).
 newtype Extent = Extent { getExtent  :: (Maybe Double) }
-  deriving (Ord)
+  deriving (Eq, Ord)
 instance Bounded Extent where
-  minBound = Nothing
-  maxBound = Just Infinity
+  minBound = Extent $ Nothing
+  maxBound = Extent $ Just (1/0)
 
 newtype Envelope = Envelope (Vector -> Max Extent)
   deriving (Monoid)

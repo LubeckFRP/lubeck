@@ -60,6 +60,7 @@ library
                      , containers
                      , lens
                      , intervals
+                     , semigroups
                      , data-interval
                      , vector-space
                      , vector-space-points

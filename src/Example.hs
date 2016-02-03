@@ -9,11 +9,16 @@ import qualified Prelude
 import Data.Monoid ((<>))
 
 import GHCJS.Types(JSString, jsval)
+import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Html as H
 import qualified Web.VirtualDom.Html.Attributes as H
 import qualified Web.VirtualDom.Html.Events as H
 import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
+
+-- TODO Debug
+import Control.Concurrent(forkIO, threadDelay)
+import Control.Monad(forever)
 
 import Lubeck.FRP
 import Lubeck.App (Html, runAppReactive)
@@ -117,6 +122,15 @@ main :: IO ()
 main = do
   -- x <- compoS_ circleWithMouseOver (pure False)
   let x = pure (labeledAxis "Usually time" "Interesting stuff")
-  runAppReactive $ fmap (toSvg defaultRenderingOptions) x
+  runAppReactive2 $ fmap (toSvg defaultRenderingOptions) x
   -- (view, _) <- component 1 render
   -- runAppReactive view
+
+-- Work around 'blocked indefinitely' issue by embedding a dummy handler
+runAppReactive2 x = do
+  (s,e) <- newEvent
+  s2 <- fmap (x <>) $ stepperS mempty e
+  runAppReactive $
+    fmap
+      (\html -> VD.node "div" [VD.on "unlikelythingtohappen" $ \_ -> s undefined] [html])
+      s2
