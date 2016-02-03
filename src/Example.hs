@@ -62,7 +62,7 @@ unselectable = style $ mconcat $ fmap (uncurry $ styleNamed)
   , ("-o-user-select",        "none")
   , ("user-select",           "none")
   -- No mouse pointer
-  , ("pointer-events",           "none")
+  , ("pointer-events",        "none")
   ]
 
 
