@@ -76,13 +76,16 @@ circleWithMouseOver output state =
     , axisX
     ]
 
+
+
+
 -- Scatter plot.
 scatterData :: [Point] -> Drawing
-scatterData ps = mconcat $ fmap (\p -> translate ((transformPoint (scaling 300 300) p) .-. origin) base) ps
+scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
   where
-    base = fillColorA (Colors.red `withOpacity` 0.6) $ scale 10 circle
-    scaling a b = Transformation (a,0,0,b,0,0)
+    base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
     origin = Point 0 0
+    -- scaling a b = Transformation (a,0,0,b,0,0)
 
 -- Line plot.
 lineData :: [Point] -> Drawing
@@ -97,7 +100,9 @@ lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ 
 
 -- Box plot.
 boxData :: [Double] -> Drawing
-boxData ps = mempty
+boxData ps = scale 300 $ fmap (\p -> scaleX (1/fromIntegral $ lenght ps) $ scaleY p $ base) ps
+  where
+    base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
 ticks :: [(Double, JSString)] -> [(Double, JSString)] -> Drawing
 ticks xt yt = mconcat [xTicks, yTicks]
@@ -111,12 +116,12 @@ ticks xt yt = mconcat [xTicks, yTicks]
 
 labeledAxis :: JSString -> JSString -> Drawing
 labeledAxis labelX labelY = mconcat
-  [ axis
-  , translateY 150 $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
-  , translateX 150 $ translateY (-20) $ textMiddle labelX]
+  [ scale 300 $ axis
+  , translateY (300/2) $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
+  , translateX (300/2) $ translateY (-20) $ textMiddle labelX]
 axis = mconcat [axisY, axisX]
-axisY = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateY 0.5 verticalLine
-axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 horizontalLine
+axisY = strokeWidth 2 $ strokeColor Colors.black $ translateY 0.5 verticalLine
+axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
 
 
 
@@ -129,6 +134,7 @@ main = do
               [ mempty
               , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
               , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              , boxData [1,2]
               , ticks
                   (zip [0.1,0.2..1] (fmap showJS [1..]))
                   (zip [0.1,0.2..1] (fmap showJS [1..]))
