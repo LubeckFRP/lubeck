@@ -10,6 +10,9 @@ module BD.Api (
   postAPIEither,
   unsafePostAPI,
 
+  -- postFileAPI,
+  -- postFileAPIEither,
+
   deleteAPI,
   deleteAPIEither,
 
@@ -113,9 +116,9 @@ postAPI path value = do
   case eitherResult of
     Left s -> throwError ("postAPI: " <> showJS s)
     Right result -> case contents result of
-      Nothing          -> throwError "getAPI: No response"
+      Nothing          -> throwError "postAPI: No response"
       Just byteString  -> case Data.Aeson.decodeStrict byteString of
-        Nothing -> throwError "getAPI: Parse error"
+        Nothing -> throwError "postAPI: Parse error"
         Just x  -> return x
   where
     request body = Request {
@@ -127,6 +130,31 @@ postAPI path value = do
           , reqData            = (StringData $ body)
           }
 
+-- postFileAPI :: (FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m)
+--             => JSString -> [(JSString, FormDataVal)] -> m b
+-- postFileAPI path files = do
+--   eitherResult <- liftIO $ (try $ xhrByteString (request files) :: IO (Either XHRError (Response ByteString)))
+--   case eitherResult of
+--     Left s -> throwError ("postFileAPI: " <> showJS s)
+--     Right result -> case contents result of
+--       Nothing          -> throwError "postFileAPI: No response"
+--       Just byteString  -> case Data.Aeson.decodeStrict byteString of
+--         Nothing -> throwError "postFileAPI: Parse error"
+--         Just x  -> return x
+--   where
+--     request files = Request {
+--             reqMethod          = POST
+--           , reqURI             = baseURL <> path
+--           , reqLogin           = Nothing
+--           , reqHeaders         = []
+--           , reqWithCredentials = False
+--           , reqData            = (FormData $ files)
+--           }
+--
+--
+-- postFileAPIEither :: JSString -> [(JSString, FormDataVal)] -> IO (Either JSString a)
+-- postFileAPIEither = runExceptT . postFileAPI
+
 
 {-|
 Make a DELETE request into the BD API.
@@ -136,19 +164,8 @@ API specification
 
 The @path@ parameter is everything after the @...\/api\/v1\/@ part. You must specify
 the correct return type (as determined by the specification) or the request will
-fail with a parse error. Note that most endpoints are wrapped in an 'Envelope'
-(see example below).
+fail with a parse error. Note that most endpoints are wrapped in an 'Envelope'.
 
-Usage:
-
-@
-data Api
-instance MonadError JSString Api
-instance MonadIO Api
-
-getAccount :: JSString -> Api (Envelope Account)
-getAccount name = getAPI "\/" <> name <> "\/account"
-@
 -}
 deleteAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
 deleteAPI path = do

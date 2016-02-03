@@ -48,5 +48,8 @@ getAllImages unm = unsafeGetAPI $ unm <> "/ad-images"
 getAllImagesOrError :: Text -> IO (Either AppError [Image])
 getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError
 
-deleteImageOrError :: Text -> Int -> IO (Either AppError ())
+deleteImageOrError :: Text -> Int -> IO (Either AppError Ok)
 deleteImageOrError unm imageId = deleteAPIEither (unm <> "/ad-image/" <> showJS imageId) >>= return . first ApiError
+
+-- uploadImagesOrError :: Text -> [(JSString, FormDataVal)] -> IO (Either AppError ())
+-- uploadImagesOrError unm files = postFileAPIEither (unm <> "/ad-image") >>= return . first ApiError
