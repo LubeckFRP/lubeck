@@ -19,6 +19,7 @@ library
                      , Lubeck.Forms.Basic
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
+                     , Lubeck.Forms.File
                      , Lubeck.Plots.Test
                      , Lubeck.Html
                      , Lubeck.Web.History

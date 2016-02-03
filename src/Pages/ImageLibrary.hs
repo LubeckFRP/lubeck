@@ -9,6 +9,8 @@ module Pages.ImageLibrary
 import           Prelude                        hiding (div)
 import qualified Prelude
 
+import JavaScript.Web.XMLHttpRequest (FormDataVal(..))
+
 import           Control.Applicative
 import qualified Data.List
 import           Data.Maybe                     (fromMaybe)
@@ -27,6 +29,7 @@ import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
 
 import           Lubeck.App                     (Html)
 import           Lubeck.Forms
+import           Lubeck.Forms.File
 import           Lubeck.FRP
 
 import qualified BD.Data.Account                as Account
@@ -41,9 +44,11 @@ import           Components.BusyIndicator (BusyCmd(..), withBusy, withBusy2)
 type ImgIndex = Int
 type ImgHash = Text
 
+type UploadFiles = [(JSString, FormDataVal)]
+
 data ImgLibraryActions = ViewPrevImg Im.Image | ViewNextImg Im.Image | ViewGalleryIndex
                        | DeleteImg Im.Image | EnhanceImg Im.Image
-                       | UploadImg
+                       | UploadImg UploadFiles
                        | ViewImg Im.Image
 
 instance Show ImgLibraryActions where
@@ -52,7 +57,7 @@ instance Show ImgLibraryActions where
   show ViewGalleryIndex = "ViewGalleryIndex"
   show (DeleteImg i)    = "DeleteImg "   <> show (Im.id i)
   show (EnhanceImg i)   = "EnhanceImg "  <> show (Im.id i)
-  show UploadImg        = "UploadImg"
+  show (UploadImg i)    = "UploadImg"    <> show (fmap fst i)
   show (ViewImg i)      = "ViewImg "     <> show (Im.id i)
 
 
@@ -89,16 +94,19 @@ galleryW _ [] = contentPanel $ text "No images in library"
 
 galleryW actionsSink ims =
   contentPanel $ div []
-    ([ div [class_ "btn-toolbar"] [ button [ class_ "btn btn-default"
-                                           , click (\_ -> actionsSink UploadImg) ]
-                                           [ text "Upload" ] ] ]
+    ([ div [class_ "btn-toolbar"]
+        [ button [ class_ "btn btn-default"
+                 , click (\_ -> actionsSink (UploadImg [])) ]
+                 [ text "Upload" ]
+        , filesSelectWidget (contramapSink (\x -> UploadImg x) actionsSink) []
+        ] ]
     <> (map (imageCell actionsSink) ims))
 
 imageCell actionsSink image =
   div [class_ "thumbnail custom-thumbnail-1 fit-text"]
       [ div [class_ "thumbnail-wrapper"] [ imgWithAttrs actionsSink image [] ]
       , p [class_ "image-prediction"]    [ showImagePred $ Im.prediction image ]
-      , p [class_ "image-hash"]          ( showImageHash $ Im.fb_image_hash image )
+      --, p [class_ "image-hash"]          ( showImageHash $ Im.fb_image_hash image )
       ]
 
 showImagePred Nothing  = text "No prediction"
@@ -182,7 +190,7 @@ processActions busySink errorSink imsB accB (DeleteImg image) = do
 
 processActions busySink errorSink imsB accB ViewGalleryIndex = return Nothing
 processActions busySink errorSink imsB accB (ViewImg i) = return $ Just i
-processActions busySink errorSink imsB accB x@(UploadImg) = notImp errorSink x
+processActions busySink errorSink imsB accB x@(UploadImg _) = notImp errorSink x
 -- processActions busySink errorSink imsB accB UploadImg = do
 --   mbUsr <- pollBehavior accB
 --   case mbUsr of
