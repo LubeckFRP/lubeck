@@ -150,7 +150,7 @@ offsetVectors p = tail . offsetVectors' p
 betweenPoints :: [Point] -> [Vector]
 betweenPoints xs = case xs of
   []     -> []
-  (_:ys) -> liftA2 (.-.) ys xs
+  (_:ys) -> zipWith (.-.) ys xs
 
 -- distanceVs : Point -> List Point -> List Vector
 -- distanceVs p = tail . pointOffsets p
