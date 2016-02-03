@@ -91,7 +91,7 @@ getAPI' path headers = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = headers
-          , reqWithCredentials = True
+          , reqWithCredentials = True -- XXX looks like JavaScript.Web.XMLHttpRequest.xhr ignores this parameter
           , reqData            = NoData
           }
 
@@ -141,7 +141,7 @@ postAPI path value = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = False
+          , reqWithCredentials = True
           , reqData            = (StringData $ body)
           }
 
@@ -162,7 +162,7 @@ postAPI path value = do
 --           , reqURI             = baseURL <> path
 --           , reqLogin           = Nothing
 --           , reqHeaders         = []
---           , reqWithCredentials = False
+--           , reqWithCredentials = True
 --           , reqData            = (FormData $ files)
 --           }
 --
@@ -198,7 +198,7 @@ deleteAPI path = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = False
+          , reqWithCredentials = True
           , reqData            = NoData
           }
 

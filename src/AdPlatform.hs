@@ -50,6 +50,7 @@ import           Lubeck.Util
 
 
 defaultUsername = "forbestravelguide"
+defaultPassword = "secret123"
 
 menuItems =
   [ (NavUser,     "User")
@@ -76,7 +77,7 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
           , page
           ] ]
 
-useAuth = False
+useAuth = True
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
@@ -84,7 +85,7 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
-  (loginView, userLoginE) <- loginPage (defaultUsername, "")
+  (loginView, userLoginE) <- loginPage (defaultUsername, defaultPassword)
   userLoginB              <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
   authOk                  <- withErrorIO errorSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Ok)
@@ -95,7 +96,6 @@ adPlatform = do
                                                           (if useAuth then (filterJust validUserLoginE)
                                                                       else bypassAuthUserE)
 
-  -- userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError) (filterJust validUserLoginE)
   camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
 
   userS                   <- stepperS Nothing (fmap Just userE)

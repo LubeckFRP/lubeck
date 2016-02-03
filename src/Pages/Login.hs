@@ -47,7 +47,7 @@ loginPageW sink (name, passw) =
                       , A.value name
                       , change $ \e -> preventDefault e >> sink (DontSubmit (value e, passw))] []
             , E.input [ class_ "form-control bottom-buffer"
-                      , A.value ""
+                      , A.value passw -- FIXME is it ok to pre-set passwords?
                       , A.type_ "password"
                       , change $ \e -> preventDefault e >> sink (DontSubmit (name, value e))] []
             , button [ class_ "form-control btn btn-primary"
