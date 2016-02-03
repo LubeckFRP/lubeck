@@ -27,6 +27,13 @@ import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 
 
+-- TODO to many variants of these
+-- componentRW as currently implemented arguably does the wrong thing, by forwarding incoming events
+-- (why wrong: this can easily be accomplished by merging with the input, while the other way around is nothing
+-- so straightforward)
+
+-- The most general version:
+-- (b -> a -> a) -> (c -> a -> a) -> a -> WT r a b -> E c -> IO (S r, S a)
 
 compo :: WidgetT r a a -> a -> Events a -> IO (Signal r, Events a)
 compo widget z input = do
@@ -43,8 +50,6 @@ compoS_ w i = do
   let u = updates i
   compo_ w z u
 
--- TODO the most general version
--- (b -> a -> a) -> (c -> a -> a) -> a -> WT r a b -> E c -> IO (S r, S a)
 
 -- TODO nicer conventions for event listeners
 -- * Standarize Names
@@ -57,12 +62,10 @@ circleWithMouseOver output state =
   addProperty (SvgEv.onMouseOver $ const $ output True) $
   addProperty (SvgEv.onMouseOut $ const $ output False) $
   mconcat
-    [ fillColor (if state then Colors.lightgreen else Colors.green) $ scale 250 square
+    [ fillColorA ((if state then Colors.lightgreen else Colors.green) `withOpacity` 0.5) $ scale 250 square
     , axisY
     , axisX
     ]
-
-
 
 axisY = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 horizontalLine

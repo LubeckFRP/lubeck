@@ -50,6 +50,7 @@ module Lubeck.Drawing (
     fillColor,
     fillColorA,
     strokeColor,
+    strokeColorA,
     strokeWidth,
     -- *** Rendering
     styleToAttrString,
@@ -438,9 +439,12 @@ fillColorA x = fillColor c . alpha a
     a = Data.Colour.alphaChannel x
 
 -- {-| -}
--- strokeColorA :: Colour Double -> Drawing -> Drawing
--- strokeColorA x = style (Data.Map.singleton "stroke" $ showColor x)
-
+strokeColorA :: AlphaColour Double -> Drawing -> Drawing
+strokeColorA x = strokeColor c . alpha a
+  where
+    alpha a = style (Data.Map.singleton "stroke-opacity" $ showJS a)
+    c = Data.Colour.over x C.black
+    a = Data.Colour.alphaChannel x
 
 {-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
 
