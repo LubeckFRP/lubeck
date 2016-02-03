@@ -56,8 +56,16 @@ circleWithMouseOver :: WidgetT Drawing Bool Bool
 circleWithMouseOver output state =
   addProperty (SvgEv.onMouseOver $ const $ output True) $
   addProperty (SvgEv.onMouseOut $ const $ output False) $
-  fillColor (if state then Colors.lightgreen else Colors.green) $ scale 300 square
+  mconcat
+    [ fillColor (if state then Colors.lightgreen else Colors.green) $ scale 250 square
+    , axisY
+    , axisX
+    ]
 
+
+
+axisY = strokeWidth 2 $ strokeColor Color.black $ scale 300 $ translateY 0.5 verticalLine
+axisX = strokeWidth 2 $ strokeColor Color.black $ scale 300 $ translateX 0.5 horizontalLine
 
 
 
