@@ -98,7 +98,7 @@ lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ 
     -- scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
 
--- Box plot.
+-- Basic box plot.
 boxData :: [Double] -> Drawing
 boxData ps = scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
@@ -111,10 +111,15 @@ ticks xt yt = mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
       \(pos,str) -> translateX (pos * 300) $
-        (scale 10 $ strokeColor Colors.black $ translateY (-0.5) verticalLine) <> rotate (turn*1/4) (textEnd str)
+        (scale kBasicTickLength $ strokeColor Colors.black $ translateY (-0.5) verticalLine) <> (translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/4)) (textEnd str)
     yTicks = mconcat $ flip fmap yt $
       \(pos,str) -> translateY (pos * 300) $
-        (scale 10 $ strokeColor Colors.black $ translateX (-0.5) horizontalLine) <> rotate (turn*0/4) (textEnd str)
+        (scale kBasicTickLength $ strokeColor Colors.black $ translateX (-0.5) horizontalLine) <> (translateX (kBasicTickLength * (-1.5)) .rotate (turn*0/4)) (textEnd str)
+
+    kBasicTickLength = 10
+    -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
+    -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
+
 
 labeledAxis :: JSString -> JSString -> Drawing
 labeledAxis labelX labelY = mconcat
@@ -126,7 +131,17 @@ axisY = strokeWidth 2 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
 
 
+-- simpleLinePlot [(a,b)] ->
 
+-- Find an approximate Iso between each dimension (i.e. UTCTime, Int, Double) and Double
+-- Convert data to double
+-- Find bounds (lower,upper)
+-- Decide number of ticks
+-- Get tick positions
+  -- Convert ticks back to original type
+-- Decide a normalization (trivially from bounds), i.e. a funtion to fit data into [0..1]
+-- Run data and tick positions from normalization (retain original tick position for labels)
+-- Generate plots and ticks
 
 -- MAIN
 
