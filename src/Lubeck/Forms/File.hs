@@ -15,7 +15,6 @@ import Data.JSString (JSString, pack, unpack)
 import JavaScript.Web.XMLHttpRequest (FormDataVal(..))
 import qualified JavaScript.Web.File as WF
 import           JavaScript.Web.File
-import           JavaScript.Cast
 import GHCJS.Types
 
 import qualified Web.VirtualDom as VD
@@ -24,41 +23,36 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
 
-foreign import javascript unsafe "console.log($1)"
-  elog :: Ev.Event -> IO ()
+newtype FileList = FileList JSVal
 
-foreign import javascript unsafe "console.log($1)"
-  vlog :: JSVal -> IO ()
+foreign import javascript unsafe "$1.target.files"
+  targetFiles :: Ev.Event -> FileList
 
--- this belongs here https://github.com/BeautifulDestinations/virtual-dom/blob/master/src/Web/VirtualDom/Html/Events.hs
-foreign import javascript unsafe "Array.prototype.slice.call($1.target.files)"
-  files :: Ev.Event -> JSVal
+foreign import javascript unsafe "$1.length"
+  fileListLength :: FileList -> Int
 
--- jsValToVal :: JSVal -> [File]
--- jsValToVal = unsafeCast
---
--- filesToFormVal :: [File] -> [FormDataVal]
--- filesToFormVal = fmap $ \f -> FileVal f (Just $ WF.name f)
+foreign import javascript unsafe "$1[$2]"
+  fileListItem :: FileList -> Int -> File
 
-filesSelectWidget :: Widget' [(JSString, FormDataVal)]
-filesSelectWidget sink _ =
+eventTargetFiles :: Ev.Event ->  [FormDataVal]
+eventTargetFiles e = fmap ((\f -> FileVal f (Just $ WF.name f)) . fileListItem fl) [0..pred len]
+  where
+    fl = targetFiles e
+    len = fileListLength fl
+
+filesSelectWidget :: Bool -> Widget' [(JSString, FormDataVal)]
+filesSelectWidget multi sink _ =
   E.input
-    [ A.class_ "form-control"
+    ([ A.class_ "form-control"
     , A.type_ "file"
     , Ev.change $ \e -> do
           let fn = "images[]"
-          elog e
+          let files = eventTargetFiles e
+          let formFiles = zip (repeat fn) files
 
-          let f = files e
-          vlog f
-
-          -- let jsf = jsValToVal f
-          -- let formDataFiles = filesToFormVal jsf
-          -- let formFiles = zip (repeat fn) formDataFiles
-          --
-          -- sink formFiles
+          sink formFiles
           return ()
-    ] []
+    ] <> multiAttr) []
 
-  -- where
-    -- multiAttr = if multi then [(VD.attribute "multiple") "true"] else []
+  where
+    multiAttr = if multi then [(VD.attribute "multiple") "true"] else []

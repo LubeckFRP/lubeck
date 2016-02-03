@@ -22,6 +22,7 @@ import           BD.Data.AdTypes
 import           BD.Types
 
 import           Data.Bifunctor   (first)
+import JavaScript.Web.XMLHttpRequest (FormDataVal(..))
 
 data Image = Image
   { id            :: Int
@@ -51,5 +52,5 @@ getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first 
 deleteImageOrError :: Text -> Int -> IO (Either AppError Ok)
 deleteImageOrError unm imageId = deleteAPIEither (unm <> "/ad-image/" <> showJS imageId) >>= return . first ApiError
 
--- uploadImagesOrError :: Text -> [(JSString, FormDataVal)] -> IO (Either AppError ())
--- uploadImagesOrError unm files = postFileAPIEither (unm <> "/ad-image") >>= return . first ApiError
+uploadImagesOrError :: Text -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
+uploadImagesOrError unm files = postFileAPIEither (unm <> "/ad-image") files >>= return . first ApiError

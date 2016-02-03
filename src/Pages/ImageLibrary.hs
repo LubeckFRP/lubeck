@@ -98,7 +98,7 @@ galleryW actionsSink ims =
         [ button [ class_ "btn btn-default"
                  , click (\_ -> actionsSink (UploadImg [])) ]
                  [ text "Upload" ]
-        , filesSelectWidget (contramapSink (\x -> UploadImg x) actionsSink) []
+        , filesSelectWidget True (contramapSink (\x -> UploadImg x) actionsSink) []
         ] ]
     <> (map (imageCell actionsSink) ims))
 
@@ -190,21 +190,22 @@ processActions busySink errorSink imsB accB (DeleteImg image) = do
 
 processActions busySink errorSink imsB accB ViewGalleryIndex = return Nothing
 processActions busySink errorSink imsB accB (ViewImg i) = return $ Just i
-processActions busySink errorSink imsB accB x@(UploadImg _) = notImp errorSink x
--- processActions busySink errorSink imsB accB UploadImg = do
---   mbUsr <- pollBehavior accB
---   case mbUsr of
---     Nothing -> do
---       errorSink . Just . BLError $ "can't upload an image: no user."
---       return $ Just image
---
---     Just acc -> do
---       res <- (withBusy2 busySink uploadImages) acc files
---       case res of
---         Left e -> (errorSink $ Just e) >> (return $ Just image)
---         Right imgId -> do
---           {- TODO reload gallery >>= return (imgFrom imgId) -}
---           return $ Just image
+-- processActions busySink errorSink imsB accB x@(UploadImg _) = notImp errorSink x
+processActions busySink errorSink imsB accB (UploadImg formfiles) = do
+  mbUsr <- pollBehavior accB
+  case mbUsr of
+    Nothing -> do
+      errorSink . Just . BLError $ "can't upload an image: no user."
+      return Nothing
+
+    Just acc -> do
+      res <- (withBusy2 busySink uploadImages) acc formfiles
+      case res of
+        Left e -> (errorSink $ Just e) >> (return Nothing)
+        Right imgId -> do
+          {- TODO reload gallery >>= return (imgFrom imgId) -}
+          notImp errorSink "uploaded ok, but TODO reload library"
+          return Nothing
 
 notImp errorSink x = do
   errorSink . Just . NotImplementedError . showJS $ x
@@ -218,8 +219,8 @@ getImages acc = Im.getAllImagesOrError (Account.username acc)
 deleteImage :: Account.Account -> Im.Image -> IO (Either AppError Ok)
 deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id image)
 
--- uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
--- uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
+uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
+uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
 
 -- main entry point
 

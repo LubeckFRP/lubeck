@@ -13,8 +13,8 @@ module BD.Api (
   postAPIEither,
   unsafePostAPI,
 
-  -- postFileAPI,
-  -- postFileAPIEither,
+  postFileAPI,
+  postFileAPIEither,
 
   deleteAPI,
   deleteAPIEither,
@@ -95,6 +95,9 @@ getAPI' path headers = do
           , reqData            = NoData
           }
 
+{-|
+Same as `getAPI'`, but without the ability to set headers.
+-}
 getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
 getAPI = \path -> getAPI' path []
 
@@ -145,30 +148,30 @@ postAPI path value = do
           , reqData            = (StringData $ body)
           }
 
--- postFileAPI :: (FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m)
---             => JSString -> [(JSString, FormDataVal)] -> m b
--- postFileAPI path files = do
---   eitherResult <- liftIO $ (try $ xhrByteString (request files) :: IO (Either XHRError (Response ByteString)))
---   case eitherResult of
---     Left s -> throwError ("postFileAPI: " <> showJS s)
---     Right result -> case contents result of
---       Nothing          -> throwError "postFileAPI: No response"
---       Just byteString  -> case Data.Aeson.decodeStrict byteString of
---         Nothing -> throwError "postFileAPI: Parse error"
---         Just x  -> return x
---   where
---     request files = Request {
---             reqMethod          = POST
---           , reqURI             = baseURL <> path
---           , reqLogin           = Nothing
---           , reqHeaders         = []
---           , reqWithCredentials = True
---           , reqData            = (FormData $ files)
---           }
---
---
--- postFileAPIEither :: JSString -> [(JSString, FormDataVal)] -> IO (Either JSString a)
--- postFileAPIEither = runExceptT . postFileAPI
+postFileAPI :: (FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m)
+            => JSString -> [(JSString, FormDataVal)] -> m b
+postFileAPI path files = do
+  eitherResult <- liftIO $ (try $ xhrByteString (request files) :: IO (Either XHRError (Response ByteString)))
+  case eitherResult of
+    Left s -> throwError ("postFileAPI: " <> showJS s)
+    Right result -> case contents result of
+      Nothing          -> throwError "postFileAPI: No response"
+      Just byteString  -> case Data.Aeson.decodeStrict byteString of
+        Nothing -> throwError "postFileAPI: Parse error"
+        Just x  -> return x
+  where
+    request files = Request {
+            reqMethod          = POST
+          , reqURI             = baseURL <> path
+          , reqLogin           = Nothing
+          , reqHeaders         = []
+          , reqWithCredentials = True
+          , reqData            = (FormData files)
+          }
+
+
+postFileAPIEither :: FromJSON a => JSString -> [(JSString, FormDataVal)] -> IO (Either JSString a)
+postFileAPIEither = \p f -> runExceptT $ postFileAPI p f
 
 
 {-|
