@@ -72,6 +72,7 @@ module Lubeck.Drawing (
     polygon,
     -- ** Text
     text,
+    textMiddle,
     TextOptions(..),
     textWithOptions,
     -- ** Combination
@@ -327,6 +328,7 @@ polygon = Lines True
 text :: JSString -> Drawing
 text = Text
 
+textMiddle = textWithOptions (defaultTextOptions { textAnchor = TextMiddle })
 
 data TextAnchor
   = TextStart
@@ -337,6 +339,8 @@ data TextAnchor
 data TextOptions = TextOptions
   { textAnchor :: TextAnchor
   }
+defaultTextOptions = TextOptions
+  TextStart
 
 {-| -}
 textWithOptions :: TextOptions -> JSString -> Drawing

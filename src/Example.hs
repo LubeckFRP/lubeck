@@ -68,11 +68,11 @@ circleWithMouseOver output state =
     ]
 
 
-labeledAxis :: Drawing
-labeledAxis = mconcat
+labeledAxis :: JSString -> JSString -> Drawing
+labeledAxis labelX labelY = mconcat
   [ axis
-  , translateY 150 $ translateX (-20) $ rotate (turn/4) $ text "y-axis"
-  , translateX 150 $ translateY (-20) $ text "x-axis"]
+  , translateY 150 $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
+  , translateX 150 $ translateY (-20) $ textMiddle labelX]
 axis = mconcat [axisY, axisX]
 axisY = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 horizontalLine
@@ -116,7 +116,7 @@ axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 ho
 main :: IO ()
 main = do
   -- x <- compoS_ circleWithMouseOver (pure False)
-  let x = pure labeledAxis
+  let x = pure (labeledAxis "usually time" "interesting stuff")
   runAppReactive $ fmap (toSvg defaultRenderingOptions) x
   -- (view, _) <- component 1 render
   -- runAppReactive view
