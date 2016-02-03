@@ -71,28 +71,32 @@ Provides a way of:
 - Rendering a value of some type @i@
 - Sending updates of some type @o@ in response to user interaction.
 -}
-type Widget i o = Sink o -> i -> Html
+type Widget = WidgetT Html
 
 {-|
 A variant of 'Widget' where input and output is the same.
 -}
 type Widget' a  = Widget a a
 
+type WidgetT' r a = WidgetT r a a
+type WidgetT r i o = Sink o -> i -> r
+
 -- | Map over the input type of a widget.
-lmapWidget :: (b -> a) -> Widget a s -> Widget b s
+lmapWidget :: (b -> a) -> WidgetT r a s -> WidgetT r b s
 lmapWidget f w st ab = w st (f ab)
 
 -- | Map over the output type of a widget.
-rmapWidget :: (s -> t) -> Widget a s -> Widget a t
+rmapWidget :: (s -> t) -> WidgetT r a s -> WidgetT r a t
 rmapWidget f w st ab = w (contramapSink f st) ab
 
 -- | Map over both input and output of a widget.
-dimapWidget :: (a -> b) -> (c -> d) -> Widget b c -> Widget a d
+dimapWidget :: (a -> b) -> (c -> d) -> WidgetT r b c -> WidgetT r a d
 dimapWidget f g = lmapWidget f . rmapWidget g
 
 -- | Map over the HTML rendering of a widget.
-mapHtmlWidget :: (Html -> Html) -> Widget a b -> Widget a b
+mapHtmlWidget :: (r -> r2) -> WidgetT r a b -> WidgetT r2 a b
 mapHtmlWidget f w = \s -> f . w s
+-- TODO renamve mapView or similar
 
 -- | Turn a widget of a smaller type into a widget of a larger type using a lens.
 --
