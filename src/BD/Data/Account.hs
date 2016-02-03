@@ -4,18 +4,20 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE JavaScriptFFI              #-}
 
 module BD.Data.Account
     ( Account(..)
     , getUser
     , getUserOrError
+    , authenticateOrError
     ) where
 
 import           Control.Monad
 import           Data.Aeson
 import qualified Data.Aeson.Types
 import           Data.Data
-import           Data.Bifunctor (bimap)
+import           Data.Bifunctor (bimap, first)
 import           Data.Monoid
 import           Data.String      (fromString)
 import           Data.Time.Clock  (UTCTime)
@@ -61,3 +63,13 @@ getUser unm = fmap payload $ unsafeGetAPI $ unm <> "/account"
 
 getUserOrError :: JSString -> IO (Either AppError Account)
 getUserOrError unm = getAPIEither (unm <> "/account") >>= return . bimap ApiError payload
+
+-- FIXME this probably deserves distinct module
+authenticateOrError :: (JSString, JSString) -> IO (Either AppError Ok)
+authenticateOrError (unm, psw) = getAPIEither' "get-auth-token" headers >>= return . first ApiError
+  where
+    headers = [authHeader]
+    authHeader = ("Authorization", "Basic " <> (base64encode (unm <> ":" <> psw)))
+    base64encode s = btoa s
+
+foreign import javascript unsafe "btoa($1)" btoa :: JSString -> JSString
