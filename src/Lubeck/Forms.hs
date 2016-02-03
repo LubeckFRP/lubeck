@@ -168,7 +168,7 @@ mapMWidget k w o is = k $ fmap (w o) is
 --
 -- This is a basic and full-featured component. All other are just wrappers
 -- around this one.
-componentRW :: a -> Widget' a -> IO (Signal Html, Events a, Sink a)
+componentRW :: a -> WidgetT r a a -> IO (Signal r, Events a, Sink a)
 componentRW initialState widget = do
   (internalSink, internalEvents) <- newEvent
   aS              <- stepperS initialState internalEvents
