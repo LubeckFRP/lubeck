@@ -100,7 +100,7 @@ lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ 
 
 -- Box plot.
 boxData :: [Double] -> Drawing
-boxData ps = scale 300 $ fmap (\p -> scaleX (1/fromIntegral $ lenght ps) $ scaleY p $ base) ps
+boxData ps = scale 300 $ fmap (\p -> scaleX (1/fromIntegral $ length ps) $ scaleY p $ base) ps
   where
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
