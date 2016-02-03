@@ -248,6 +248,15 @@ addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
 
 
+type Envelope = Maybe (Vector -> Double)
+-- Max monoid
+-- Transform by inverse-transforming argument and transforming (scaling) result
+-- Transformable
+
+-- TODO path support (generalizes all others! including text?)
+-- TODO masks
+-- TODO better font support
+
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
 
@@ -261,17 +270,7 @@ addProperty = Prop
 
   Images can be composed using [over](#over) and [stack](#stack), which overlays the two images so that their origins match exactly.
 -}
-type Drawing = DrawingBase
-
-type Envelope = Maybe (Vector -> Double)
--- Max monoid
--- Transform by inverse-transforming argument and transforming (scaling) result
--- Transformable
-
--- TODO path support (generalizes all others! including text?)
--- TODO masks
--- TODO better font support
-data DrawingBase
+data Drawing
   = Circle
   | Rect
   | Line -- conceptually a line from point a to point b
@@ -286,10 +285,9 @@ data DrawingBase
 
   | Em
   | Ap Drawing Drawing
-  -- deriving (Eq, Ord)
 
-instance Monoid DrawingBase where
-  mempty = transparent
+instance Monoid Drawing where
+  mempty  = transparent
   mappend = over
 
 {-| An empty and transparent drawing.
