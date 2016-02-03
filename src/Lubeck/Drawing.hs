@@ -252,8 +252,16 @@ styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <>
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
 
+-- | Defines how far an object extends in any direction.
+--   @Nothing@ means the object has no extent (i.e. the empty image).
+newtype Extent = Extent { getExtent  :: (Maybe Double) }
+  deriving (Ord)
+instance Bounded Extent where
+  minBound = Nothing
+  maxBound = Just Infinity
 
-type Envelope = Maybe (Vector -> Double)
+newtype Envelope = Envelope (Vector -> Max Extent)
+  deriving (Monoid)
 -- Max monoid
 -- Transform by inverse-transforming argument and transforming (scaling) result
 -- Transformable
