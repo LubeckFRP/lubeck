@@ -20,7 +20,7 @@ import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
-import Lubeck.Drawing hiding (text)
+import Lubeck.Drawing
 import qualified Lubeck.Drawing
 
 import Data.Colour (withOpacity)
@@ -62,11 +62,18 @@ circleWithMouseOver output state =
   addProperty (SvgEv.onMouseOver $ const $ output True) $
   addProperty (SvgEv.onMouseOut $ const $ output False) $
   mconcat
-    [ fillColorA ((if state then Colors.lightgreen else Colors.green) `withOpacity` 0.5) $ scale 250 square
+    [ fillColorA ((if state then Colors.lightblue else Colors.blue) `withOpacity` 0.5) $ scale 250 circle
     , axisY
     , axisX
     ]
 
+
+labeledAxis :: Drawing
+labeledAxis = mconcat
+  [ axis
+  , translateY 150 $ translateX (-20) $ rotate (turn/4) $ text "y-axis"
+  , translateX 150 $ translateY (-20) $ text "x-axis"]
+axis = mconcat [axisY, axisX]
 axisY = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 horizontalLine
 
@@ -108,7 +115,8 @@ axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 ho
 
 main :: IO ()
 main = do
-  x <- compoS_ circleWithMouseOver (pure False)
+  -- x <- compoS_ circleWithMouseOver (pure False)
+  let x = pure labeledAxis
   runAppReactive $ fmap (toSvg defaultRenderingOptions) x
   -- (view, _) <- component 1 render
   -- runAppReactive view
