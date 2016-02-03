@@ -77,7 +77,15 @@ circleWithMouseOver output state =
 scatterData :: [Point] -> Drawing
 scatterData ps = mconcat $ fmap (\p -> translate ((transformPoint (scaling 300 300) p) .-. origin) base) ps
   where
-    base = fillColor Colors.red $ scale 20 circle
+    base = fillColorA (Colors.red `withOpacity` 0.6) $ scale 20 circle
+    scaling a b = Transformation (a,0,0,b,0,0)
+    origin = Point 0 0
+
+lineData :: [Point] -> Drawing
+lineData ps = lineStyle $ segments $ [Vector 0 0, Vector 100 150, Vector 200 150]
+  -- betweenPoints $ fmap (transformPoint (scaling 300 300)) ps
+  where
+    lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 1.3
     scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
 
@@ -132,14 +140,13 @@ axisX = strokeWidth 2 $ strokeColor Colors.black $ scale 300 $ translateX 0.5 ho
 main :: IO ()
 main = do
   let staticPlot = mconcat
-    [ scatterData (zipWith Point rand1 rand2)
-    , labeledAxis "Usually time" "Interesting stuff"
-    ]
+              [ scatterData (zipWith Point rand1 rand2)
+              , lineData [Point 0 0, Point 0.2 0.6, Point 1 1]
+              , labeledAxis "Usually time" "Interesting stuff"
+              ]
 
   let x = pure staticPlot
   runAppReactive2 $ fmap (toSvg defaultRenderingOptions) x
-  -- (view, _) <- component 1 render
-  -- runAppReactive view
 
 
 
