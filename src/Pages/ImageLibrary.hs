@@ -98,7 +98,7 @@ galleryW actionsSink ims =
         [ button [ class_ "btn btn-default"
                  , click (\_ -> actionsSink (UploadImg [])) ]
                  [ text "Upload" ]
-        , filesSelectWidget True (contramapSink (\x -> UploadImg x) actionsSink) []
+        , filesSelectWidget "images[]" True (contramapSink (\x -> UploadImg x) actionsSink) []
         ] ]
     <> (map (imageCell actionsSink) ims))
 
