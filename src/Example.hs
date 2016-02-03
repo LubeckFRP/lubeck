@@ -74,20 +74,26 @@ circleWithMouseOver output state =
     , axisX
     ]
 
+-- Scatter plot.
 scatterData :: [Point] -> Drawing
 scatterData ps = mconcat $ fmap (\p -> translate ((transformPoint (scaling 300 300) p) .-. origin) base) ps
   where
-    base = fillColorA (Colors.red `withOpacity` 0.6) $ scale 20 circle
+    base = fillColorA (Colors.red `withOpacity` 0.6) $ scale 10 circle
     scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
 
+-- Line plot.
 lineData :: [Point] -> Drawing
-lineData ps = lineStyle $ segments $ [Vector 0 0, Vector 100 150, Vector 200 150]
-  -- betweenPoints $ fmap (transformPoint (scaling 300 300)) ps
+lineData ps = lineStyle $ segments $
+  fmap (transformVector (scaling 300 300)) $ betweenPoints $ origin : ps
   where
     lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 1.3
     scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
+
+-- Box plot.
+boxData :: [Double] -> Drawing
+boxData ps = mempty
 
 ticks :: [(Double, JSString)] -> [(Double, JSString)] -> Drawing
 ticks xt yt = mempty
@@ -141,8 +147,8 @@ main :: IO ()
 main = do
   let staticPlot = mconcat
               [ mempty
-                -- scatterData (zipWith Point rand1 rand2)
-              , lineData [Point 0 0, Point 0.1 0.3, Point 0.2 0.6, Point 1 1]
+              , scatterData [Point 0 0, Point 0.1 0.3, Point 0.2 0.6, Point 1 1]
+              , lineData    [Point 0 0, Point 0.1 0.3, Point 0.2 0.6, Point 1 1]
               , labeledAxis "Usually time" "Interesting stuff"
               ]
 
