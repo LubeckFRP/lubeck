@@ -70,7 +70,10 @@ module Lubeck.Drawing (
     verticalLine,
     segments,
     polygon,
+    -- ** Text
     text,
+    TextOptions(..),
+    textWithOptions,
     -- ** Combination
     over,
     stack,
@@ -323,6 +326,26 @@ polygon = Lines True
 {-| -}
 text :: JSString -> Drawing
 text = Text
+
+
+data TextAnchor
+  = TextStart
+  | TextMiddle
+  | TextEnd
+  deriving (Eq, Ord, Read, Show)
+
+data TextOptions = TextOptions
+  { textAnchor :: TextAnchor
+  }
+
+{-| -}
+textWithOptions :: TextOptions -> JSString -> Drawing
+textWithOptions opts = ta . Text
+  where
+    ta = case textAnchor opts of
+      TextStart   -> Prop (VD.attribute "text-anchor" "start")
+      TextMiddle  -> Prop (VD.attribute "text-anchor" "middle")
+      TextEnd     -> Prop (VD.attribute "text-anchor" "end")
 
 {-| Layer the two images so that their origins match precisely. The origin of the given
     images become the origin of the new image as well.
