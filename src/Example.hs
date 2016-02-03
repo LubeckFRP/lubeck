@@ -84,11 +84,13 @@ scatterData ps = mconcat $ fmap (\p -> translate ((transformPoint (scaling 300 3
 
 -- Line plot.
 lineData :: [Point] -> Drawing
-lineData ps = lineStyle $ segments $
-  fmap (transformVector (scaling 300 300)) $ betweenPoints $ origin : ps
+lineData []     = mempty
+lineData [_]    = mempty
+lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
   where
     lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 1.3
-    scaling a b = Transformation (a,0,0,b,0,0)
+    -- translation a b = Transformation (0,0,0,0,a,b)
+    -- scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
 
 -- Box plot.
@@ -147,8 +149,8 @@ main :: IO ()
 main = do
   let staticPlot = mconcat
               [ mempty
-              , scatterData [Point 0 0, Point 0.1 0.3, Point 0.2 0.6, Point 1 1]
-              , lineData    [Point 0 0, Point 0.1 0.3, Point 0.2 0.6, Point 1 1]
+              , scatterData [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 (-0.1), Point 1 1]
+              , lineData    [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 (-0.1), Point 1 1]
               , labeledAxis "Usually time" "Interesting stuff"
               ]
 
