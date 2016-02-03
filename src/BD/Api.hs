@@ -91,7 +91,7 @@ getAPI' path headers = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = headers
-          , reqWithCredentials = True -- XXX looks like JavaScript.Web.XMLHttpRequest.xhr ignores this parameter
+          , reqWithCredentials = False -- XXX looks like JavaScript.Web.XMLHttpRequest.xhr ignores this parameter
           , reqData            = NoData
           }
 

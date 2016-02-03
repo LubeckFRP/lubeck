@@ -16,6 +16,6 @@ packages:
     commit: c724f6fcece279873354f576b9099579cb42f8ec
 - location:
     git: https://github.com/EugeneN/ghcjs-base.git
-    commit: 37663c5723c40062cbf6c39c075d61a3f7f1c9eb
+    commit: 861ef792b91063cf01daa573bcb4d96f4db0cf09
 extra-deps: []
 resolver: nightly-2015-12-14
