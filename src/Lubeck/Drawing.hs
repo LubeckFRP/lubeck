@@ -486,8 +486,8 @@ toSvg (RenderingOptions {dimensions, origoPlacement}) drawing =
       , A.height h
       , A.viewBox vb ]
 
-    placeOrigo :: OrigoPlacement -> Drawing -> Drawing
-    placeOrigo  = case origoPlacement of
+    placeOrigo :: Drawing -> Drawing
+    placeOrigo = case origoPlacement of
       TopLeft     -> id
       Center      -> translateX (x/2) . translateY (y/(-2))
       BottomLeft  -> translateY (y*(-1))
