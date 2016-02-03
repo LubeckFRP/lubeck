@@ -75,6 +75,7 @@ module Lubeck.Drawing (
     -- ** Text
     text,
     textMiddle,
+    textEnd,
     TextOptions(..),
     textWithOptions,
     -- ** Combination
@@ -346,6 +347,8 @@ text :: JSString -> Drawing
 text = Text
 
 textMiddle = textWithOptions (defaultTextOptions { textAnchor = TextMiddle })
+
+textEnd = textWithOptions (defaultTextOptions { textAnchor = TextEnd })
 
 data TextAnchor
   = TextStart

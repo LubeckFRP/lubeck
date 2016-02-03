@@ -26,6 +26,8 @@ import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
+import Lubeck.Util(showJS)
+
 import Data.VectorSpace
 import Data.AffineSpace
 import qualified Lubeck.Drawing
@@ -98,7 +100,14 @@ boxData :: [Double] -> Drawing
 boxData ps = mempty
 
 ticks :: [(Double, JSString)] -> [(Double, JSString)] -> Drawing
-ticks xt yt = mempty
+ticks xt yt = mconcat [xTicks, yTicks]
+  where
+    xTicks = mconcat $ flip fmap xt $
+      \(pos,str) -> translateX (pos * 300) $
+        (scale 10 $ strokeColor Colors.black $ translateY (-0.5) verticalLine) <> rotate (turn*1/4) (textEnd str)
+    yTicks = mconcat $ flip fmap yt $
+      \(pos,str) -> translateY (pos * 300) $
+        (scale 10 $ strokeColor Colors.black $ translateX (-0.5) horizontalLine) <> rotate (turn*0/4) (textEnd str)
 
 labeledAxis :: JSString -> JSString -> Drawing
 labeledAxis labelX labelY = mconcat
@@ -149,8 +158,11 @@ main :: IO ()
 main = do
   let staticPlot = mconcat
               [ mempty
-              , scatterData [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 (-0.1), Point 1 1]
-              , lineData    [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 (-0.1), Point 1 1]
+              , scatterData [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              , lineData    [Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              , ticks
+                  (zip [0.1,0.2..1] (fmap showJS [1..]))
+                  (zip [0.1,0.2..1] (fmap showJS [1..]))
               , labeledAxis "Usually time" "Interesting stuff"
               ]
 
