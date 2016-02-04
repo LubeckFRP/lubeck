@@ -58,7 +58,7 @@ div, h1, h2, img, p, span {
 }
 
 .custom-thumbnail-1:hover {
-  background-color: #efefef;
+  background-color: #ffffff;
 }
 .custom-thumbnail-1 {
   display: inline-block;
@@ -194,4 +194,8 @@ div, h1, h2, img, p, span {
 
 .x-media {
   padding-top: 40px;
+}
+
+.badge-info {
+  background-color: #5bc0de;
 }
