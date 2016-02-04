@@ -4,6 +4,8 @@
 
 module Pages.Login
   ( Username
+  , Password
+  , Credentials
   , loginPage
   ) where
 
