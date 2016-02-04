@@ -69,9 +69,11 @@ update = foldpR step initial
     initial = (Model (Nothing,Nothing) $ InteractionSet Nothing Nothing [], Nothing)
 
     step NoAction             (model,_) = (model,   Nothing)
-    step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- loadShoutouts a b ; return $ ChangeModel (set interactions so) })
+    step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- fmap truncateInteractions $ loadShoutouts a b ; return $ ChangeModel (set interactions so) })
     step (ReplaceModel model) (_,_)     = (model,   Nothing)
     step (ChangeModel f) (model,_)      = (f model, Nothing)
+
+truncateInteractions x = x { I.interactions = (take 4 $ I.interactions x) }
 
 render :: Widget Model Action
 render actions model = div
@@ -119,6 +121,7 @@ interactionW actions model = div []
       Drawing.toSvg Drawing.defaultRenderingOptions $
       -- simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
         simpleTimeSeries showJS fromIntegral round (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
+    , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
     ]
   , p [] [text "Estimated impact: (?)"]
   ]
