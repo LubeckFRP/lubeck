@@ -191,6 +191,8 @@ searchPage busySink errorSink mUserNameB = do
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
+    receiveSearchResult Nothing -- reset previous search results
+    
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 busySink postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
