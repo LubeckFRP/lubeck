@@ -34,7 +34,7 @@ import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
 -- import qualified Lubeck.Plots.Test as Plotting
-import qualified Lubeck.Plots.SimpleNormalized
+import Lubeck.Plots.SimpleNormalized (simpleTimeSeries)
 import qualified Lubeck.Drawing as Drawing
 
 import qualified BD.Data.Account as A
@@ -116,16 +116,9 @@ interactionW actions model = div []
   -- Growth graph
   , div [class_ "row"]
     [
-    ((Plotting.plotDrawingToSvg $
-      (\x -> Drawing.stack [x,Drawing.xyAxis]) $ Plotting.drawDataPlot $ Plotting.basicDataGrowth id
-        [ flip Drawing.Point 10   20
-        , flip Drawing.Point 45  30
-        , flip Drawing.Point 100 200
-        , flip Drawing.Point 200 0
-        ]))
-
-      -- div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] []]
-    , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
+      Drawing.toSvg Drawing.defaultRenderingOptions $
+      -- simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
+        simpleTimeSeries showJS fromIntegral round (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
     ]
   , p [] [text "Estimated impact: (?)"]
   ]
