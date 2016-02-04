@@ -18,6 +18,8 @@ import Data.Maybe(fromMaybe)
 import Data.Default (def)
 import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
+import Data.Time (UTCTime(..), DiffTime, Day(..))
+
 
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
@@ -31,7 +33,8 @@ import qualified Web.VirtualDom.Html.Events as Ev
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
-import qualified Lubeck.Plots.Test as Plotting
+-- import qualified Lubeck.Plots.Test as Plotting
+import qualified Lubeck.Plots.SimpleNormalized
 import qualified Lubeck.Drawing as Drawing
 
 import qualified BD.Data.Account as A
