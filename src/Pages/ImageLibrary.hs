@@ -94,13 +94,9 @@ galleryW _ [] = contentPanel $ text "No images in library"
 
 galleryW actionsSink ims =
   contentPanel $ div []
-    ([ div [class_ "btn-toolbar"]
-        [ button [ class_ "btn btn-default"
-                 , click (\_ -> actionsSink (UploadImg [])) ]
-                 [ text "Upload" ]
-        , filesSelectWidget "images[]" True (contramapSink (\x -> UploadImg x) actionsSink) []
-        ] ]
-    <> (map (imageCell actionsSink) ims))
+    [ div [class_ "btn-toolbar"]
+        [ filesSelectWidget "images[]" True (contramapSink (\x -> UploadImg x) actionsSink) [] ]
+    , div [A.style "margin-left: -20px;"] (map (imageCell actionsSink) ims) ]
 
 imageCell actionsSink image =
   div [class_ "thumbnail custom-thumbnail-1 fit-text"]
