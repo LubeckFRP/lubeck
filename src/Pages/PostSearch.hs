@@ -41,7 +41,7 @@ import           Lubeck.Forms
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    ()
+import           Lubeck.Util                    (divideFromEnd, showJS, contentPanel)
 import           Lubeck.Web.URI                 (getURIParameter)
 
 import           BD.Api
@@ -52,13 +52,10 @@ import qualified BD.Data.SearchPost             as P
 import           BD.Query.PostQuery
 import qualified BD.Query.PostQuery             as PQ
 import           BD.Types
-import           BD.Utils
 import           Components.BusyIndicator       (withBusy, withBusy2)
 
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent)
-
-import           Lubeck.Util
 
 
 -- TODO finish

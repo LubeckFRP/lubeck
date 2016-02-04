@@ -33,8 +33,8 @@ import qualified Web.VirtualDom.Html.Events as Ev
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
--- import qualified Lubeck.Plots.Test as Plotting
 import Lubeck.Plots.SimpleNormalized (simpleTimeSeries)
+import Lubeck.Util (showIntegerWithThousandSeparators)
 import qualified Lubeck.Drawing as Drawing
 
 import qualified BD.Data.Account as A
@@ -120,7 +120,10 @@ interactionW actions model = div []
     [
       Drawing.toSvg Drawing.defaultRenderingOptions $
       -- simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
-        simpleTimeSeries showJS fromIntegral round (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
+        simpleTimeSeries
+          showIntegerWithThousandSeparators
+          fromIntegral round
+          (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
     , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
     ]
   , p [] [text "Estimated impact: (?)"]
