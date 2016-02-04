@@ -93,7 +93,9 @@ searchForm dayNow output query =
             (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
           ]
         ]
-      , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query] [text "Search!"]
+      , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query]
+          [ E.i [class_ "fa fa-search", A.style "margin-right: 5px"] []
+          , text "Search!"]
       ]
 
 type Post = SearchPost

@@ -69,9 +69,15 @@ viewImageW sink image = do
     div [class_ "library-image-view"]
       [ div [class_ "btn-toolbar"]
           [ div [class_ "btn-group"]
-              [ button [class_ "btn btn-default", click $ \_ -> sink $ ViewPrevImg image] [ text "← Prev image" ]
-              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewNextImg image] [ text "Next image →" ]
-              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewGalleryIndex]  [ text "Back to library"] ]
+              [ button [class_ "btn btn-default", click $ \_ -> sink $ ViewPrevImg image]
+                  [ E.i [class_ "fa fa-chevron-left", A.style "margin-right: 5px"] []
+                  , text "Prev image" ]
+              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewNextImg image]
+                  [ text "Next image"
+                  , E.i [class_ "fa fa-chevron-right", A.style "margin-left: 5px"] [] ]
+              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewGalleryIndex]
+                  [ E.i [class_ "fa fa-undo", A.style "margin-right: 5px"] []
+                  , text "Back to library"] ]
 
           , div [class_ "btn-group"]
               [ div [class_ "btn"] [ text "Prediction score:" ]
@@ -79,8 +85,12 @@ viewImageW sink image = do
                   [showImagePred $ Im.prediction image] ]
 
           , div [class_ "btn-group"]
-              [ button [class_ "btn btn-primary", click $ \_ -> sink $ EnhanceImg image] [ text "Enhance"]
-              , button [class_ "btn btn-danger",  click $ \_ -> sink $ DeleteImg  image] [ text "Delete"] ]
+              [ button [class_ "btn btn-primary", click $ \_ -> sink $ EnhanceImg image]
+                  [ E.i [class_ "fa fa-star", A.style "margin-right: 5px"] []
+                  , text "Enhance"]
+              , button [class_ "btn btn-danger",  click $ \_ -> sink $ DeleteImg  image]
+                  [ E.i [class_ "fa fa-trash-o", A.style "margin-right: 5px"] []
+                  , text "Delete"] ]
           ]
 
       , div [class_ "x-media"] [ E.img [src imgUrl, class_ "library-image-view-img"] [] ]
@@ -101,9 +111,7 @@ galleryW actionsSink ims =
 imageCell actionsSink image =
   div [class_ "thumbnail custom-thumbnail-1 fit-text"]
       [ div [class_ "thumbnail-wrapper"] [ imgWithAttrs actionsSink image [] ]
-      , p [class_ "image-prediction"]    [ showImagePred $ Im.prediction image ]
-      --, p [class_ "image-hash"]          ( showImageHash $ Im.fb_image_hash image )
-      ]
+      , p [class_ "image-prediction"]    [ showImagePred $ Im.prediction image ] ]
 
 showImagePred Nothing  = text "No prediction"
 showImagePred (Just x) = renderScore x
