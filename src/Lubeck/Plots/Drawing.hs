@@ -81,7 +81,7 @@ lineData []     = mempty
 lineData [_]    = mempty
 lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
   where
-    lineStyle = strokeWidth 2.5 . strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 1.3
+    lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
     -- translation a b = Transformation (0,0,0,0,a,b)
     -- scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
