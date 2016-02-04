@@ -66,7 +66,7 @@ makeLenses ''Model
 update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
-    initial = (Model (Nothing,Nothing) $ InteractionSet Nothing Nothing [], Nothing)
+    initial = (Model (Just "beautifuldestinations", Just "forbestravelguide") $ InteractionSet Nothing Nothing [], Nothing)
 
     step NoAction             (model,_) = (model,   Nothing)
     step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- fmap truncateInteractions $ loadShoutouts a b ; return $ ChangeModel (set interactions so) })
