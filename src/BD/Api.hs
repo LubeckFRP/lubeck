@@ -48,6 +48,8 @@ baseURL :: JSString
 --baseURL = "http://localhost:3567/api/v1/"
 baseURL = "https://data.beautifuldestinations.com/api/v1/"
 
+useCredentials = False
+
 showJS :: Show a => a -> JSString
 showJS = fromString . show
 
@@ -91,7 +93,7 @@ getAPI' path headers = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = headers
-          , reqWithCredentials = False -- XXX looks like JavaScript.Web.XMLHttpRequest.xhr ignores this parameter
+          , reqWithCredentials = useCredentials
           , reqData            = NoData
           }
 
@@ -144,7 +146,7 @@ postAPI path value = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = True
+          , reqWithCredentials = useCredentials
           , reqData            = (StringData $ body)
           }
 
@@ -165,7 +167,7 @@ postFileAPI path files = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = True
+          , reqWithCredentials = useCredentials
           , reqData            = (FormData files)
           }
 
@@ -201,7 +203,7 @@ deleteAPI path = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = True
+          , reqWithCredentials = useCredentials
           , reqData            = NoData
           }
 
