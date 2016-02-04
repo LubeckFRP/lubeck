@@ -157,6 +157,7 @@ simpleLinePlot
   -> Int
   -> [(a,b)]
   -> Drawing
+simpleLinePlot _     _     _   _   _   _   _         _         [] = mempty
 simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
   [ lineData points
   , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
