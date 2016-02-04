@@ -23,7 +23,7 @@ import           Data.Maybe
 import           Data.JSString
 import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString)
-import Data.Time.Calendar (Day(..))
+import Data.Time (Day(..), UTCTime(..))
 import qualified Data.Time.Format
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
