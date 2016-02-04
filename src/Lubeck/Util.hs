@@ -89,7 +89,7 @@ parseDateUTC' :: String -> Maybe UTCTime
 parseDateUTC' = Data.Time.Format.parseTimeM True l f
   where
     l = Data.Time.Format.defaultTimeLocale
-    f = Data.Time.Format.iso8601DateFormat Nothing
+    f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S") -- i.e. YYYY-MM-DDTHH:MM:SS
 
 parseDateUTC :: String -> Maybe Day
 parseDateUTC = Data.Time.Format.parseTimeM True l f

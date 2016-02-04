@@ -136,8 +136,10 @@ axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
 
 utcTimeToApproxReal :: UTCTime -> Double
 utcTimeToApproxReal (UTCTime days seconds) = (fromIntegral (unDay days) * (3600*24)) + realToFrac seconds
+
 realToApproxutcTime :: Double -> UTCTime
-realToApproxutcTime x = UTCTime (day dayPart) (x - fromIntegral dayPart) where dayPart = floor $ x/(3600*24)
+realToApproxutcTime x = UTCTime (day dayPart) (realToFrac x - fromIntegral dayPart) where dayPart = floor $ x/(3600*24)
+
 unDay = toModifiedJulianDay
 day = ModifiedJulianDay
 
@@ -218,16 +220,22 @@ tickCalc tickCount (lo, hi) =
 
 -- MAIN
 
-testSimple1 = simpleLinePlot showJS showJS id id id id 10 10 [(0.2, 0.3), (0.4, 1), (1,1)]
-testSimple2 = simpleLinePlot showJS showJS id id id id 10 10 (zip [-10,1,3,4,7,15] [10,20,0,300,30,50])
+testSimple1, testSimple2, testSimple3 :: Drawing
+testSimple1 = simpleLinePlot showJS showJS
+  id id id id 10 10
+  [(0.2, 0.3), (0.4, 1), (1,1)]
+
+testSimple2 = simpleLinePlot showJS showJS
+  id id id id 10 10
+  (zip [-10,1,3,4,7,15] [10,20,0,300,30,50])
 
 testSimple3 = simpleLinePlot showJS showJS
-  utcTimeToApproxReal realToApproxutcTime id id
+  utcTimeToApproxReal realToApproxutcTime id id 10 10
   (zip
-    (fmap parseDateUTC'
-      [ "2010-01-01T06:00:00Z"
-      , "2015-12-24T06:53:00Z"
-      , "2016-02-03T06:53:16Z"
+    (fmap ((\(Just x) -> x) . parseDateUTC')
+      [ "1400-01-01T06:00:00"
+      , "1900-12-24T06:53:00"
+      , "2016-02-03T06:53:16"
       ])
     [10,15,-1]
     )
