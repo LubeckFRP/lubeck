@@ -30,7 +30,7 @@ import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
-import Lubeck.Util(showJS)
+import Lubeck.Util(showJS, parseDateUTC')
 
 import Data.VectorSpace
 import Data.AffineSpace
@@ -218,10 +218,22 @@ tickCalc tickCount (lo, hi) =
 -- MAIN
 
 testSimple1 = simpleLinePlot showJS showJS id id id id 10 10 [(0.2, 0.3), (0.4, 1), (1,1)]
+testSimple2 = simpleLinePlot showJS showJS id id id id 10 10 (zip [-10,1,3,4,7,15] [10,20,0,300,30,50])
+
+testSimple3 = simpleLinePlot showJS showJS
+  utcTimeToApproxReal realToApproxutcTime id id
+  (zip
+    (fmap parseDateUTC'
+      [ "2010-01-01T06:00:00Z"
+      , "2015-12-24T06:53:00Z"
+      , "2016-02-03T06:53:16Z"
+      ])
+    [10,15,-1]
+    )
 
 main :: IO ()
 main = do
-  let staticPlot = testSimple1
+  let staticPlot = testSimple3
   -- let staticPlot = mconcat
               -- [ mempty
               -- , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]

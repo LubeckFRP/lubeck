@@ -16,6 +16,7 @@ module Lubeck.Util
 
   , formatDateUTC
   , parseDateUTC
+  , parseDateUTC'
   ) where
 
 import           Data.Maybe
@@ -83,6 +84,12 @@ infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center "] [co
 tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
 
+
+parseDateUTC' :: String -> Maybe UTCTime
+parseDateUTC' = Data.Time.Format.parseTimeM True l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
 
 parseDateUTC :: String -> Maybe Day
 parseDateUTC = Data.Time.Format.parseTimeM True l f
