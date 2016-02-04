@@ -16,13 +16,14 @@ module Lubeck.Util
 
   , formatDateUTC
   , parseDateUTC
+  , parseDateUTC'
   ) where
 
 import           Data.Maybe
 import           Data.JSString
 import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString)
-import Data.Time.Calendar (Day(..))
+import Data.Time (Day(..), UTCTime(..))
 import qualified Data.Time.Format
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -83,6 +84,12 @@ infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center "] [co
 tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
 
+
+parseDateUTC' :: String -> Maybe UTCTime
+parseDateUTC' = Data.Time.Format.parseTimeM True l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S") -- i.e. YYYY-MM-DDTHH:MM:SS
 
 parseDateUTC :: String -> Maybe Day
 parseDateUTC = Data.Time.Format.parseTimeM True l f

@@ -23,9 +23,11 @@ module Lubeck.Drawing (
     angleToDegrees,
 
     -- ** Transformations
-    Transformation,
+    Transformation(..), -- TODO hide internals
     emptyTransformation,
     apTransformation,
+    transformVector,
+    transformPoint,
     (!<>),
     transformationToMatrix,
 
@@ -50,6 +52,7 @@ module Lubeck.Drawing (
     fillColor,
     fillColorA,
     strokeColor,
+    strokeColorA,
     strokeWidth,
     -- *** Rendering
     styleToAttrString,
@@ -69,7 +72,12 @@ module Lubeck.Drawing (
     verticalLine,
     segments,
     polygon,
+    -- ** Text
     text,
+    textMiddle,
+    textEnd,
+    TextOptions(..),
+    textWithOptions,
     -- ** Combination
     over,
     stack,
@@ -90,6 +98,7 @@ import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour, AlphaColour)
 import Data.Map(Map)
 import Data.Monoid
+import Data.Semigroup(Max(..))
 import Data.VectorSpace
 import qualified Data.Colour
 import qualified Data.Colour.Names as C
@@ -142,7 +151,7 @@ offsetVectors p = tail . offsetVectors' p
 betweenPoints :: [Point] -> [Vector]
 betweenPoints xs = case xs of
   []     -> []
-  (_:ys) -> liftA2 (.-.) ys xs
+  (_:ys) -> zipWith (.-.) ys xs
 
 -- distanceVs : Point -> List Point -> List Vector
 -- distanceVs p = tail . pointOffsets p
@@ -212,6 +221,12 @@ apTransformation
 
 infixr 6 !<>
 
+transformVector :: Transformation -> Vector -> Vector
+transformVector (Transformation (a,b,c,d,e,f)) (Vector x y) = Vector (a*x+c*y) (b*x+d*y)
+
+transformPoint :: Transformation -> Point -> Point
+transformPoint (Transformation (a,b,c,d,e,f)) (Point x y) = Point (a*x+c*y+e) (b*x+d*y+f)
+
 {-| Compose two transformations. -}
 (!<>) :: Transformation -> Transformation -> Transformation
 (!<>) = apTransformation
@@ -247,8 +262,16 @@ styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <>
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
 
+-- | Defines how far an object extends in any direction.
+--   @Nothing@ means the object has no extent (i.e. the empty image).
+newtype Extent = Extent { getExtent  :: (Maybe Double) }
+  deriving (Eq, Ord)
+instance Bounded Extent where
+  minBound = Extent $ Nothing
+  maxBound = Extent $ Just (1/0)
 
-type Envelope = Maybe (Vector -> Double)
+newtype Envelope = Envelope (Vector -> Max Extent)
+  deriving (Monoid)
 -- Max monoid
 -- Transform by inverse-transforming argument and transforming (scaling) result
 -- Transformable
@@ -322,6 +345,31 @@ polygon = Lines True
 {-| -}
 text :: JSString -> Drawing
 text = Text
+
+textMiddle = textWithOptions (defaultTextOptions { textAnchor = TextMiddle })
+
+textEnd = textWithOptions (defaultTextOptions { textAnchor = TextEnd })
+
+data TextAnchor
+  = TextStart
+  | TextMiddle
+  | TextEnd
+  deriving (Eq, Ord, Read, Show)
+
+data TextOptions = TextOptions
+  { textAnchor :: TextAnchor
+  }
+defaultTextOptions = TextOptions
+  TextStart
+
+{-| -}
+textWithOptions :: TextOptions -> JSString -> Drawing
+textWithOptions opts = ta . Text
+  where
+    ta = case textAnchor opts of
+      TextStart   -> Prop (VD.attribute "text-anchor" "start")
+      TextMiddle  -> Prop (VD.attribute "text-anchor" "middle")
+      TextEnd     -> Prop (VD.attribute "text-anchor" "end")
 
 {-| Layer the two images so that their origins match precisely. The origin of the given
     images become the origin of the new image as well.
@@ -438,9 +486,12 @@ fillColorA x = fillColor c . alpha a
     a = Data.Colour.alphaChannel x
 
 -- {-| -}
--- strokeColorA :: Colour Double -> Drawing -> Drawing
--- strokeColorA x = style (Data.Map.singleton "stroke" $ showColor x)
-
+strokeColorA :: AlphaColour Double -> Drawing -> Drawing
+strokeColorA x = strokeColor c . alpha a
+  where
+    alpha a = style (Data.Map.singleton "stroke-opacity" $ showJS a)
+    c = Data.Colour.over x C.black
+    a = Data.Colour.alphaChannel x
 
 {-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
 
@@ -465,7 +516,7 @@ data RenderingOptions = RenderingOptions
   deriving (Eq, Ord, Show)
 
 defaultRenderingOptions :: RenderingOptions
-defaultRenderingOptions = RenderingOptions (Point 400 400) Center
+defaultRenderingOptions = RenderingOptions (Point 800 800) Center
 
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
