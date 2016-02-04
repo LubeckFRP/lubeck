@@ -123,6 +123,6 @@ divideFromEnd :: Int -> [a] -> [[a]]
 divideFromEnd n = reverse . fmap reverse . divide n . reverse
 
 -- | I.e. @showIntegerWithThousandSeparators 314159265 = "314,159,265"@
-showIntegerWithThousandSeparators :: Integer -> JSString
+showIntegerWithThousandSeparators :: Integral a => a -> JSString
 showIntegerWithThousandSeparators n = Data.JSString.pack $
-  concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show n
+  concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show (fromIntegral n)

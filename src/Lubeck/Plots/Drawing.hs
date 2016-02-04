@@ -45,6 +45,15 @@ import qualified Lubeck.Drawing
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 
+-- Line overlays, box plots, heat maps
+-- Stacking and graphing box plots
+-- Generating legends
+-- Generating (proper axises)
+-- Visualize pairs, lists, ordered sets, maps, trees, directed graphs
+
+-- We will require basic envelopes
+-- Optimally, also textual envelopes
+
 -- Scatter plot.
 scatterData :: [Point] -> Drawing
 scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
