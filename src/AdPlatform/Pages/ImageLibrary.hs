@@ -40,11 +40,9 @@ import           BD.Api
 import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
-import           Components.BusyIndicator (BusyCmd(..), withBusy, withBusy2)
+import           Components.BusyIndicator       (BusyCmd(..), withBusy, withBusy2)
 import           AdPlatform.Types
 
-type ImgIndex = Int
-type ImgHash = Text
 
 type UploadFiles = [(JSString, FormDataVal)]
 
@@ -62,6 +60,7 @@ instance Show ImgLibraryActions where
   show (EnhanceImg i)   = "EnhanceImg "  <> show (Im.id i)
   show (UploadImg i)    = "UploadImg"    <> show (fmap fst i)
   show (ViewImg i)      = "ViewImg "     <> show (Im.id i)
+  show ReloadLibrary    = "ReloadLibrary"
 
 
 -- view
@@ -178,7 +177,9 @@ processActions busySink errorSink actionsSink2 imsB accB (ViewNextImg image) = d
                                   Just x  -> ims !! (if x + 1 >= length ims then 0 else x + 1)
   return (Just nextImg)
 
-processActions busySink errorSink actionsSink2 imsB accB x@(EnhanceImg image)  = (notImp errorSink x) >> return (Just image)
+processActions busySink errorSink actionsSink2 imsB accB x@(EnhanceImg image) =
+  (notImp errorSink x) >> return (Just image)
+
 processActions busySink errorSink actionsSink2 imsB accB (DeleteImg image) = do
   mbUsr <- pollBehavior accB
   case mbUsr of
@@ -194,7 +195,9 @@ processActions busySink errorSink actionsSink2 imsB accB (DeleteImg image) = do
         Right Ok -> actionsSink2 ReloadLibrary >> return Nothing
 
 processActions busySink errorSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
+
 processActions busySink errorSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
+
 processActions busySink errorSink actionsSink2 imsB accB (UploadImg formfiles) = do
   mbUsr <- pollBehavior accB
   case mbUsr of
