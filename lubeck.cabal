@@ -21,6 +21,7 @@ library
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
                      , Lubeck.Plots.Test
+                     , Lubeck.Plots.SimpleNormalized
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
