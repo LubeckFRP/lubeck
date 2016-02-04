@@ -31,7 +31,7 @@ import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
-import Lubeck.Util(showJS, parseDateUTC')
+import Lubeck.Util(showJS, parseDateAndTimeToUTC)
 
 import Data.VectorSpace
 import Data.AffineSpace
@@ -55,7 +55,7 @@ testSimple2 = simpleLinePlot showJS showJS
 testSimple3 = simpleLinePlot showJS showJS
   utcTimeToApproxReal realToApproxUTCTime id id 10 10
   (zip
-    (fmap ((\(Just x) -> x) . parseDateUTC')
+    (fmap ((\(Just x) -> x) . parseDateAndTimeToUTC)
       [ "1400-01-01T06:00:00"
       , "1900-12-24T06:53:00"
       , "2016-02-03T06:53:16"
