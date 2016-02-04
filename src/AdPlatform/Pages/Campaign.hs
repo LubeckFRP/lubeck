@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module Pages.Campaign
+module AdPlatform.Pages.Campaign
   ( campaignPage
   , getCampaigns
   ) where

@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module Pages.ImageLibrary
+module AdPlatform.Pages.ImageLibrary
   ( imageLibraryPage
   ) where
 

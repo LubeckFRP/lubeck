@@ -6,7 +6,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Pages.CreateAd
+module AdPlatform.Pages.CreateAd
   ( createAdPage
   ) where
 
@@ -71,7 +71,7 @@ createAdForm output newAd =
       , longStringWidget "Image Hash" (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)
       , longStringWidget "Click URL"  (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
       , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd]
-          [ E.i [A.class_ "fa fa-thumbs-o-up", A.style "margin-right: 5px"] [] 
+          [ E.i [A.class_ "fa fa-thumbs-o-up", A.style "margin-right: 5px"] []
           , text "Create Ad" ]
       ]
 

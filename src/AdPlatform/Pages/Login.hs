@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Pages.Login
+module AdPlatform.Pages.Login
   ( Username
   , Password
   , Credentials

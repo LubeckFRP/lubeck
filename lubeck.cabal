@@ -39,12 +39,13 @@ library
                      , BD.Query.PostQuery
                      , BD.Utils
                      , AdPlatform.Types
-                     , Pages.CreateAd
-                     , Pages.PostSearch
-                     , Pages.Login
-                     , Pages.User
-                     , Pages.Campaign
-                     , Pages.ImageLibrary
+                     , AdPlatform.Main
+                     , AdPlatform.Pages.CreateAd
+                     , AdPlatform.Pages.PostSearch
+                     , AdPlatform.Pages.Login
+                     , AdPlatform.Pages.User
+                     , AdPlatform.Pages.Campaign
+                     , AdPlatform.Pages.ImageLibrary
                      , Components.ErrorMessages
                      , Components.BusyIndicator
                      , Components.MainMenu
@@ -139,7 +140,7 @@ executable bd-interactions
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-adplatform
-  main-is:             src/AdPlatform.hs
+  main-is:             src/AdPlatform/Main.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom

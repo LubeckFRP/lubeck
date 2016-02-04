@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Pages.PostSearch
+module AdPlatform.Pages.PostSearch
   ( searchPage
   ) where
 

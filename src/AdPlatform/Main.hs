@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Main where
+module AdPlatform.Main where
 
 import           Prelude                        hiding (div)
 import qualified Prelude
@@ -34,12 +34,12 @@ import           BD.Types
 import           BD.Utils
 import           BD.Api
 
-import           Pages.Campaign                 (campaignPage, getCampaigns)
-import           Pages.CreateAd                 (createAdPage)
-import           Pages.ImageLibrary             (imageLibraryPage)
-import           Pages.Login                    (loginPage, Username)
-import           Pages.PostSearch               (searchPage)
-import           Pages.User                     (userPage)
+import           AdPlatform.Pages.Campaign      (campaignPage, getCampaigns)
+import           AdPlatform.Pages.CreateAd      (createAdPage)
+import           AdPlatform.Pages.ImageLibrary  (imageLibraryPage)
+import           AdPlatform.Pages.Login         (loginPage, Username)
+import           AdPlatform.Pages.PostSearch    (searchPage)
+import           AdPlatform.Pages.User          (userPage)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
