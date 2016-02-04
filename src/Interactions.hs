@@ -73,7 +73,7 @@ update = foldpR step initial
     step (ReplaceModel model) (_,_)     = (model,   Nothing)
     step (ChangeModel f) (model,_)      = (f model, Nothing)
 
-truncateInteractions x = x { I.interactions = (take 4 $ I.interactions x) }
+truncateInteractions x = x { I.interactions = (take 20 $ I.interactions x) }
 
 render :: Widget Model Action
 render actions model = div
