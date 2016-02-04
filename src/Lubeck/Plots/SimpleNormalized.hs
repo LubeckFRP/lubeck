@@ -109,6 +109,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
   [ lineData points
   , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
   , labeledAxis "" ""
+  , scale 100 smokeBackground
   ]
   where
     tickLabelsA  = fmap (showA . d2a) ticksA

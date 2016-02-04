@@ -118,7 +118,7 @@ interactionW actions model = div []
   -- Growth graph
   , div [class_ "row"]
     [
-      Drawing.toSvg Drawing.defaultRenderingOptions $
+      render $
       -- simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
         simpleTimeSeries
           showIntegerWithThousandSeparators
@@ -128,6 +128,9 @@ interactionW actions model = div []
     ]
   , p [] [text "Estimated impact: (?)"]
   ]
+  where
+    render     = Drawing.toSvg renderOpts . Drawing.scale 2 $ Drawing.translate (Drawing.Vector 55 80)
+    renderOpts = Drawing.defaultRenderingOptions { Drawing.origoPlacement = Drawing.BottomLeft }
 
 
 -- MAIN
