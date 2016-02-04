@@ -24,8 +24,8 @@ import qualified Web.VirtualDom.Html.Events as Ev
 foreign import javascript unsafe "$1.target.nextSibling.click()"
   clickRealInput ::  Ev.Event -> IO ()
 
-filesSelectWidget :: JSString -> Bool -> Widget' [(JSString, FormDataVal)]
-filesSelectWidget formFieldName multi sink _ =
+filesSelectWidget :: JSString -> Maybe JSString -> Bool -> Widget' [(JSString, FormDataVal)]
+filesSelectWidget formFieldName mime multi sink _ =
   E.div []
     [ E.button [ A.class_ "btn btn-default"
                , Ev.click (\ev -> clickRealInput ev) ]
@@ -40,9 +40,12 @@ filesSelectWidget formFieldName multi sink _ =
                              Nothing -> return ()
                              Just fs -> sink $ zip (repeat formFieldName) fs
 
-       ] <> multiAttr) []
+       ] <> multiAttr <> acceptAttr) []
     ]
 
 
   where
-    multiAttr = if multi then [(VD.attribute "multiple") "true"] else []
+    multiAttr  = if multi then [(VD.attribute "multiple") "true"] else []
+    acceptAttr = case mime of
+                   Nothing -> []
+                   Just x  -> [(VD.attribute "accept") x]

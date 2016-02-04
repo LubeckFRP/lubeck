@@ -105,7 +105,7 @@ galleryW _ [] = contentPanel $ text "No images in library"
 galleryW actionsSink ims =
   contentPanel $ div []
     [ div [class_ "btn-toolbar"]
-        [ filesSelectWidget "images[]" True (contramapSink (\x -> UploadImg x) actionsSink) [] ]
+        [ filesSelectWidget "images[]" (Just "image/*") True (contramapSink (\x -> UploadImg x) actionsSink) [] ]
     , div [A.style "margin-left: -20px;"] (map (imageCell actionsSink) ims) ]
 
 imageCell actionsSink image =
