@@ -52,6 +52,7 @@ data ImgLibraryActions = ViewPrevImg Im.Image | ViewNextImg Im.Image | ViewGalle
                        | DeleteImg Im.Image | EnhanceImg Im.Image
                        | UploadImg UploadFiles
                        | ViewImg Im.Image
+                       | ReloadLibrary
 
 instance Show ImgLibraryActions where
   show (ViewPrevImg i)  = "ViewPrevImg " <> show (Im.id i)
@@ -154,11 +155,12 @@ imgWithAttrs actionsSink image attrs =
 
 processActions :: Sink BusyCmd
                -> Sink (Maybe AppError)
+               -> Sink ImgLibraryActions
                -> Behavior (Maybe [Im.Image])
                -> Behavior (Maybe Account.Account)
                -> ImgLibraryActions
                -> IO (Maybe Im.Image)
-processActions busySink errorSink imsB accB (ViewPrevImg image) = do
+processActions busySink errorSink actionsSink2 imsB accB (ViewPrevImg image) = do
   mbIms <- pollBehavior imsB
   let prevImg = case mbIms of
                   Nothing -> image
@@ -167,7 +169,7 @@ processActions busySink errorSink imsB accB (ViewPrevImg image) = do
                                   Just x  -> ims !! (if x - 1 < 0 then (length ims) - 1 else x - 1)
   return (Just prevImg)
 
-processActions busySink errorSink imsB accB (ViewNextImg image) = do
+processActions busySink errorSink actionsSink2 imsB accB (ViewNextImg image) = do
   mbIms <- pollBehavior imsB
   let nextImg = case mbIms of
                   Nothing -> image
@@ -176,8 +178,8 @@ processActions busySink errorSink imsB accB (ViewNextImg image) = do
                                   Just x  -> ims !! (if x + 1 >= length ims then 0 else x + 1)
   return (Just nextImg)
 
-processActions busySink errorSink imsB accB x@(EnhanceImg image)  = (notImp errorSink x) >> return (Just image)
-processActions busySink errorSink imsB accB (DeleteImg image) = do
+processActions busySink errorSink actionsSink2 imsB accB x@(EnhanceImg image)  = (notImp errorSink x) >> return (Just image)
+processActions busySink errorSink actionsSink2 imsB accB (DeleteImg image) = do
   mbUsr <- pollBehavior accB
   case mbUsr of
     Nothing -> do
@@ -188,16 +190,12 @@ processActions busySink errorSink imsB accB (DeleteImg image) = do
       -- XXX TODO ask for confirmation!
       res <- (withBusy2 busySink deleteImage) acc image
       case res of
-        Left e -> (errorSink $ Just e) >> (return $ Just image)
-        Right Ok -> do
-          {- TODO reload gallery -}
-          notImp errorSink "deleted ok, but TODO reload library"
-          return Nothing
+        Left e   -> errorSink (Just e)         >> return (Just image)
+        Right Ok -> actionsSink2 ReloadLibrary >> return Nothing
 
-processActions busySink errorSink imsB accB ViewGalleryIndex = return Nothing
-processActions busySink errorSink imsB accB (ViewImg i) = return $ Just i
--- processActions busySink errorSink imsB accB x@(UploadImg _) = notImp errorSink x
-processActions busySink errorSink imsB accB (UploadImg formfiles) = do
+processActions busySink errorSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
+processActions busySink errorSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
+processActions busySink errorSink actionsSink2 imsB accB (UploadImg formfiles) = do
   mbUsr <- pollBehavior accB
   case mbUsr of
     Nothing -> do
@@ -207,11 +205,8 @@ processActions busySink errorSink imsB accB (UploadImg formfiles) = do
     Just acc -> do
       res <- (withBusy2 busySink uploadImages) acc formfiles
       case res of
-        Left e -> (errorSink $ Just e) >> (return Nothing)
-        Right imgId -> do
-          {- TODO reload gallery >>= return (imgFrom imgId) -}
-          notImp errorSink "uploaded ok, but TODO reload library"
-          return Nothing
+        Left e      -> errorSink (Just e)         >> return Nothing
+        Right imgId -> actionsSink2 ReloadLibrary >> return Nothing
 
 notImp errorSink x = do
   errorSink . Just . NotImplementedError . showJS $ x
@@ -238,17 +233,19 @@ imageLibraryPage :: Sink BusyCmd
                  -> Events Account.Account
                  -> IO (Signal Html)
 imageLibraryPage busySink errorSink ipcSink ipcEvents userE = do
-  (actionsSink :: Sink ImgLibraryActions, actionsE :: Events ImgLibraryActions) <- newEvent
+  (actionsSink,  actionsE)  <- newEventOf (undefined :: ImgLibraryActions)
+  (actionsSink2, actionsE2) <- newEventOf (undefined :: ImgLibraryActions)
 
   userB           <- stepper Nothing (fmap Just userE)                                :: IO (Behavior (Maybe Account.Account))
 
-
-  let loadImgE    = userE `merge` (filterJust (sample userB (FRP.filter (== ImageLibraryUpdated) ipcEvents)))
+  let ipcLoadImgE = filterJust $ sample userB (FRP.filter (== ImageLibraryUpdated) ipcEvents)
+  let localLIE    = filterJust $ sample userB actionsE2
+  let loadImgE    = userE `merge` ipcLoadImgE `merge` localLIE
 
   galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                               :: IO (Signal (Maybe [Im.Image]))
 
-  imageE          <- reactimateIO $ fmap (processActions busySink errorSink (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
+  imageE          <- reactimateIO $ fmap (processActions busySink errorSink actionsSink2 (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
 
   imageViewS      <- stepperS Nothing imageE                                          :: IO (Signal (Maybe Im.Image))
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)
