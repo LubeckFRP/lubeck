@@ -55,7 +55,16 @@ import qualified Data.Colour.Names as Colors
 -- We will require basic envelopes
 -- Optimally, also textual envelopes
 
--- Scatter plot.
+-- $normalizeInputScalar
+-- Input should be normalized so that for each point @x@ in input, x ∈ [0,1].
+
+-- $normalizeInputPoint
+-- Input should be normalized so that for each point @Point x y@ in input, x ∈ [0,1], y ∈ [0,1].
+
+
+-- | Draw a scatter plot.
+--   Can be combined with 'lineData'.
+--   $normalizeInputPoint
 scatterData :: [Point] -> Drawing
 scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
   where
@@ -63,7 +72,9 @@ scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base
     origin = Point 0 0
     -- scaling a b = Transformation (a,0,0,b,0,0)
 
--- Line plot.
+-- | Draw a line plot.
+--   Can be combined with 'scatterData'.
+--   $normalizeInputPoint
 lineData :: [Point] -> Drawing
 lineData []     = mempty
 lineData [_]    = mempty
@@ -74,7 +85,8 @@ lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ 
     -- scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
 
--- Basic box plot.
+-- | Draw a box plot.
+--   $normalizeInputScalar
 boxData :: [Double] -> Drawing
 boxData ps = scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
@@ -82,7 +94,12 @@ boxData ps = scale 300 $ mconcat $
     -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
-ticks :: [(Double, JSString)] -> [(Double, JSString)] -> Drawing
+-- | Draw ticks.
+-- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
+ticks
+  :: [(Double, JSString)] -- ^ X axis ticks.
+  -> [(Double, JSString)] -- ^ Y axis ticks.
+  -> Drawing
 ticks xt yt = mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
@@ -96,11 +113,16 @@ ticks xt yt = mconcat [xTicks, yTicks]
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
 
-labeledAxis :: JSString -> JSString -> Drawing
+-- | Draw X and Y axis.
+labeledAxis
+  :: JSString -- ^ X axis label.
+  -> JSString -- ^ Y axis label.
+  -> Drawing
 labeledAxis labelX labelY = mconcat
   [ scale 300 $ axis
   , translateY (300/2) $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
   , translateX (300/2) $ translateY (-20) $ textMiddle labelX]
+
 axis = mconcat [axisY, axisX]
 axisY = strokeWidth 2 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
