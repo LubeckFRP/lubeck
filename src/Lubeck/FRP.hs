@@ -113,7 +113,7 @@ module Lubeck.FRP (
     runFRP'',
 
     -- ** Utility
-    testFRP,
+    -- testFRP,
 
     -- * Sink
     Sink,
@@ -127,7 +127,7 @@ module Lubeck.FRP (
     UnsubscribeAction,
 
     -- * Misc
-    frpInternalLog,
+    -- frpInternalLog,
   ) where
 
 import Prelude hiding (filter)
