@@ -6,6 +6,7 @@ module Lubeck.Plots.Drawing
     , lineData
     , boxData
     , ticks
+    , ticksNoFilter
     , labeledAxis
     ) where
 
@@ -94,13 +95,27 @@ boxData ps = scale 300 $ mconcat $
     -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
+
 -- | Draw ticks.
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
+-- Positions outside the normalized range are discarded.
 ticks
   :: [(Double, JSString)] -- ^ X axis ticks.
   -> [(Double, JSString)] -- ^ Y axis ticks.
   -> Drawing
-ticks xt yt = mconcat [xTicks, yTicks]
+ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
+  where
+    filterTicks = filter (withinNormRange . fst)
+    withinNormRange x = 0 <= x && x <= 1
+
+-- | Draw ticks.
+-- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
+-- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
+ticksNoFilter
+  :: [(Double, JSString)] -- ^ X axis ticks.
+  -> [(Double, JSString)] -- ^ Y axis ticks.
+  -> Drawing
+ticksNoFilter xt yt = mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
       \(pos,str) -> translateX (pos * 300) $
