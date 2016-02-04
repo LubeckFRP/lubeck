@@ -74,8 +74,8 @@ dateWidget :: Widget' Day
 dateWidget sink val = E.input
   [ A.class_ "form-control"
   , A.type_ "date"
-  , Ev.change $ \e -> maybeSink sink $ parseDateUTC $ unpack $ Ev.value e
-  , A.value (pack $ showDate val)
+  , Ev.change $ \e -> maybeSink sink $ parseDateUTC $ Ev.value e
+  , A.value (showDate val)
   ]
   []
   where

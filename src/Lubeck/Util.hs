@@ -17,9 +17,10 @@ module Lubeck.Util
   , divide
   , divideFromEnd
 
-  , formatDateUTC
   , parseDateUTC
   , parseDateUTC'
+  , formatDateUTC
+  , formatDateUTC'
 
   , showIntegerWithThousandSeparators
   ) where
@@ -89,26 +90,33 @@ tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
 
 -- TODO do not use string here
 
+-- | Parse a date written in ISO 8601, without clock time i.e. @YYYY-MM-DD@
+parseDateUTC :: JSString -> Maybe Day
+parseDateUTC = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
+
 -- | Parse a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
-parseDateUTC' :: String -> Maybe UTCTime
-parseDateUTC' = Data.Time.Format.parseTimeM True l f
+parseDateUTC' :: JSString -> Maybe UTCTime
+parseDateUTC' = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
   where
     l = Data.Time.Format.defaultTimeLocale
     f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")
 
--- | Parse a date written in ISO 8601, without clock time i.e. @YYYY-MM-DD@
-parseDateUTC :: String -> Maybe Day
-parseDateUTC = Data.Time.Format.parseTimeM True l f
+-- | Format a date written in ISO 8601 without clock time i.e. @YYYY-MM-DD@
+formatDateUTC :: Day -> JSString
+formatDateUTC = Data.JSString.pack . Data.Time.Format.formatTime l f
   where
     l = Data.Time.Format.defaultTimeLocale
     f = Data.Time.Format.iso8601DateFormat Nothing
 
--- | Format a date written in ISO 8601 without clock time i.e. @YYYY-MM-DD@
-formatDateUTC :: Day -> String
-formatDateUTC = Data.Time.Format.formatTime l f
+-- | Format a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
+formatDateUTC' :: Day -> JSString
+formatDateUTC' = Data.JSString.pack . Data.Time.Format.formatTime l f
   where
     l = Data.Time.Format.defaultTimeLocale
-    f = Data.Time.Format.iso8601DateFormat Nothing
+    f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")
 
 -- | @divide n @ separates a list into sublists of length n.
 -- The last chunk may be shorter.

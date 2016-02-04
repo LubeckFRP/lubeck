@@ -36,7 +36,7 @@ import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
-import Lubeck.Util(showJS, parseDateUTC')
+import Lubeck.Util(showJS)
 
 import Data.VectorSpace
 import Data.AffineSpace

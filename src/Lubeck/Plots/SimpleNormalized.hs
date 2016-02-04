@@ -38,7 +38,7 @@ import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
-import Lubeck.Util(showJS, parseDateUTC')
+import Lubeck.Util(showJS)
 import qualified Lubeck.Drawing
 import Lubeck.Plots.Drawing(scatterData, lineData, ticks, labeledAxis)
 
