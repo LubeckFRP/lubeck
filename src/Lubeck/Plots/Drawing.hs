@@ -8,11 +8,16 @@ module Lubeck.Plots.Drawing
     , ticks
     , ticksNoFilter
     , labeledAxis
+    , crossLineX
+    , crossLineY
     ) where
 
 import Prelude hiding (div)
 import qualified Prelude
-
+import Data.VectorSpace
+import Data.AffineSpace
+import Data.Colour (withOpacity)
+import qualified Data.Colour.Names as Colors
 import Data.Monoid ((<>))
 
 import GHCJS.Types(JSString, jsval)
@@ -31,20 +36,15 @@ import Data.Time (UTCTime(..), DiffTime, Day(..))
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
 
-import Lubeck.FRP
-import Lubeck.App (Html, runAppReactive)
-import Lubeck.Forms
-  -- (Widget, Widget', component, bothWidget)
-import Lubeck.Forms.Basic
+-- import Lubeck.FRP
+-- import Lubeck.Forms
+-- import Lubeck.Forms.Basic
+
 import Lubeck.Drawing
 import Lubeck.Util(showJS)
-
-import Data.VectorSpace
-import Data.AffineSpace
 import qualified Lubeck.Drawing
 
-import Data.Colour (withOpacity)
-import qualified Data.Colour.Names as Colors
+-- TODO
 
 -- Line overlays, box plots, heat maps
 -- Stacking and graphing box plots
@@ -139,5 +139,8 @@ labeledAxis labelX labelY = mconcat
   , translateX (300/2) $ translateY (-20) $ textMiddle labelX]
 
 axis = mconcat [axisY, axisX]
-axisY = strokeWidth 2 $ strokeColor Colors.black $ translateY 0.5 verticalLine
-axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
+axisX = strokeWidth 1.5 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
+axisY = strokeWidth 1.5 $ strokeColor Colors.black $ translateY 0.5 verticalLine
+
+crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
+crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
