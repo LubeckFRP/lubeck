@@ -41,7 +41,9 @@ import           Lubeck.Forms
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    (divideFromEnd, showJS, contentPanel)
+import           Lubeck.Util                    (divideFromEnd, showJS, contentPanel,
+                                                 newEventOf,
+                                                 showIntegerWithThousandSeparators)
 import           Lubeck.Web.URI                 (getURIParameter)
 
 import           BD.Api
@@ -52,9 +54,10 @@ import qualified BD.Data.SearchPost             as P
 import           BD.Query.PostQuery
 import qualified BD.Query.PostQuery             as PQ
 import           BD.Types
-import           Components.BusyIndicator       (withBusy, withBusy2)
 
-import           Components.BusyIndicator       (BusyCmd (..),
+
+import           AdPlatform.Types
+import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2,
                                                  busyIndicatorComponent)
 
 
@@ -134,14 +137,14 @@ postSearchResult output posts =
                        , A.title "Likes count" ]
                        [ E.span [class_ "xbadge"
                                 , A.style "margin-left: 5px;"]
-                                [text $ showWithThousandSeparator (P.like_count post)] ]
+                                [text $ showIntegerWithThousandSeparators (P.like_count post)] ]
 
                , E.div [ class_ "fa fa-comments-o badge badge-info"
                        , A.title "Comments count"
                        , A.style "margin: 0 3px;" ]
                        [ E.span [class_ "xbadge"
                                 , A.style "margin-left: 5px;"]
-                                [text $ showWithThousandSeparator (P.comment_count post)] ]
+                                [text $ showIntegerWithThousandSeparators (P.comment_count post)] ]
                ]
 
         , p [] [ button [ A.class_ "btn btn-link btn-sm btn-block"
@@ -153,9 +156,10 @@ postSearchResult output posts =
     imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
 
-searchPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Behavior (Maybe JSString) -> IO (Signal Html)
-searchPage busySink errorSink mUserNameB = do
+searchPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Sink IPCMessage -> Behavior (Maybe JSString) -> IO (Signal Html)
+searchPage busySink errorSink ipcSink mUserNameB = do
   let initPostQuery = defSimplePostQuery
+
 
   now <- getCurrentTime
 
@@ -187,12 +191,12 @@ searchPage busySink errorSink mUserNameB = do
         res <- (withBusy2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
           Left e   -> errorSink . Just . ApiError $ "Failed to upload post to ad library" <> showJS e
-          Right Ok -> print "Uploaded post" -- TODO success messages
+          Right Ok -> ipcSink ImageLibraryUpdated
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
     receiveSearchResult Nothing -- reset previous search results
-    
+
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 busySink postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
@@ -205,13 +209,3 @@ searchPage busySink errorSink mUserNameB = do
     return ()
 
   return view
-
-
--- UTILITY
-
-showWithThousandSeparator :: Int -> JSString
-showWithThousandSeparator n = Data.JSString.pack $ concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show n
-
--- | Like newEvent with a type hint.
-newEventOf :: a -> IO (Sink a, Events a)
-newEventOf _ = newEvent

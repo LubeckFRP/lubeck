@@ -23,6 +23,8 @@ module Lubeck.Util
   , formatDateAndTimeFromUTC
 
   , showIntegerWithThousandSeparators
+
+  , newEventOf
   ) where
 
 import           Data.Maybe
@@ -134,3 +136,7 @@ divideFromEnd n = reverse . fmap reverse . divide n . reverse
 showIntegerWithThousandSeparators :: Integral a => a -> JSString
 showIntegerWithThousandSeparators n = Data.JSString.pack $
   concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show (fromIntegral n)
+
+-- | Like newEvent with a type hint.
+newEventOf :: a -> IO (Sink a, Events a)
+newEventOf _ = newEvent

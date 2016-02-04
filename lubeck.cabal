@@ -38,6 +38,7 @@ library
                      , BD.Data.SearchPost
                      , BD.Query.PostQuery
                      , BD.Utils
+                     , AdPlatform.Types
                      , Pages.CreateAd
                      , Pages.PostSearch
                      , Pages.Login

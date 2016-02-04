@@ -31,6 +31,7 @@ import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.Forms.File
 import           Lubeck.FRP
+import qualified Lubeck.FRP                     as FRP
 
 import qualified BD.Data.Account                as Account
 import qualified BD.Data.Image                  as Im
@@ -40,6 +41,7 @@ import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
 import           Components.BusyIndicator (BusyCmd(..), withBusy, withBusy2)
+import           AdPlatform.Types
 
 type ImgIndex = Int
 type ImgHash = Text
@@ -226,19 +228,25 @@ deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id imag
 uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
 uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
 
+
 -- main entry point
 
 imageLibraryPage :: Sink BusyCmd
                  -> Sink (Maybe AppError)
+                 -> Sink IPCMessage
+                 -> Events IPCMessage
                  -> Events Account.Account
                  -> IO (Signal Html)
-imageLibraryPage busySink errorSink userE = do
+imageLibraryPage busySink errorSink ipcSink ipcEvents userE = do
   (actionsSink :: Sink ImgLibraryActions, actionsE :: Events ImgLibraryActions) <- newEvent
 
   userB           <- stepper Nothing (fmap Just userE)                                :: IO (Behavior (Maybe Account.Account))
 
-  galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) userE :: IO (Events [Im.Image])
-  galleryS        <- stepperS Nothing (fmap Just galleryE)                            :: IO (Signal (Maybe [Im.Image]))
+
+  let loadImgE    = userE `merge` (filterJust (sample userB (FRP.filter (== ImageLibraryUpdated) ipcEvents)))
+
+  galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
+  galleryS        <- stepperS Nothing (fmap Just galleryE)                               :: IO (Signal (Maybe [Im.Image]))
 
   imageE          <- reactimateIO $ fmap (processActions busySink errorSink (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
 

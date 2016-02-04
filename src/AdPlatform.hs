@@ -47,6 +47,7 @@ import           Components.ErrorMessages       (errorMessagesComponent)
 import           Components.MainMenu            (mainMenuComponent)
 
 import           Lubeck.Util
+import           AdPlatform.Types
 
 
 defaultUsername = "forbestravelguide"
@@ -85,6 +86,8 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
+  (ipcSink, ipcEvents)    <- newEventOf (undefined :: IPCMessage)
+
   (loginView, userLoginE) <- loginPage (defaultUsername, defaultPassword)
   userLoginB              <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
@@ -103,11 +106,11 @@ adPlatform = do
   let userAndCampaignsS   = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
   let usernameB           = fmap (fmap Account.username) $ current userS
 
-  (userView, loadAdsE)    <- userPage                        userAndCampaignsS
-  createAdView            <- createAdPage busySink errorSink usernameB
-  adsView                 <- campaignPage busySink errorSink loadAdsE (current userS)
-  imageLibView            <- imageLibraryPage busySink errorSink userE
-  searchPageView          <- searchPage   busySink errorSink usernameB
+  (userView, loadAdsE)    <- userPage                                              userAndCampaignsS
+  createAdView            <- createAdPage     busySink errorSink                   usernameB
+  adsView                 <- campaignPage     busySink errorSink                   loadAdsE (current userS)
+  imageLibView            <- imageLibraryPage busySink errorSink ipcSink ipcEvents userE
+  searchPageView          <- searchPage       busySink errorSink ipcSink           usernameB
 
   let postLoginNavE       = fmap (const NavUser) (updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)
