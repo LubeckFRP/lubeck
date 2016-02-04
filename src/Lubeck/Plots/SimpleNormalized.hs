@@ -14,6 +14,7 @@ import qualified Prelude
 import Data.Monoid ((<>))
 
 import GHCJS.Types(JSString, jsval)
+import qualified Data.JSString
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Html as H
 import qualified Web.VirtualDom.Html.Attributes as H
@@ -139,7 +140,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
     unzip xs = (fmap fst xs, fmap snd xs)
 
 simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
-simpleTimeSeries s f g = simpleLinePlot formatDateAndTimeFromUTC s
+simpleTimeSeries s f g = simpleLinePlot (Data.JSString.take 19 . formatDateAndTimeFromUTC) s
   utcTimeToApproxReal realToApproxUTCTime f g 10 10
 
 normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
