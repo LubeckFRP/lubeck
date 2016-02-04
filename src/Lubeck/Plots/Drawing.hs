@@ -50,6 +50,7 @@ import qualified Data.Colour.Names as Colors
 -- Generating legends
 -- Generating (proper axises)
 -- Visualize pairs, lists, ordered sets, maps, trees, directed graphs
+-- Overlay lines (i.e. for interaction browser)
 
 -- We will require basic envelopes
 -- Optimally, also textual envelopes
