@@ -129,8 +129,10 @@ interactionW actions model = div []
   , p [] [text "Estimated impact: (?)"]
   ]
   where
-    render     = Drawing.toSvg renderOpts . Drawing.scale 2 . Drawing.translate (Drawing.Vector 55 80)
-    renderOpts = Drawing.defaultRenderingOptions { Drawing.origoPlacement = Drawing.BottomLeft }
+    render     = Drawing.toSvg renderOpts . Drawing.scale 1.6 . Drawing.translate (Drawing.Vector 75 90)
+    renderOpts = Drawing.defaultRenderingOptions
+      { Drawing.dimensions     = Drawing.Point 600 600
+      , Drawing.origoPlacement = Drawing.BottomLeft }
 
 
 -- MAIN

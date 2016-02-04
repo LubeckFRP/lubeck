@@ -119,12 +119,13 @@ ticksNoFilter xt yt = mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
       \(pos,str) -> translateX (pos * 300) $
-        (scale kBasicTickLength $ strokeColor Colors.black $ translateY (-0.5) verticalLine) <> (translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/8)) (textEnd str)
+        (scale kBasicTickLength $ strokeColor Colors.black $ translateY (-0.5) verticalLine) <> (translateY (kBasicTickLength * (-1.5)) .rotate (turn*0.001/8)) (textEnd str)
     yTicks = mconcat $ flip fmap yt $
       \(pos,str) -> translateY (pos * 300) $
         (scale kBasicTickLength $ strokeColor Colors.black $ translateX (-0.5) horizontalLine) <> (translateX (kBasicTickLength * (-1.5)) .rotate (turn*0/4)) (textEnd str)
 
     kBasicTickLength = 10
+    -- Note: Add infinitesimal slant to non-slanted text to get same anti-aliasing behavior
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
 
