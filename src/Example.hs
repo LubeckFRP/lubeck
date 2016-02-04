@@ -17,7 +17,7 @@ import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
 
 -- TODO move
-import Data.Time (UTCTime, DiffTime, Days)
+import Data.Time (UTCTime(..), DiffTime, Day(..))
 
 
 -- TODO Debug
@@ -135,6 +135,11 @@ axisY = strokeWidth 2 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
 
 
+utcTimeToApproxReal (UTCTime days seconds) = (fromIntegral (unDay days) * (3600*24)) + realToFrac seconds
+realToApproxutcTime x = UTCTime (day dayPart) (x - fromIntegral dayPart) where dayPart = floor $ x/(3600*24)
+unDay = toModifiedJulianDay
+day = ModifiedJulianDay
+
 simpleLinePlot
   :: (a -> JSString)
   -> (b -> JSString)
@@ -178,6 +183,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
 
     unzip xs = (fmap fst xs, fmap snd xs)
 
+
 normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
 normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
 
@@ -211,20 +217,23 @@ tickCalc tickCount (lo, hi) =
 
 -- MAIN
 
+testSimple1 = simpleLinePlot showJS showJS id id id id 10 10 [(0.2, 0.3), (0.4, 1), (1,1)]
+
 main :: IO ()
 main = do
-  let staticPlot = mconcat
-              [ mempty
-              , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              , boxData [0.5,1,0.05]
-              , ticks
-                  (zip [0.1,0.2..1] (fmap showJS [1..]))
-                  (zip [0.1,0.2..1] (fmap showJS [1..]))
-              , labeledAxis "Usually time" "Interesting stuff"
-              , scale 10 $ xyAxis
-              , smokeBackground
-              ]
+  let staticPlot = testSimple1
+  -- let staticPlot = mconcat
+              -- [ mempty
+              -- , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              -- , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              -- , boxData [0.5,1,0.05]
+              -- , ticks
+              --     (zip [0.1,0.2..1] (fmap showJS [1..]))
+              --     (zip [0.1,0.2..1] (fmap showJS [1..]))
+              -- , labeledAxis "Usually time" "Interesting stuff"
+              -- , scale 10 $ xyAxis
+              -- , smokeBackground
+              -- ]
 
   let x = pure staticPlot
   runAppReactive2 $ fmap (toSvg defaultRenderingOptions) x
