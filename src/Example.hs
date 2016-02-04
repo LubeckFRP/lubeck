@@ -134,8 +134,9 @@ axis = mconcat [axisY, axisX]
 axisY = strokeWidth 2 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 axisX = strokeWidth 2 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
 
-
+utcTimeToApproxReal :: UTCTime -> Double
 utcTimeToApproxReal (UTCTime days seconds) = (fromIntegral (unDay days) * (3600*24)) + realToFrac seconds
+realToApproxutcTime :: Double -> UTCTime
 realToApproxutcTime x = UTCTime (day dayPart) (x - fromIntegral dayPart) where dayPart = floor $ x/(3600*24)
 unDay = toModifiedJulianDay
 day = ModifiedJulianDay
