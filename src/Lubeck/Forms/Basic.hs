@@ -23,7 +23,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.Forms
 import Lubeck.Forms.Select
-import Lubeck.Util(formatDateUTC, parseDateUTC)
+import Lubeck.Util(formatDateFromUTC, parseDateToUTC)
 
 -- TODO the text varieties (password, search, textarea)
 -- TODO double rational version of integer/range
@@ -74,7 +74,7 @@ dateWidget :: Widget' Day
 dateWidget sink val = E.input
   [ A.class_ "form-control"
   , A.type_ "date"
-  , Ev.change $ \e -> maybeSink sink $ parseDateUTC $ Ev.value e
+  , Ev.change $ \e -> maybeSink sink $ parseDateToUTC $ Ev.value e
   , A.value (showDate val)
   ]
   []
@@ -84,7 +84,7 @@ dateWidget sink val = E.input
       -- <input>'s value can be set to ""
       -- we probably should not ignore this, but pass upstream and cancel given date boundary?
       Nothing -> return ()
-    showDate = formatDateUTC
+    showDate = formatDateFromUTC
 
 hideableIntegerWidget :: Bool -> Widget' Int
 hideableIntegerWidget False = const $ const mempty

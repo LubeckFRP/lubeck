@@ -17,10 +17,10 @@ module Lubeck.Util
   , divide
   , divideFromEnd
 
-  , parseDateUTC
-  , parseDateUTC'
-  , formatDateUTC
-  , formatDateUTC'
+  , parseDateToUTC
+  , parseDateAndTimeToUTC
+  , formatDateFromUTC
+  , formatDateAndTimeFromUTC
 
   , showIntegerWithThousandSeparators
   ) where
@@ -91,29 +91,29 @@ tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
 -- TODO do not use string here
 
 -- | Parse a date written in ISO 8601, without clock time i.e. @YYYY-MM-DD@
-parseDateUTC :: JSString -> Maybe Day
-parseDateUTC = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
+parseDateToUTC :: JSString -> Maybe Day
+parseDateToUTC = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
   where
     l = Data.Time.Format.defaultTimeLocale
     f = Data.Time.Format.iso8601DateFormat Nothing
 
 -- | Parse a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
-parseDateUTC' :: JSString -> Maybe UTCTime
-parseDateUTC' = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
+parseDateAndTimeToUTC :: JSString -> Maybe UTCTime
+parseDateAndTimeToUTC = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
   where
     l = Data.Time.Format.defaultTimeLocale
     f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")
 
 -- | Format a date written in ISO 8601 without clock time i.e. @YYYY-MM-DD@
-formatDateUTC :: Day -> JSString
-formatDateUTC = Data.JSString.pack . Data.Time.Format.formatTime l f
+formatDateFromUTC :: Day -> JSString
+formatDateFromUTC = Data.JSString.pack . Data.Time.Format.formatTime l f
   where
     l = Data.Time.Format.defaultTimeLocale
     f = Data.Time.Format.iso8601DateFormat Nothing
 
 -- | Format a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
-formatDateUTC' :: Day -> JSString
-formatDateUTC' = Data.JSString.pack . Data.Time.Format.formatTime l f
+formatDateAndTimeFromUTC :: UTCTime -> JSString
+formatDateAndTimeFromUTC = Data.JSString.pack . Data.Time.Format.formatTime l f
   where
     l = Data.Time.Format.defaultTimeLocale
     f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")

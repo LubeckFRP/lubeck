@@ -38,7 +38,7 @@ import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
-import Lubeck.Util(showJS)
+import Lubeck.Util(showJS, formatDateAndTimeFromUTC)
 import qualified Lubeck.Drawing
 import Lubeck.Plots.Drawing(scatterData, lineData, ticks, labeledAxis)
 
@@ -139,7 +139,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
     unzip xs = (fmap fst xs, fmap snd xs)
 
 simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
-simpleTimeSeries s f g = simpleLinePlot showJS s
+simpleTimeSeries s f g = simpleLinePlot formatDateAndTimeFromUTC s
   utcTimeToApproxReal realToApproxUTCTime f g 10 10
 
 normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)

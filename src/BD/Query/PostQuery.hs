@@ -19,7 +19,7 @@ import Data.Interval (Interval, interval, whole, Extended(..), lowerBound, upper
 import qualified Data.JSString
 
 import BD.Types
-import Lubeck.Util (formatDateUTC)
+import Lubeck.Util (formatDateFromUTC)
 
 data Query
   = PostQuery PostQuery
@@ -86,7 +86,7 @@ searchPostOrderEnc x = String $ case x of
 sortDirectionEnc x = String $ case x of
   Asc   -> "asc"
   Desc  -> "desc"
-dateEnc = toJSON . formatDateUTC
+dateEnc = toJSON . formatDateFromUTC
 
 
 -- | Non-recursive version of 'PostQuery', suitable for use in forms.
