@@ -37,7 +37,7 @@ module Lubeck.Forms
   , componentR
   , componentW
   , formComponent
-  , formComponent'
+  , formComponentExtra1
 
   -- ** Submit type
   , Submit(..)
@@ -209,19 +209,18 @@ formComponent z w = do
   let htmlS = fmap (w aSink . submitValue) aS
   return (htmlS, submits aEvent)
 
-
-formComponent' :: Behavior i -> a -> Widget (i, a) (Submit a) -> IO (Signal Html, Events a)
-formComponent' iB z w = do
-  -- Value changed
+-- let's see if this is generalisable later
+formComponentExtra1 :: Behavior b -> a -> Widget (b, a) (Submit a) -> IO (Signal Html, Events a)
+formComponentExtra1 iB az w = do
   (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
 
-  aS <- stepperS (DontSubmit z) aEvent -- :: IO (Signal (Submit a))
-  let iS = snapshotS iB (fmap submitValue aS) -- :: Signal (i, a)
+  aS              <- stepperS (DontSubmit az) aEvent   -- :: IO (Signal (Submit a))
+  let baS         = snapshotS iB (fmap submitValue aS) -- :: Signal (b, a)
 
-  let htmlS = fmap (w aSink ) iS
+  let htmlS       = fmap (w aSink ) baS
   return (htmlS, submits aEvent)
 
--- | A helper type for 'formComponent'.
+-- | A helper type for 'formComponentExtra1.
 data Submit a
   = DontSubmit a -- ^ Store new value internally, don't send on changes.
   | Submit a     -- ^ Send on changes.
