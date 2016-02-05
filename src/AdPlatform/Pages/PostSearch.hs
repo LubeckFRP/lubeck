@@ -76,7 +76,7 @@ searchForm dayNow output query =
 
       , div [ class_ "form-group"  ]
         [ label [class_ "control-label col-xs-2"] [text "Sort by" ]
-        , div [class_ "col-xs-10"]
+        , div [class_ "col-xs-10 form-inline"]
             [ selectWidget
                 [ (PostByFollowers, "Poster followers")
                 , (PostByLikes,     "Likes")
