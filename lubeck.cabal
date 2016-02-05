@@ -88,6 +88,7 @@ executable bd-example-app
                      , colour
                      , vector-space
                      , time
+                     , lens
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
