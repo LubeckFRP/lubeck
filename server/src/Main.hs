@@ -31,11 +31,15 @@ type Layout =
   Raw
 
 resources =
-  [ ("static/index.html", "index.html")
-  , ("static/bootstrap.css", "bootstrap.css")
-  , ("static/bootstrap-theme.css", "bootstrap-theme.css")
-  , ("static/ajax-loader.gif", "ajax-loader.gif")
-  , ("static/custom.css", "custom.css")
+  [ ("static/index.html",                "index.html")
+  , ("static/bootstrap.css",             "bootstrap.css")
+  , ("static/bootstrap-theme.css",       "bootstrap-theme.css")
+  -- , ("static/ajax-loader.gif",          "ajax-loader.gif")
+  , ("static/custom.css",                "custom.css")
+  , ("static/font-awesome.min.css",      "font-awesome.min.css")
+  , ("static/fontawesome-webfont.ttf",   "fontawesome-webfont.ttf")
+  , ("static/fontawesome-webfont.woff",  "fontawesome-webfont.woff")
+  , ("static/fontawesome-webfont.woff2", "fontawesome-webfont.woff2")
   ]
 
 main :: IO ()
@@ -50,13 +54,13 @@ main = do
   case jsExeDir of
     Left msg -> print $ "Could not find compiled code: " ++ msg
     Right jsExeDir -> do
-      exampleServer       <- serveApp jsExeDir "bd-example-app"
-      adplatformServer    <- serveApp jsExeDir "bd-adplatform"
-      interactionsServer  <- serveApp jsExeDir "bd-interactions"
-      exampleStaticServer <- serveApp jsExeDir "bd-example-static-page"
-      exampleDynamicServer <- serveApp jsExeDir "bd-example-dynamic-page"
+      exampleServer            <- serveApp jsExeDir "bd-example-app"
+      adplatformServer         <- serveApp jsExeDir "bd-adplatform"
+      interactionsServer       <- serveApp jsExeDir "bd-interactions"
+      exampleStaticServer      <- serveApp jsExeDir "bd-example-static-page"
+      exampleDynamicServer     <- serveApp jsExeDir "bd-example-dynamic-page"
       exampleWidgetComposition <- serveApp jsExeDir "bd-example-widget-composition"
-      indexServer         <- serveApp jsExeDir "bd-index"
+      indexServer              <- serveApp jsExeDir "bd-index"
 
       putStrLn $ "Listening on " ++ show port
       Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) $
