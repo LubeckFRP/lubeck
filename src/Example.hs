@@ -53,10 +53,13 @@ render = multiWidget mappend
   , subWidget _1 svgW
   ]
 
+rangeW :: Widget' Int
 rangeW = rangeWidget 0 200 1
+
+svgW :: Widget' Int
 svgW output model = toSvg (RenderingOptions (Point (1400) (1200)) Center) $ drawing output model
 
-drawing :: Sink Int -> Int -> Drawing
+drawing :: WidgetT' Drawing Int
 drawing output n = mempty
   <> circles
   <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
