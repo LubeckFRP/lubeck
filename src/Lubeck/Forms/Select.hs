@@ -23,7 +23,7 @@ selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
 selectEnumBoundedWidget = selectEnumWidget minBound maxBound
 
 selectEnumWidget :: (Eq a, Enum a, Show a) => a -> a -> Widget' a
-selectEnumWidget lb ub = selectWidget $ fmap (\n -> (n, show n)) $ enumFromTo lb ub
+selectEnumWidget lb ub = selectWidget $ fmap (\n -> (n, showJS n)) $ enumFromTo lb ub
 
 selectWidget :: Eq a => [(a, JSString)] -> Widget' a
 selectWidget xs = dimapWidget (pack . show . toInt) (fromInt . read . unpack) $ selectWidget' (zip count names)
