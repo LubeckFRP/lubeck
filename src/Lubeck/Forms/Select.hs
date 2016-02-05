@@ -22,7 +22,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
 selectEnumBoundedWidget = selectEnumWidget minBound maxBound
 
-selectEnumWidget :: (Eq a, Enum a, Show a) => a -> b -> Widget' a
+selectEnumWidget :: (Eq a, Enum a, Show a) => a -> a -> Widget' a
 selectEnumWidget lb ub = fmap (\n -> (n, show n)) $ enumFromTo lb ub
 
 selectWidget :: Eq a => [(a, JSString)] -> Widget' a
