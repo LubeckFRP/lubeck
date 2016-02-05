@@ -140,7 +140,7 @@ executable bd-interactions
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-adplatform
-  main-is:             src/AdPlatform/Main.hs
+  main-is:             src/AdPlatform.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
