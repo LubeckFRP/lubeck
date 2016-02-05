@@ -32,7 +32,7 @@ import Lubeck.Forms
 import Lubeck.Forms.Basic
 import Lubeck.Forms.Select
 import Lubeck.Drawing
-import Lubeck.Util(showJS, parseDateAndTimeToUTC)
+import Lubeck.Util(showJS, unselectable, parseDateAndTimeToUTC)
 import qualified Lubeck.Drawing
 
 import Data.VectorSpace
@@ -62,7 +62,7 @@ drawing output n = mempty
   <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
-  <> shearXY (fromIntegral n/200) 0 (scale 40 (unselectable $ Lubeck.Drawing.text "Hans"))
+  <> shearXY (fromIntegral n/200) 0 (scale 40 (Lubeck.Drawing.text "Hans"))
   <> scale 10 xyAxis
   <> scale 10 smokeBackground
   where

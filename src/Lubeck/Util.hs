@@ -14,6 +14,8 @@ module Lubeck.Util
   , contentPanel
   , tableHeaders
 
+  , unselectable
+
   , divide
   , divideFromEnd
 
@@ -89,6 +91,20 @@ infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center "] [co
 
 tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
+
+-- | Use with 'Web.VirtualDom.attribute' or 'Drawing.styleNamed'.
+unselectable :: [(JSString, JSString)]
+unselectable =
+  [ ("-webkit-touch-callout", "none")
+  , ("-webkit-user-select",   "none")
+  , ("-khtml-user-select",    "none")
+  , ("-moz-user-select",      "none")
+  , ("-ms-user-select",       "none")
+  , ("-o-user-select",        "none")
+  , ("user-select",           "none")
+  -- No mouse pointer
+  , ("pointer-events",        "none")
+  ]
 
 -- TODO do not use string here
 
