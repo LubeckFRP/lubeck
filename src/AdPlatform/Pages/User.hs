@@ -68,7 +68,7 @@ userPageW sink (acc, camps) =
 
     campaignTable :: Widget [AdCampaign.AdCampaign] AdCampaign.AdCampaign
     campaignTable sink camps = table [class_ "table"] [
-        tableHeaders ["FB id", "Name", ""]
+        tableHeaders ["FB id", "Name", "Daily budget", "Status", ""]
       , tbody [] (map (campaignRow sink) $ zip [0..] camps)
       ]
 
@@ -76,6 +76,8 @@ userPageW sink (acc, camps) =
     campaignRow sink (ix, camp) = tr []
       [ td [] [text $ showJS $ AdCampaign.fbid camp]
       , td [] [text $ AdCampaign.campaign_name camp]
+      , td [] [text $ showJS $ AdCampaign.daily_budget camp]
+      , td [] [text $ showJS $ AdCampaign.status camp]
       , td [] [E.button [class_ "btn btn-default", click $ \_ -> sink camp] [text "view"]]
       ]
 

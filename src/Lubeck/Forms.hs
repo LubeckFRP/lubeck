@@ -38,6 +38,7 @@ module Lubeck.Forms
   , componentW
   , formComponent
   , formComponentExtra1
+  , formComponentExtra2
 
   -- ** Submit type
   , Submit(..)
@@ -211,13 +212,29 @@ formComponent z w = do
 
 -- let's see if this is generalisable later
 formComponentExtra1 :: Behavior b -> a -> Widget (b, a) (Submit a) -> IO (Signal Html, Events a)
-formComponentExtra1 iB az w = do
+formComponentExtra1 bB az w = do
   (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
 
   aS              <- stepperS (DontSubmit az) aEvent   -- :: IO (Signal (Submit a))
-  let baS         = snapshotS iB (fmap submitValue aS) -- :: Signal (b, a)
+  let baS         = snapshotS bB (fmap submitValue aS) -- :: Signal (b, a)
 
-  let htmlS       = fmap (w aSink ) baS
+  let htmlS       = fmap (w aSink) baS
+  return (htmlS, submits aEvent)
+
+-- let's see if this is generalisable later
+formComponentExtra2 :: Behavior b
+                    -> Behavior c
+                    -> a
+                    -> Widget (c, (b, a)) (Submit a)
+                    -> IO (Signal Html, Events a)
+formComponentExtra2 bB cB az w = do
+  (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
+
+  aS              <- stepperS (DontSubmit az) aEvent   -- :: IO (Signal (Submit a))
+  let baS         = snapshotS bB (fmap submitValue aS) -- :: Signal (b, a)
+  let bcaS        = snapshotS cB baS -- :: Signal (c, (b, a))
+
+  let htmlS       = fmap (w aSink) bcaS
   return (htmlS, submits aEvent)
 
 -- | A helper type for 'formComponentExtra1.

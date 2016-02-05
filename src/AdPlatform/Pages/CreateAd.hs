@@ -52,6 +52,8 @@ import           Lubeck.Web.URI                 (getURIParameter)
 import           BD.Api
 import           BD.Data.Account                (Account)
 import qualified BD.Data.Account                as Ac
+import qualified BD.Data.AdCampaign             as AdCampaign
+import qualified BD.Data.AdTypes                as AdTypes
 import           BD.Types
 
 import           Components.BusyIndicator       (BusyCmd (..))
@@ -59,25 +61,35 @@ import           Lubeck.Util
 
 data NewAd = NewAd { caption    :: JSString,
                      image_hash :: JSString,
+                     campaign   :: AdTypes.FBGraphId,
                      click_link :: JSString } deriving (GHC.Generic)
 
 instance ToJSON NewAd
 instance FromJSON NewAd
 
+campaignSelectWidget :: Maybe [AdCampaign.AdCampaign] -> Widget' AdTypes.FBGraphId
+campaignSelectWidget Nothing sink curCamp =
+  wrapper "Campaign" $ text "No campaigns"
 
+campaignSelectWidget (Just camps) sink curCamp =
+  wrapper "Campaign" $
+    div [ class_ "form-inline" ]
+        [ selectWidget ([(0, "None")] <> makeOptions camps) sink curCamp ]
 
+makeOptions :: [AdCampaign.AdCampaign] -> [(AdTypes.FBGraphId, JSString)]
+makeOptions = fmap (\c -> (AdCampaign.fbid c, AdCampaign.campaign_name c))
 
 imageSelectWidget :: Maybe [Im.Image] -> Widget JSString Im.Image
 imageSelectWidget Nothing _ _ =
-  wrapper $ text "No images in library"
+  wrapper "Image" $ text "No images in library"
 
 imageSelectWidget (Just ims) sink cur_img_hash =
-  wrapper $ div [class_ "form-control  img-select-panel"]
-                [ div [] (map (imageCell cur_img_hash sink) ims) ]
+  wrapper "Image" $ div [class_ "form-control  img-select-panel"]
+                        [ div [] (map (imageCell cur_img_hash sink) ims) ]
 
-wrapper cont =
+wrapper title cont =
   div [ class_ "form-group" ]
-    [ label [class_ "control-label col-xs-2"] [text "Image"]
+    [ label [class_ "control-label col-xs-2"] [text title]
     , div [class_ "col-xs-10"] [ cont ] ]
 
 imageCell cur_img_hash sink image =
@@ -98,22 +110,25 @@ imageH cur_img_hash sink image =
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
 
-createAdForm :: Widget (Maybe [Im.Image], NewAd) (Submit NewAd)
-createAdForm output (mbIms, newAd) =
+createAdForm :: Widget (Maybe [AdCampaign.AdCampaign], (Maybe [Im.Image], NewAd)) (Submit NewAd)
+createAdForm outputSink (mbAc, (mbIms, newAd)) =
   contentPanel $
     div [class_ "form-horizontal"]
       [ longStringWidget "Caption"
-                         (contramapSink (\new -> DontSubmit $ newAd { caption = new }) output)
+                         (contramapSink (\new -> DontSubmit $ newAd { caption = new }) outputSink)
                          (caption newAd)
       , longStringWidget "Click URL"
-                         (contramapSink (\new -> DontSubmit $ newAd { click_link = new }) output)
+                         (contramapSink (\new -> DontSubmit $ newAd { click_link = new }) outputSink)
                          (click_link newAd)
+      , campaignSelectWidget mbAc
+                             (contramapSink (\new -> DontSubmit $ newAd { campaign = new }) outputSink)
+                             (campaign newAd)
       , imageSelectWidget mbIms
-                          (contramapSink (\new -> DontSubmit $ newAd { image_hash = (fromMaybe "" $ Im.fb_image_hash new) }) output)
+                          (contramapSink (\new -> DontSubmit $ newAd { image_hash = (fromMaybe "" $ Im.fb_image_hash new) }) outputSink)
                           (image_hash newAd)
       , div [class_ "form-group"]
           [ div [class_ "col-xs-offset-2 col-xs-10"]
-              [ button [A.class_ "btn btn-success", click $ \e -> output $ Submit newAd]
+              [ button [A.class_ "btn btn-success", click $ \e -> outputSink $ Submit newAd]
                   [ E.i [A.class_ "fa fa-thumbs-o-up", A.style "margin-right: 5px"] []
                   , text "Create Ad" ] ] ]
 
@@ -131,11 +146,12 @@ createAdPage :: Sink BusyCmd
              -> Sink (Maybe AppError)
              -> Behavior (Maybe JSString)
              -> Behavior (Maybe [Im.Image])
+             -> Behavior (Maybe [AdCampaign.AdCampaign])
              -> IO (Signal Html)
-createAdPage busySink errorSink mUserNameB imsB = do
-  let initNewAd = NewAd "" "" ""
+createAdPage busySink errorSink mUserNameB imsB campB = do
+  let initNewAd = NewAd "" "" 0 ""
 
-  (view, adCreated) <- formComponentExtra1 imsB initNewAd createAdForm
+  (view, adCreated) <- formComponentExtra2 imsB campB initNewAd createAdForm
 
   subscribeEvent adCreated $ \newAd -> do
     mUserName <- pollBehavior mUserNameB

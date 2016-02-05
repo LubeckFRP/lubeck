@@ -39,7 +39,11 @@ selectWidget xs = dimapWidget (pack . show . toInt) (fromInt . read . unpack) $ 
     (vals, names) = unzip xs
     count         = fmap (pack . show) [0..]
     indexed xs = (fromJust . (`Data.List.elemIndex` xs), (xs !!))
-      where fromJust (Just x) = x
+      where
+        fromJust (Just x) = x
+        -- fromJust Nothing  = 0 -- XXX looks like it crashes here with failed pattern match
+                                 -- when input value not present in options (eg, inital value)
+                                 -- could defaulting to index 0 be an option?
     (toInt, fromInt) = indexed vals
 
 selectWidget' :: [(JSString, JSString)] -> Widget' JSString
