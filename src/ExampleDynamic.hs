@@ -11,7 +11,10 @@ import qualified Web.VirtualDom.Html as VDHtml
 import qualified Web.VirtualDom.Html.Events as Event
 import qualified Web.VirtualDom.Html.Attributes as Attr
 
-import Lubeck.App (Html, runAppStatic)
+import Lubeck.App (Html, runAppReactive)
+import Lubeck.Forms
+import Lubeck.Forms.Basic
+import Lubeck.FRP
 
 color :: JSString -> VD.Property
 color = VD.property "color" . jsval
@@ -26,4 +29,6 @@ page = VDHtml.div [color "red"] [VDHtml.h1 [] [VDHtml.text "Heading1!"]
   ]
 
 main :: IO ()
-main = runAppStatic page
+main = do
+  (page, _) <- component 1 (bothWidget mappend integerWidget $ rangeWidget 1 100 1)
+  runAppReactive page
