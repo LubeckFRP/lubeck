@@ -24,7 +24,7 @@ type Layout =
     :<|>
   "example-static" :> Raw
     :<|>
-  "example-static-thomasd" :> Raw
+  "example-dynamic" :> Raw
     :<|>
   Raw
 
@@ -52,7 +52,7 @@ main = do
       adplatformServer    <- serveApp jsExeDir "bd-adplatform"
       interactionsServer  <- serveApp jsExeDir "bd-interactions"
       exampleStaticServer <- serveApp jsExeDir "bd-example-static-page"
-      exampleStaticServerThomasD <- serveApp jsExeDir "bd-example-static-page-thomasd"
+      exampleDynamicServer <- serveApp jsExeDir "bd-example-dynamic-page"
       indexServer         <- serveApp jsExeDir "bd-index"
 
       putStrLn $ "Listening on " ++ show port
@@ -61,7 +61,7 @@ main = do
           :<|> adplatformServer
           :<|> interactionsServer
           :<|> exampleStaticServer
-          :<|> exampleStaticServerThomasD
+          :<|> exampleDynamicServer
           :<|> indexServer
 
 serveApp :: String -> String -> IO (Server Raw)

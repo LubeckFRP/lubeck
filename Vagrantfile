@@ -47,5 +47,6 @@ Vagrant.configure("2") do |config|
     vb.customize ["modifyvm", :id, "--cpus", "2"]
   end
 
+  config.vm.network :forwarded_port, guest: 8090, host: 8090
   config.vm.provision "shell", inline: $script
 end
