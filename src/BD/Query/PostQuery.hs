@@ -11,6 +11,7 @@ module BD.Query.PostQuery (
   complexifyPostQuery,
 ) where
 
+import Data.Monoid
 import Data.Aeson (ToJSON(..), Value(..), object)
 import Data.Time.Calendar (Day(..))
 import qualified Data.Vector as V
@@ -86,7 +87,7 @@ searchPostOrderEnc x = String $ case x of
 sortDirectionEnc x = String $ case x of
   Asc   -> "asc"
   Desc  -> "desc"
-dateEnc = toJSON . formatDateFromUTC
+dateEnc = toJSON . (<> "T00:00:00.000Z") . formatDateFromUTC
 
 
 -- | Non-recursive version of 'PostQuery', suitable for use in forms.
