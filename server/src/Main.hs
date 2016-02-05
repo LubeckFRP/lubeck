@@ -36,7 +36,7 @@ resources =
   , ("static/bootstrap-theme.css",       "bootstrap-theme.css")
   -- , ("static/ajax-loader.gif",          "ajax-loader.gif")
   , ("static/custom.css",                "custom.css")
-  , ("static/font-awesome.min.css",      "font-awesome.min.css")
+  , ("static/font-awesome.min.css",      "font-awesome.min.css") -- modified font paths: s#../fonts/##g
   , ("static/fontawesome-webfont.ttf",   "fontawesome-webfont.ttf")
   , ("static/fontawesome-webfont.woff",  "fontawesome-webfont.woff")
   , ("static/fontawesome-webfont.woff2", "fontawesome-webfont.woff2")

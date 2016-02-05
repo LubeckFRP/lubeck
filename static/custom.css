@@ -81,7 +81,7 @@ div, h1, h2, img, p, span {
   box-shadow: none;
   cursor: pointer;
 }
-.thumbnail-wrapper {
+.custom-thumbnail-1 .thumbnail-wrapper {
   border: 0px solid red;
   padding: 0px;
   margin: 0px;
@@ -97,6 +97,49 @@ div, h1, h2, img, p, span {
 
 .image-hash-value {
   font-size: 80%;
+}
+
+.custom-thumbnail-2 .thumbnail-wrapper { }
+
+.custom-thumbnail-2:hover {
+  background-color: #ffffff;
+}
+.custom-thumbnail-2 {
+  display: inline-block;
+  width: 68px;
+  height: 68px;
+  /*padding: 5px;*/
+  margin: 0px;
+  border: 0px solid black;
+  box-shadow: none;
+}
+.custom-thumbnail-2 img:hover {
+  border: 2px solid lightgreen;
+}
+.custom-thumbnail-2 img {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 64px;
+  height: 64px;
+  /*margin: 0;*/
+  /*padding: 0;*/
+  /*min-width: 150px;*/
+  /*min-height: 150px;*/
+  /*background-color: #eee;*/
+  border: 2px solid transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+.img-select-selected {
+  border: 2px solid green !important;
+}
+.img-select-panel {
+  width: 100%;
+  height: 275px !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid #ccc;
 }
 
 .panel {

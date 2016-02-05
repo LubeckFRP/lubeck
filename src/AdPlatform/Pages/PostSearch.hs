@@ -65,10 +65,8 @@ import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBus
 searchForm :: Day -> Widget SimplePostQuery (Submit SimplePostQuery)
 searchForm dayNow output query =
   contentPanel $
-    div [class_ "form-group form-group-sm"]
-      [ -- div [] [text (showJS query)]
-        -- , rmapWidget DontSubmit $ subWidget (lens PQ.caption (\s b -> s {caption=b})) (longStringWidget "Caption") output query
-        longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
+    div [class_ "form-horizontal"]
+      [ longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
       , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
       , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
       , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
@@ -76,26 +74,29 @@ searchForm dayNow output query =
       , integerIntervalWidget "Poster followers"    (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
       , dateIntervalWidget    dayNow "Posting date" (contramapSink (\new -> DontSubmit $ query { date = new }) output)      (PQ.date query)
 
-      , div [ class_ "form-group form-inline" ]
-        [ div [ class_ "form-group"  ]
-          [ label [A.style "margin-right: 10px;"] [text "Sort by" ]
-          , selectWidget
-            [ (PostByFollowers, "Poster followers")
-            , (PostByLikes,     "Likes")
-            , (PostByComments,  "Comments")
-            , (PostByCreated,   "Posting time")
+      , div [ class_ "form-group"  ]
+        [ label [class_ "control-label col-xs-2"] [text "Sort by" ]
+        , div [class_ "col-xs-10"]
+            [ selectWidget
+                [ (PostByFollowers, "Poster followers")
+                , (PostByLikes,     "Likes")
+                , (PostByComments,  "Comments")
+                , (PostByCreated,   "Posting time") ]
+                (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
+            , selectWidget
+                [ (Asc,   "from lowest to highest")
+                , (Desc,  "from highest to lowest") ]
+                (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
             ]
-            (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
-          , selectWidget
-            [ (Asc,   "from lowest to highest")
-            , (Desc,  "from highest to lowest")
-            ]
-            (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
-          ]
         ]
-      , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit query]
-          [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
-          , text "Search!"]
+
+      , div [class_ "form-group"]
+          [ div [class_ "col-xs-offset-2 col-xs-10"]
+              [ button [A.class_ "btn btn-success", click $ \e -> output $ Submit query]
+                  [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
+                  , text "Search!"
+                  ] ] ]
+
       ]
 
 type Post = SearchPost

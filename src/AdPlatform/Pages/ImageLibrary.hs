@@ -234,7 +234,7 @@ imageLibraryPage :: Sink BusyCmd
                  -> Sink IPCMessage
                  -> Events IPCMessage
                  -> Events Account.Account
-                 -> IO (Signal Html)
+                 -> IO (Signal Html, Behavior (Maybe [Im.Image]))
 imageLibraryPage busySink errorSink ipcSink ipcEvents userE = do
   (actionsSink,  actionsE)  <- newEventOf (undefined :: ImgLibraryActions)
   (actionsSink2, actionsE2) <- newEventOf (undefined :: ImgLibraryActions)
@@ -254,7 +254,7 @@ imageLibraryPage busySink errorSink ipcSink ipcEvents userE = do
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)
   let galleryView = fmap ((altW mempty galleryW) actionsSink) galleryS                :: Signal Html
 
-  return $ layout <$> galleryView <*> imageView
+  return (layout <$> galleryView <*> imageView, current galleryS)
 
   where
     layout indexView imageView = case imageView of

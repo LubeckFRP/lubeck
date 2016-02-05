@@ -46,7 +46,10 @@ customIntervalWidget
   -> JSString               -- ^ Title
   -> Widget' (Interval a)
 customIntervalWidget z numW title = id
-    $ mapHtmlWidget (\x -> E.div [A.class_ "form-group form-inline"] $ pure $ E.label [] [E.text title, x])
+    $ mapHtmlWidget (\x -> E.div [A.class_ "form-group"]
+                            [ E.label [A.class_ "control-label col-xs-2"] [E.text title]
+                            , E.div [A.class_ "col-xs-10 form-inline"] [x]
+                            ])
     $ lmapWidget fromInterval
     $ rmapWidget toInterval
     $ spanWidget2

@@ -37,6 +37,7 @@ module Lubeck.Forms
   , componentR
   , componentW
   , formComponent
+  , formComponent'
 
   -- ** Submit type
   , Submit(..)
@@ -55,6 +56,7 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import GHCJS.Types(JSString, jsval)
+import           Control.Applicative
 
 import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
 import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
@@ -202,9 +204,21 @@ componentW initialState widget = do
 formComponent :: a -> Widget a (Submit a) -> IO (Signal Html, Events a)
 formComponent z w = do
   -- Value changed
-  (aSink,aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
+  (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
   aS <- stepperS (DontSubmit z) aEvent
   let htmlS = fmap (w aSink . submitValue) aS
+  return (htmlS, submits aEvent)
+
+
+formComponent' :: Behavior i -> a -> Widget (i, a) (Submit a) -> IO (Signal Html, Events a)
+formComponent' iB z w = do
+  -- Value changed
+  (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
+
+  aS <- stepperS (DontSubmit z) aEvent -- :: IO (Signal (Submit a))
+  let iS = snapshotS iB (fmap submitValue aS) -- :: Signal (i, a)
+
+  let htmlS = fmap (w aSink ) iS
   return (htmlS, submits aEvent)
 
 -- | A helper type for 'formComponent'.
@@ -228,15 +242,18 @@ submits = filterJust . fmap g
 longStringWidget :: JSString -> Widget' JSString
 longStringWidget title update value = div
   [ class_ "form-group" ]
-  [ label [] [text title]
-  , input
-    [ A.type_ "search"
-    -- TODO size
-    , A.class_ "form-control"
-    , A.value value
-    , change  $ contramapSink Ev.value update
-    , keyup $ contramapSink Ev.value update
-    ] []
+  [ label [class_ "control-label col-xs-2"] [text title]
+  , div [class_ "col-xs-10"]
+      [ input
+        [ A.type_ "search"
+        -- TODO size
+        , A.class_ "form-control"
+        , A.value value
+        , change  $ contramapSink Ev.value update
+        , keyup $ contramapSink Ev.value update
+        ] []
+
+      ]
   ]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.

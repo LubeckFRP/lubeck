@@ -107,10 +107,10 @@ adPlatform = do
   let usernameB           = fmap (fmap Account.username) $ current userS
 
   (userView, loadAdsE)    <- userPage                                              userAndCampaignsS
-  createAdView            <- createAdPage     busySink errorSink                   usernameB
   adsView                 <- campaignPage     busySink errorSink                   loadAdsE (current userS)
-  imageLibView            <- imageLibraryPage busySink errorSink ipcSink ipcEvents userE
+  (imageLibView, imsB)    <- imageLibraryPage busySink errorSink ipcSink ipcEvents userE
   searchPageView          <- searchPage       busySink errorSink ipcSink           usernameB
+  createAdView            <- createAdPage     busySink errorSink                   usernameB imsB
 
   let postLoginNavE       = fmap (const NavUser) (updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)

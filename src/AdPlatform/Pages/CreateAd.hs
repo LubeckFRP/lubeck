@@ -24,6 +24,8 @@ import qualified Data.Maybe
 import           Data.Monoid
 import qualified GHC.Generics                   as GHC
 
+import qualified BD.Data.Image                  as Im
+
 
 import qualified Data.JSString
 import           GHCJS.Types                    (JSString, jsval)
@@ -63,16 +65,50 @@ instance ToJSON NewAd
 instance FromJSON NewAd
 
 
-createAdForm :: Widget NewAd (Submit NewAd)
-createAdForm output newAd =
+
+
+imageSelectW :: Maybe [Im.Image] -> Widget JSString Im.Image
+imageSelectW Nothing _ _ =
+  wrapper $ text "No images in library"
+
+imageSelectW (Just ims) sink cur_img_hash =
+  wrapper $ div [class_ "form-control  img-select-panel"]
+                [ div [] (map (imageCell cur_img_hash sink) ims) ]
+
+wrapper cont =
+  div [ class_ "form-group" ]
+    [ label [class_ "control-label col-xs-2"] [text "Image"]
+    , div [class_ "col-xs-10"] [ cont ] ]
+
+imageCell cur_img_hash sink image =
+  div [class_ "thumbnail custom-thumbnail-2 fit-text"]
+    [ div [class_ "thumbnail-wrapper"] [ imageH cur_img_hash sink image ] ]
+
+imageH :: JSString -> Sink Im.Image -> Im.Image -> Html
+imageH cur_img_hash sink image =
+  let imgUrl   = case Im.fb_thumb_url image of
+                    Nothing  -> Im.fb_image_url image
+                    Just url -> Just url
+  in img ([ class_ $ "img-thumbnail " <> if cur_img_hash == (Data.Maybe.fromMaybe "" $ Im.fb_image_hash image) then " img-select-selected" else ""
+          , click (\_ -> sink image)
+          , src (imgOrDefault imgUrl)]) []
+  where
+    imgOrDefault Nothing = "No URL"
+    imgOrDefault (Just x) = x
+
+createAdForm :: Widget (Maybe [Im.Image], NewAd) (Submit NewAd)
+createAdForm output (mbIms, newAd) =
   contentPanel $
-    div [class_ "form-group form-group-sm"]
+    div [class_ "form-horizontal"]
       [ longStringWidget "Caption"    (contramapSink (\new -> DontSubmit $ newAd { caption = new })     output) (caption newAd)
-      , longStringWidget "Image Hash" (contramapSink (\new -> DontSubmit $ newAd { image_hash = new })  output) (image_hash newAd)
       , longStringWidget "Click URL"  (contramapSink (\new -> DontSubmit $ newAd { click_link = new })  output) (click_link newAd)
-      , button [A.class_ "btn btn-default btn-block", click $ \e -> output $ Submit newAd]
-          [ E.i [A.class_ "fa fa-thumbs-o-up", A.style "margin-right: 5px"] []
-          , text "Create Ad" ]
+      , imageSelectW mbIms (contramapSink (\new -> DontSubmit $ newAd { image_hash = (Data.Maybe.fromMaybe "" $ Im.fb_image_hash new) }) output) (image_hash newAd)
+      , div [class_ "form-group"]
+          [ div [class_ "col-xs-offset-2 col-xs-10"]
+              [ button [A.class_ "btn btn-success", click $ \e -> output $ Submit newAd]
+                  [ E.i [A.class_ "fa fa-thumbs-o-up", A.style "margin-right: 5px"] []
+                  , text "Create Ad" ] ] ]
+
       ]
 
 postNewAd :: Sink BusyCmd -> JSString -> NewAd -> IO (Either AppError Ok)
@@ -83,10 +119,15 @@ postNewAd sink unm newAd = do
 
   return $ bimap ApiError payload res
 
-createAdPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Behavior (Maybe JSString) ->IO (Signal Html)
-createAdPage busySink errorSink mUserNameB = do
+createAdPage :: Sink BusyCmd
+             -> Sink (Maybe AppError)
+             -> Behavior (Maybe JSString)
+             -> Behavior (Maybe [Im.Image])
+             -> IO (Signal Html)
+createAdPage busySink errorSink mUserNameB imsB = do
   let initNewAd = NewAd "" "" ""
-  (view, adCreated) <- formComponent initNewAd createAdForm
+
+  (view, adCreated) <- formComponent' imsB initNewAd createAdForm
 
   subscribeEvent adCreated $ \newAd -> do
     mUserName <- pollBehavior mUserNameB
