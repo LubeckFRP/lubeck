@@ -11,12 +11,17 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Lubeck.FRP
+                     , Lubeck.FRP.Events
                      , Lubeck.App
                      , Lubeck.Drawing
                      , Lubeck.Util
                      , Lubeck.Forms
+                     , Lubeck.Forms.Basic
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
+                     , Lubeck.Forms.File
+                     , Lubeck.Plots.Drawing
+                     , Lubeck.Plots.SimpleNormalized
                      , Lubeck.Plots.Test
                      , Lubeck.Html
                      , Lubeck.Web.History
@@ -33,12 +38,14 @@ library
                      , BD.Data.SearchPost
                      , BD.Query.PostQuery
                      , BD.Utils
-                     , Pages.CreateAd
-                     , Pages.PostSearch
-                     , Pages.Login
-                     , Pages.User
-                     , Pages.Campaign
-                     , Pages.ImageLibrary
+                     , AdPlatform.Types
+                     , AdPlatform.Main
+                     , AdPlatform.Pages.CreateAd
+                     , AdPlatform.Pages.PostSearch
+                     , AdPlatform.Pages.Login
+                     , AdPlatform.Pages.User
+                     , AdPlatform.Pages.Campaign
+                     , AdPlatform.Pages.ImageLibrary
                      , Components.ErrorMessages
                      , Components.BusyIndicator
                      , Components.MainMenu
@@ -56,7 +63,8 @@ library
                      , time
                      , containers
                      , lens
-                     , intervals
+                     , semigroups
+                     , data-interval
                      , vector-space
                      , vector-space-points
                      , colour
@@ -78,11 +86,21 @@ executable bd-example-app
                      , lubeck
                      , virtual-dom
                      , colour
+                     , vector-space
+                     , time
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
 executable bd-example-static-page
   main-is:             src/ExampleStatic.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-widget-composition
+  main-is:             src/ExampleWidgetComposition.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
@@ -122,7 +140,7 @@ executable bd-interactions
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-adplatform
-  main-is:             src/AdPlatform.hs
+  main-is:             src/AdPlatform/Main.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom

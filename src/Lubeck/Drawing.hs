@@ -3,13 +3,11 @@
 
 {-|
 
-High-level graphics library with an SVG backend.
+High-level vector graphics library. Renders to as SVG using "Web.VirtualDom.Svg".
 
-Essentially a stripped-down version of Diagrams:
+The API is a rather stripped-down version of Diagrams.
 
 [diagrams]: http://projects.haskell.org/diagrams
-
-/Experimental/
 
 -}
 module Lubeck.Drawing (
@@ -25,9 +23,11 @@ module Lubeck.Drawing (
     angleToDegrees,
 
     -- ** Transformations
-    Transformation,
+    Transformation(..), -- TODO hide internals
     emptyTransformation,
     apTransformation,
+    transformVector,
+    transformPoint,
     (!<>),
     transformationToMatrix,
 
@@ -50,7 +50,9 @@ module Lubeck.Drawing (
     apStyle,
     style,
     fillColor,
+    fillColorA,
     strokeColor,
+    strokeColorA,
     strokeWidth,
     -- *** Rendering
     styleToAttrString,
@@ -70,7 +72,12 @@ module Lubeck.Drawing (
     verticalLine,
     segments,
     polygon,
+    -- ** Text
     text,
+    textMiddle,
+    textEnd,
+    TextOptions(..),
+    textWithOptions,
     -- ** Combination
     over,
     stack,
@@ -81,63 +88,45 @@ module Lubeck.Drawing (
     -- * Render
     OrigoPlacement(..),
     RenderingOptions(..),
+    defaultRenderingOptions,
     toSvg,
-
-    -- * Debug
-    drawTest,
   ) where
 
-import Data.Monoid
 import Control.Applicative
-import Data.VectorSpace
 import Data.AffineSpace
 import Data.AffineSpace.Point hiding (Point)
-import Data.Colour (Colour)
-import qualified Data.Colour
-import qualified Data.Colour.SRGB
-import qualified Data.String
-import qualified Data.JSString
+import Data.Colour (Colour, AlphaColour)
 import Data.Map(Map)
-import qualified Data.Map
-import qualified Data.List
+import Data.Monoid
+import Data.Semigroup(Max(..))
+import Data.VectorSpace
+import qualified Data.Colour
 import qualified Data.Colour.Names as C
+import qualified Data.Colour.SRGB
+import qualified Data.JSString
+import qualified Data.List
+import qualified Data.Map
+import qualified Data.String
 
 #ifdef __GHCJS__
 import GHCJS.Types(JSString)
-import Data.JSString.Text (textFromJSString)
-
 import qualified Web.VirtualDom as VD
 import Web.VirtualDom.Svg (Svg)
--- import Web.VirtualDom.Svg (p, h1, div, form, button, img, hr, custom, table, td, tr, th, tbody, thead)
--- import Web.VirtualDom.Svg.Events (click, change, submit, stopPropagation, preventDefault, value)
--- import Web.VirtualDom.Svg.Attributes (src, width, class_)
 import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
-
--- TODO consolidate (see below)
--- import GHCJS.VDOM.Unsafe (unsafeToAttributes, Attributes')
-import GHCJS.Foreign.QQ (js, jsu, jsu')
-
 #else
 type JSString = String
 #endif
 
--- TODO remove
-import Data.Time.Calendar (Day)
--- import Time
-
-import Numeric.Interval (Interval)
-
--- TODO svg, html nodes
-
+import Lubeck.Util(showJS)
 
 
 {-| A point in 2D space. -}
-data Point = Point { x :: Float, y :: Float }
+data Point = Point { x :: Double, y :: Double }
   deriving (Eq, Ord, Show)
 
 {-| A vector (distance between two points) in 2D space. -}
-data Vector = Vector { dx :: Float, dy :: Float }
+data Vector = Vector { dx :: Double, dy :: Double }
   deriving (Eq, Ord, Show)
 
 instance AdditiveGroup Vector where
@@ -146,7 +135,7 @@ instance AdditiveGroup Vector where
   Vector xa ya ^+^ Vector xb yb = Vector (xa + xb) (ya + yb)
 
 instance VectorSpace Vector where
-  type Scalar Vector = Float
+  type Scalar Vector = Double
   a *^ Vector x y = Vector (a*x) (a*y)
 
 instance AffineSpace Point where
@@ -162,7 +151,7 @@ offsetVectors p = tail . offsetVectors' p
 betweenPoints :: [Point] -> [Vector]
 betweenPoints xs = case xs of
   []     -> []
-  (_:ys) -> liftA2 (.-.) ys xs
+  (_:ys) -> zipWith (.-.) ys xs
 
 -- distanceVs : Point -> List Point -> List Vector
 -- distanceVs p = tail . pointOffsets p
@@ -180,7 +169,7 @@ can be expressed as `turn/2`, three quarters of a turn by `turn*3/4` and so on.
 To convert to radians or degrees, use
 
  -}
-type Angle = Float
+type Angle = Double
 
 {-| The value representing a full turn.
 This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
@@ -188,18 +177,18 @@ turn :: Angle
 turn = pi * 2
 
 {-| Convert an angle to radians. -}
-angleToRadians :: Angle -> Float
+angleToRadians :: Angle -> Double
 angleToRadians x = x
 
 {-| Convert an angle to degrees. -}
-angleToDegrees :: Angle -> Float
+angleToDegrees :: Angle -> Double
 angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 {-| -}
 newtype Transformation = Transformation { getTransformation ::
-    (Float,Float,
-     Float,Float,
-     Float,Float)
+    (Double,Double,
+     Double,Double,
+     Double,Double)
      }
 
 -- We use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
@@ -232,16 +221,24 @@ apTransformation
 
 infixr 6 !<>
 
+transformVector :: Transformation -> Vector -> Vector
+transformVector (Transformation (a,b,c,d,e,f)) (Vector x y) = Vector (a*x+c*y) (b*x+d*y)
+
+transformPoint :: Transformation -> Point -> Point
+transformPoint (Transformation (a,b,c,d,e,f)) (Point x y) = Point (a*x+c*y+e) (b*x+d*y+f)
+
 {-| Compose two transformations. -}
 (!<>) :: Transformation -> Transformation -> Transformation
 (!<>) = apTransformation
 
 {-| -}
-transformationToMatrix :: Transformation -> (Float, Float, Float, Float, Float, Float)
+transformationToMatrix :: Transformation -> (Double, Double, Double, Double, Double, Double)
 transformationToMatrix = getTransformation
 
 {-| -}
 type Style = Map JSString JSString
+-- TODO newtype wrapper
+-- Monoid
 
 {-| -}
 emptyStyle :: Style
@@ -265,6 +262,23 @@ styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <>
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
 
+-- | Defines how far an object extends in any direction.
+--   @Nothing@ means the object has no extent (i.e. the empty image).
+newtype Extent = Extent { getExtent  :: (Maybe Double) }
+  deriving (Eq, Ord)
+instance Bounded Extent where
+  minBound = Extent $ Nothing
+  maxBound = Extent $ Just (1/0)
+
+newtype Envelope = Envelope (Vector -> Max Extent)
+  deriving (Monoid)
+-- Max monoid
+-- Transform by inverse-transforming argument and transforming (scaling) result
+-- Transformable
+
+-- TODO path support (generalizes all others! including text?)
+-- TODO masks
+-- TODO better font support
 
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
@@ -279,17 +293,7 @@ addProperty = Prop
 
   Images can be composed using [over](#over) and [stack](#stack), which overlays the two images so that their origins match exactly.
 -}
-type Drawing = DrawingBase
-
-type Envelope = Maybe (Vector -> Float)
--- Max monoid
--- Transform by inverse-transforming argument and transforming (scaling) result
--- Transformable
-
--- TODO path support (generalizes all others! including text?)
--- TODO masks
--- TODO better font support
-data DrawingBase
+data Drawing
   = Circle
   | Rect
   | Line -- conceptually a line from point a to point b
@@ -304,10 +308,9 @@ data DrawingBase
 
   | Em
   | Ap Drawing Drawing
-  -- deriving (Eq, Ord)
 
-instance Monoid DrawingBase where
-  mempty = transparent
+instance Monoid Drawing where
+  mempty  = transparent
   mappend = over
 
 {-| An empty and transparent drawing.
@@ -342,6 +345,31 @@ polygon = Lines True
 {-| -}
 text :: JSString -> Drawing
 text = Text
+
+textMiddle = textWithOptions (defaultTextOptions { textAnchor = TextMiddle })
+
+textEnd = textWithOptions (defaultTextOptions { textAnchor = TextEnd })
+
+data TextAnchor
+  = TextStart
+  | TextMiddle
+  | TextEnd
+  deriving (Eq, Ord, Read, Show)
+
+data TextOptions = TextOptions
+  { textAnchor :: TextAnchor
+  }
+defaultTextOptions = TextOptions
+  TextStart
+
+{-| -}
+textWithOptions :: TextOptions -> JSString -> Drawing
+textWithOptions opts = ta . Text
+  where
+    ta = case textAnchor opts of
+      TextStart   -> Prop (VD.attribute "text-anchor" "start")
+      TextMiddle  -> Prop (VD.attribute "text-anchor" "middle")
+      TextEnd     -> Prop (VD.attribute "text-anchor" "end")
 
 {-| Layer the two images so that their origins match precisely. The origin of the given
     images become the origin of the new image as well.
@@ -385,28 +413,28 @@ translate (Vector { dx, dy }) = transform $ Transformation (1,0,0,1,dx,dy)
 
 {-| Translate (move) an image along the horizonal axis.
 A positive argument will move the image to the right. -}
-translateX :: Float -> Drawing -> Drawing
+translateX :: Double -> Drawing -> Drawing
 translateX x = translate (Vector x 0)
 
 {-| Translate (move) an image along the vertical axis.
 A positive argument will move the image upwards (as opposed to standard SVG behavior). -}
-translateY :: Float -> Drawing -> Drawing
+translateY :: Double -> Drawing -> Drawing
 translateY y = translate (Vector 0 y)
 
 {-| Scale (stretch) an image. -}
-scaleXY :: Float -> Float -> Drawing -> Drawing
+scaleXY :: Double -> Double -> Drawing -> Drawing
 scaleXY     x y = transform $ Transformation (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
-scale :: Float -> Drawing -> Drawing
+scale :: Double -> Drawing -> Drawing
 scale    x   = scaleXY x x
 
 {-| Scale (stretch) an image horizontally. -}
-scaleX :: Float -> Drawing -> Drawing
+scaleX :: Double -> Drawing -> Drawing
 scaleX    x   = scaleXY x 1
 
 {-| Scale (stretch) an image vertically. -}
-scaleY :: Float -> Drawing -> Drawing
+scaleY :: Double -> Drawing -> Drawing
 scaleY      y = scaleXY 1 y
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
@@ -415,7 +443,7 @@ rotate    a   = transform $ Transformation (cos a, 0 - sin a, sin a, cos a, 0, 0
 -- The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
-shearXY :: Float -> Float -> Drawing -> Drawing
+shearXY :: Double -> Double -> Drawing -> Drawing
 shearXY   a b = transform $ Transformation (1, b, a, 1, 0, 0)
 
 
@@ -448,95 +476,111 @@ strokeColor :: Colour Double -> Drawing -> Drawing
 strokeColor x = style (Data.Map.singleton "stroke" $ showColor x)
 
 showColor = Data.JSString.pack . Data.Colour.SRGB.sRGB24show
+
 {-| -}
-strokeWidth :: Float -> Drawing -> Drawing
+fillColorA :: AlphaColour Double -> Drawing -> Drawing
+fillColorA x = fillColor c . alpha a
+  where
+    alpha a = style (Data.Map.singleton "fill-opacity" $ showJS a)
+    c = Data.Colour.over x C.black
+    a = Data.Colour.alphaChannel x
+
+-- {-| -}
+strokeColorA :: AlphaColour Double -> Drawing -> Drawing
+strokeColorA x = strokeColor c . alpha a
+  where
+    alpha a = style (Data.Map.singleton "stroke-opacity" $ showJS a)
+    c = Data.Colour.over x C.black
+    a = Data.Colour.alphaChannel x
+
+{-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
+
+    TODO this can be overriden by setting the non-scaling-stroke attribute. Wrap in nice API?
+-}
+strokeWidth :: Double -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
-  where
--- TODO move
-showJS = Data.JSString.pack . show
-
--- TODO internal
-pointsToSvgString :: [Point] -> JSString
-pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
-  where
-    toJSString = Data.JSString.pack
-    pointToSvgString (Point {x,y}) = show x ++ "," ++ show y
 
 
-svgNamespace = Data.Map.fromList[("namespace","http://www.w3.org/2000/svg")]
-                -- ("xmlns","http://www.w3.org/2000/svg"),
-
-toSvg1 :: [E.Property] -> Drawing -> [Svg]
-toSvg1 ps x = let
-    single x = [x]
-    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-    reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
-  in case x of
-      Circle     -> single $ E.circle
-        ([A.r "0.5", noScale]++ps)
-        []
-      Rect       -> single $ E.rect
-        ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
-        []
-      Line -> single $ E.line
-        ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
-        []
-      (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-        ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]++ps)
-        []
-      Text s -> single $ E.text'
-        ([A.x "0", A.y "0"]++ps)
-        [E.text s]
-
-      -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
-      -- As long as it is just event handlers, it doesn't matter
-      Transf (Transformation t) x -> single $ E.g
-        [A.transform $ "matrix" <> showJS (negY t) <> ""]
-        (toSvg1 ps x)
-      Style s x  -> single $ E.g
-        [A.style $ styleToAttrString s]
-        (toSvg1 ps x)
-      Prop p x   -> toSvg1 (p:ps) x
-      -- No point in embedding handlers to empty groups, but render anyway
-      Em         -> single $ E.g ps []
-      -- Event handlers applied to a group go on the g node
-      Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
-
-
-{-| -}
-data OrigoPlacement = TopLeft | BottomLeft | Center
-  deriving (Eq, Ord, Show)
-{-| -}
-data RenderingOptions = RenderingOptions { dimensions :: Point, origoPlacement :: OrigoPlacement }
+{-| Where to place origo in the generated SVG. -}
+data OrigoPlacement
+  = TopLeft
+  | BottomLeft
+  | Center
   deriving (Eq, Ord, Show)
 
-{-| -}
+{-| Specifies how to generate an SVG from a Drawing. -}
+data RenderingOptions = RenderingOptions
+  { dimensions     :: Point                   -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
+  , origoPlacement :: OrigoPlacement          -- ^ Where to place origo in the generated image.
+  }
+  deriving (Eq, Ord, Show)
+
+defaultRenderingOptions :: RenderingOptions
+defaultRenderingOptions = RenderingOptions (Point 800 800) Center
+
+{-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
-toSvg (RenderingOptions {dimensions,origoPlacement}) drawing =
-      svg'
-        (showJS $ floor x)
-        (showJS $ floor y)
-        ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
-        (toSvg1 [] $ placeOrigo $ drawing)
+toSvg (RenderingOptions {dimensions, origoPlacement}) drawing =
+  svgTopNode
+    (showJS $ floor x)
+    (showJS $ floor y)
+    ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
+    (toSvg1 [] $ placeOrigo $ drawing)
   where
     Point {x,y} = dimensions
 
-    placeOrigo  = case origoPlacement of
-      TopLeft     -> id
-      Center      -> translateX (x/2) . translateY (y/(-2))
-      BottomLeft  -> translateY (y*(-1))
-
-    svg' :: JSString -> JSString -> JSString -> [Svg] -> Svg
-    svg' w h vb = E.svg
+    svgTopNode :: JSString -> JSString -> JSString -> [Svg] -> Svg
+    svgTopNode w h vb = E.svg
       [ A.width w
       , A.height h
       , A.viewBox vb ]
 
-drawTest :: Int -> Svg
-drawTest n = toSvg (RenderingOptions (Point 500 500) Center)
-  $ rotate ((turn/13)*fromIntegral n)
-  $ translateX ((100/13)*fromIntegral n)
-  $ scale 100 $ (strokeColor C.blue . fillColor C.red) circle <> scaleX 2 (fillColor C.green circle) -- <> xyAxis <> smokeBackground
-  --  $ scale 1.1 $ (scale 200 $ fillColor C.blue circle) <> (scale 250 $ fillColor C.red square) <> smokeBackground
+    placeOrigo :: Drawing -> Drawing
+    placeOrigo = case origoPlacement of
+      TopLeft     -> id
+      Center      -> translateX (x/2) . translateY (y/(-2))
+      BottomLeft  -> translateY (y*(-1))
+
+    pointsToSvgString :: [Point] -> JSString
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = Data.JSString.pack
+        pointToSvgString (Point {x,y}) = show x ++ "," ++ show y
+
+    toSvg1 :: [E.Property] -> Drawing -> [Svg]
+    toSvg1 ps x = let
+        single x = [x]
+        noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+        negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+        offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+        reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
+      in case x of
+          Circle     -> single $ E.circle
+            ([A.r "0.5", noScale]++ps)
+            []
+          Rect       -> single $ E.rect
+            ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
+            []
+          Line -> single $ E.line
+            ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
+            []
+          (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
+            ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]++ps)
+            []
+          Text s -> single $ E.text'
+            ([A.x "0", A.y "0"]++ps)
+            [E.text s]
+
+          -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
+          -- As long as it is just event handlers, it doesn't matter
+          Transf (Transformation t) x -> single $ E.g
+            [A.transform $ "matrix" <> showJS (negY t) <> ""]
+            (toSvg1 ps x)
+          Style s x  -> single $ E.g
+            [A.style $ styleToAttrString s]
+            (toSvg1 ps x)
+          Prop p x   -> toSvg1 (p:ps) x
+          -- No point in embedding handlers to empty groups, but render anyway
+          Em         -> single $ E.g ps []
+          -- Event handlers applied to a group go on the g node
+          Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)

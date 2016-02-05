@@ -11,6 +11,7 @@ import           Data.Aeson
 import qualified Data.Aeson.Types
 import           Data.Data
 import           Data.Monoid
+import           Data.String      (fromString)
 import           Data.Time.Clock  (UTCTime)
 import qualified GHC.Generics     as GHC
 
@@ -21,6 +22,7 @@ import           BD.Data.AdTypes
 import           BD.Types
 
 import           Data.Bifunctor   (first)
+import JavaScript.Web.XMLHttpRequest (FormDataVal(..))
 
 data Image = Image
   { id            :: Int
@@ -32,8 +34,11 @@ data Image = Image
   , localpath     :: Maybe Text
   , prediction    :: Maybe Double
 
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Show)
 
+
+showJS :: Show a => a -> JSString
+showJS = fromString . show
 
 instance FromJSON Image
 instance ToJSON Image
@@ -42,4 +47,10 @@ getAllImages :: Text -> IO [Image]
 getAllImages unm = unsafeGetAPI $ unm <> "/ad-images"
 
 getAllImagesOrError :: Text -> IO (Either AppError [Image])
-getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError 
+getAllImagesOrError unm = getAPIEither (unm <> "/ad-images") >>= return . first ApiError
+
+deleteImageOrError :: Text -> Int -> IO (Either AppError Ok)
+deleteImageOrError unm imageId = deleteAPIEither (unm <> "/ad-image/" <> showJS imageId) >>= return . first ApiError
+
+uploadImagesOrError :: Text -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
+uploadImagesOrError unm files = postFileAPIEither (unm <> "/ad-image") files >>= return . first ApiError

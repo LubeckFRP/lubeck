@@ -1,3 +1,28 @@
+@-moz-keyframes fadeIn {
+    from {opacity:0;}
+    to {opacity:1;}
+}
+
+@-webkit-keyframes fadeIn {
+    from {opacity:0;}
+    to {opacity:1;}
+}
+
+@keyframes fadeIn {
+    from {opacity:0;}
+    to {opacity:1;}
+}
+
+
+div, h1, h2, img, p, span {
+  -webkit-animation: fadeIn 500ms;
+  -moz-animation: fadeIn 500ms;
+  animation: fadeIn 500ms;
+
+  transition: opacity 500ms;
+
+}
+
 .container {
   width: 100%;
 }
@@ -33,7 +58,7 @@
 }
 
 .custom-thumbnail-1:hover {
-  background-color: #efefef;
+  background-color: #ffffff;
 }
 .custom-thumbnail-1 {
   display: inline-block;
@@ -54,6 +79,7 @@
   /*background-color: #eee;*/
   border: 0px solid black;
   box-shadow: none;
+  cursor: pointer;
 }
 .thumbnail-wrapper {
   border: 0px solid red;
@@ -102,4 +128,74 @@
   margin-left: 0px;
   margin-right: 10px;
   margin-bottom: 3px;
+}
+
+.account-picture {
+  padding-right: 15px;
+}
+
+.score-container {
+  width: 140px;
+  height: 21px;
+  padding: 0px;
+  border: 1px solid white;
+  margin: auto;
+  background-color: #efefef;
+  /*font-size: 8px;*/
+}
+
+.neg-score {
+  display: inline-block;
+  width: 68px;
+  height: 19px;
+  text-align: right;
+  padding: 4px 0px;
+  margin: 0px;
+  border: 0px solid transparent;
+  border-right: 0px solid black;
+}
+.pos-score {
+  display: inline-block;
+  width: 68px;
+  height: 19px;
+  border: 1px solid transparent;
+  border-left: 1px solid black;
+  margin: 0px;
+  text-align: left;
+  padding: 3px 0px;
+}
+
+.bad-score-bar:after { clear: both }
+.bad-score-bar {
+  background-color: red;
+  height: 11px;
+  border: 0px;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-right: 0px;
+  float: right;
+}
+
+.good-score-bar:after { clear: both }
+.good-score-bar {
+  background-color: green;
+  height: 11px;
+  border: 0px;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-right: 0px;
+}
+
+.library-image-view-img {
+  max-width: 100%;
+  margin: auto;
+  cursor: pointer;
+}
+
+.x-media {
+  padding-top: 40px;
+}
+
+.badge-info {
+  background-color: #5bc0de;
 }

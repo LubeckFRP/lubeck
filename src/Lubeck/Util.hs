@@ -3,7 +3,8 @@
 
 module Lubeck.Util
   ( eitherToError
-  , withError
+  -- , withError
+  , withErrorIO
   , showJS
   , row6H
   , row12H
@@ -12,12 +13,27 @@ module Lubeck.Util
   , infoPanel
   , contentPanel
   , tableHeaders
+
+  , divide
+  , divideFromEnd
+
+  , parseDateToUTC
+  , parseDateAndTimeToUTC
+  , formatDateFromUTC
+  , formatDateAndTimeFromUTC
+
+  , showIntegerWithThousandSeparators
+
+  , newEventOf
   ) where
 
 import           Data.Maybe
-import           Data.JSString
 import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString)
+import qualified Data.JSString
+import Data.Time (Day(..), UTCTime(..))
+import qualified Data.Time.Format
+import qualified Data.List
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -40,8 +56,11 @@ eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
 eitherToError sink (Left x)  = sink (Just x) >> return Nothing
 eitherToError sink (Right x) = return (Just x)
 
-withError :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> Events a
-withError errorSink bl = filterJust $ reactimate $ reactimate $ fmap (fmap (eitherToError errorSink)) bl
+withErrorIO :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> IO (Events a)
+withErrorIO errorSink bl = do
+  b1 <- reactimateIO $ fmap (fmap (eitherToError errorSink)) bl
+  b2 <- reactimateIO b1
+  return $ filterJust b2
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show
@@ -70,3 +89,54 @@ infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center "] [co
 
 tableHeaders :: [JSString] -> Html
 tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
+
+-- TODO do not use string here
+
+-- | Parse a date written in ISO 8601, without clock time i.e. @YYYY-MM-DD@
+parseDateToUTC :: JSString -> Maybe Day
+parseDateToUTC = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
+
+-- | Parse a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
+parseDateAndTimeToUTC :: JSString -> Maybe UTCTime
+parseDateAndTimeToUTC = Data.Time.Format.parseTimeM True l f . Data.JSString.unpack
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")
+
+-- | Format a date written in ISO 8601 without clock time i.e. @YYYY-MM-DD@
+formatDateFromUTC :: Day -> JSString
+formatDateFromUTC = Data.JSString.pack . Data.Time.Format.formatTime l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat Nothing
+
+-- | Format a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
+formatDateAndTimeFromUTC :: UTCTime -> JSString
+formatDateAndTimeFromUTC = Data.JSString.pack . Data.Time.Format.formatTime l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")
+
+-- | @divide n @ separates a list into sublists of length n.
+-- The last chunk may be shorter.
+divide :: Int -> [a] -> [[a]]
+divide n xs = case xs of
+  [] -> []
+  xs -> take n xs : divide n (drop n xs)
+
+-- | @divide n @ separates a list into sublists of length n.
+-- The first chunk may be shorter.
+divideFromEnd :: Int -> [a] -> [[a]]
+divideFromEnd n = reverse . fmap reverse . divide n . reverse
+
+-- | I.e. @showIntegerWithThousandSeparators 314159265 = "314,159,265"@
+showIntegerWithThousandSeparators :: Integral a => a -> JSString
+showIntegerWithThousandSeparators n = Data.JSString.pack $
+  concat $ Data.List.intersperse "," $ divideFromEnd 3 $ show (fromIntegral n)
+
+-- | Like newEvent with a type hint.
+newEventOf :: a -> IO (Sink a, Events a)
+newEventOf _ = newEvent

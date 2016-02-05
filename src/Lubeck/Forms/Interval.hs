@@ -5,15 +5,13 @@ module Lubeck.Forms.Interval
   ( integerIntervalWidget
   , dateIntervalWidget
   , customIntervalWidget
-  -- TODO move
-  , hideableDateWidget
-  , hideableIntegerWidget
   ) where
 
 import qualified Data.List
-import Numeric.Interval (Interval)
-import qualified Numeric.Interval as I
+import Data.Interval (Interval, interval, Extended(..), lowerBound, upperBound)
 import Data.Time.Calendar (Day(..))
+import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
+import qualified Control.Lens
 
 import Data.JSString (JSString, pack, unpack)
 
@@ -21,84 +19,75 @@ import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
-import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
-import qualified Control.Lens
-
 import Lubeck.Forms
+import Lubeck.Forms.Basic
 import Lubeck.Forms.Select
-import Lubeck.Util()
-import BD.Query.PostQuery(formatDateUTC, parseDateUTC) -- TODO move these
 
+data IntervalRange = Any | LessThan | GreaterThan | Between
+  deriving (Show, Eq)
 
-integerIntervalWidget :: JSString -> Widget' (Interval (Maybe Int))
+integerIntervalWidget :: JSString -> Widget' (Interval Int)
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
---
-dateIntervalWidget :: Day -> JSString -> Widget' (Interval (Maybe Day))
+
+dateIntervalWidget :: Day -> JSString -> Widget' (Interval Day)
 dateIntervalWidget dayNow = customIntervalWidget dayNow hideableDateWidget
 
-customIntervalWidget :: Ord a => a -> (Bool -> Widget' a) -> JSString -> Widget' (Interval (Maybe a))
+-- |
+-- Create a widget for intervals of arbitrary ordered type, based on an underlying widget.
+--
+-- Displayed as a menu with the alternatives "Any", "Less than", "Greater than" and "Between" followed
+-- by two sub-widgets representing endpoints.
+--
+customIntervalWidget
+  :: Ord a
+  => a                      -- ^ Default value, used i.e. when switching from \"Any\" to an interval with endpoints.
+  -> (Bool -> Widget' a)    -- ^ Underlying widget type. Argument is @False@ whenever the widget disabled,
+                            --   i.e. because the endpoint is not in use.
+  -> JSString               -- ^ Title
+  -> Widget' (Interval a)
 customIntervalWidget z numW title = id
     $ mapHtmlWidget (\x -> E.div [A.class_ "form-group form-inline"] $ pure $ E.label [] [E.text title, x])
     $ lmapWidget fromInterval
     $ rmapWidget toInterval
     $ spanWidget2
   where
-    -- fromInterval :: Ord a => Interval (Maybe a) -> (String, (a, a))
-    -- toInterval   :: Ord a => (String, (a, a))   -> Interval (Maybe a)
-    fromInterval i
-      | I.null i = (("inf-inf"), (z,z))
-      | otherwise = case (I.inf i, I.sup i) of
-        (Just x,  Nothing) -> (("fin-inf"), (x,x))
-        (Nothing, Just y)  -> (("inf-fin"), (y,y))
-        (Just x,  Just y)  -> (("fin-fin"), (x,y))
-        _                  -> (("inf-inf"), (z,z))
-    toInterval x = case x of
-      (("inf-inf"), (_,_)) -> Nothing I.... Nothing
-      (("fin-inf"), (x,_)) -> Just x  I.... Nothing
-      (("inf-fin"), (_,y)) -> Nothing I.... Just y
-      (("fin-fin"), (x,y)) -> Just x  I.... Just y
+    fromInterval i = case (lowerBound i, upperBound i) of
+      (NegInf,    PosInf)     -> (Any,          (z,z))
+      (NegInf,    Finite b)   -> (LessThan,     (b,b))
+      (Finite a,  PosInf)     -> (GreaterThan,  (a,a))
+      (Finite a,  Finite b)   -> (Between,      (a, b))
+      _                       -> (Any,          (z,z)) -- empty
 
-    -- spanWidget2 :: Widget' (JSString, (a, a))
-    -- spanTypeW :: Widget' JSString
-    -- numsW :: JSString -> Widget' (a, a)
+    toInterval x = case x of
+      (Any,         (_,_)) -> interval (NegInf,True) (PosInf,True)
+      (GreaterThan, (x,_)) -> interval (Finite x,True) (PosInf,True)
+      (LessThan,    (_,y)) -> interval (NegInf,True) (Finite y,True)
+      -- If x > y, we don't want to generate empty, so increase upper bound to match lower bound
+      (Between,     (x,y)) ->
+        if x > y
+            then interval (Finite x,True) (Finite x,True)
+            else interval (Finite x,True) (Finite y,True)
+
+    -- spanWidget2 :: Widget' (IntervalRange, (a, a))
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
+
+    -- spanTypeW :: Widget' IntervalRange
     spanTypeW = selectWidget
-      [ ("inf-inf", "Any")
-      , ("inf-fin", "Less than")
-      , ("fin-inf", "Greater than")
-      , ("fin-fin", "Between")
+      [ (Any,         "Any")
+      , (GreaterThan, "Greater than")
+      , (LessThan,    "Less than")
+      , (Between,     "Between")
       ]
-    visible x = case x of
-      "inf-inf" -> (False, False)
-      "fin-inf" -> (True,  False)
-      "inf-fin" -> (False, True)
-      _         -> (True, True)
+
+    -- numsW :: IntervalRange -> Widget' (a, a)
     numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
+
+    visible x = case x of
+      Any         -> (False, False)
+      GreaterThan -> (True, False)
+      LessThan    -> (False, True)
+      Between     -> (True, True)
 
 -- TODO is the (Monoid Html) instance what we need?
 composeWidget :: Widget' a -> Widget' b -> Widget (a,b) (a,b)
 composeWidget a b = bothWidget mappend (subWidget Control.Lens._1 a) (subWidget Control.Lens._2 b)
-
-hideableIntegerWidget :: Bool -> Widget' Int
-hideableIntegerWidget False _ _ = mempty
-hideableIntegerWidget True s v = E.input
-  [ A.class_ "form-control"
-  , A.type_ "number"
-  -- , A.style_ $ if enabled then "" else "visibility:hidden"
-  , Ev.change $ \e -> s $ read $ unpack $ Ev.value e
-  , A.value (pack $ show v)
-  ]
-  []
-
-hideableDateWidget :: Bool -> Widget' Day
-hideableDateWidget False _ _ = mempty
-hideableDateWidget True s v = E.input
-  [ A.class_ "form-control"
-  , A.type_ "date"
-  , Ev.change $ \e -> s $ readDate $ unpack $ Ev.value e
-  , A.value (pack $ showDate v)
-  ]
-  []
-  where
-    readDate x = case parseDateUTC x of { Just x -> x }
-    showDate = formatDateUTC

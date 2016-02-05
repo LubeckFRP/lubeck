@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Main where
+module AdPlatform.Main where
 
 import           Prelude                        hiding (div)
 import qualified Prelude
@@ -32,13 +32,14 @@ import           BD.Data.SearchPost             (SearchPost)
 import qualified BD.Data.SearchPost             as P
 import           BD.Types
 import           BD.Utils
+import           BD.Api
 
-import           Pages.Campaign                 (campaignPage, getCampaigns)
-import           Pages.CreateAd                 (createAdPage)
-import           Pages.ImageLibrary             (imageLibraryPage, getImages)
-import           Pages.Login                    (loginPage)
-import           Pages.PostSearch               (searchPage)
-import           Pages.User                     (userPage)
+import           AdPlatform.Pages.Campaign      (campaignPage, getCampaigns)
+import           AdPlatform.Pages.CreateAd      (createAdPage)
+import           AdPlatform.Pages.ImageLibrary  (imageLibraryPage)
+import           AdPlatform.Pages.Login         (loginPage, Username)
+import           AdPlatform.Pages.PostSearch    (searchPage)
+import           AdPlatform.Pages.User          (userPage)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
@@ -46,9 +47,11 @@ import           Components.ErrorMessages       (errorMessagesComponent)
 import           Components.MainMenu            (mainMenuComponent)
 
 import           Lubeck.Util
+import           AdPlatform.Types
 
 
 defaultUsername = "forbestravelguide"
+defaultPassword = "secret123"
 
 menuItems =
   [ (NavUser,     "User")
@@ -75,6 +78,7 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
           , page
           ] ]
 
+useAuth = True
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
@@ -82,22 +86,31 @@ adPlatform = do
   (errorsView, errorSink) <- errorMessagesComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
-  (loginView, userLoginE) <- loginPage                       defaultUsername
+  (ipcSink, ipcEvents)    <- newEventOf (undefined :: IPCMessage)
 
-  let userE               = withError errorSink $ fmap (withBusy busySink Account.getUserOrError) userLoginE
-  let camapaignsE         = withError errorSink $ fmap (withBusy busySink getCampaigns) userE
-  let imagesE             = withError errorSink $ fmap (withBusy busySink getImages) userE
+  (loginView, userLoginE) <- loginPage (defaultUsername, defaultPassword)
+  userLoginB              <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
+
+  authOk                  <- withErrorIO errorSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Ok)
+  let validUserLoginE     = sample userLoginB authOk :: Events (Maybe Username)
+
+  let bypassAuthUserE     = fmap fst userLoginE
+  userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError)
+                                                          (if useAuth then (filterJust validUserLoginE)
+                                                                      else bypassAuthUserE)
+
+  camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
+
   userS                   <- stepperS Nothing (fmap Just userE)
   campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
-  imagesS                 <- stepperS Nothing (fmap Just imagesE)
   let userAndCampaignsS   = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
   let usernameB           = fmap (fmap Account.username) $ current userS
 
-  (userView, loadAdsE)    <- userPage                        userAndCampaignsS
-  createAdView            <- createAdPage busySink errorSink usernameB
-  adsView                 <- campaignPage busySink errorSink loadAdsE (current userS)
-  imageLibView            <- imageLibraryPage                imagesS
-  searchPageView          <- searchPage   busySink errorSink usernameB
+  (userView, loadAdsE)    <- userPage                                              userAndCampaignsS
+  createAdView            <- createAdPage     busySink errorSink                   usernameB
+  adsView                 <- campaignPage     busySink errorSink                   loadAdsE (current userS)
+  imageLibView            <- imageLibraryPage busySink errorSink ipcSink ipcEvents userE
+  searchPageView          <- searchPage       busySink errorSink ipcSink           usernameB
 
   let postLoginNavE       = fmap (const NavUser) (updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)

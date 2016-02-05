@@ -18,6 +18,8 @@ import Data.Maybe(fromMaybe)
 import Data.Default (def)
 import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
+import Data.Time (UTCTime(..), DiffTime, Day(..))
+
 
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
@@ -31,7 +33,8 @@ import qualified Web.VirtualDom.Html.Events as Ev
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
-import qualified Lubeck.Plots.Test as Plotting
+import Lubeck.Plots.SimpleNormalized (simpleTimeSeries)
+import Lubeck.Util (showIntegerWithThousandSeparators)
 import qualified Lubeck.Drawing as Drawing
 
 import qualified BD.Data.Account as A
@@ -63,12 +66,14 @@ makeLenses ''Model
 update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
 update = foldpR step initial
   where
-    initial = (Model (Nothing,Nothing) $ InteractionSet Nothing Nothing [], Nothing)
+    initial = (Model (Just "beautifuldestinations", Just "forbestravelguide") $ InteractionSet Nothing Nothing [], Nothing)
 
     step NoAction             (model,_) = (model,   Nothing)
-    step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- loadShoutouts a b ; return $ ChangeModel (set interactions so) })
+    step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- fmap truncateInteractions $ loadShoutouts a b ; return $ ChangeModel (set interactions so) })
     step (ReplaceModel model) (_,_)     = (model,   Nothing)
     step (ChangeModel f) (model,_)      = (f model, Nothing)
+
+truncateInteractions x = x { I.interactions = (take 20 $ I.interactions x) }
 
 render :: Widget Model Action
 render actions model = div
@@ -113,19 +118,21 @@ interactionW actions model = div []
   -- Growth graph
   , div [class_ "row"]
     [
-    ((Plotting.plotDrawingToSvg $
-      (\x -> Drawing.stack [x,Drawing.xyAxis]) $ Plotting.drawDataPlot $ Plotting.basicDataGrowth id
-        [ flip Drawing.Point 10   20
-        , flip Drawing.Point 45  30
-        , flip Drawing.Point 100 200
-        , flip Drawing.Point 200 0
-        ]))
-
-      -- div [class_ "col-xs-8 col-lg-8"] [img [src greyImgUrl, width 600] []]
+      render $
+      -- simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
+        simpleTimeSeries
+          showIntegerWithThousandSeparators
+          fromIntegral round
+          (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
     , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
     ]
   , p [] [text "Estimated impact: (?)"]
   ]
+  where
+    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
+    renderOpts = Drawing.defaultRenderingOptions
+      { Drawing.dimensions     = Drawing.Point 600 600
+      , Drawing.origoPlacement = Drawing.BottomLeft }
 
 
 -- MAIN
