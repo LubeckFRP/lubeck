@@ -1,6 +1,14 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
+{-|
+  Select widgets, using for choosing one element of an enumeration type.
+
+  Most of these accept a list or range that defines input alternatives. Beware
+  that sending a value not in this list may result in undefined behavior.
+
+  For complete safety, use a 'Bounded' type with 'selectEnumBoundedWidget'.
+-}
 module Lubeck.Forms.Select
   ( selectWidget
   , selectEnumWidget
@@ -18,7 +26,7 @@ import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
--- TODO Not Show
+-- TODO Do not rely on show
 selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
 selectEnumBoundedWidget = selectEnumWidget minBound maxBound
 
@@ -45,10 +53,6 @@ selectWidget' valuesLabels s x =
       (optAttrs v x)
       [E.text l])
         valuesLabels)
-
--- optAttrs v selected = [A.value v]{-++ if v == x then [Attr.selected True]  else []-})
-
-optAttrs v x = [A.value v] ++ if v == x then [selected "true"]  else []
   where
+    optAttrs v x = [A.value v] ++ if v == x then [selected "true"]  else []
     selected = VD.attribute "selected"
--- optAttrs v x = customAttrs $ Data.Map.fromList $ [("value", unpack v)] ++ if v == x then [("selected", "true")]  else []
