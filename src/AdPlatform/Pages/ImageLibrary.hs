@@ -120,7 +120,7 @@ showImagePred (Just x) = renderScore x
 
 renderScore :: Double -> Html
 renderScore x =
-  div [class_ "score-container", A.title $ "Score: " <> showJS x]
+  div [class_ "score-container badge badge-info", A.title $ "Score: " <> showJS x]
     [ div [class_ "neg-score"] [ (if x < 0 then negativeScore x else mempty) ]
     , div [class_ "pos-score"] [ (if x >= 0 then positiveScore x else mempty) ] ]
 
