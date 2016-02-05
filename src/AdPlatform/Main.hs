@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TupleSections              #-}
 
-module AdPlatform.Main where
+module AdPlatform.Main (main) where
 
 import           Prelude                        hiding (div)
 import qualified Prelude
