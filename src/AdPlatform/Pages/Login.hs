@@ -37,7 +37,7 @@ loginPageW :: Widget Credentials (Submit Credentials)
 loginPageW sink (name, passw) =
   div [] [
     div [ class_ "row" ]
-      [ div [ A.style "max-width: 395px", class_ "jumbotron col-xs-12 center-block"]
+      [ div [ class_ "jumbotron col-xs-12 center-block login-jumbo"]
         [ h1 [] [ text "Ad Platform" ]
         , p  [] [ text "Welcome to Beautiful Destination's Ad Platform!" ] ]
       ]

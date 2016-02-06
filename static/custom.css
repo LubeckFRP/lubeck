@@ -256,3 +256,11 @@ div, h1, h2, img, p, span {
 .center-block {
   float: none;
 }
+
+.login-jumbo {
+    max-width: 395px;
+    background-image: url(https://s3.amazonaws.com/bd-2015/img/bg-services.jpg);
+    background-size: cover;
+    background-position-x: 80%;
+    color: white;
+}
