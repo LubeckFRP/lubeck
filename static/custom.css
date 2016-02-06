@@ -242,3 +242,7 @@ div, h1, h2, img, p, span {
 .badge-info {
   background-color: #5bc0de;
 }
+
+.image-prediction {
+  text-align: center;
+}

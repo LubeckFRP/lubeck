@@ -58,7 +58,7 @@ campaignPageW sink (camp, ads) =
   where
     renderAdList :: Widget [Ad.Ad] ()
     renderAdList _ ads = table [class_ "table"] [
-        tableHeaders ["FB adset id", "Name", "Budget"]
+        tableHeaders ["FB adset id", "Name", "Caption", "Budget", ""]
       , tbody [] (map (adRow emptySink) ads)
       ]
 
@@ -66,7 +66,11 @@ campaignPageW sink (camp, ads) =
     adRow _ ad = tr []
       [ td [] [text $ showJS $ Ad.fb_adset_id ad]
       , td [] [text $ Ad.ad_title ad]
+      , td [] [text $ Ad.ad_caption ad]
       , td [] [text $ showJS $ Ad.current_budget ad]
+      , td [] [E.button [class_ "btn btn-danger pull-right", click $ \e -> print $ "delete ad " <> showJS (Ad.fb_ad_id ad)]
+                [ E.i [class_ "fa fa-trash-o", A.style "margin-right: 5px"] []
+                , text "Delete"]]
       ]
 
 loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Either AppError [Ad.Ad])
