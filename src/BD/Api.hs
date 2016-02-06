@@ -44,11 +44,11 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import Data.String (fromString)
 
+import AdPlatform.Config (xhrWithCredentials)
+
 baseURL :: JSString
 --baseURL = "http://localhost:3567/api/v1/"
 baseURL = "https://data.beautifuldestinations.com/api/v1/"
-
-useCredentials = False
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show
@@ -93,7 +93,7 @@ getAPI' path headers = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = headers
-          , reqWithCredentials = useCredentials
+          , reqWithCredentials = xhrWithCredentials
           , reqData            = NoData
           }
 
@@ -146,7 +146,7 @@ postAPI path value = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = useCredentials
+          , reqWithCredentials = xhrWithCredentials
           , reqData            = (StringData $ body)
           }
 
@@ -167,7 +167,7 @@ postFileAPI path files = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = useCredentials
+          , reqWithCredentials = xhrWithCredentials
           , reqData            = (FormData files)
           }
 
@@ -203,7 +203,7 @@ deleteAPI path = do
           , reqURI             = baseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
-          , reqWithCredentials = useCredentials
+          , reqWithCredentials = xhrWithCredentials
           , reqData            = NoData
           }
 

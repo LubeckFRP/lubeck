@@ -48,6 +48,7 @@ import           Components.MainMenu            (mainMenuComponent)
 
 import           Lubeck.Util
 import           AdPlatform.Types
+import           AdPlatform.Config              (useAuth)
 
 
 defaultUsername = "forbestravelguide"
@@ -77,8 +78,6 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
           , err
           , page
           ] ]
-
-useAuth = True
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
