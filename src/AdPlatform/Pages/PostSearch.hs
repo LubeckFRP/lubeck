@@ -109,8 +109,10 @@ postSearchResult :: Widget [Post] PostAction
 postSearchResult output posts =
   contentPanel $
     div []
-      [ h1 [] [text "Search Results"]
-      , div [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
+      [ div [class_ "page-header"]
+          [ h1 [] [ text "Search Results "
+                  , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
+                  ] ]
       , postTable output posts
       ]
 
