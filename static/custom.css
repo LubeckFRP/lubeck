@@ -30,6 +30,13 @@ div, h1, h2, img, p, span {
 .top-buffer { margin-top: 80px !important; }
 .bottom-buffer { margin-bottom: 20px; }
 
+.busy-indicator .alert {
+  height: 35px;
+  width: 150px;
+  margin: auto;
+  padding: 5px 10px;
+  border-radius: 0px;
+}
 .busy-indicator {
   position: fixed;
   top: 0;
@@ -245,4 +252,7 @@ div, h1, h2, img, p, span {
 
 .image-prediction {
   text-align: center;
+}
+.center-block {
+  float: none;
 }

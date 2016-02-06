@@ -37,12 +37,12 @@ loginPageW :: Widget Credentials (Submit Credentials)
 loginPageW sink (name, passw) =
   div [] [
     div [ class_ "row" ]
-      [ div [class_ "jumbotron col-xs-10 col-sm-6 col-md-5 col-lg-4 col-xs-offset-1 col-sm-offset-3 col-md-offset-3 col-lg-offset-4"]
+      [ div [ A.style "max-width: 395px", class_ "jumbotron col-xs-12 center-block"]
         [ h1 [] [ text "Ad Platform" ]
         , p  [] [ text "Welcome to Beautiful Destination's Ad Platform!" ] ]
       ]
     , div [class_ "row"]
-      [ div [ class_ "col-xs-10 col-sm-6 col-md-5 col-lg-4 col-xs-offset-1 col-sm-offset-3 col-md-offset-3 col-lg-offset-4" ]
+      [ div [ A.style "max-width: 395px", class_ "col-xs-12 center-block" ]
         [ div [ submit $ \e -> preventDefault e >> return () ]
           [ div [class_ "form-group form-group-lg"]
             [ E.input [ class_ "form-control bottom-buffer"
@@ -52,7 +52,7 @@ loginPageW sink (name, passw) =
                       , A.value passw -- FIXME is it ok to pre-set passwords?
                       , A.type_ "password"
                       , change $ \e -> preventDefault e >> sink (DontSubmit (name, value e))] []
-            , button [ class_ "form-control btn btn-primary"
+            , button [ class_ "form-control btn btn-link"
                      , click $ \_ -> sink (Submit (name, passw))] [text "Login"]
             ]
           ]

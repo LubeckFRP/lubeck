@@ -40,7 +40,7 @@ filesSelectWidget formFieldName mime multi sink _ =
                      Just x  -> [(VD.attribute "accept") x]
   in E.div []
     [ E.button
-        [ A.class_ "btn btn-default"
+        [ A.class_ "btn btn-link"
         , A.style buttonCSS ]
         [ E.i [ A.class_ "fa fa-cloud-upload"
               , A.style "margin-right: 5px"] []

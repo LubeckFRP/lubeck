@@ -54,11 +54,17 @@ withBusy2 sink f = \x y -> do
   return z
 
 
+row6Hbusy :: Html -> Html
+row6Hbusy content = div [class_ "row busy-indicator"] [ div [class_ "col-md-4 col-lg-2 col-md-offset-4 col-lg-offset-5"] [content] ]
+
+infoPanel :: Html -> Html
+infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center"] [content]
+
 busyW :: Widget' BusyStack
 busyW _ [] = mempty
 busyW _ bs = infoPanel $ div []
-                          [ E.i [class_ "fa fa-spinner fa-spin", A.style "margin-right: 5px"] []
-                          , text $ "Working... (" <> showJS (length bs) <> ")" ]
+                          [ E.i [class_ "fa fa-cog fa-spin", A.style "margin-right: 5px"] []
+                          , text $ "Working [" <> showJS (length bs) <> "]" ]
 
 -- | Hopefully a reusable busy indicator component.
 -- It is initialized with initial stack of busy tasks,

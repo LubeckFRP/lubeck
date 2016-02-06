@@ -71,13 +71,13 @@ viewImageW sink image = do
     div [class_ "library-image-view"]
       [ div [class_ "btn-toolbar"]
           [ div [class_ "btn-group"]
-              [ button [class_ "btn btn-default", click $ \_ -> sink $ ViewPrevImg image]
+              [ button [class_ "btn btn-link", click $ \_ -> sink $ ViewPrevImg image]
                   [ E.i [class_ "fa fa-chevron-left", A.style "margin-right: 5px"] []
                   , text "Prev image" ]
-              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewNextImg image]
+              , button [class_ "btn btn-link", click $ \_ -> sink $ ViewNextImg image]
                   [ text "Next image"
                   , E.i [class_ "fa fa-chevron-right", A.style "margin-left: 5px"] [] ]
-              , button [class_ "btn btn-default", click $ \_ -> sink $ ViewGalleryIndex]
+              , button [class_ "btn btn-link", click $ \_ -> sink $ ViewGalleryIndex]
                   [ E.i [class_ "fa fa-undo", A.style "margin-right: 5px"] []
                   , text "Back to library"] ]
 
