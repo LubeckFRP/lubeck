@@ -30,8 +30,10 @@ import Control.Monad.IO.Class
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import qualified Data.Aeson
 import qualified Data.Aeson.Types
+import Data.Aeson.Types
 import Data.ByteString
 import Data.Data
+import Data.Foldable (asum)
 import Data.Monoid
 import Data.Text(Text)
 import Data.Time.Clock (UTCTime)
@@ -44,6 +46,7 @@ import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import Data.String (fromString)
 
+import BD.Types
 import AdPlatform.Config (xhrWithCredentials)
 
 baseURL :: JSString
@@ -258,7 +261,9 @@ data Envelope a = Envelope { payload :: a } deriving (GHC.Generic,Show, Eq, Data
 instance ToJSON a => ToJSON (Envelope a)
 instance FromJSON a => FromJSON (Envelope a)
 
-data Ok = Ok
+data Ok = Ok JSString | Nok JSString deriving (GHC.Generic, Show, Eq, Data, Typeable)
 
 instance FromJSON Ok where
-  parseJSON _ = return Ok
+  parseJSON = withObject "API response" $ \o ->
+    asum [ Ok  <$> o .: "status"
+         , Nok <$> o .: "error" ]

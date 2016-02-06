@@ -140,7 +140,7 @@ postNewAd sink unm newAd = do
   res <- postAPIEither (unm <> "/create-ad") newAd
   sink PopBusy
 
-  return $ bimap ApiError payload res
+  return $ bimap ApiError id res
 
 createAdPage :: Sink BusyCmd
              -> Sink (Maybe AppError)
@@ -158,7 +158,10 @@ createAdPage busySink errorSink mUserNameB imsB campB = do
     case mUserName of
       Just username ->  do
         res <- (postNewAd busySink username newAd) >>= (eitherToError errorSink)
-        -- print $ show res
+        case res of
+          Just (Ok s)  -> print s -- fbSink . Just . Success "Ad created! :-)"
+          Just (Nok s) -> errorSink . Just . ApiError $ s
+          Nothing      -> print "Error already should have been reported"
         return ()
 
       Nothing -> errorSink . Just . BLError $ "can't create ad: no username!"

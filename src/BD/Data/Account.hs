@@ -8,6 +8,7 @@
 
 module BD.Data.Account
     ( Account(..)
+    , AuthToken (..)
     , getUser
     , getUserOrError
     , authenticateOrError
@@ -16,8 +17,10 @@ module BD.Data.Account
 import           Control.Monad
 import           Data.Aeson
 import qualified Data.Aeson.Types
+import           Data.Aeson.Types
 import           Data.Data
 import           Data.Bifunctor (bimap, first)
+import           Data.Foldable (asum)
 import           Data.Monoid
 import           Data.String      (fromString)
 import           Data.Time.Clock  (UTCTime)
@@ -64,8 +67,15 @@ getUser unm = fmap payload $ unsafeGetAPI $ unm <> "/account"
 getUserOrError :: JSString -> IO (Either AppError Account)
 getUserOrError unm = getAPIEither (unm <> "/account") >>= return . bimap ApiError payload
 
+data AuthToken = AuthToken JSString | NoAuthToken JSString deriving (GHC.Generic, Show, Eq, Data, Typeable)
+
+instance FromJSON AuthToken where
+  parseJSON = withObject "API response" $ \o ->
+    asum [ AuthToken   <$> o .: "token"
+         , NoAuthToken <$> o .: "error" ]
+
 -- FIXME this probably deserves distinct module
-authenticateOrError :: (JSString, JSString) -> IO (Either AppError Ok)
+authenticateOrError :: (JSString, JSString) -> IO (Either AppError AuthToken)
 authenticateOrError (unm, psw) = getAPIEither' "get-auth-token" headers >>= return . first ApiError
   where
     headers = [authHeader]

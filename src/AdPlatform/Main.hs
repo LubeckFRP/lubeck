@@ -90,7 +90,7 @@ adPlatform = do
   (loginView, userLoginE) <- loginPage (defaultUsername, defaultPassword)
   userLoginB              <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
-  authOk                  <- withErrorIO errorSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Ok)
+  authOk                  <- withErrorIO errorSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
   let validUserLoginE     = sample userLoginB authOk :: Events (Maybe Username)
 
   let bypassAuthUserE     = fmap fst userLoginE

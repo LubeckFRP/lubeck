@@ -193,8 +193,9 @@ searchPage busySink errorSink ipcSink mUserNameB = do
       Just userName -> do
         res <- (withBusy2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
-          Left e   -> errorSink . Just . ApiError $ "Failed to upload post to ad library" <> showJS e
-          Right Ok -> ipcSink ImageLibraryUpdated
+          Left e        -> errorSink . Just . ApiError $ "Failed to upload post to ad library : " <> showJS e
+          Right (Ok s)  -> ipcSink ImageLibraryUpdated
+          Right (Nok s) -> errorSink . Just . ApiError $ "Failed to upload post to ad library : " <> s
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do

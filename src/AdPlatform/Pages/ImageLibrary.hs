@@ -191,8 +191,9 @@ processActions busySink errorSink actionsSink2 imsB accB (DeleteImg image) = do
       -- XXX TODO ask for confirmation!
       res <- (withBusy2 busySink deleteImage) acc image
       case res of
-        Left e   -> errorSink (Just e)         >> return (Just image)
-        Right Ok -> actionsSink2 ReloadLibrary >> return Nothing
+        Left e        -> errorSink (Just e)              >> return (Just image)
+        Right (Ok _)  -> actionsSink2 ReloadLibrary      >> return Nothing
+        Right (Nok s) -> errorSink (Just . ApiError $ s) >> return (Just image)
 
 processActions busySink errorSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
 
