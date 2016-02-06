@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE JavaScriptFFI       #-}
 
 module AdPlatform.Pages.ImageLibrary
   ( imageLibraryPage
@@ -17,7 +18,7 @@ import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid
 import           Data.String                    (fromString)
 
-import           GHCJS.Types                    (JSString)
+import           GHCJS.Types                    (JSString, JSVal)
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
                                                  tbody, td, text, th, thead, tr)
@@ -64,6 +65,10 @@ instance Show ImgLibraryActions where
 
 
 -- view
+
+-- XXX this blocks the whole js thread until a user clicks a dialog button
+-- TODO non-blocking confirm dialog
+foreign import javascript unsafe "confirm($1) + 0" jsConfirm :: JSString -> IO Int
 
 viewImageW :: Widget Im.Image ImgLibraryActions
 viewImageW sink image = do
@@ -188,14 +193,18 @@ processActions busySink notifSink actionsSink2 imsB accB (DeleteImg image) = do
       return $ Just image
 
     Just acc -> do
-      -- XXX TODO ask for confirmation!
-      res <- (withBusy2 busySink deleteImage) acc image
-      case res of
-        Left e        -> notifSink (Just . NError $ e) >> return (Just image)
-        Right (Ok _)  -> notifSink (Just . NInfo $ "Image deleted :-(")
-                      >> actionsSink2 ReloadLibrary
-                      >> return Nothing
-        Right (Nok s) -> notifSink (Just . apiError $ s) >> return (Just image)
+      rly <- jsConfirm "Are you sure?"
+      case rly of
+        1 -> do
+          res <- (withBusy2 busySink deleteImage) acc image
+          case res of
+            Left e        -> notifSink (Just . NError $ e) >> return (Just image)
+            Right (Ok _)  -> notifSink (Just . NInfo $ "Image deleted :-(")
+                          >> actionsSink2 ReloadLibrary
+                          >> return Nothing
+            Right (Nok s) -> notifSink (Just . apiError $ s) >> return (Just image)
+
+        0 -> return (Just image)
 
 processActions busySink notifSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
 
