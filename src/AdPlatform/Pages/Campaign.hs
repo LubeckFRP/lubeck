@@ -64,10 +64,14 @@ campaignPageW sink (camp, ads) =
 
     adRow :: Widget Ad.Ad ()
     adRow _ ad = tr []
-      [ td [] [text $ showJS $ Ad.fb_adset_id ad]
-      , td [] [text $ Ad.ad_title ad]
-      , td [] [text $ Ad.ad_caption ad]
-      , td [] [text $ showJS $ Ad.current_budget ad]
+      [ td [] [ text $ showJS $ Ad.fb_adset_id ad]
+      , td [] [ text $ Ad.ad_title ad]
+      , td [] [ text $ Ad.ad_caption ad]
+      , td [] [ text $ showJS $ Ad.current_budget ad
+              , E.button [ A.title "Set budget"
+                         , class_ "btn btn-link"
+                         , click $ \e -> print $ "set budget ad " <> showJS (Ad.fb_ad_id ad)]
+                         [ E.i [class_ "fa fa-cog" ] [] ] ]
       , td [] [E.button [class_ "btn btn-danger pull-right", click $ \e -> print $ "delete ad " <> showJS (Ad.fb_ad_id ad)]
                 [ E.i [class_ "fa fa-trash-o", A.style "margin-right: 5px"] []
                 , text "Delete"]]
