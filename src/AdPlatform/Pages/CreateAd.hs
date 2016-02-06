@@ -143,12 +143,12 @@ postNewAd sink unm newAd = do
   return $ bimap ApiError id res
 
 createAdPage :: Sink BusyCmd
-             -> Sink (Maybe AppError)
+             -> Sink (Maybe Notification)
              -> Behavior (Maybe JSString)
              -> Behavior (Maybe [Im.Image])
              -> Behavior (Maybe [AdCampaign.AdCampaign])
              -> IO (Signal Html)
-createAdPage busySink errorSink mUserNameB imsB campB = do
+createAdPage busySink notifSink mUserNameB imsB campB = do
   let initNewAd = NewAd "" "" 0 ""
 
   (view, adCreated) <- formComponentExtra2 imsB campB initNewAd createAdForm
@@ -157,14 +157,14 @@ createAdPage busySink errorSink mUserNameB imsB campB = do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
       Just username ->  do
-        res <- (postNewAd busySink username newAd) >>= (eitherToError errorSink)
+        res <- (postNewAd busySink username newAd) >>= (eitherToError notifSink)
         case res of
-          Just (Ok s)  -> print s -- fbSink . Just . Success "Ad created! :-)"
-          Just (Nok s) -> errorSink . Just . ApiError $ s
+          Just (Ok s)  -> notifSink . Just . NSuccess $ "Ad created! :-)"
+          Just (Nok s) -> notifSink . Just . apiError $ s
           Nothing      -> print "Error already should have been reported"
         return ()
 
-      Nothing -> errorSink . Just . BLError $ "can't create ad: no username!"
+      Nothing -> notifSink . Just . blError $ "can't create ad: no username!"
     return ()
 
   return view

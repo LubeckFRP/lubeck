@@ -83,12 +83,12 @@ loadAds account camp = Ad.getCampaignAdsOrError username campid
         username = maybe "" Account.username $ account
 
 campaignPage :: Sink BusyCmd
-             -> Sink (Maybe AppError)
+             -> Sink (Maybe Notification)
              -> Events AdCampaign.AdCampaign
              -> Behavior (Maybe Account.Account)
              -> IO (Signal Html)
-campaignPage busySink errorSink loadAdsE userB = do
-  adsE <- withErrorIO errorSink $ snapshotWith (withBusy2 busySink loadAds) userB loadAdsE
+campaignPage busySink notifSink loadAdsE userB = do
+  adsE <- withErrorIO notifSink $ snapshotWith (withBusy2 busySink loadAds) userB loadAdsE
   latestLoadedCampaignS <- stepperS Nothing (fmap Just loadAdsE) :: IO (Signal (Maybe AdCampaign.AdCampaign))
   adsS <- stepperS Nothing (fmap Just adsE) :: IO (Signal (Maybe [Ad.Ad]))
   let lastestAndAdsS = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))

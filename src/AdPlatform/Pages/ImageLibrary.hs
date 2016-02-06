@@ -153,13 +153,13 @@ imgWithAttrs actionsSink image attrs =
 -- business logic
 
 processActions :: Sink BusyCmd
-               -> Sink (Maybe AppError)
+               -> Sink (Maybe Notification)
                -> Sink ImgLibraryActions
                -> Behavior (Maybe [Im.Image])
                -> Behavior (Maybe Account.Account)
                -> ImgLibraryActions
                -> IO (Maybe Im.Image)
-processActions busySink errorSink actionsSink2 imsB accB (ViewPrevImg image) = do
+processActions busySink notifSink actionsSink2 imsB accB (ViewPrevImg image) = do
   mbIms <- pollBehavior imsB
   let prevImg = case mbIms of
                   Nothing -> image
@@ -168,7 +168,7 @@ processActions busySink errorSink actionsSink2 imsB accB (ViewPrevImg image) = d
                                   Just x  -> ims !! (if x - 1 < 0 then (length ims) - 1 else x - 1)
   return (Just prevImg)
 
-processActions busySink errorSink actionsSink2 imsB accB (ViewNextImg image) = do
+processActions busySink notifSink actionsSink2 imsB accB (ViewNextImg image) = do
   mbIms <- pollBehavior imsB
   let nextImg = case mbIms of
                   Nothing -> image
@@ -177,43 +177,47 @@ processActions busySink errorSink actionsSink2 imsB accB (ViewNextImg image) = d
                                   Just x  -> ims !! (if x + 1 >= length ims then 0 else x + 1)
   return (Just nextImg)
 
-processActions busySink errorSink actionsSink2 imsB accB x@(EnhanceImg image) =
-  (notImp errorSink x) >> return (Just image)
+processActions busySink notifSink actionsSink2 imsB accB x@(EnhanceImg image) =
+  (notImp notifSink x) >> return (Just image)
 
-processActions busySink errorSink actionsSink2 imsB accB (DeleteImg image) = do
+processActions busySink notifSink actionsSink2 imsB accB (DeleteImg image) = do
   mbUsr <- pollBehavior accB
   case mbUsr of
     Nothing -> do
-      errorSink . Just . BLError $ "can't delete an image: no user."
+      notifSink . Just . blError $ "can't delete an image: no user."
       return $ Just image
 
     Just acc -> do
       -- XXX TODO ask for confirmation!
       res <- (withBusy2 busySink deleteImage) acc image
       case res of
-        Left e        -> errorSink (Just e)              >> return (Just image)
-        Right (Ok _)  -> actionsSink2 ReloadLibrary      >> return Nothing
-        Right (Nok s) -> errorSink (Just . ApiError $ s) >> return (Just image)
+        Left e        -> notifSink (Just . NError $ e) >> return (Just image)
+        Right (Ok _)  -> notifSink (Just . NInfo $ "Image deleted :-(")
+                      >> actionsSink2 ReloadLibrary
+                      >> return Nothing
+        Right (Nok s) -> notifSink (Just . apiError $ s) >> return (Just image)
 
-processActions busySink errorSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
+processActions busySink notifSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
 
-processActions busySink errorSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
+processActions busySink notifSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
 
-processActions busySink errorSink actionsSink2 imsB accB (UploadImg formfiles) = do
+processActions busySink notifSink actionsSink2 imsB accB (UploadImg formfiles) = do
   mbUsr <- pollBehavior accB
   case mbUsr of
     Nothing -> do
-      errorSink . Just . BLError $ "can't upload an image: no user."
+      notifSink . Just . blError $ "can't upload an image: no user."
       return Nothing
 
     Just acc -> do
       res <- (withBusy2 busySink uploadImages) acc formfiles
       case res of
-        Left e      -> errorSink (Just e)         >> return Nothing
-        Right imgId -> actionsSink2 ReloadLibrary >> return Nothing
+        Left e      -> notifSink (Just . NError $ e) >> return Nothing
+        Right imgId -> notifSink (Just . NSuccess $ "Image uploaded successfully! :-)")
+                    >> actionsSink2 ReloadLibrary
+                    >> return Nothing
 
-notImp errorSink x = do
-  errorSink . Just . NotImplementedError . showJS $ x
+notImp notifSink x = do
+  notifSink . Just . notImplError . showJS $ x
   return Nothing
 
 -- backend
@@ -231,12 +235,12 @@ uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
 -- main entry point
 
 imageLibraryPage :: Sink BusyCmd
-                 -> Sink (Maybe AppError)
+                 -> Sink (Maybe Notification)
                  -> Sink IPCMessage
                  -> Events IPCMessage
                  -> Events Account.Account
                  -> IO (Signal Html, Behavior (Maybe [Im.Image]))
-imageLibraryPage busySink errorSink ipcSink ipcEvents userE = do
+imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
   (actionsSink,  actionsE)  <- newEventOf (undefined :: ImgLibraryActions)
   (actionsSink2, actionsE2) <- newEventOf (undefined :: ImgLibraryActions)
 
@@ -246,10 +250,10 @@ imageLibraryPage busySink errorSink ipcSink ipcEvents userE = do
   let localLIE    = filterJust $ sample userB actionsE2
   let loadImgE    = userE `merge` ipcLoadImgE `merge` localLIE
 
-  galleryE        <- withErrorIO errorSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
+  galleryE        <- withErrorIO notifSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                               :: IO (Signal (Maybe [Im.Image]))
 
-  imageE          <- reactimateIO $ fmap (processActions busySink errorSink actionsSink2 (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
+  imageE          <- reactimateIO $ fmap (processActions busySink notifSink actionsSink2 (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
 
   imageViewS      <- stepperS Nothing imageE                                          :: IO (Signal (Maybe Im.Image))
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)

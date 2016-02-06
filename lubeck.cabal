@@ -46,7 +46,7 @@ library
                      , AdPlatform.Pages.Campaign
                      , AdPlatform.Pages.ImageLibrary
                      , AdPlatform.Main
-                     , Components.ErrorMessages
+                     , Components.Notifications
                      , Components.BusyIndicator
                      , Components.MainMenu
   build-depends:       base >=4.8 && <4.9

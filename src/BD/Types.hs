@@ -25,6 +25,12 @@ instance FromJSON JSString where
 data AppError = ApiError JSString | BLError JSString | NotImplementedError JSString
   -- deriving (Show)
 
+data Notification = NError AppError | NInfo JSString | NWarning JSString | NSuccess JSString 
+
+apiError     = NError . ApiError
+blError      = NError . BLError
+notImplError = NError . NotImplementedError
+
 -- FIXME should be in Ad Platform types probably
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
   deriving (Show, Eq)

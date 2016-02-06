@@ -52,13 +52,13 @@ import qualified Prelude
 import           BD.Types
 
 
-eitherToError :: Sink (Maybe AppError) -> Either AppError a -> IO (Maybe a)
-eitherToError sink (Left x)  = sink (Just x) >> return Nothing
+eitherToError :: Sink (Maybe Notification) -> Either AppError a -> IO (Maybe a)
+eitherToError sink (Left x)  = sink (Just . NError $ x) >> return Nothing
 eitherToError sink (Right x) = return (Just x)
 
-withErrorIO :: Sink (Maybe AppError) -> Events (IO (Either AppError a)) -> IO (Events a)
-withErrorIO errorSink bl = do
-  b1 <- reactimateIO $ fmap (fmap (eitherToError errorSink)) bl
+withErrorIO :: Sink (Maybe Notification) -> Events (IO (Either AppError a)) -> IO (Events a)
+withErrorIO notifSink bl = do
+  b1 <- reactimateIO $ fmap (fmap (eitherToError notifSink)) bl
   b2 <- reactimateIO b1
   return $ filterJust b2
 

@@ -5,8 +5,8 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Components.ErrorMessages
-  ( errorMessagesComponent
+module Components.Notifications
+  ( notificationsComponent
   ) where
 
 import           Prelude                        hiding (div)
@@ -33,20 +33,24 @@ import           BD.Types
 import           Lubeck.Util
 
 
-alertPanel content = row6H $ div [class_ "alert alert-danger text-center "] [content]
-
-errorMsgW :: Widget [AppError] Int
-errorMsgW _    []   = mempty
-errorMsgW sink errs = alertPanel $ div [] (map (errorItem sink) (zip [0..] errs))
+notificationW :: Widget [Notification] Int
+notificationW _    []   = mempty
+notificationW sink ns = row6H $ div [] (map (notifItem sink) (zip [0..] ns))
   where
-    errorItem sink (idx, value) =
-      div [class_ "clearfix"]
-        [ E.span [class_ "pull-left"] [text $ showError value]
-        , E.button [class_ "close pull-right", click $ \_ -> sink idx] [E.span [] [text "×"]] ]
+    notifItem sink (idx, (NError (ApiError s)))            = nbody idx "danger"  ("API Error: "       <> s)
+    notifItem sink (idx, (NError (BLError s)))             = nbody idx "danger"  ("BL Error: "        <> s)
+    notifItem sink (idx, (NError (NotImplementedError s))) = nbody idx "danger"  ("Not implemented: " <> s)
+    notifItem sink (idx, (NInfo s))                        = nbody idx "info"    s
+    notifItem sink (idx, (NSuccess s))                     = nbody idx "success" s
+    notifItem sink (idx, (NWarning s))                     = nbody idx "warning" s
 
-    showError (ApiError s)            = "API Error: "       <> s
-    showError (BLError s)             = "BL Error: "        <> s
-    showError (NotImplementedError s) = "Not implemented: " <> s
+
+    nbody idx cls msg =
+      div [class_ $ "alert alert-" <> cls <> " text-center "]
+        [div [class_ "clearfix"]
+          [ E.span [class_ "pull-left"] [text msg]
+          , E.button [class_ "close pull-right", click $ \_ -> sink idx] [E.span [] [text "×"]] ]
+        ]
 
 -- | Hopefully a reusable error messages component.
 -- It is initialized with initial list of error messages,
@@ -55,17 +59,17 @@ errorMsgW sink errs = alertPanel $ div [] (map (errorItem sink) (zip [0..] errs)
 --
 -- It will keep showing error messages to the user, appending new ones should they arrive,
 -- until the user will dismiss them one by one.
-errorMessagesComponent :: [AppError] -> IO (Signal Html, Sink (Maybe AppError))
-errorMessagesComponent initialErrorMessages = do
+notificationsComponent :: [Notification] -> IO (Signal Html, Sink (Maybe Notification))
+notificationsComponent initialErrorMessages = do
   (internalSink :: Sink Int, internalEvents :: Events Int) <- newEvent
-  (externalSink :: Sink (Maybe AppError), externalEvents :: Events (Maybe AppError)) <- newEvent
+  (externalSink :: Sink (Maybe Notification), externalEvents :: Events (Maybe Notification)) <- newEvent
 
-  let inputE    = fmap externalToInternal externalEvents :: Events ([AppError] -> [AppError])
-  let filterE   = fmap filterByIdx internalEvents :: Events ([AppError] -> [AppError])
-  let allEvents = merge inputE filterE :: Events ([AppError] -> [AppError])
+  let inputE    = fmap externalToInternal externalEvents :: Events ([Notification] -> [Notification])
+  let filterE   = fmap filterByIdx internalEvents        :: Events ([Notification] -> [Notification])
+  let allEvents = merge inputE filterE                   :: Events ([Notification] -> [Notification])
 
-  errorsS       <- accumS initialErrorMessages allEvents :: IO (Signal [AppError])
-  let htmlS     = fmap (errorMsgW internalSink) errorsS
+  errorsS       <- accumS initialErrorMessages allEvents :: IO (Signal [Notification])
+  let htmlS     = fmap (notificationW internalSink) errorsS
 
   return (htmlS, externalSink)
 

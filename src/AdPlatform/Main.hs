@@ -43,7 +43,7 @@ import           AdPlatform.Pages.User          (userPage)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
-import           Components.ErrorMessages       (errorMessagesComponent)
+import           Components.Notifications       (notificationsComponent)
 import           Components.MainMenu            (mainMenuComponent)
 
 import           Lubeck.Util
@@ -82,7 +82,7 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
 adPlatform :: IO (Signal Html)
 adPlatform = do
   (menuView, menuNavE)    <- mainMenuComponent menuItems "Ad Platform" NavLogin
-  (errorsView, errorSink) <- errorMessagesComponent []
+  (notifView, notifSink)  <- notificationsComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
   (ipcSink, ipcEvents)    <- newEventOf (undefined :: IPCMessage)
@@ -90,15 +90,15 @@ adPlatform = do
   (loginView, userLoginE) <- loginPage (defaultUsername, defaultPassword)
   userLoginB              <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
-  authOk                  <- withErrorIO errorSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
+  authOk                  <- withErrorIO notifSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
   let validUserLoginE     = sample userLoginB authOk :: Events (Maybe Username)
 
   let bypassAuthUserE     = fmap fst userLoginE
-  userE                   <- withErrorIO errorSink $ fmap (withBusy busySink Account.getUserOrError)
+  userE                   <- withErrorIO notifSink $ fmap (withBusy busySink Account.getUserOrError)
                                                           (if useAuth then (filterJust validUserLoginE)
                                                                       else bypassAuthUserE)
 
-  camapaignsE             <- withErrorIO errorSink $ fmap (withBusy busySink getCampaigns) userE
+  camapaignsE             <- withErrorIO notifSink $ fmap (withBusy busySink getCampaigns) userE
 
   userS                   <- stepperS Nothing (fmap Just userE)
   campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
@@ -106,10 +106,10 @@ adPlatform = do
   let usernameB           = fmap (fmap Account.username) $ current userS
 
   (userView, loadAdsE)    <- userPage                                              userAndCampaignsS
-  adsView                 <- campaignPage     busySink errorSink                   loadAdsE (current userS)
-  (imageLibView, imsB)    <- imageLibraryPage busySink errorSink ipcSink ipcEvents userE
-  searchPageView          <- searchPage       busySink errorSink ipcSink           usernameB
-  createAdView            <- createAdPage     busySink errorSink                   usernameB imsB (current campaignsS)
+  adsView                 <- campaignPage     busySink notifSink                   loadAdsE (current userS)
+  (imageLibView, imsB)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
+  searchPageView          <- searchPage       busySink notifSink ipcSink           usernameB
+  createAdView            <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
   let postLoginNavE       = fmap (const NavUser) (updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)
@@ -117,7 +117,7 @@ adPlatform = do
 
   let mainView = rootLayout <$> navS
                           <*> menuView
-                          <*> errorsView
+                          <*> notifView
                           <*> busyView
                           <*> loginView
                           <*> userView

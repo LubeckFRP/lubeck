@@ -159,8 +159,12 @@ postSearchResult output posts =
     imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
 
-searchPage :: Sink BusyCmd -> Sink (Maybe AppError) -> Sink IPCMessage -> Behavior (Maybe JSString) -> IO (Signal Html)
-searchPage busySink errorSink ipcSink mUserNameB = do
+searchPage :: Sink BusyCmd
+           -> Sink (Maybe Notification)
+           -> Sink IPCMessage
+           -> Behavior (Maybe JSString)
+           -> IO (Signal Html)
+searchPage busySink notifSink ipcSink mUserNameB = do
   let initPostQuery = defSimplePostQuery
 
 
@@ -189,13 +193,14 @@ searchPage busySink errorSink ipcSink mUserNameB = do
     -- print (userName, P.ig_web_url post)
     mUserName <- pollBehavior mUserNameB
     case mUserName of
-      Nothing -> errorSink . Just . BLError $ "No account to upload post to"
+      Nothing -> notifSink . Just . blError $ "No account to upload post to"
       Just userName -> do
         res <- (withBusy2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
-          Left e        -> errorSink . Just . ApiError $ "Failed to upload post to ad library : " <> showJS e
-          Right (Ok s)  -> ipcSink ImageLibraryUpdated
-          Right (Nok s) -> errorSink . Just . ApiError $ "Failed to upload post to ad library : " <> s
+          Left e        -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
+          Right (Ok s)  -> notifSink (Just . NSuccess $ "Image uploaded successfully! :-)")
+                        >> ipcSink ImageLibraryUpdated
+          Right (Nok s) -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> do
@@ -204,11 +209,11 @@ searchPage busySink errorSink ipcSink mUserNameB = do
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 busySink postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
-      Left e        -> errorSink . Just . ApiError $ "Failed posting query: " <> showJS e
+      Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
       Right queryId -> do
         eitherPosts <- (withBusy busySink getAPIEither) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
-          Left e   -> errorSink . Just . ApiError $ "Failed getting query results: " <> showJS e
+          Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
           Right ps -> receiveSearchResult $ Just ps
     return ()
 
