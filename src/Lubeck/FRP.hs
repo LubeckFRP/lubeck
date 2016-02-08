@@ -240,7 +240,7 @@ instance Applicative Behavior where
   (<*>) = zipB
 
 instance Monad Behavior where
-  k >>= f = joinR $ fmap f k
+  k >>= f = joinB $ fmap f k
 
 instance Functor Signal where
   fmap = mapS
@@ -258,21 +258,13 @@ mapE f (E aProvider) = E $ \aSink ->
   -- Sink is registered with given E
   -- When UnsubscribeActionistered, UnsubscribeActionister with E
 
-joinR :: Behavior (Behavior a) -> Behavior a
-joinR (R behAProvider) = R $ \aSink ->
+joinB :: Behavior (Behavior a) -> Behavior a
+joinB (R behAProvider) = R $ \aSink ->
   behAProvider $ \(R aProvider) -> aProvider aSink
 
 -- | Never occurs. Identity for 'merge'.
 never :: Events a
 never = E (\_ -> return (return ()))
-
--- | Spread out events as if they had occured simultaneously.
--- The events will be processed in traverse order. If given an empty container,
--- no event is emitted.
-scatter :: Traversable t => Events (t a) -> Events a
-scatter (E taProvider) = E $ \aSink -> do
-  frpInternalLog "Setting up scatter"
-  taProvider $ mapM_ aSink
 
 -- | Merge two event streams by interleaving occurances.
 --
@@ -299,6 +291,14 @@ merge (E f) (E g) = E $ \aSink -> do
     unsubG
   -- Sink is registered with both Es
   -- When UnsubscribeActionistered, UnsubscribeActionister with both Es
+
+-- | Spread out events as if they had occured simultaneously.
+-- The events will be processed in traverse order. If given an empty container,
+-- no event is emitted.
+scatter :: Traversable t => Events (t a) -> Events a
+scatter (E taProvider) = E $ \aSink -> do
+  frpInternalLog "Setting up scatter"
+  taProvider $ mapM_ aSink
 
 pureB :: a -> Behavior a
 pureB z = R ($ z)
@@ -448,7 +448,7 @@ TODO Show how this can be defined in terms of newEvent/subscribeEvent/pollBehavi
 -- | Create a behavior that starts out as a given behavior, and switches to
 --   a different behavior whenever and event occurs.
 switcher :: Behavior a -> Events (Behavior a) -> IO (Behavior a)
-switcher z e = fmap joinR (stepper z e)
+switcher z e = fmap joinB (stepper z e)
 
 -- | Similar to 'snapshot', but uses the given function go combine the values.
 snapshotWith :: (a -> b -> c) -> Behavior a -> Events b -> Events c
