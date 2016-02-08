@@ -81,7 +81,6 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
 
 adPlatform :: IO (Signal Html)
 adPlatform = do
-  (menuView, menuNavE)    <- mainMenuComponent menuItems "Ad Platform" NavLogin
   (notifView, notifSink)  <- notificationsComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
@@ -111,7 +110,12 @@ adPlatform = do
   searchPageView          <- searchPage       busySink notifSink ipcSink           usernameB
   createAdView            <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
-  let postLoginNavE       = fmap (const NavUser) (updates userS)
+  let firstPage           = NavUser
+
+  -- first time menu gets rendered with initial state argument
+  (menuView, menuNavE)    <- mainMenuComponent menuItems "Ad Platform" firstPage
+
+  let postLoginNavE       = fmap (const firstPage) validUserLoginE --(updates userS)
   let campaignNavE        = fmap (const NavCampaign) (updates adsView)
   navS                    <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
 

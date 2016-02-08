@@ -56,7 +56,7 @@ import qualified BD.Data.AdCampaign             as AdCampaign
 import qualified BD.Data.AdTypes                as AdTypes
 import           BD.Types
 
-import           Components.BusyIndicator       (BusyCmd (..))
+import           Components.BusyIndicator       (BusyCmd (..), withBusy2)
 import           Lubeck.Util
 
 data NewAd = NewAd { caption    :: JSString,
@@ -134,12 +134,9 @@ createAdForm outputSink (mbAc, (mbIms, newAd)) =
 
       ]
 
-postNewAd :: Sink BusyCmd -> JSString -> NewAd -> IO (Either AppError Ok)
-postNewAd sink unm newAd = do
-  sink PushBusy
+postNewAd :: JSString -> NewAd -> IO (Either AppError Ok)
+postNewAd unm newAd = do
   res <- postAPIEither (unm <> "/create-ad") newAd
-  sink PopBusy
-
   return $ bimap ApiError id res
 
 createAdPage :: Sink BusyCmd
@@ -157,7 +154,7 @@ createAdPage busySink notifSink mUserNameB imsB campB = do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
       Just username ->  do
-        res <- (postNewAd busySink username newAd) >>= (eitherToError notifSink)
+        res <- ((withBusy2 busySink postNewAd) username newAd) >>= (eitherToError notifSink)
         case res of
           Just (Ok s)  -> notifSink . Just . NSuccess $ "Ad created! :-)"
           Just (Nok s) -> notifSink . Just . apiError $ s
