@@ -182,8 +182,20 @@ processActions busySink notifSink actionsSink2 imsB accB (ViewNextImg image) = d
                                   Just x  -> ims !! (if x + 1 >= length ims then 0 else x + 1)
   return (Just nextImg)
 
-processActions busySink notifSink actionsSink2 imsB accB x@(EnhanceImg image) =
-  (notImp notifSink x) >> return (Just image)
+processActions busySink notifSink actionsSink2 imsB accB x@(EnhanceImg image) = do
+  mbUsr <- pollBehavior accB
+  case mbUsr of
+    Nothing -> do
+      notifSink . Just . blError $ "can't enhance an image: no user."
+      return $ Just image
+
+    Just acc -> do
+      res <- (withBusy2 busySink enhanceImage) acc image
+      case res of
+        Left e        -> notifSink (Just . NError $ e) >> return (Just image)
+        Right (Ok _)  -> notifSink (Just . NSuccess $ "Success! The enhanced image will be added to your Image Library automatically soon :-)")
+                      >> return (Just image)
+        Right (Nok s) -> notifSink (Just . apiError $ s) >> return (Just image)
 
 processActions busySink notifSink actionsSink2 imsB accB (DeleteImg image) = do
   mbUsr <- pollBehavior accB
@@ -240,6 +252,8 @@ deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id imag
 uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
 uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
 
+enhanceImage :: Account.Account -> Im.Image -> IO (Either AppError Ok)
+enhanceImage acc image = Im.enhanceImageOrError (Account.username acc) (Im.id image)
 
 -- main entry point
 
