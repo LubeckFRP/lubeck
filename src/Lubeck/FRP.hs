@@ -252,16 +252,6 @@ instance Applicative Signal where
 
 -- PRIMITIVE COMBINATORS
 
-mapE :: (a -> b) -> Events a -> Events b
-mapE f (E aProvider) = E $ \aSink ->
-  aProvider $ contramapSink f aSink
-  -- Sink is registered with given E
-  -- When UnsubscribeActionistered, UnsubscribeActionister with E
-
-joinB :: Behavior (Behavior a) -> Behavior a
-joinB (R behAProvider) = R $ \aSink ->
-  behAProvider $ \(R aProvider) -> aProvider aSink
-
 -- | Never occurs. Identity for 'merge'.
 never :: Events a
 never = E (\_ -> return (return ()))
@@ -300,14 +290,18 @@ scatter (E taProvider) = E $ \aSink -> do
   frpInternalLog "Setting up scatter"
   taProvider $ mapM_ aSink
 
+mapE :: (a -> b) -> Events a -> Events b
+mapE f (E aProvider) = E $ \aSink ->
+  aProvider $ contramapSink f aSink
+  -- Sink is registered with given E
+  -- When UnsubscribeActionistered, UnsubscribeActionister with E
+
 pureB :: a -> Behavior a
 pureB z = R ($ z)
 
-zipB :: Behavior (a -> b) -> Behavior a -> Behavior b
-zipB (R abProvider) (R aProvider) = R $ \bSink ->
-  abProvider $
-    \ab -> aProvider $
-      \a -> bSink $ ab a
+joinB :: Behavior (Behavior a) -> Behavior a
+joinB (R behAProvider) = R $ \aSink ->
+  behAProvider $ \(R aProvider) -> aProvider aSink
 
 -- | Create a behavior from an initial value and an series of updates.
 --   Whenever the event occurs, the value is updated by applying the function
@@ -442,6 +436,16 @@ runFRP f = do
 TODO Show how this can be defined in terms of newEvent/subscribeEvent/pollBehavior
 -}
 
+
+zipB :: Behavior (a -> b) -> Behavior a -> Behavior b
+zipB (R abProvider) (R aProvider) = R $ \bSink ->
+  abProvider $
+    \ab -> aProvider $
+      \a -> bSink $ ab a
+{-
+TODO Show how this can be derived from scatter.
+If the Monad instance is removed, this SHOULD be a primitive.
+-}
 
 -- DERIVED
 
