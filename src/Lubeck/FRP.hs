@@ -152,6 +152,9 @@ import Data.IntMap (IntMap)
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
 
+
+-- UNDERLYING
+
 frpInternalLog :: Sink String
 -- frpInternalLog = putStrLn
 frpInternalLog _ = return ()
@@ -200,6 +203,9 @@ appendSinks f g x = f x >> g x
 contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
 
+
+-- TYPES
+
 -- | A series of values.
 --   We call a value occuring an /event/, other libraries might refer to them as /occurences/ or /updates/.
 newtype Events a = E (Sink a -> IO UnsubscribeAction)
@@ -243,15 +249,14 @@ instance Applicative Signal where
   pure = pureS
   (<*>) = zipS
 
+
+-- PRIMITIVE COMBINATORS
+
 mapE :: (a -> b) -> Events a -> Events b
 mapE f (E aProvider) = E $ \aSink ->
   aProvider $ contramapSink f aSink
   -- Sink is registered with given E
   -- When UnsubscribeActionistered, UnsubscribeActionister with E
-
-mapB :: (a -> b) -> Behavior a -> Behavior b
-mapB f (R aProvider) = R $ \bSink ->
-  aProvider $ contramapSink f bSink
 
 joinR :: Behavior (Behavior a) -> Behavior a
 joinR (R behAProvider) = R $ \aSink ->
@@ -260,20 +265,6 @@ joinR (R behAProvider) = R $ \aSink ->
 -- | Never occurs. Identity for 'merge'.
 never :: Events a
 never = E (\_ -> return (return ()))
-
--- | Drop 'Nothing' events.
--- Specialization of 'scatter'.
-filterJust :: Events (Maybe a) -> Events a
-filterJust (E maProvider) = E $ \aSink -> do
-  frpInternalLog "Setting up filter"
-  unsub <- maProvider $ \ma -> case ma of
-    Nothing -> return ()
-    Just a  -> aSink a
-  return unsub
-
--- | Drop occurances that does not match a given predicate.
-filter :: (a -> Bool) -> Events a -> Events a
-filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
 -- | Spread out events as if they had occured simultaneously.
 -- The events will be processed in traverse order. If given an empty container,
@@ -318,7 +309,76 @@ zipB (R abProvider) (R aProvider) = R $ \bSink ->
     \ab -> aProvider $
       \a -> bSink $ ab a
 
+-- | Create a behavior from an initial value and an series of updates.
+--   Whenever the event occurs, the value is updated by applying the function
+--   contained in the event.
+accumB :: a -> Events (a -> a) -> IO (Behavior a)
+accumB z (E aaProvider) = do
+  frpInternalLog "Setting up accum"
+  var <- TVar.newTVarIO z
+  unregAA_ <- aaProvider $
+    \aa -> do
+      atomically $ TVar.modifyTVar var aa
+  return $ R $ \aSink -> do
+    value <- TVar.readTVarIO var
+    aSink value
+    return ()
+  -- TODO UnsubscribeAction?
+
+-- | Sample the current value of a behavior whenever an event occurs.
+snapshot :: Behavior a -> Events b -> Events (a, b)
+snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
+  frpInternalLog "Setting up snapshot"
+  bProvider $ \b ->
+    aProvider $ \a ->
+      abSink (a,b)
+
+-- | Create a new event stream and a sink that writes to it in the 'IO' monad.
+newEvent :: IO (Sink a, Events a)
+newEvent = do
+  Dispatcher aProvider aSink <- newDispatcher
+  return $ (aSink, E aProvider)
+
+-- | Subscribe to an event stream in the 'IO' monad.
+-- The given sink will be called into whenever an event occurs.
+subscribeEvent :: Events a -> Sink a -> IO UnsubscribeAction
+subscribeEvent (E x) = x
+
+-- | Return the current state of a behavior in the 'IO' monad.
+pollBehavior :: Behavior a -> IO a
+pollBehavior (R aProvider) = do
+  v <- TVar.newTVarIO undefined
+  aProvider (atomically . TVar.writeTVar v)
+  TVar.readTVarIO v
+
+-- | Execute an 'IO' action whenever an event occurs, and broadcast results.
+reactimateIO :: Events (IO a) -> IO (Events a)
+reactimateIO (E ioAProvider) = do
+  v <- TVar.newTVarIO undefined
+  ioAProvider $ \ioA -> do
+    a <- ioA
+    atomically $ TVar.writeTVar v a
+  return $ E $ \aSink ->
+    ioAProvider $ \_ -> do
+      a <- TVar.readTVarIO v
+      aSink a
+
+
+
+-- PSEUDO-PRIMITIVES
+
+-- I.e. functions that have a primitive implementation for efficiency, but
+-- need not actually be primitive.
+
+mapB :: (a -> b) -> Behavior a -> Behavior b
+mapB f (R aProvider) = R $ \bSink ->
+  aProvider $ contramapSink f bSink
 {-
+Derived version:
+  mapB f x = x >>= (pure . f)
+
+Proof of equivalence:
+
 Th.
   \f x -> pureB f `zipB` x == mapB f x
 Proof
@@ -344,35 +404,19 @@ Proof
 
 -}
 
--- | Create a behavior from an initial value and an series of updates.
---   Whenever the event occurs, the value is updated by applying the function
---   contained in the event.
-accumB :: a -> Events (a -> a) -> IO (Behavior a)
-accumB z (E aaProvider) = do
-  frpInternalLog "Setting up accum"
-  var <- TVar.newTVarIO z
-  unregAA_ <- aaProvider $
-    \aa -> do
-      atomically $ TVar.modifyTVar var aa
-  return $ R $ \aSink -> do
-    value <- TVar.readTVarIO var
-    aSink value
-    return ()
-  -- TODO UnsubscribeAction?
+-- | Drop 'Nothing' events.
+-- Specialization of 'scatter'.
+filterJust :: Events (Maybe a) -> Events a
+filterJust (E maProvider) = E $ \aSink -> do
+  frpInternalLog "Setting up filter"
+  unsub <- maProvider $ \ma -> case ma of
+    Nothing -> return ()
+    Just a  -> aSink a
+  return unsub
 
--- | Create a behavior that starts out as a given behavior, and switches to
---   a different behavior whenever and event occurs.
-switcher :: Behavior a -> Events (Behavior a) -> IO (Behavior a)
-switcher z e = fmap joinR (stepper z e)
-
--- | Sample the current value of a behavior whenever an event occurs.
-snapshot :: Behavior a -> Events b -> Events (a, b)
-snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
-  frpInternalLog "Setting up snapshot"
-  bProvider $ \b ->
-    aProvider $ \a ->
-      abSink (a,b)
-
+-- | Drop occurances that does not match a given predicate.
+filter :: (a -> Bool) -> Events a -> Events a
+filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
 -- | A system that
 --
@@ -386,7 +430,6 @@ data FRPSystem a b c = FRPSystem {
   frpSystemOutput :: Sink c -> IO UnsubscribeAction
   }
 
-
 -- | Run an FRP system.
 -- It starts in some initial state defined by the R component, and reacts to updates of type a.
 runFRP :: (Events a -> IO (Behavior b, Events c)) -> IO (FRPSystem a b c)
@@ -395,73 +438,17 @@ runFRP f = do
   -- The providers
   (R bProvider, E cProvider) <- f (E aProvider)
   return $ FRPSystem aSink bProvider cProvider
-
--- DERIVED runners
-
--- | Run an FRP system, producing a behavior.
--- You can poll the sstem for the current state, or subscribe to changes in its output.
---
--- Note that as this returns a behavior, the resulting system will emit an output on every
--- input event, whether the actual output of the network has changed or nor.
-runFRP' :: (Events a -> IO (Behavior b)) -> IO (FRPSystem a b b)
-runFRP' f = runFRP (\e -> f e >>= \r -> return (r, sample r e))
-
--- | Run an FRP system starting in the given state.
--- The behavior passed to the function starts in the initial state provided here and reacts to inputs to the system.
--- You can poll system for the current state, or subscribe to changes in its output.
---
--- Note that as this returns a behavior, the resulting system will emit an output on every
--- input event, whether the actual output of the network has changed or nor.
-runFRP'' :: a -> (Behavior a -> IO (Behavior b)) -> IO (FRPSystem a b b)
-runFRP'' z f = runFRP' (stepper z >=> f)
-
-testFRP :: (Events String -> IO (Behavior String)) -> IO b
-testFRP x = do
-  system <- runFRP' x
-  frpSystemOutput system putStrLn
-  -- TODO print initial!
-  forever $ getLine >>= frpSystemInput system
-
--- | Create a new event stream and a sink that writes to it in the 'IO' monad.
-newEvent :: IO (Sink a, Events a)
-newEvent = do
-  Dispatcher aProvider aSink <- newDispatcher
-  return $ (aSink, E aProvider)
-
--- | Subscribe to an event stream in the 'IO' monad.
--- The given sink will be called into whenever an event occurs.
-subscribeEvent :: Events a -> Sink a -> IO UnsubscribeAction
-subscribeEvent (E x) = x
-
--- | Return the current state of a behavior in the 'IO' monad.
-pollBehavior :: Behavior a -> IO a
-pollBehavior (R aProvider) = do
-  v <- TVar.newTVarIO undefined
-  aProvider (atomically . TVar.writeTVar v)
-  TVar.readTVarIO v
-
--- | /Experimental/. Execute an 'IO' action whenever an event occurs.
--- reactimate :: Events (IO a) -> Events a
--- reactimate (E ioAProvider) = E $ \aSink ->
---   ioAProvider $ (>>= aSink)
-
--- | Execute an 'IO' action whenever an event occurs, and broadcast results.
-reactimateIO :: Events (IO a) -> IO (Events a)
-reactimateIO (E ioAProvider) = do
-  v <- TVar.newTVarIO undefined
-  ioAProvider $ \ioA -> do
-    a <- ioA
-    atomically $ TVar.writeTVar v a
-  return $ E $ \aSink ->
-    ioAProvider $ \_ -> do
-      a <- TVar.readTVarIO v
-      aSink a
-
--- share :: Events a -> IO (Events a)
--- share e = fmap (`sample` e) (stepper (error "Lubeck.FRP.share sampled prematurely") e)
+{-
+TODO Show how this can be defined in terms of newEvent/subscribeEvent/pollBehavior
+-}
 
 
 -- DERIVED
+
+-- | Create a behavior that starts out as a given behavior, and switches to
+--   a different behavior whenever and event occurs.
+switcher :: Behavior a -> Events (Behavior a) -> IO (Behavior a)
+switcher z e = fmap joinR (stepper z e)
 
 -- | Similar to 'snapshot', but uses the given function go combine the values.
 snapshotWith :: (a -> b -> c) -> Behavior a -> Events b -> Events c
@@ -589,3 +576,29 @@ updates (S (e,r)) = sample r e
 -- | Convert a signal to a behavior that always has the same as the signal.
 current :: Signal a -> Behavior a
 current (S (e,r)) = r
+
+
+
+-- | Run an FRP system, producing a behavior.
+-- You can poll the sstem for the current state, or subscribe to changes in its output.
+--
+-- Note that as this returns a behavior, the resulting system will emit an output on every
+-- input event, whether the actual output of the network has changed or nor.
+runFRP' :: (Events a -> IO (Behavior b)) -> IO (FRPSystem a b b)
+runFRP' f = runFRP (\e -> f e >>= \r -> return (r, sample r e))
+
+-- | Run an FRP system starting in the given state.
+-- The behavior passed to the function starts in the initial state provided here and reacts to inputs to the system.
+-- You can poll system for the current state, or subscribe to changes in its output.
+--
+-- Note that as this returns a behavior, the resulting system will emit an output on every
+-- input event, whether the actual output of the network has changed or nor.
+runFRP'' :: a -> (Behavior a -> IO (Behavior b)) -> IO (FRPSystem a b b)
+runFRP'' z f = runFRP' (stepper z >=> f)
+
+testFRP :: (Events String -> IO (Behavior String)) -> IO b
+testFRP x = do
+  system <- runFRP' x
+  frpSystemOutput system putStrLn
+  -- TODO print initial!
+  forever $ getLine >>= frpSystemInput system
