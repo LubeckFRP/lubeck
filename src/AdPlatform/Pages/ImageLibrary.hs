@@ -112,7 +112,11 @@ galleryW _ [] = contentPanel $ text "No images in library"
 galleryW actionsSink ims =
   contentPanel $ div []
     [ div [class_ "btn-toolbar"]
-        [ filesSelectWidget "images[]" (Just "image/*") True (contramapSink (\x -> UploadImg x) actionsSink) [] ]
+        [ filesSelectWidget "images[]" (Just "image/*") True (contramapSink (\x -> UploadImg x) actionsSink) []
+        , button [class_ "btn btn-link", click $ \_ -> actionsSink ReloadLibrary]
+            [ E.i [class_ "fa fa-cloud-download", A.style "margin-right: 5px"] []
+            , text "Refresh library"]
+        ]
     , div [A.style "margin-left: -20px;"] (map (imageCell actionsSink) ims) ]
 
 imageCell actionsSink image =
@@ -182,8 +186,20 @@ processActions busySink notifSink actionsSink2 imsB accB (ViewNextImg image) = d
                                   Just x  -> ims !! (if x + 1 >= length ims then 0 else x + 1)
   return (Just nextImg)
 
-processActions busySink notifSink actionsSink2 imsB accB x@(EnhanceImg image) =
-  (notImp notifSink x) >> return (Just image)
+processActions busySink notifSink actionsSink2 imsB accB x@(EnhanceImg image) = do
+  mbUsr <- pollBehavior accB
+  case mbUsr of
+    Nothing -> do
+      notifSink . Just . blError $ "can't enhance an image: no user."
+      return $ Just image
+
+    Just acc -> do
+      res <- (withBusy2 busySink enhanceImage) acc image
+      case res of
+        Left e        -> notifSink (Just . NError $ e) >> return (Just image)
+        Right (Ok _)  -> notifSink (Just . NSuccess $ "Success! The enhanced image will be added to your Image Library automatically soon :-)")
+                      >> return (Just image)
+        Right (Nok s) -> notifSink (Just . apiError $ s) >> return (Just image)
 
 processActions busySink notifSink actionsSink2 imsB accB (DeleteImg image) = do
   mbUsr <- pollBehavior accB
@@ -207,6 +223,9 @@ processActions busySink notifSink actionsSink2 imsB accB (DeleteImg image) = do
         0 -> return (Just image)
 
 processActions busySink notifSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
+
+processActions busySink notifSink actionsSink2 imsB accB ReloadLibrary =
+  actionsSink2 ReloadLibrary >> return Nothing
 
 processActions busySink notifSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
 
@@ -240,6 +259,8 @@ deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id imag
 uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
 uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
 
+enhanceImage :: Account.Account -> Im.Image -> IO (Either AppError Ok)
+enhanceImage acc image = Im.enhanceImageOrError (Account.username acc) (Im.id image)
 
 -- main entry point
 
@@ -257,7 +278,7 @@ imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
 
   let ipcLoadImgE = filterJust $ sample userB (FRP.filter (== ImageLibraryUpdated) ipcEvents)
   let localLIE    = filterJust $ sample userB actionsE2
-  let loadImgE    = userE `merge` ipcLoadImgE `merge` localLIE
+  let loadImgE    = userE <> ipcLoadImgE <> localLIE
 
   galleryE        <- withErrorIO notifSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                               :: IO (Signal (Maybe [Im.Image]))

@@ -54,3 +54,6 @@ deleteImageOrError unm imageId = deleteAPIEither (unm <> "/ad-image/" <> showJS 
 
 uploadImagesOrError :: Text -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
 uploadImagesOrError unm files = postFileAPIEither (unm <> "/ad-image") files >>= return . first ApiError
+
+enhanceImageOrError :: Text -> Int -> IO (Either AppError Ok)
+enhanceImageOrError unm imageId = postAPIEither (unm <> "/ad-image/" <> showJS imageId <> "/enhance-async") () >>= return . first ApiError
