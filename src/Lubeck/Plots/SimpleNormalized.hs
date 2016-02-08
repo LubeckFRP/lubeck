@@ -141,8 +141,11 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
     unzip xs = (fmap fst xs, fmap snd xs)
 
 simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
-simpleTimeSeries s f g = simpleLinePlot (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
-  utcTimeToApproxReal realToApproxUTCTime f g 10 10
+simpleTimeSeries s f g = simpleLinePlot
+  (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
+  utcTimeToApproxReal realToApproxUTCTime
+  f g
+  10 10
 
 normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
 normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
