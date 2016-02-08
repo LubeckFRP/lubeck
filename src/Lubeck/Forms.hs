@@ -39,6 +39,8 @@ module Lubeck.Forms
   , formComponent
   , formComponentExtra1
   , formComponentExtra2
+  , formWithValidationComponent
+  , formWithValidationComponentExtra2
 
   -- ** Submit type
   , Submit(..)
@@ -69,6 +71,8 @@ import qualified Web.VirtualDom.Html.Events as Ev
 import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
 import qualified Control.Lens
 import Control.Lens.TH (makeLenses)
+
+import BD.Types
 
 {-|
 Provides a way of:
@@ -205,6 +209,21 @@ componentW initialState widget = do
   (htmlS, _, internalSink) <- componentRW initialState widget
   return (htmlS, internalSink)
 
+repack :: (CanSubmit, Submit a) -> (CanSubmit, a)
+repack (x, Submit y) = (x, y)
+
+formWithValidationComponent :: Validator a -> a -> Widget (CanSubmit, a) (Submit a) -> IO (Signal Html, Events a)
+formWithValidationComponent validate z w = do
+  (aSink, aEvent) <- newEvent                                                   :: IO (Sink (Submit a), Events (Submit a))
+
+  let isValidE    = fmap (validate . submitValue) aEvent                     -- :: Events CanSubmit
+  isValidS        <- stepperS (validate z) isValidE
+  aEventS         <- stepperS (DontSubmit z) aEvent
+
+  let aS          = liftA2 (,) isValidS aEventS                               -- :: IO (Signal (CanSubmit, Submit a))
+
+  let htmlS = fmap (w aSink . repack) aS
+  return (htmlS, submits aEvent)
 
 -- | A variant of component that supports chanching its value internally without
 -- sending on any updates.
@@ -244,6 +263,29 @@ formComponentExtra2 bB cB az w = do
 
   let htmlS       = fmap (w aSink) bcaS
   return (htmlS, submits aEvent)
+
+-- let's see if this is generalisable later
+formWithValidationComponentExtra2 :: Behavior b
+                                  -> Behavior c
+                                  -> Validator a
+                                  -> a
+                                  -> Widget (CanSubmit, (c, (b, a))) (Submit a)
+                                  -> IO (Signal Html, Events a)
+formWithValidationComponentExtra2 bB cB validate az w = do
+  (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
+
+  let isValidE    = fmap (validate . submitValue) aEvent
+  isValidS        <- stepperS (validate az) isValidE
+
+  aS              <- stepperS (DontSubmit az) aEvent   -- :: IO (Signal (Submit a))
+  let baS         = snapshotS bB (fmap submitValue aS) -- :: Signal (b, a)
+  let bcaS        = snapshotS cB baS                   -- :: Signal (c, (b, a))
+
+  let xS          = liftA2 (,) isValidS bcaS
+
+  let htmlS       = fmap (w aSink) xS
+  return (htmlS, submits aEvent)
+
 
 -- | A helper type for 'formComponentExtra1.
 data Submit a

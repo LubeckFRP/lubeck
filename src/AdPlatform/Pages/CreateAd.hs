@@ -29,6 +29,7 @@ import qualified BD.Data.Image                  as Im
 
 import qualified Data.JSString
 import           GHCJS.Types                    (JSString, jsval)
+import qualified Web.VirtualDom                 as VD
 import           Web.VirtualDom.Html            (a, button, div, form, h1, hr,
                                                  img, input, label, p, table,
                                                  tbody, td, text, th, tr)
@@ -110,9 +111,14 @@ imageH cur_img_hash sink image =
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
 
-createAdForm :: Widget (Maybe [AdCampaign.AdCampaign], (Maybe [Im.Image], NewAd)) (Submit NewAd)
-createAdForm outputSink (mbAc, (mbIms, newAd)) =
-  contentPanel $
+createAdForm :: Widget (CanSubmit, (Maybe [AdCampaign.AdCampaign], (Maybe [Im.Image], NewAd))) (Submit NewAd)
+createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
+  let (canSubmitAttr, cantSubmitMsg) = case canSubmit of
+                                        CanSubmit    -> ([ click $ \e -> outputSink $ Submit newAd
+                                                         , A.title "Please fill in required fields" ], "")
+                                        CanNotSubmit -> ([ (VD.attribute "disabled") "true" ]
+                                                        , "Please fill in all fields")
+  in contentPanel $
     div [class_ "form-horizontal"]
       [ longStringWidget "Caption"
                          (contramapSink (\new -> DontSubmit $ newAd { caption = new }) outputSink)
@@ -128,9 +134,10 @@ createAdForm outputSink (mbAc, (mbIms, newAd)) =
                           (image_hash newAd)
       , div [class_ "form-group"]
           [ div [class_ "col-xs-offset-2 col-xs-10"]
-              [ button [A.class_ "btn btn-success", click $ \e -> outputSink $ Submit newAd]
+              [ button ([A.class_ "btn btn-success"] <> canSubmitAttr)
                   [ E.i [A.class_ "fa fa-thumbs-o-up", A.style "margin-right: 5px"] []
-                  , text "Create Ad" ] ] ]
+                  , text "Create Ad" ]
+              , E.span [A.style "padding-left: 10px"] [text cantSubmitMsg] ] ]
 
       ]
 
@@ -138,6 +145,12 @@ postNewAd :: JSString -> NewAd -> IO (Either AppError Ok)
 postNewAd unm newAd = do
   res <- postAPIEither (unm <> "/create-ad") newAd
   return $ bimap ApiError id res
+
+validate :: NewAd -> CanSubmit
+validate (NewAd caption image_hash campaign click_link) =
+  if caption /= "" && image_hash /= "" && campaign /= 0 && click_link /= ""
+    then CanSubmit
+    else CanNotSubmit
 
 createAdPage :: Sink BusyCmd
              -> Sink (Maybe Notification)
@@ -148,7 +161,7 @@ createAdPage :: Sink BusyCmd
 createAdPage busySink notifSink mUserNameB imsB campB = do
   let initNewAd = NewAd "" "" 0 ""
 
-  (view, adCreated) <- formComponentExtra2 imsB campB initNewAd createAdForm
+  (view, adCreated) <- formWithValidationComponentExtra2 imsB campB validate initNewAd createAdForm
 
   subscribeEvent adCreated $ \newAd -> do
     mUserName <- pollBehavior mUserNameB
