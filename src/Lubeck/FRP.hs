@@ -78,7 +78,7 @@ module Lubeck.FRP (
     counter,
     stepper,
     switcher,
-    accumR,
+    accumB,
     scanlR,
     foldpR,
 
@@ -227,11 +227,11 @@ instance Monoid (Events a) where
   mappend = merge
 
 instance Functor Behavior where
-  fmap = mapR
+  fmap = mapB
 
 instance Applicative Behavior where
-  pure = pureR
-  (<*>) = zipR
+  pure = pureB
+  (<*>) = zipB
 
 instance Monad Behavior where
   k >>= f = joinR $ fmap f k
@@ -249,8 +249,8 @@ mapE f (E aProvider) = E $ \aSink ->
   -- Sink is registered with given E
   -- When UnsubscribeActionistered, UnsubscribeActionister with E
 
-mapR :: (a -> b) -> Behavior a -> Behavior b
-mapR f (R aProvider) = R $ \bSink ->
+mapB :: (a -> b) -> Behavior a -> Behavior b
+mapB f (R aProvider) = R $ \bSink ->
   aProvider $ contramapSink f bSink
 
 joinR :: Behavior (Behavior a) -> Behavior a
@@ -309,20 +309,20 @@ merge (E f) (E g) = E $ \aSink -> do
   -- Sink is registered with both Es
   -- When UnsubscribeActionistered, UnsubscribeActionister with both Es
 
-pureR :: a -> Behavior a
-pureR z = R ($ z)
+pureB :: a -> Behavior a
+pureB z = R ($ z)
 
-zipR :: Behavior (a -> b) -> Behavior a -> Behavior b
-zipR (R abProvider) (R aProvider) = R $ \bSink ->
+zipB :: Behavior (a -> b) -> Behavior a -> Behavior b
+zipB (R abProvider) (R aProvider) = R $ \bSink ->
   abProvider $
     \ab -> aProvider $
       \a -> bSink $ ab a
 
 {-
 Th.
-  \f x -> pureR f `zipR` x == mapR f x
+  \f x -> pureB f `zipB` x == mapB f x
 Proof
-  \f x -> R ($ f) `zipR` x == mapR f x
+  \f x -> R ($ f) `zipB` x == mapB f x
 
   \f (R x) -> R $ \as ->
     ($ f) $ \ab -> x $ \a -> as $ ab a
@@ -347,8 +347,8 @@ Proof
 -- | Create a behavior from an initial value and an series of updates.
 --   Whenever the event occurs, the value is updated by applying the function
 --   contained in the event.
-accumR :: a -> Events (a -> a) -> IO (Behavior a)
-accumR z (E aaProvider) = do
+accumB :: a -> Events (a -> a) -> IO (Behavior a)
+accumB z (E aaProvider) = do
   frpInternalLog "Setting up accum"
   var <- TVar.newTVarIO z
   unregAA_ <- aaProvider $
@@ -473,7 +473,7 @@ scanlR f = foldpR (flip f)
 
 -- | Create a past-dependent behavior.
 foldpR :: (a -> b -> b) -> b -> Events a -> IO (Behavior b)
-foldpR f z e = accumR z (mapE f e)
+foldpR f z e = accumB z (mapE f e)
 
 -- | Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> Events a -> IO (Events b)
@@ -503,18 +503,18 @@ sample = snapshotWith const
 -- whenever an update occurs.
 accumE :: a -> Events (a -> a) -> IO (Events a)
 accumE x a = do
-  acc <- accumR x a
+  acc <- accumB x a
   return $ acc `sample` a
 
 
 -- | Create a varying value by starting with the given initial value, and replacing it
 -- whenever an update occurs.
 stepper :: a -> Events a -> IO (Behavior a)
-stepper z x = accumR z (mapE const x)
+stepper z x = accumB z (mapE const x)
 
 -- | Count number of occurences, starting from zero.
 counter :: Events b -> IO (Behavior Int)
-counter e = accumR 0 (fmap (const succ) e)
+counter e = accumB 0 (fmap (const succ) e)
 
 
 
@@ -572,7 +572,7 @@ stepperS z e = do
 -- | Create a signal from an initial value and an series of updates.
 accumS :: a -> Events (a -> a) -> IO (Signal a)
 accumS z e = do
-  r <- accumR z e
+  r <- accumB z e
   return $ S (fmap (const ()) e, r)
 
 snapshotS :: Behavior a -> Signal b -> Signal (a, b)
