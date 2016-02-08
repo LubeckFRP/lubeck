@@ -112,7 +112,11 @@ galleryW _ [] = contentPanel $ text "No images in library"
 galleryW actionsSink ims =
   contentPanel $ div []
     [ div [class_ "btn-toolbar"]
-        [ filesSelectWidget "images[]" (Just "image/*") True (contramapSink (\x -> UploadImg x) actionsSink) [] ]
+        [ filesSelectWidget "images[]" (Just "image/*") True (contramapSink (\x -> UploadImg x) actionsSink) []
+        , button [class_ "btn btn-link", click $ \_ -> actionsSink ReloadLibrary]
+            [ E.i [class_ "fa fa-cloud-download", A.style "margin-right: 5px"] []
+            , text "Refresh library"]
+        ]
     , div [A.style "margin-left: -20px;"] (map (imageCell actionsSink) ims) ]
 
 imageCell actionsSink image =
@@ -220,6 +224,9 @@ processActions busySink notifSink actionsSink2 imsB accB (DeleteImg image) = do
 
 processActions busySink notifSink actionsSink2 imsB accB ViewGalleryIndex = return Nothing
 
+processActions busySink notifSink actionsSink2 imsB accB ReloadLibrary =
+  actionsSink2 ReloadLibrary >> return Nothing
+
 processActions busySink notifSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
 
 processActions busySink notifSink actionsSink2 imsB accB (UploadImg formfiles) = do
@@ -271,7 +278,7 @@ imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
 
   let ipcLoadImgE = filterJust $ sample userB (FRP.filter (== ImageLibraryUpdated) ipcEvents)
   let localLIE    = filterJust $ sample userB actionsE2
-  let loadImgE    = userE `merge` ipcLoadImgE `merge` localLIE
+  let loadImgE    = userE <> ipcLoadImgE <> localLIE
 
   galleryE        <- withErrorIO notifSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                               :: IO (Signal (Maybe [Im.Image]))
