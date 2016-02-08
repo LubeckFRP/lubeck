@@ -79,12 +79,20 @@ Provides a way of:
 type Widget i o = WidgetT Html i o
 
 {-|
+Same as 'Widget', except output is generalized to types other than 'Html'.
+-}
+type WidgetT r i o  = Sink o -> i -> r
+
+{-|
 A variant of 'Widget' where input and output is the same.
 -}
 type Widget' a  = Widget a a
 
-type WidgetT' r a = WidgetT r a a
-type WidgetT r i o = Sink o -> i -> r
+{-|
+A variant of 'WidgetT' where input and output is the same.
+-}
+type WidgetT' r a   = WidgetT r a a
+
 
 -- | Map over the input type of a widget.
 lmapWidget :: (b -> a) -> WidgetT r a s -> WidgetT r b s
