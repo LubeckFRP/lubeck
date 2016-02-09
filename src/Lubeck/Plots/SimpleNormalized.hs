@@ -4,6 +4,7 @@
 module Lubeck.Plots.SimpleNormalized
     ( simpleLinePlot
     , simpleTimeSeries
+    , simpleTimeSeriesWithOverlay
     , utcTimeToApproxReal
     , realToApproxUTCTime
     ) where
@@ -148,6 +149,17 @@ simpleTimeSeries s f g = snd . simpleLinePlot
   utcTimeToApproxReal realToApproxUTCTime
   f g
   10 10
+
+simpleTimeSeriesWithOverlay :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
+simpleTimeSeriesWithOverlay s f g times dat = plot1 <> plot2
+  where
+    plot2 = scatterData $ fmap ((`Point` 0.5) . normT . utcTimeToApproxReal) times
+    ((normT, _), plot1) = simpleLinePlot
+      (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
+      utcTimeToApproxReal realToApproxUTCTime
+      f g
+      10 10
+      dat
 
 normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
 normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
