@@ -137,8 +137,8 @@ interactionW actions model = div []
   ]
   where
     linkedImage = case P.ig_web_url sPost of
-      Nothing  -> a []         image
-      Just url -> a [href url] image
+      Nothing  -> a []         [ image ]
+      Just url -> a [href url] [ image ]
     sPost      = I.medium model
     image = img [src (model .: medium .: P.url), width 200] []
 
