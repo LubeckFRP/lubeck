@@ -126,17 +126,8 @@ interactionW actions model = div []
   -- Growth graph
   , div [class_ "row"]
     [ div [class_ "col-xs-8 col-lg-8"]
-      [ render $
-        -- simpleTimeSeries            :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
-        -- simpleTimeSeriesWithOverlay :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
-          simpleTimeSeriesWithOverlay
-            showIntegerWithThousandSeparators
-            fromIntegral
-            round
-            [model .: interaction_time]
-            (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
+      [ interactionPlotOrNot
       ]
-
     , div [ class_ "col-xs-4 col-lg-4" ]
       [ linkedImage
       , div [] [ caption ] ]
@@ -144,13 +135,29 @@ interactionW actions model = div []
   -- , p [] [text "Estimated impact: (?)"]
   ]
   where
+    interactionPlotOrNot =
+      if null (I.target_counts model)
+        then div [] [text "(No data available)"]
+        else interactionPlot
+
+    interactionPlot = render $
+        simpleTimeSeriesWithOverlay
+          showIntegerWithThousandSeparators
+          fromIntegral
+          round
+          [model .: interaction_time]
+          (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
+
     caption = case P.description sPost of
       Nothing   -> text ""
       Just desc -> text desc
+
     linkedImage = case P.ig_web_url sPost of
       Nothing  -> a []         [ image ]
       Just url -> a [href url] [ image ]
+
     sPost      = I.medium model
+
     image = img [src (model .: medium .: P.url), width 200] []
 
     render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
