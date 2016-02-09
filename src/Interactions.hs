@@ -131,10 +131,11 @@ interactionW actions model = div []
             round
             [model .: interaction_time]
             (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
-      , div [] [ caption ]
       ]
 
-    , div [class_ "col-xs-4 col-lg-4"] [ linkedImage ]
+    , div [ class_ "col-xs-4 col-lg-4" ]
+      [ linkedImage
+      , div [] [ caption ] ]
     ]
   -- , p [] [text "Estimated impact: (?)"]
   ]
