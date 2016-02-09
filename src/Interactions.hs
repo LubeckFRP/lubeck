@@ -31,7 +31,7 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
-import Lubeck.App (Html, runApp)
+import Lubeck.App (Html, runApp, runAppReactive)
 import Lubeck.Forms (Widget, Widget')
 import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (showIntegerWithThousandSeparators, contentPanel, showJS)
@@ -89,9 +89,13 @@ render actions model = div
 buttonW :: Widget (Maybe JSString, Maybe JSString) Action
 buttonW sink (x,y) = div [ class_ "form-vertical"  ]
   [ div [ class_ "form-group" ] $
-    pure $ E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+    [ label [] [text "To"]
+    , E.input [type_ "search", A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+    ]
   , div [ class_ "form-group" ] $
-    pure $ E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+    [ label [] [text "To"]
+    , E.input [type_ "search", A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+    ]
   , div [ class_ "form-group" ] $
     pure $ button
       [ class_ "btn btn-success"
