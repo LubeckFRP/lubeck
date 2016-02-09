@@ -63,13 +63,20 @@ menuItems =
   ]
 
 rootLayout goTo menu err busy login user ads search createAd imlib = case goTo of
-  NavLogin    -> layout mempty busy err login
-  NavUser     -> layout menu   busy err user
-  NavCampaign -> layout menu   busy err ads
-  NavSearch   -> layout menu   busy err search
-  NavCreateAd -> layout menu   busy err createAd
-  NavImages   -> layout menu   busy err imlib
+  NavLogin    -> layoutLogin busy err login
+  NavUser     -> layout menu busy err user
+  NavCampaign -> layout menu busy err ads
+  NavSearch   -> layout menu busy err search
+  NavCreateAd -> layout menu busy err createAd
+  NavImages   -> layout menu busy err imlib
   where
+    layoutLogin busy err page =
+      div [class_ "container login-top-buffer"]
+        [ div [class_ "col-xs-12"]
+          [ busy
+          , err
+          , page ] ]
+
     layout menu busy err page =
       div [class_ "container"]
         [ menu

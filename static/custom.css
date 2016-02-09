@@ -28,6 +28,12 @@ div, h1, h2, img, p, span {
 }
 
 .top-buffer { margin-top: 80px !important; }
+.login-top-buffer { margin-top: 75px !important; }
+
+@media (max-width: 767px) {
+  .top-buffer { margin-top: 350px !important; }
+}
+
 .bottom-buffer { margin-bottom: 20px; }
 
 .busy-indicator .alert {
