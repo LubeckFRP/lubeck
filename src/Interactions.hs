@@ -117,8 +117,7 @@ interactionW actions model = div []
   [ p [] [text (showJS $ model .: interaction_time)]
   -- Growth graph
   , div [class_ "row"]
-    [
-      render $
+    [ render $
       -- simpleTimeSeries            :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
       -- simpleTimeSeriesWithOverlay :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
         simpleTimeSeriesWithOverlay
@@ -127,6 +126,7 @@ interactionW actions model = div []
           round
           [model .: interaction_time]
           (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
+
     , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
     ]
   , p [] [text "Estimated impact: (?)"]
