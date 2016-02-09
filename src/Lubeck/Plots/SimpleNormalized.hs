@@ -96,13 +96,13 @@ unDay = toModifiedJulianDay
 day = ModifiedJulianDay
 
 simpleLinePlot
-  :: (a -> JSString)
-  -> (b -> JSString)
-  -> (a -> Double) -> (Double -> a)
-  -> (b -> Double) -> (Double -> b)
-  -> Int
-  -> Int
-  -> [(a,b)]
+  :: (a -> JSString)                  -- ^ How to print ticks on X axis.
+  -> (b -> JSString)                  -- ^ How to print ticks on Y axis.
+  -> (a -> Double) -> (Double -> a)   -- ^ Mapping from domain(X) to R.
+  -> (b -> Double) -> (Double -> b)   -- ^ Linear map from domain(Y) to R.
+  -> Int                              -- ^ Number of ticks on X axis.
+  -> Int                              -- ^ Number of ticks on Y axis.
+  -> [(a,b)]                          -- ^ Data to plot.
   -> Drawing
 simpleLinePlot _     _     _   _   _   _   _         _         [] = mempty
 simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
