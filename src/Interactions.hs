@@ -123,7 +123,6 @@ interactionSetW actions model = div []
 interactionW :: Widget (Interaction SearchPost) Action
 interactionW actions model = div []
   [ p [] [text (showJS $ model .: interaction_time)]
-  -- Growth graph
   , div [class_ "row"]
     [ div [class_ "col-xs-8 col-lg-8"]
       [ interactionPlotOrNot
@@ -132,7 +131,6 @@ interactionW actions model = div []
       [ linkedImage
       , div [] [ caption ] ]
     ]
-  -- , p [] [text "Estimated impact: (?)"]
   ]
   where
     interactionPlotOrNot =
