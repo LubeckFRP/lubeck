@@ -1,5 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE JavaScriptFFI       #-}
 
 module Lubeck.Util
   ( eitherToError
@@ -25,6 +26,7 @@ module Lubeck.Util
   , showIntegerWithThousandSeparators
 
   , newEventOf
+  , jsConfirm
   ) where
 
 import           Data.Maybe
@@ -82,7 +84,7 @@ contentPanel :: Html -> Html
 contentPanel content = row12H $ panel12H content
 
 tableHeaders :: [JSString] -> Html
-tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
+tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [A.style "text-align: center"] . (:[]) . text) hs]
 
 -- | Use with 'Web.VirtualDom.attribute' or 'Drawing.styleNamed'.
 unselectable :: [(JSString, JSString)]
@@ -148,3 +150,7 @@ showIntegerWithThousandSeparators n = Data.JSString.pack $
 -- | Like newEvent with a type hint.
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf _ = newEvent
+
+-- XXX this blocks the whole js thread until a user clicks a dialog button
+-- TODO non-blocking confirm dialog
+foreign import javascript unsafe "confirm($1) + 0" jsConfirm :: JSString -> IO Int

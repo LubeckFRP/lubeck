@@ -66,10 +66,6 @@ instance Show ImgLibraryActions where
 
 -- view
 
--- XXX this blocks the whole js thread until a user clicks a dialog button
--- TODO non-blocking confirm dialog
-foreign import javascript unsafe "confirm($1) + 0" jsConfirm :: JSString -> IO Int
-
 viewImageW :: Widget Im.Image ImgLibraryActions
 viewImageW sink image = do
   contentPanel $

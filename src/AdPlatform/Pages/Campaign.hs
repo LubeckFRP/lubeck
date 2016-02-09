@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE JavaScriptFFI       #-}
+
 
 module AdPlatform.Pages.Campaign
   ( campaignPage
@@ -63,7 +63,7 @@ campaignPageW sink (camp, ads) =
   where
     renderAdList :: Widget [Ad.Ad] Action
     renderAdList _ ads = table [class_ "table"] [
-        tableHeaders ["FB adset id", "Name", "Caption", "Budget", "Status"]
+        tableHeaders ["FB adset id", "Name", "Caption", "Budget, ¢", "Status"]
       , tbody [] (map (adRow sink) ads)
       ]
 
@@ -72,19 +72,17 @@ campaignPageW sink (camp, ads) =
       [ td [] [ text $ showJS $ Ad.fb_adset_id ad]
       , td [] [ text $ Ad.ad_title ad]
       , td [] [ text $ Ad.ad_caption ad]
-      , td [] [ E.div [class_ "input-group"]
-                  [ E.span [class_ "input-group-addon"] [text "¢"]
-                  , E.input [ A.title "Set budget"
-                            , class_ "form-control"
-                            -- , A.style "width: 30px"
-                            , A.type_ "number"
-                            , A.value $ showJS $ Ad.current_budget ad
-                            , change $ \e -> sink $ UpdateBudget ad (read . unpack . value $ e :: AdT.USDcents)
-                            ] [] ]
+      , td [ A.style "width: 150px;" ]
+              [ E.input [ A.title "Set budget"
+                        , A.class_ "form-control"
+                        , A.style "text-align: right"
+                        , A.type_ "number"
+                        , A.value $ showIntegerWithThousandSeparators $ Ad.current_budget ad
+                        , change $ \e -> sink $ UpdateBudget ad (read . unpack . value $ e :: AdT.USDcents)
+                        ] []
+              ]
 
-                  ]
-
-      , td [] [ selectWidget
+      , td [ A.style "width: 200px;" ] [ selectWidget
                   [ (AdT.Unknown,  "Unknown")
                   , (AdT.Paused,   "Paused")
                   , (AdT.Running,  "Running")
@@ -92,12 +90,12 @@ campaignPageW sink (camp, ads) =
                   (contramapSink (\newAdStatus -> UpdateStatus ad newAdStatus) sink)
                   (AdT.Unknown)
 
-      ]
+              ]
       ]
 
 loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Either AppError [Ad.Ad])
 loadAds account camp = Ad.getCampaignAdsOrError username campid
-  where campid = showJS $ AdCampaign.fbid camp
+  where campid   = showJS $ AdCampaign.fbid camp
         username = maybe "" Account.username $ account
 
 data Action = Noop | UpdateBudget Ad.Ad AdT.USDcents | UpdateStatus Ad.Ad AdT.AdStatus
@@ -149,9 +147,6 @@ update busySink notifSink accB (UpdateStatus ad newStatus) = case newStatus of
 
       return Nothing
 
--- XXX this blocks the whole js thread until a user clicks a dialog button
--- TODO non-blocking confirm dialog
-foreign import javascript unsafe "confirm($1) + 0" jsConfirm :: JSString -> IO Int
 
 campaignPage :: Sink BusyCmd
              -> Sink (Maybe Notification)
