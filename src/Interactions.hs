@@ -88,18 +88,28 @@ render actions model = div
   ]
 
 buttonW :: Widget (Maybe JSString, Maybe JSString) Action
-buttonW sink (x,y) = div [ class_ "form-vertical"  ]
-  [ div [ class_ "form-group" ] $
+buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
+  [ div [ class_ "form-group form-inline" ] $
     [ label [class_ "control-label col-xs-1"] [text "From"]
-    , E.input [A.value $ nToEmpty x, change $ \e -> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+    , E.div [class_ "col-xs-3", A.style "padding: 0"]
+        [ E.input [ class_ "form-control"
+                  , A.value $ nToEmpty x
+                  , A.style "width: 100%"
+                  , change $ \e -> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))]
+                  [] ]
     ]
-  , div [ class_ "form-group" ] $
+  , div [ class_ "form-group form-inline" ] $
     [ label [class_ "control-label col-xs-1"] [text "To"]
-    , E.input [A.value $ nToEmpty y, change $ \e -> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+    , E.div [class_ "col-xs-3", A.style "padding: 0" ]
+        [ E.input [ class_ "form-control"
+                  , A.style "width: 100%"
+                  , A.value $ nToEmpty y
+                  , change $ \e -> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))]
+                  [] ]
     ]
   , div [ class_ "form-group" ] $
     pure $ button
-      [ class_ "btn btn-success col-xs-offset-1"
+      [ class_ "btn btn-success col-xs-offset-1 col-xs-3"
       , click $ \e -> sink (LoadAction x y) >> preventDefault e ]
       [ text "Load shoutouts!"] ]
   where
