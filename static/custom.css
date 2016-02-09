@@ -196,7 +196,7 @@ div, h1, h2, img, p, span {
   padding: 0px;
   border: 1px solid white;
   margin: auto;
-  background-color: #efefef;
+  background-color: #fff;
   /*font-size: 8px;*/
   overflow-x: hidden;
   overflow-y: hidden;
@@ -207,26 +207,30 @@ div, h1, h2, img, p, span {
   width: 68px;
   height: 19px;
   text-align: right;
-  padding: 4px 0px;
+  padding: 0px 0px;
   margin: 0px;
-  border: 0px solid transparent;
+  border: 2px solid #FD99AB;
   border-right: 0px solid black;
+  border-radius: 10px 0 0 10px;
+  background-color: #fff;
 }
 .pos-score {
   display: inline-block;
   width: 68px;
   height: 19px;
-  border: 1px solid transparent;
+  border: 2px solid #4AF900;
   border-left: 1px solid black;
   margin: 0px;
   text-align: left;
-  padding: 3px 0px;
+  padding: 0px 0px;
+  border-radius: 0 10px 10px 0;
+  background-color: #fff;
 }
 
 .bad-score-bar:after { clear: both }
 .bad-score-bar {
-  background-color: red;
-  height: 11px;
+  background-color: #FD99AB;
+  height: 19px;
   border: 0px;
   margin-top: auto;
   margin-bottom: auto;
@@ -236,8 +240,8 @@ div, h1, h2, img, p, span {
 
 .good-score-bar:after { clear: both }
 .good-score-bar {
-  background-color: green;
-  height: 11px;
+  background-color: #4AF900;
+  height: 19px;
   border: 0px;
   margin-top: auto;
   margin-bottom: auto;
