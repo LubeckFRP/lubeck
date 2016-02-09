@@ -104,7 +104,7 @@ simpleLinePlot
   -> Int                              -- ^ Number of ticks on Y axis.
   -> [(a,b)]                          -- ^ Data to plot.
   -> ((Double -> Double, Double -> Double), Drawing)
-simpleLinePlot _     _     _   _   _   _   _         _         [] = mempty
+simpleLinePlot _     _     _   _   _   _   _         _         [] = ((id,id), mempty)
 simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, normB), drawing)
   where
     drawing = mconcat
