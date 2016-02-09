@@ -143,7 +143,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
     unzip xs = (fmap fst xs, fmap snd xs)
 
 simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
-simpleTimeSeries s f g = snd $ simpleLinePlot
+simpleTimeSeries s f g = snd . simpleLinePlot
   (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
   utcTimeToApproxReal realToApproxUTCTime
   f g
