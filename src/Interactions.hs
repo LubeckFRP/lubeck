@@ -89,12 +89,12 @@ render actions model = div
 buttonW :: Widget (Maybe JSString, Maybe JSString) Action
 buttonW sink (x,y) = div [ class_ "form-vertical"  ]
   [ div [ class_ "form-group" ] $
-    [ label [] [text "To"]
-    , E.input [type_ "search", A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+    [ label [class_ "control-label col-xs-2"] [text "To"]
+    , E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
     ]
   , div [ class_ "form-group" ] $
-    [ label [] [text "To"]
-    , E.input [type_ "search", A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+    [ label [class_ "control-label col-xs-2"] [text "To"]
+    , E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
     ]
   , div [ class_ "form-group" ] $
     pure $ button
