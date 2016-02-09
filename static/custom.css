@@ -193,6 +193,7 @@ div, h1, h2, img, p, span {
   background-color: #efefef;
   /*font-size: 8px;*/
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 .neg-score {
