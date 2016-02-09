@@ -71,7 +71,7 @@ campaignPageW sink (camp, ads) =
       [ E.li [class_ "list-group-item"]
           [ h1 [] [text $ AdCampaign.campaign_name camp] ]
       , E.li [class_ "list-group-item"]
-          [ div [] [text "Daily budget:", text $ showJS $ AdCampaign.daily_budget camp ] ]
+          [ div [] [text "Daily budget: ", text $ showJS $ AdCampaign.daily_budget camp ] ]
       , E.li [class_ "list-group-item"]
           [ renderAdList sink ads ]
       ]

@@ -236,8 +236,10 @@ div, h1, h2, img, p, span {
   margin-bottom: auto;
   margin-right: 0px;
   float: right;
+  -webkit-transition: width 0.2s, -webkit-transform 0.2s;
+  transition: width 0.2s, transform 0.2s;
 }
-
+/* http://paletton.com/palette.php?uid=73o280kl1Wx1x%2BIcEXDsUWkWEVB */
 .good-score-bar:after { clear: both }
 .good-score-bar {
   background-color: #4AF900;
@@ -246,6 +248,8 @@ div, h1, h2, img, p, span {
   margin-top: auto;
   margin-bottom: auto;
   margin-right: 0px;
+  -webkit-transition: width 0.2s, -webkit-transform 0.2s;
+  transition: width 0.2s, transform 0.2s;
 }
 
 .library-image-view-img {

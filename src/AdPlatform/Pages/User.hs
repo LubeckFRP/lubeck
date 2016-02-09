@@ -78,7 +78,7 @@ userPageW sink (acc, camps) =
       , td [] [text $ AdCampaign.campaign_name camp]
       , td [] [text $ showJS $ AdCampaign.daily_budget camp]
       , td [] [text $ showJS $ AdCampaign.status camp]
-      , td [] [E.button [class_ "btn btn-default pull-right", click $ \_ -> sink camp]
+      , td [] [E.button [class_ "btn btn-link pull-right", click $ \_ -> sink camp]
                 [ E.i [class_ "fa fa-binoculars", A.style "margin-right: 5px"] []
                 , text "View"]]
       ]
