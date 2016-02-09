@@ -34,7 +34,7 @@ import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
 import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
-import Lubeck.Util (showIntegerWithThousandSeparators)
+import Lubeck.Util (showIntegerWithThousandSeparators, contentPanel)
 import qualified Lubeck.Drawing as Drawing
 
 import qualified BD.Data.Account as A
@@ -81,18 +81,22 @@ render actions model = div
   [ style "width: 900px; margin-left: auto; margin-right: auto" ]
   [ h1 [] [text "Shoutout browser"]
   , div []
-    [buttonW actions (_requested model)]
-  , div
-    []
+    [ buttonW actions (_requested model) ]
+  , div []
     [ interactionSetW actions (_interactions model) ]
   ]
 
 buttonW :: Widget (Maybe JSString, Maybe JSString) Action
-buttonW sink (x,y) = div
-  []
-  [ div [] $ pure $ E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
-  , div [] $ pure $ E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
-  , div [] $ pure $ button [click $ \e -> sink (LoadAction x y) >> preventDefault e] [text "Load shoutouts!"] ]
+buttonW sink (x,y) = div [ class_ "form-vertical"  ]
+  [ div [ class_ "form-group" ] $
+    pure $ E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+  , div [ class_ "form-group" ] $
+    pure $ E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+  , div [ class_ "form-group" ] $
+    pure $ button
+      [ class_ "btn btn-success"
+      , click $ \e -> sink (LoadAction x y) >> preventDefault e ]
+      [ text "Load shoutouts!"] ]
   where
     _1 f (x,y) = fmap (,y) $ f x
     _2 f (x,y) = fmap (x,) $ f y
@@ -127,11 +131,17 @@ interactionW actions model = div []
           [model .: interaction_time]
           (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
 
-    , div [class_ "col-xs-4 col-lg-4"] [img [src (model .: medium .: P.url), width 200] []]
+    , div [class_ "col-xs-4 col-lg-4"] [ linkedImage ]
     ]
   , p [] [text "Estimated impact: (?)"]
   ]
   where
+    linkedImage = case P.ig_web_url sPost of
+      Nothing  -> a []         image
+      Just url -> a [href url] image
+    sPost      = I.medium model
+    image = img [src (model .: medium .: P.url), width 200] []
+
     render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
     renderOpts = Drawing.defaultRenderingOptions
       { Drawing.dimensions     = Drawing.Point 600 600
