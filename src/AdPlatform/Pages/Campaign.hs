@@ -30,6 +30,7 @@ import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
+import qualified Lubeck.FRP                     as FRP
 
 import qualified BD.Data.Account                as Account
 import qualified BD.Data.Ad                     as Ad
@@ -43,6 +44,21 @@ import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
 
+
+data Action          = Noop | UpdateBudget Ad.Ad AdT.USDcents | UpdateStatus Ad.Ad AdT.AdStatus
+data SecondaryAction = ReloadAds
+data ViewModel       = ViewModel { }
+
+loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Either AppError [Ad.Ad])
+loadAds account camp = Ad.getCampaignAdsOrError username campid
+  where campid   = showJS $ AdCampaign.fbid camp
+        username = maybe "" Account.username $ account
+
+updateStatus :: Account.Account -> Ad.Ad -> AdT.AdStatus -> IO (Either AppError Ok)
+updateStatus acc ad status = Ad.updateStatusOrError (Account.username acc) (Ad.fb_ad_id ad) status
+
+updateBudget :: Account.Account -> Ad.Ad -> AdT.USDcents -> IO (Either AppError Ok)
+updateBudget acc ad budget = Ad.updateBudgetOrError (Account.username acc) (Ad.fb_ad_id ad) budget
 
 getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])
 getCampaigns acc = AdCampaign.getUserCampaignsOrError (Account.username acc)
@@ -82,52 +98,37 @@ campaignPageW sink (camp, ads) =
                         ] []
               ]
 
-      , td [ A.style "width: 200px;" ] [ selectWidget
+      , td [ A.style "width: 200px;" ]
+              [ selectWidget
                   [ (AdT.Unknown,  "Unknown")
                   , (AdT.Paused,   "Paused")
                   , (AdT.Running,  "Running")
                   , (AdT.Archived, "Archived") ]
                   (contramapSink (\newAdStatus -> UpdateStatus ad newAdStatus) sink)
                   (AdT.Unknown)
-
               ]
       ]
 
-loadAds :: Maybe (Account.Account) -> AdCampaign.AdCampaign -> IO (Either AppError [Ad.Ad])
-loadAds account camp = Ad.getCampaignAdsOrError username campid
-  where campid   = showJS $ AdCampaign.fbid camp
-        username = maybe "" Account.username $ account
-
-data Action = Noop | UpdateBudget Ad.Ad AdT.USDcents | UpdateStatus Ad.Ad AdT.AdStatus
-data ViewModel = ViewModel { }
-
-updateStatus :: Account.Account -> Ad.Ad -> AdT.AdStatus -> IO (Either AppError Ok)
-updateStatus acc ad status = Ad.updateStatusOrError (Account.username acc) (Ad.fb_ad_id ad) status
-
-updateBudget :: Account.Account -> Ad.Ad -> AdT.USDcents -> IO (Either AppError Ok)
-updateBudget acc ad budget = Ad.updateBudgetOrError (Account.username acc) (Ad.fb_ad_id ad) budget
 
 update :: Sink BusyCmd
        -> Sink (Maybe Notification)
        -> Behavior (Maybe Account.Account)
        -> Action
-       -> IO (Maybe Action)
+       -> IO (Maybe SecondaryAction)
 update busySink notifSink accB Noop = (notifSink . Just . NInfo $ "Noop") >> return Nothing
 update busySink notifSink accB (UpdateBudget ad newBudget) = do
   mbUsr <- pollBehavior accB
   case mbUsr of
-    Nothing -> notifSink . Just . blError $ "can't update budget for an ad: no user."
+    Nothing -> (notifSink . Just . blError $ "can't update budget for an ad: no user.") >> return Nothing
 
     Just acc -> do
       res <- (withBusy3 busySink updateBudget) acc ad newBudget
       case res of
-        Left e        -> notifSink . Just . NError $ e
-        Right (Ok _)  -> notifSink . Just . NSuccess $ "Budget updated, data will update"
-        Right (Nok s) -> notifSink . Just . apiError $ s
+        Left e        -> (notifSink . Just . NError $ e)                      >> return Nothing
+        Right (Ok _)  -> (notifSink . Just . NSuccess $ "Budget updated")     >> return (Just ReloadAds)
+        Right (Nok s) -> (notifSink . Just . apiError $ s)                    >> return Nothing
 
-  return Nothing
-
-update busySink notifSink accB (UpdateStatus ad AdT.Unknown) = print "Ignored" >> return Nothing
+update busySink notifSink accB (UpdateStatus ad AdT.Unknown) = print "Ignore" >> return Nothing
 update busySink notifSink accB (UpdateStatus ad newStatus) = case newStatus of
   AdT.Running -> jsConfirm "Are you sure?" >>= \rly -> if rly == 1 then doUpdate else return Nothing
   _           -> doUpdate
@@ -136,17 +137,14 @@ update busySink notifSink accB (UpdateStatus ad newStatus) = case newStatus of
     doUpdate = do
       mbUsr <- pollBehavior accB
       case mbUsr of
-        Nothing -> notifSink . Just . blError $ "can't update status for an ad: no user."
+        Nothing -> (notifSink . Just . blError $ "can't update status for an ad: no user.") >> return Nothing
 
         Just acc -> do
           res <- (withBusy3 busySink updateStatus) acc ad newStatus
           case res of
-            Left e        -> notifSink . Just . NError $ e
-            Right (Ok _)  -> notifSink . Just . NSuccess $ "Status updated, data will update"
-            Right (Nok s) -> notifSink . Just . apiError $ s
-
-      return Nothing
-
+            Left e        -> (notifSink . Just . NError $ e)                  >> return Nothing
+            Right (Ok _)  -> (notifSink . Just . NSuccess $ "Status updated") >> return (Just ReloadAds)
+            Right (Nok s) -> (notifSink . Just . apiError $ s)                >> return Nothing
 
 campaignPage :: Sink BusyCmd
              -> Sink (Maybe Notification)
@@ -154,15 +152,22 @@ campaignPage :: Sink BusyCmd
              -> Behavior (Maybe Account.Account)
              -> IO (Signal Html)
 campaignPage busySink notifSink loadAdsE userB = do
-  (actionSink, actionsE) <- newEventOf (undefined                                    :: Action)
+  (actionSink, actionsE) <- newEventOf (undefined                                          :: Action)
 
-  xE                     <- reactimateIO $ fmap (update busySink notifSink userB) actionsE :: IO (Events (Maybe Action))
+  secondaryActionsE      <- reactimateIO $ fmap (update busySink notifSink userB) actionsE :: IO (Events (Maybe SecondaryAction))
+  campaignB              <- stepper Nothing (fmap Just loadAdsE)                           :: IO (Behavior (Maybe AdCampaign.AdCampaign))
+  let reloadAdsE         = filterJust $ sample campaignB (FRP.filter justReloads secondaryActionsE) :: Events AdCampaign.AdCampaign
 
-  adsE                   <- withErrorIO notifSink $ snapshotWith (withBusy2 busySink loadAds) userB loadAdsE
-  latestLoadedCampaignS  <- stepperS Nothing (fmap Just loadAdsE)                    :: IO (Signal (Maybe AdCampaign.AdCampaign))
-  adsS                   <- stepperS Nothing (fmap Just adsE)                        :: IO (Signal (Maybe [Ad.Ad]))
-  let lastestAndAdsS     = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS     :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
+  adsE                   <- withErrorIO notifSink $ snapshotWith (withBusy2 busySink loadAds) userB (loadAdsE <> reloadAdsE)
+  latestLoadedCampaignS  <- stepperS Nothing (fmap Just loadAdsE)                          :: IO (Signal (Maybe AdCampaign.AdCampaign))
+  adsS                   <- stepperS Nothing (fmap Just adsE)                              :: IO (Signal (Maybe [Ad.Ad]))
+  let lastestAndAdsS     = liftA2 (liftA2 (,)) latestLoadedCampaignS adsS                  :: (Signal (Maybe (AdCampaign.AdCampaign, [Ad.Ad])))
 
   let adsView            = fmap ((altW mempty campaignPageW) actionSink) lastestAndAdsS
 
   return adsView
+
+  where
+    justReloads :: Maybe SecondaryAction -> Bool
+    justReloads (Just ReloadAds) = True
+    justReloads _                = False
