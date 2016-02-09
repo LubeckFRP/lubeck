@@ -103,15 +103,17 @@ simpleLinePlot
   -> Int                              -- ^ Number of ticks on X axis.
   -> Int                              -- ^ Number of ticks on Y axis.
   -> [(a,b)]                          -- ^ Data to plot.
-  -> Drawing
+  -> ((Double -> Double, Double -> Double), Drawing)
 simpleLinePlot _     _     _   _   _   _   _         _         [] = mempty
-simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
-  [ lineData points
-  , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
-  , labeledAxis "" ""
-  , scale 100 smokeBackground
-  ]
+simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, normB), drawing)
   where
+    drawing = mconcat
+      [ lineData points
+      , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
+      , labeledAxis "" ""
+      , scale 100 smokeBackground
+      ]
+
     tickLabelsA  = fmap (showA . d2a) ticksA
     tickLabelsB  = fmap (showB . d2b) ticksB
     tickOffsetsA = fmap normA ticksA
@@ -141,7 +143,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = mconcat
     unzip xs = (fmap fst xs, fmap snd xs)
 
 simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
-simpleTimeSeries s f g = simpleLinePlot
+simpleTimeSeries s f g = snd $ simpleLinePlot
   (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
   utcTimeToApproxReal realToApproxUTCTime
   f g
