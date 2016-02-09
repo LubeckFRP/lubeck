@@ -2,6 +2,11 @@
 .PHONY: all
 all: build-client run-server
 
+.PHONY: typecheck-client
+typecheck-client:
+	clear && \
+	time stack build --ghc-options="-fno-code" -j8
+
 .PHONY: build-client
 build-client:
 	clear && \
