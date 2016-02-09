@@ -125,7 +125,7 @@ interactionW :: Widget (Interaction SearchPost) Action
 interactionW actions model = div []
   [ p [] [text (showJS $ model .: interaction_time)]
   , div [class_ "row"]
-    [ div [class_ "col-xs-8 col-lg-8"]
+    [ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
       [ interactionPlotOrNot
       ]
     , div [ class_ "col-xs-4 col-lg-4" ]
