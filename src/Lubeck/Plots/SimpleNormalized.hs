@@ -89,12 +89,10 @@ import Lubeck.Plots.Drawing(scatterData, scatterDataX, lineData, ticks, labeledA
 
 
 utcTimeToApproxReal :: UTCTime -> Double
--- utcTimeToApproxReal (UTCTime days seconds) = (fromIntegral (unDay days) * (3600*24)) + realToFrac seconds
 utcTimeToApproxReal t = realToFrac $ (t `diffUTCTime` refTime) / (1000000000000)
 
 
 realToApproxUTCTime :: Double -> UTCTime
--- realToApproxUTCTime x = UTCTime (day dayPart) (realToFrac x - fromIntegral dayPart) where dayPart = floor $ x/(3600*24)
 realToApproxUTCTime x = ((realToFrac x) * 1000000000000) `addUTCTime` refTime
 
 refTime :: UTCTime
@@ -105,6 +103,26 @@ refTime = case Data.Time.Format.parseTime Data.Time.Format.defaultTimeLocale
 unDay = toModifiedJulianDay
 day = ModifiedJulianDay
 
+{-|
+Draw a simple line plot. Steps performed:
+
+- Find an (approximate) Iso between axis and R
+
+- Map data into R^2 (not normalized)
+
+- Find bounds (lower,upper)
+
+- Generate tick positions
+
+- Map ticks from R^2 back into original type and render as text (for tick labels)
+
+- Create a linear map (R^2 <-> R^2) such that all data points fall into the unit square
+
+- Normalize tick positions and data
+
+- Generate plot
+
+-}
 simpleLinePlot
   :: (a -> JSString)                  -- ^ How to print ticks on X axis.
   -> (b -> JSString)                  -- ^ How to print ticks on Y axis.
@@ -152,6 +170,8 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
 
     unzip xs = (fmap fst xs, fmap snd xs)
 
+
+
 simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
 simpleTimeSeries s f g = snd . simpleLinePlot
   (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
@@ -190,13 +210,3 @@ tickCalc tickCount (lo, hi) =
   in [lb, lb+stepSize..ub]
   where
     exrng = (2.1, 11.5)
-
--- Find an approximate Iso between each dimension (i.e. UTCTime, Int, Double) and Double
--- Convert data to double
--- Find bounds (lower,upper)
--- Decide number of ticks
--- Get tick positions
-  -- Convert ticks back to original type
--- Decide a normalization (trivially from bounds), i.e. a funtion to fit data into [0..1]
--- Run data and tick positions from normalization (retain original tick position for labels)
--- Generate plots and ticks
