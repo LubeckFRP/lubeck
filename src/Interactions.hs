@@ -111,8 +111,8 @@ doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div []
-  [ p [] [ text $ "Showing" <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
-         , text $ " to "    <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
+  [ p [] [ text $ "Showing " <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
+         , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div [] (Data.List.intersperse (hr [] []) $ fmap (interactionW actions) $ model .: I.interactions)
   ]
 
@@ -132,10 +132,14 @@ interactionW actions model = div []
           (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
 
     , div [class_ "col-xs-4 col-lg-4"] [ linkedImage ]
+    , div [] [ caption ]
     ]
-  , p [] [text "Estimated impact: (?)"]
+  -- , p [] [text "Estimated impact: (?)"]
   ]
   where
+    caption = case P.description sPost of
+      Nothing   -> text ""
+      Just desc -> text desc
     linkedImage = case P.ig_web_url sPost of
       Nothing  -> a []         [ image ]
       Just url -> a [href url] [ image ]
