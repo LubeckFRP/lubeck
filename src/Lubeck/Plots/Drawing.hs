@@ -3,6 +3,7 @@
 
 module Lubeck.Plots.Drawing
     ( scatterData
+    , scatterDataX
     , lineData
     , boxData
     , ticks
@@ -70,6 +71,15 @@ scatterData :: [Point] -> Drawing
 scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
   where
     base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
+    origin = Point 0 0
+    -- scaling a b = Transformation (a,0,0,b,0,0)
+
+-- | Plot a series of values as lines perpendicular to the X axis, Y values is ignored.
+--   $normalizeInputPoint
+scatterDataX :: [Point] -> Drawing
+scatterDataX ps = scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
+  where
+    base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
     origin = Point 0 0
     -- scaling a b = Transformation (a,0,0,b,0,0)
 

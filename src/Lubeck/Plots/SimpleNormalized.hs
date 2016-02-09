@@ -42,7 +42,7 @@ import Lubeck.Forms.Basic
 import Lubeck.Drawing
 import Lubeck.Util(showJS, formatDateAndTimeFromUTC)
 import qualified Lubeck.Drawing
-import Lubeck.Plots.Drawing(scatterData, lineData, ticks, labeledAxis)
+import Lubeck.Plots.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
 
 
 
@@ -153,7 +153,7 @@ simpleTimeSeries s f g = snd . simpleLinePlot
 simpleTimeSeriesWithOverlay :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
 simpleTimeSeriesWithOverlay s f g times dat = plot2 <> plot1
   where
-    plot2 = scatterData $ fmap ((\t -> Point t 0.5) . normT . utcTimeToApproxReal) times
+    plot2 = scatterDataX $ fmap ((\t -> Point t 0.5) . normT . utcTimeToApproxReal) times
     ((normT, _), plot1) = simpleLinePlot
       (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
       utcTimeToApproxReal realToApproxUTCTime
