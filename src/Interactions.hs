@@ -91,11 +91,11 @@ buttonW :: Widget (Maybe JSString, Maybe JSString) Action
 buttonW sink (x,y) = div [ class_ "form-vertical"  ]
   [ div [ class_ "form-group" ] $
     [ label [class_ "control-label col-xs-1"] [text "From"]
-    , E.input [A.value $ nToEmpty x, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
+    , E.input [A.value $ nToEmpty x, change $ \e -> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))] []
     ]
   , div [ class_ "form-group" ] $
     [ label [class_ "control-label col-xs-1"] [text "To"]
-    , E.input [A.value $ nToEmpty y, change $ \e -> preventDefault e >> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
+    , E.input [A.value $ nToEmpty y, change $ \e -> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))] []
     ]
   , div [ class_ "form-group" ] $
     pure $ button
@@ -109,10 +109,6 @@ buttonW sink (x,y) = div [ class_ "form-vertical"  ]
     emptyToN xs = Just xs
     nToEmpty Nothing   = ""
     nToEmpty (Just xs) = xs
-
--- TODO make notice about how single-page "form" elements should not be inside forms (use div instead) - easiest way to get around auto-submit issues
--- TODO bug in ghcjs-vdom: both change and click return events that appear to accept stopPropagation but doesn't
-doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
 interactionSetW actions model = div [class_ "panel-body"]
