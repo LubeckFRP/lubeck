@@ -25,7 +25,7 @@ import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
 import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
 import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src, style)
+import Web.VirtualDom.Html.Attributes (src, width, class_, type_, href, target, width, src, style)
 import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
