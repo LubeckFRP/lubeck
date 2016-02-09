@@ -10,6 +10,7 @@ module Components.BusyIndicator
   , BusyCmd(..)
   , withBusy
   , withBusy2
+  , withBusy3
   ) where
 
 import           Prelude                        hiding (div)
@@ -52,6 +53,12 @@ withBusy2 sink f = \x y -> do
   z <- f x y
   sink PopBusy
   return z
+
+withBusy3 sink f = \x y z -> do
+  sink PushBusy
+  r <- f x y z
+  sink PopBusy
+  return r
 
 
 row6Hbusy :: Html -> Html

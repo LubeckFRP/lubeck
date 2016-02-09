@@ -27,7 +27,8 @@ data Objective = VideoViews
 instance FromJSON Objective
 instance ToJSON Objective
 
-data AdStatus = Paused | Running deriving (GHC.Generic, Show)
+-- XXX `Unknown` for debug only, will remove later
+data AdStatus = Paused | Running | Archived | Unknown deriving (GHC.Generic, Show, Eq)
 
 instance ToJSON AdStatus
 instance FromJSON AdStatus
