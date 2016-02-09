@@ -79,10 +79,11 @@ render :: Widget Model Action
 render actions model = div
   -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
   [ style "width: 900px; margin-left: auto; margin-right: auto" ]
-  [ h1 [] [text "Shoutout browser"]
+  [ div [class_ "page-header"]
+      [ h1 [] [ text "Shoutout browser" ] ]
   , div []
     [ buttonW actions (_requested model) ]
-  , div []
+  , div [class_ "panel panel-default"]
     [ interactionSetW actions (_interactions model) ]
   ]
 
@@ -98,7 +99,7 @@ buttonW sink (x,y) = div [ class_ "form-vertical"  ]
     ]
   , div [ class_ "form-group" ] $
     pure $ button
-      [ class_ "btn btn-success"
+      [ class_ "btn btn-success col-xs-offset-1"
       , click $ \e -> sink (LoadAction x y) >> preventDefault e ]
       [ text "Load shoutouts!"] ]
   where
@@ -114,7 +115,7 @@ buttonW sink (x,y) = div [ class_ "form-vertical"  ]
 doneEv x = stopPropagation x >> preventDefault x
 
 interactionSetW :: Widget (InteractionSet SearchPost) Action
-interactionSetW actions model = div []
+interactionSetW actions model = div [class_ "panel-body"]
   [ p [] [ text $ "Showing " <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
          , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div [] (Data.List.intersperse (hr [] []) $ fmap (interactionW actions) $ model .: I.interactions)
