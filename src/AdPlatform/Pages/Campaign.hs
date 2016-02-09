@@ -88,17 +88,17 @@ campaignPageW sink (camp, ads) =
       [ td [] [ text $ showJS $ Ad.fb_adset_id ad]
       , td [] [ text $ Ad.ad_title ad]
       , td [] [ text $ Ad.ad_caption ad]
-      , td [ A.style "width: 150px;" ]
+      , td [ A.style "width: 150px;", A.class_ "no-border-input" ]
               [ E.input [ A.title "Set budget"
                         , A.class_ "form-control"
-                        , A.style "text-align: right"
+                        , A.style "text-align: right; border: 1px transparent; box-shadow: none;"
                         , A.type_ "number"
                         , A.value $ showIntegerWithThousandSeparators $ Ad.current_budget ad
                         , change $ \e -> sink $ UpdateBudget ad (read . unpack . value $ e :: AdT.USDcents)
                         ] []
               ]
 
-      , td [ A.style "width: 200px;" ]
+      , td [ A.style "width: 200px;", A.class_ "no-border-input" ]
               [ selectWidget
                   [ (AdT.Unknown,  "Unknown")
                   , (AdT.Paused,   "Paused")

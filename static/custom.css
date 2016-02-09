@@ -272,3 +272,8 @@ div, h1, h2, img, p, span {
     background-position-x: 80%;
     color: white;
 }
+
+.no-border-input input, .no-border-input select {
+  border: 1px transparent;
+  box-shadow: none;
+}
