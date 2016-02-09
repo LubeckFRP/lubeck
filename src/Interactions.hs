@@ -33,7 +33,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 import Lubeck.FRP
 import Lubeck.App (Html, runApp)
 import Lubeck.Forms (Widget, Widget')
-import Lubeck.Plots.SimpleNormalized (simpleTimeSeries)
+import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (showIntegerWithThousandSeparators)
 import qualified Lubeck.Drawing as Drawing
 
