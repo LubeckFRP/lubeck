@@ -28,7 +28,8 @@ import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 
 -- TODO move
-import Data.Time (UTCTime(..), DiffTime, Day(..))
+import Data.Time (UTCTime(..), DiffTime, Day(..), diffUTCTime, addUTCTime)
+import qualified Data.Time.Format
 
 -- TODO Debug
 import Control.Concurrent(forkIO, threadDelay)
@@ -88,10 +89,18 @@ import Lubeck.Plots.Drawing(scatterData, scatterDataX, lineData, ticks, labeledA
 
 
 utcTimeToApproxReal :: UTCTime -> Double
-utcTimeToApproxReal (UTCTime days seconds) = (fromIntegral (unDay days) * (3600*24)) + realToFrac seconds
+-- utcTimeToApproxReal (UTCTime days seconds) = (fromIntegral (unDay days) * (3600*24)) + realToFrac seconds
+utcTimeToApproxReal t = realToFrac $ (t `diffUTCTime` refTime) / (1000000000000)
+
 
 realToApproxUTCTime :: Double -> UTCTime
-realToApproxUTCTime x = UTCTime (day dayPart) (realToFrac x - fromIntegral dayPart) where dayPart = floor $ x/(3600*24)
+-- realToApproxUTCTime x = UTCTime (day dayPart) (realToFrac x - fromIntegral dayPart) where dayPart = floor $ x/(3600*24)
+realToApproxUTCTime x = ((realToFrac x) * 1000000000000) `addUTCTime` refTime
+
+refTime :: UTCTime
+refTime = case Data.Time.Format.parseTime Data.Time.Format.defaultTimeLocale
+  (Data.Time.Format.iso8601DateFormat Nothing) "2000-01-01" of
+  Just t -> t
 
 unDay = toModifiedJulianDay
 day = ModifiedJulianDay
