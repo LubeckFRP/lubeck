@@ -90,8 +90,7 @@ campaignPageW sink (camp, ads) =
       , td [] [ text $ Ad.ad_caption ad]
       , td [ A.style "width: 150px;", A.class_ "no-border-input" ]
               [ E.input [ A.title "Set budget"
-                        , A.class_ "form-control"
-                        , A.style "text-align: right; border: 1px transparent; box-shadow: none;"
+                        , A.class_ "form-control form-number"
                         , A.type_ "number"
                         , A.value $ showIntegerWithThousandSeparators $ Ad.current_budget ad
                         , change $ \e -> sink $ UpdateBudget ad (read . unpack . value $ e :: AdT.USDcents)
