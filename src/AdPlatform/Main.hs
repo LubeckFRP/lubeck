@@ -108,11 +108,12 @@ adPlatform = do
 
   userS                   <- stepperS Nothing (fmap Just userE)
   campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
-  let userAndCampaignsS   = liftA2 (liftA2 (,)) userS campaignsS :: Signal (Maybe (Account.Account, [AdCampaign.AdCampaign]))
-  let usernameB           = fmap (fmap Account.username) $ current userS
 
-  (userView, loadAdsE)    <- userPage         busySink notifSink                   userAndCampaignsS
-  adsView                 <- campaignPage     busySink notifSink                   loadAdsE (current userS)
+  let userB               = current userS
+  let usernameB           = fmap (fmap Account.username) userB
+
+  (userView, loadAdsE)    <- userPage         busySink notifSink                   userB    campaignsS
+  adsView                 <- campaignPage     busySink notifSink                   loadAdsE userB
   (imageLibView, imsB)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
   searchPageView          <- searchPage       busySink notifSink ipcSink           usernameB
   createAdView            <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)

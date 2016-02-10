@@ -35,7 +35,7 @@ data AdCampaign = AdCampaign
   , daily_budget      :: USDcents
   , status            :: AdStatus
   , campaign_name     :: Text
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Show)
 
 instance FromJSON AdCampaign
 instance ToJSON AdCampaign
@@ -52,7 +52,7 @@ data AdCampaignPerformance = AdCampaignPerformance
   , unique_clicks         :: Int
   , unique_ctr            :: Double
   , unique_impressions    :: Int
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Show)
 
 instance FromJSON AdCampaignPerformance
 instance ToJSON AdCampaignPerformance
@@ -61,7 +61,7 @@ data AdOk = AdOk AdCampaignPerformance | AdNok JSString deriving (GHC.Generic)
 
 parseResponse :: Bool -> Bool -> Object -> Parser AdOk
 parseResponse hasId hasError obj
-    | hasId   = AdOk <$> parseJSON (Object obj)
+    | hasId     = AdOk <$> parseJSON (Object obj)
     | hasError  = AdNok <$> obj .: "error"
     | otherwise = pure $ AdNok $ "Unknown write response: " <> showJS obj
 

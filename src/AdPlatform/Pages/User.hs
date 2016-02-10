@@ -41,23 +41,34 @@ import           Lubeck.Util
 import           Components.BusyIndicator       (BusyCmd(..), withBusy)
 
 
+userH acc =
+  E.li [class_ "list-group-item"]
+      [ div [class_ "media"]
+          [ div [class_ "media-left"]
+              [ (profilePicture $ Ac.profile_picture acc) ]
+
+          , div [class_ "media-body"]
+              [ E.h2 [ class_ "account-username" ] [ text $ Ac.username acc ]
+              , p [] [ text $ fromMaybe "" (Ac.bio acc) ]
+              , p [] [ E.a [ A.href (fromMaybe "" (Ac.website acc)) ] [ text $ fromMaybe "" (Ac.website acc) ] ]
+              ]
+          ] ]
+  where
+    profilePicture Nothing = mempty
+    profilePicture (Just url) = E.img [class_ "pull-left account-picture", src url] []
+
 -- | Display user information and current campaings.
 -- Emits campaign to view.
-userPageW :: Widget (CampsPerfMap, UserAndCampaigns) AdC.AdCampaign
-userPageW sink (perfByCampIdMap, (acc, camps)) =
+userPageW :: Widget ((Maybe Ac.Account), (Maybe (CampsPerfMap, Campaigns))) AdC.AdCampaign
+userPageW sink (Nothing, _) = mempty
+userPageW sink ((Just acc), Nothing) =
+  contentPanel $
+    E.ul [class_ "list-group"] [ userH acc ]
+
+userPageW sink ((Just acc), (Just (perfByCampIdMap, camps))) =
   contentPanel $
     E.ul [class_ "list-group"]
-      [ E.li [class_ "list-group-item"]
-          [ div [class_ "media"]
-              [ div [class_ "media-left"]
-                  [ (profilePicture $ Ac.profile_picture acc) ]
-
-              , div [class_ "media-body"]
-                  [ E.h2 [ class_ "account-username" ] [ text $ Ac.username acc ]
-                  , p [] [ text $ fromMaybe "" (Ac.bio acc) ]
-                  , p [] [ E.a [ A.href (fromMaybe "" (Ac.website acc)) ] [ text $ fromMaybe "" (Ac.website acc) ] ]
-                  ]
-              ] ]
+      [ userH acc
       , E.li [class_ "list-group-item"]
           [ div [] [text "Latest count: ", text $ fromMaybe "unknown" (fmap showJS $ Ac.latest_count acc) ] ]
       , E.li [class_ "list-group-item"]
@@ -67,12 +78,9 @@ userPageW sink (perfByCampIdMap, (acc, camps)) =
       ]
 
   where
-    profilePicture Nothing = mempty
-    profilePicture (Just url) = E.img [class_ "pull-left account-picture", src url] []
-
     campaignTable :: Widget [AdC.AdCampaign] AdC.AdCampaign
     campaignTable sink camps = table [class_ "table"] [
-        tableHeaders ["FB id", "Name", "Impressions", "Clicks", "Spent", "Daily budget", "Status", ""]
+        tableHeaders ["FB id", "Name", "Impressions", "Clicks", "Spent, ¢", "Daily budget, ¢", "Status", ""]
       , tbody [] (map (campaignRow sink) $ zip [0..] camps)
       ]
 
@@ -99,15 +107,19 @@ userPageW sink (perfByCampIdMap, (acc, camps)) =
     g f = \camp -> fromMaybe "n/a" $ showJS . f <$> Map.lookup (AdC.fbid camp) perfByCampIdMap
 
 -- TODO concurrent mapM
-loadPerformance :: UserAndCampaigns -> IO [Either AppError AdC.AdCampaignPerformance]
-loadPerformance (acc, camps) = mapM (loadP acc) camps
-  where loadP :: Ac.Account -> AdC.AdCampaign -> IO (Either AppError AdC.AdCampaignPerformance)
-        loadP a c = do
-          res <- AdC.getCampaignPerformanceOrError (Ac.username a) (AdC.fbid c)
-          return $ case res of
-            Right (AdC.AdOk x)  -> Right x
-            Right (AdC.AdNok s) -> Left . ApiError $ s
-            Left s              -> Left s
+loadPerformance :: Behavior (Maybe Ac.Account) -> [AdC.AdCampaign] -> IO [Either AppError AdC.AdCampaignPerformance]
+loadPerformance userB camps = do
+  mbAcc <- pollBehavior userB
+  case mbAcc of
+    Nothing -> return [Left . BLError $ "can't load ad campaigns performance data: no user o_O"]
+    Just acc -> mapM (loadP acc) camps
+      where loadP :: Ac.Account -> AdC.AdCampaign -> IO (Either AppError AdC.AdCampaignPerformance)
+            loadP a c = do
+              res <- AdC.getCampaignPerformanceOrError (Ac.username a) (AdC.fbid c)
+              return $ case res of
+                Right (AdC.AdOk x)  -> Right x
+                Right (AdC.AdNok s) -> Left . ApiError $ s
+                Left s              -> Left s
 
 reportErrors :: Sink (Maybe Notification) -> [Either AppError AdC.AdCampaignPerformance] -> IO [Maybe AdC.AdCampaignPerformance]
 reportErrors notifSink = mapM (g notifSink)
@@ -116,29 +128,31 @@ reportErrors notifSink = mapM (g notifSink)
     g notifSink (Left e)  = (notifSink . Just . NError $ e) >> return Nothing
     g _         (Right x) = return $ Just x
 
-toHash :: [Maybe AdC.AdCampaignPerformance] -> Map.Map AdT.FBGraphId AdC.AdCampaignPerformance
+toHash :: [Maybe AdC.AdCampaignPerformance] -> CampsPerfMap
 toHash = Map.fromList . catMaybes . fmap (fmap g)
   where g :: AdC.AdCampaignPerformance -> (AdT.FBGraphId, AdC.AdCampaignPerformance)
         g x = (AdC.fb_adset_id x, x)
 
-type UserAndCampaigns = (Ac.Account, [AdC.AdCampaign])
+type Campaigns = [AdC.AdCampaign]
 type CampsPerfMap = Map.Map AdT.FBGraphId AdC.AdCampaignPerformance
 
 userPage :: Sink BusyCmd
          -> Sink (Maybe Notification)
-         -> Signal (Maybe UserAndCampaigns)
+         -> Behavior (Maybe Ac.Account)
+         -> Signal (Maybe [AdC.AdCampaign])
          -> IO (Signal Html, Events AdC.AdCampaign)
-userPage busySink notifSink userAndCampaignsS = do
+userPage busySink notifSink userB campaignsS = do
   (fetchCampaignAds :: Sink AdC.AdCampaign, loadAdsE :: Events AdC.AdCampaign) <- newEvent
 
-  let userAndCampaignsE = filterJust . updates $ userAndCampaignsS                                    :: Events UserAndCampaigns
+  let campaignsE        = filterJust . updates $ campaignsS                                           :: Events Campaigns
 
-  campaignPerformanceE  <- reactimateIO $ fmap (withBusy busySink loadPerformance) userAndCampaignsE  :: IO (Events [Either AppError AdC.AdCampaignPerformance])
+  campaignPerformanceE  <- reactimateIO $ fmap (withBusy busySink (loadPerformance userB)) campaignsE :: IO (Events [Either AppError AdC.AdCampaignPerformance])
 
   aE                    <- reactimateIO $ fmap (reportErrors notifSink) campaignPerformanceE          :: IO (Events [Maybe AdC.AdCampaignPerformance])
   aS                    <- stepperS Nothing (fmap (Just . toHash) aE)                                 :: IO (Signal (Maybe CampsPerfMap))
-  let bS                = liftA2 (liftA2 (,)) aS userAndCampaignsS                                    :: Signal (Maybe (CampsPerfMap, UserAndCampaigns))
+  let bS                = liftA2 (liftA2 (,)) aS campaignsS                                           :: Signal (Maybe (CampsPerfMap, Campaigns))
+  let cS                = snapshotS userB bS                                                          :: Signal ((Maybe Ac.Account), (Maybe (CampsPerfMap, Campaigns)))
 
-  let userView = fmap ((altW mempty userPageW) fetchCampaignAds) bS
+  let userView = fmap (userPageW fetchCampaignAds) cS
 
   return (userView, loadAdsE)
