@@ -28,7 +28,7 @@ export PATH="/home/vagrant/.cabal/bin:/home/vagrant/.local/bin:/opt/happy/1.19.5
 
 EOF
 
-su vagrant -c 'cd lubeck && bash setup_ghcjs.sh'
+su vagrant -c 'cd lubeck && bash build/cabal/setup_ghcjs.sh'
 
 SCRIPT
 
