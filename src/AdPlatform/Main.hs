@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE JavaScriptFFI       #-}
 
 module AdPlatform.Main (main) where
 
@@ -7,7 +8,17 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
+import Control.Concurrent( forkIO )
+-- import Control.Concurrent.Chan
+import Control.Concurrent.MVar
+import Control.Monad( forever )
+
 import           Data.Monoid
+import           GHCJS.Types                    (JSString, JSVal)
+
+import GHCJS.Foreign
+import GHCJS.Types
+import           Unsafe.Coerce
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -15,7 +26,7 @@ import           Web.VirtualDom.Html            (Property, br, button, div,
 import qualified Web.VirtualDom.Html            as E
 import           Web.VirtualDom.Html.Attributes (class_, src, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
+import           Web.VirtualDom.Html.Events     (change, click, preventDefault, Event(),
                                                  stopPropagation, submit, value)
 
 import           Lubeck.App                     (Html, runAppReactive)
@@ -86,8 +97,33 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
           , page
           ] ]
 
+data KbdEvents = Key Int deriving (Show)
+
+-- stolen from here: https://github.com/SodiumFRP/sodium/issues/8
+foreign import javascript unsafe "document.addEventListener('keyup', (function(){ var x= h$makeMVarListener($1, false, false, false); /* console.log($1, x); */ return x; })()  );"
+    js_addKbdListener :: JSVal -> IO ()
+
+mvarRef :: MVar a -> JSVal
+mvarRef = unsafeCoerce
+
+kbdListener :: (Event -> IO()) -> IO ()
+kbdListener handler = do
+    mv <- newEmptyMVar :: IO (MVar Event)
+    forkIO (forever $ takeMVar mv >>= handler)
+    js_addKbdListener (mvarRef mv)
+
 adPlatform :: IO (Signal Html)
 adPlatform = do
+  (kbdSink, kbdEvents)    <- newEventOf (undefined :: KbdEvents)
+
+  kbdListener $ \e -> do
+    print $ "hello " <> showJS (which e)
+    kbdSink $ Key (which e)
+
+  subscribeEvent kbdEvents $ \e -> do
+    print $ showJS e
+    return ()
+
   (notifView, notifSink)  <- notificationsComponent []
   (busyView, busySink)    <- busyIndicatorComponent []
 
