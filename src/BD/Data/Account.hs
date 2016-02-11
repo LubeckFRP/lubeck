@@ -19,6 +19,7 @@ import           Data.Aeson
 import qualified Data.Aeson.Types
 import           Data.Aeson.Types
 import           Data.Data
+import qualified Data.HashMap.Strict       as H
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (asum)
 import           Data.Monoid
@@ -53,7 +54,7 @@ data Account = Account
   , numfollowing    :: Maybe Int
   , p_is_male       :: Maybe Double
   , latest_count    :: Maybe Int
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Show)
 
 instance ToJSON Account where
   toJSON = Data.Aeson.Types.genericToJSON
@@ -70,13 +71,25 @@ getUserOrError unm = getAPIEither (unm <> "/account") >>= return . bimap ApiErro
 data AuthToken = AuthToken JSString | NoAuthToken JSString deriving (GHC.Generic, Show, Eq, Data, Typeable)
 
 instance FromJSON AuthToken where
-  parseJSON = withObject "API response" $ \o ->
-    asum [ AuthToken   <$> o .: "token"
-         , NoAuthToken <$> o .: "error" ]
+  parseJSON (Object o) = parseResponse hasToken o
+    where
+      hasToken = H.member "token" o
+
+      parseResponse :: Bool -> Object -> Parser AuthToken
+      parseResponse True  obj = AuthToken <$> obj .: "token"
+      parseResponse False obj = pure $ NoAuthToken "Hmm, access denied."
+
+  parseJSON _ = return $ NoAuthToken "Sorry, access denied."
 
 -- FIXME this probably deserves distinct module
 authenticateOrError :: (JSString, JSString) -> IO (Either AppError AuthToken)
-authenticateOrError (unm, psw) = getAPIEither' "get-auth-token" headers >>= return . first ApiError
+authenticateOrError (unm, psw) = do
+  res <- getAPIEither' "get-auth-token" headers :: IO (Either JSString AuthToken)
+  return $ case res of
+    Left a                -> Left . ApiError $ "Sorry, access denied."
+    Right (NoAuthToken s) -> Left . ApiError $ s
+    Right (AuthToken t)   -> Right . AuthToken $ t
+
   where
     headers = [authHeader]
     authHeader = ("Authorization", "Basic " <> (base64encode (unm <> ":" <> psw)))

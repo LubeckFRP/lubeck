@@ -35,7 +35,7 @@ import           Lubeck.Util
 
 notificationW :: Widget [Notification] Int
 notificationW _    []   = mempty
-notificationW sink ns = row6H $ div [] (map (notifItem sink) (zip [0..] ns))
+notificationW sink ns = div [A.class_ "notifPanel"] [ div [] (map (notifItem sink) (zip [0..] ns))]
   where
     notifItem sink (idx, (NError (ApiError s)))            = nbody idx "danger"  ("API Error: "       <> s)
     notifItem sink (idx, (NError (BLError s)))             = nbody idx "danger"  ("BL Error: "        <> s)
@@ -46,7 +46,7 @@ notificationW sink ns = row6H $ div [] (map (notifItem sink) (zip [0..] ns))
 
 
     nbody idx cls msg =
-      div [class_ $ "alert alert-" <> cls <> " text-center "]
+      div [class_ $ "notifAlert alert-" <> cls <> " text-center "]
         [div [class_ "clearfix"]
           [ E.span [class_ "pull-left"] [text msg]
           , E.button [class_ "close pull-right", click $ \_ -> sink idx] [E.span [] [text "×"]] ]

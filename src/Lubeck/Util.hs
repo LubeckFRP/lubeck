@@ -84,7 +84,7 @@ contentPanel :: Html -> Html
 contentPanel content = row12H $ panel12H content
 
 tableHeaders :: [JSString] -> Html
-tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [A.style "text-align: center"] . (:[]) . text) hs]
+tableHeaders hs = thead [] [ tr [] $ Prelude.map (th [] . (:[]) . text) hs]
 
 -- | Use with 'Web.VirtualDom.attribute' or 'Drawing.styleNamed'.
 unselectable :: [(JSString, JSString)]
