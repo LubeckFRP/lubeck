@@ -27,16 +27,16 @@ import qualified BD.Data.Ad
 import           BD.Types
 
 data AdInsight = AdInsight
-  { fb_adset_id           :: Int
+  { fb_adset_id           :: Integer
   , captured_at           :: UTCTime
   , current_budget        :: USDcents
   , insight               :: Value
   , spend                 :: Double
-  , reach                 :: Int
-  , unique_impressions    :: Int
-  , unique_clicks         :: Int
+  , reach                 :: Integer
+  , unique_impressions    :: Integer
+  , unique_clicks         :: Integer
   , unique_ctr            :: Double
-  , call_to_action_clicks :: Int
+  , call_to_action_clicks :: Integer
   } deriving (GHC.Generic, Show)
 
 instance FromJSON AdInsight
