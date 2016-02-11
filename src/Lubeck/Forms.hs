@@ -33,6 +33,8 @@ module Lubeck.Forms
 
   -- * Components
   , component
+  , componentEvent
+  , componentSink
   , componentRW
   , componentR
   , componentW
@@ -183,12 +185,26 @@ mapMWidget k w o is = k $ fmap (w o) is
 --
 -- This is a basic and full-featured component. All other are just wrappers
 -- around this one.
+--
+-- Values sent into the sink will propagate through the output event stream.
 componentRW :: a -> WidgetT r a a -> IO (Signal r, Events a, Sink a)
 componentRW initialState widget = do
   (internalSink, internalEvents) <- newEvent
   aS              <- stepperS initialState internalEvents
   let htmlS       = fmap (widget internalSink) aS
   return (htmlS, internalEvents, internalSink)
+
+componentEvent :: a -> WidgetT r a a -> Events a -> IO (Signal r, Events a)
+componentEvent initState widget inputs = do
+  (signal, outputs, inSink) <- componentRW initState widget
+  subscribeEvent inputs inSink
+  return (signal, outputs) 
+
+componentSink :: a -> WidgetT r a a -> Sink a -> IO (Signal r, Sink a)
+componentSink initState widget outputSink = do
+  (htmlSignal, outputs, inSink) <- componentRW initState widget
+  subscribeEvent outputs outputSink 
+  return (htmlSignal, inSink) 
 
 -- "internal read" component
 -- Initialized with initial state and widget, returns signal of html and
