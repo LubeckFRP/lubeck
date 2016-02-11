@@ -35,6 +35,7 @@ data Ad = Ad
   , ad_title       :: Text
   , ad_caption     :: Text
   , current_budget :: USDcents
+  , status         :: AdStatus
   } deriving (GHC.Generic, Show)
 
 instance FromJSON Ad

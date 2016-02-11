@@ -104,7 +104,7 @@ campaignPageW sink (camp, ads) =
                   , (AdT.Running,  "Running")
                   , (AdT.Archived, "Archived") ]
                   (contramapSink (\newAdStatus -> UpdateStatus ad newAdStatus) sink)
-                  (AdT.Unknown)
+                  (Ad.status ad)
               ]
       ]
 
