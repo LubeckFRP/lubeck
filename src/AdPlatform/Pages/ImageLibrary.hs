@@ -1,7 +1,7 @@
+{-# LANGUAGE JavaScriptFFI       #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE JavaScriptFFI       #-}
 
 module AdPlatform.Pages.ImageLibrary
   ( imageLibraryPage
@@ -10,7 +10,7 @@ module AdPlatform.Pages.ImageLibrary
 import           Prelude                        hiding (div)
 import qualified Prelude
 
-import JavaScript.Web.XMLHttpRequest (FormDataVal(..))
+import           JavaScript.Web.XMLHttpRequest  (FormDataVal (..))
 
 import           Control.Applicative
 import qualified Data.List
@@ -25,7 +25,8 @@ import           Web.VirtualDom.Html            (Property, br, button, div,
 import qualified Web.VirtualDom.Html            as E
 import           Web.VirtualDom.Html.Attributes (class_, src, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
+import           Web.VirtualDom.Html.Events     (change, click, keyup,
+                                                 preventDefault,
                                                  stopPropagation, submit, value)
 
 import           Lubeck.App                     (Html)
@@ -37,12 +38,13 @@ import qualified Lubeck.FRP                     as FRP
 import qualified BD.Data.Account                as Account
 import qualified BD.Data.Image                  as Im
 
+import           AdPlatform.Types
 import           BD.Api
 import           BD.Types
 import           BD.Utils
+import           Components.BusyIndicator       (BusyCmd (..), withBusy,
+                                                 withBusy2)
 import           Lubeck.Util
-import           Components.BusyIndicator       (BusyCmd(..), withBusy, withBusy2)
-import           AdPlatform.Types
 
 
 type UploadFiles = [(JSString, FormDataVal)]
@@ -69,7 +71,8 @@ instance Show ImgLibraryActions where
 viewImageW :: Widget Im.Image ImgLibraryActions
 viewImageW sink image = do
   contentPanel $
-    div [class_ "library-image-view"]
+    div [ class_ "library-image-view"
+        , keyup handleKeys ]
       [ div [class_ "btn-toolbar"]
           [ div [class_ "btn-group"]
               [ button [class_ "btn btn-link", click $ \_ -> sink $ ViewPrevImg image]
@@ -101,6 +104,11 @@ viewImageW sink image = do
 
   where
     imgUrl = fromMaybe "no url" (Im.fb_image_url image)
+
+    handleKeys e = case which e of
+      37 -> sink $ ViewPrevImg image -- <-
+      39 -> sink $ ViewNextImg image -- ->
+      x  -> print $ "Unknown key: " <> showJS x
 
 galleryW :: Widget [Im.Image] ImgLibraryActions
 galleryW _ [] = contentPanel $ text "No images in library"

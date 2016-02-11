@@ -27,6 +27,7 @@ module Lubeck.Util
 
   , newEventOf
   , jsConfirm
+  , which
   ) where
 
 import           Data.Maybe
@@ -43,7 +44,7 @@ import           Web.VirtualDom.Html            (Property, br, button, div,
 import qualified Web.VirtualDom.Html            as E
 import           Web.VirtualDom.Html.Attributes (class_, src, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
+import           Web.VirtualDom.Html.Events     (change, click, preventDefault, Event(),
                                                  stopPropagation, submit, value)
 
 import           Lubeck.App                     (Html)
@@ -154,3 +155,6 @@ newEventOf _ = newEvent
 -- XXX this blocks the whole js thread until a user clicks a dialog button
 -- TODO non-blocking confirm dialog
 foreign import javascript unsafe "confirm($1) + 0" jsConfirm :: JSString -> IO Int
+
+
+foreign import javascript unsafe "$1.which" which :: Event -> Int

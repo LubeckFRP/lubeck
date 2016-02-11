@@ -42,7 +42,7 @@ import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
 import           Lubeck.Util                    (divideFromEnd, showJS, contentPanel,
-                                                 newEventOf,
+                                                 newEventOf, which,
                                                  showIntegerWithThousandSeparators)
 import           Lubeck.Web.URI                 (getURIParameter)
 
@@ -65,11 +65,13 @@ import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBus
 searchForm :: Day -> Widget SimplePostQuery (Submit SimplePostQuery)
 searchForm dayNow output query =
   contentPanel $
-    div [class_ "form-horizontal"]
-      [ longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
-      , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
-      , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
-      , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
+    div [ class_ "form-horizontal"
+        , keyup $ \e -> if which e == 13 then output (Submit query) else return ()
+        ]  -- event delegation
+      [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
+      , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
+      , longStringWidget "Hashtag"   False (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
+      , longStringWidget "User name" False (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
       , integerIntervalWidget "Poster followers"    (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
       , dateIntervalWidget    dayNow "Posting date" (contramapSink (\new -> DontSubmit $ query { date = new }) output)      (PQ.date query)
