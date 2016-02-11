@@ -35,6 +35,9 @@ import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
+import Data.IORef (newIORef, readIORef, writeIORef)
+import qualified Web.VirtualDom as VD
+
 -- import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 -- import GHCJS.VDOM.Event (initEventDelegation)
 
@@ -50,7 +53,31 @@ runAppStatic :: Html -> IO ()
 runAppStatic x = runAppReactive (pure x)
 
 runAppReactive :: Signal Html -> IO ()
-runAppReactive r = runAppPureS (pure $ pure r) (flip const)
+runAppReactive s = do
+  -- VD = Virtual DOM, RD = Real DOM
+  print "Setting up first VD"
+  initVD <- pollBehavior $ current s
+  initRD <- VD.createElement initVD
+  varVD <- newIORef initVD
+  varRD <- newIORef initRD
+
+  VD.appendToBody initRD
+
+  subscribeEvent (updates s) $ \newVD -> do
+    print "Updating VD"
+
+    prevVD <- readIORef varVD
+    prevRD <- readIORef varRD
+
+    delta <- VD.diff prevVD newVD
+    newRD <- VD.patch prevRD delta
+
+    writeIORef varVD newVD
+    writeIORef varRD newRD
+    return ()
+  return ()
+
+-- runAppReactive r = runAppPureS (pure $ pure r) (flip const)
 
 
 runAppPure
