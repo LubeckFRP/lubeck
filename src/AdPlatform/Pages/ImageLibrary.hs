@@ -279,7 +279,7 @@ imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
   galleryE        <- withErrorIO notifSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
   galleryS        <- stepperS Nothing (fmap Just galleryE)                               :: IO (Signal (Maybe [Im.Image]))
 
-  imageE          <- reactimateIO $ fmap (processActions busySink notifSink actionsSink2 (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
+  imageE          <- reactimateIOAsync $ fmap (processActions busySink notifSink actionsSink2 (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
 
   imageViewS      <- stepperS Nothing imageE                                          :: IO (Signal (Maybe Im.Image))
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)

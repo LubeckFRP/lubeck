@@ -153,7 +153,7 @@ campaignPage :: Sink BusyCmd
 campaignPage busySink notifSink loadAdsE userB = do
   (actionSink, actionsE) <- newEventOf (undefined                                          :: Action)
 
-  secondaryActionsE      <- reactimateIO $ fmap (update busySink notifSink userB) actionsE :: IO (Events (Maybe SecondaryAction))
+  secondaryActionsE      <- reactimateIOAsync $ fmap (update busySink notifSink userB) actionsE :: IO (Events (Maybe SecondaryAction))
   campaignB              <- stepper Nothing (fmap Just loadAdsE)                           :: IO (Behavior (Maybe AdCampaign.AdCampaign))
   let reloadAdsE         = filterJust $ sample campaignB (FRP.filter justReloads secondaryActionsE) :: Events AdCampaign.AdCampaign
 

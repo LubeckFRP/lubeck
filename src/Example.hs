@@ -7,6 +7,7 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import Data.Monoid ((<>))
+import Control.Monad (when)
 
 import GHCJS.Types(JSString, jsval)
 import qualified Web.VirtualDom as VD
@@ -21,10 +22,13 @@ import Data.Time (UTCTime(..), DiffTime, Day(..))
 
 
 -- TODO Debug
-import Control.Concurrent(forkIO, threadDelay)
+import Control.Concurrent(forkIO, threadDelay, myThreadId)
 import Control.Monad(forever)
+import GHCJS.Concurrent(synchronously)
 
 import Control.Lens(_1, _2)
+
+import BD.Data.Account (getUser)
 
 import Lubeck.FRP
 import Lubeck.App (Html, runAppReactive)
@@ -32,7 +36,7 @@ import Lubeck.Forms
 import Lubeck.Forms.Basic
 import Lubeck.Forms.Select
 import Lubeck.Drawing
-import Lubeck.Util(showJS, unselectable, parseDateAndTimeToUTC)
+import Lubeck.Util(showJS, unselectable, parseDateAndTimeToUTC, newEventOf, reactimateIOAsync)
 import qualified Lubeck.Drawing
 
 import Data.VectorSpace
@@ -80,5 +84,16 @@ drawing output n = mempty
 
 main :: IO ()
 main = do
-   (view, _) <- component (1,1) render
-   runAppReactive view
+
+   (view, ints) <- component (1,1) render
+   let b = fmap snd ints
+   subscribeEvent b print
+   stringE <- reactimateIOAsync $ fmap (const $ fmap showJS (getUser "jacob")) $ Lubeck.FRP.filter (==5) b
+   stringS <- stepperS "(nothing yet)" stringE
+
+   --  $ \v -> when (v == 5) $ do
+    --  print "Making request"
+    --  forkIO $ (getUser "jacob" >>= \u -> threadDelay 1500000 >> synchronously (stringSi . showJS $ u))
+    --  print "Done!"
+    --  return ()
+   runAppReactive (fmap (staticStringWidget emptySink) stringS <> view)
