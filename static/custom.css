@@ -274,7 +274,8 @@ div, h1, h2, img, p, span {
 }
 
 .login-jumbo {
-    max-width: 395px;
+    width: 395px;
+    height: 395px;
     background-image: url(https://s3.amazonaws.com/bd-2015/img/bg-services.jpg);
     background-size: cover;
     background-position-x: 80%;

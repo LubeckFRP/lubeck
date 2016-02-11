@@ -121,9 +121,11 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
   in contentPanel $
     div [class_ "form-horizontal"]
       [ longStringWidget "Caption"
+                         True
                          (contramapSink (\new -> DontSubmit $ newAd { caption = new }) outputSink)
                          (caption newAd)
       , longStringWidget "Click URL"
+                         False
                          (contramapSink (\new -> DontSubmit $ newAd { click_link = new }) outputSink)
                          (click_link newAd)
       , campaignSelectWidget mbAc
