@@ -22,7 +22,7 @@ type FBGraphId = Integer
 
 data Objective = VideoViews
                | ClicksToWebsite URL
-               deriving (GHC.Generic)
+               deriving (GHC.Generic, Show)
 
 instance FromJSON Objective
 instance ToJSON Objective

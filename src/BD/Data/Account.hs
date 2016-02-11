@@ -53,7 +53,7 @@ data Account = Account
   , numfollowing    :: Maybe Int
   , p_is_male       :: Maybe Double
   , latest_count    :: Maybe Int
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Show)
 
 instance ToJSON Account where
   toJSON = Data.Aeson.Types.genericToJSON
