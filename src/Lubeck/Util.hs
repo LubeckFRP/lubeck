@@ -8,6 +8,7 @@ module Lubeck.Util
   , withErrorIO
 
   , reactimateIOAsync
+  , newSyncEvent
 
   , showJS
   , row6H
@@ -173,5 +174,11 @@ foreign import javascript unsafe "confirm($1) + 0" jsConfirm :: JSString -> IO I
 reactimateIOAsync :: Events (IO a) -> IO (Events a)
 reactimateIOAsync actions = do
   (sendOn, results) <- newEvent
-  _ <- reactimateIO $ fmap (\action -> forkIO $ action >>= \result -> synchronously (sendOn result)) actions
+  _ <- reactimateIO $ fmap (\action -> forkIO $ action >>= \result -> synchronously (sendOn result) ) actions
   return results
+
+-- | Like newEvent, but assures all values sent to the sink are propagated on a synchronous thread.
+newSyncEvent :: IO (Sink a, Events a)
+newSyncEvent = do
+  (s,e) <- newEvent
+  return (synchronously . s, e)
