@@ -92,7 +92,7 @@ module Lubeck.FRP (
     accumS,
     snapshotS,
     snapshotWithS,
-
+ 
     -- ** Sampling signals
     updates,
     current,

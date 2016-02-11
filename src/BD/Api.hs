@@ -88,17 +88,16 @@ getAPI' path headers = do
     Right result -> case contents result of
       Nothing          -> throwError "getAPI': No response"
       Just byteString  -> case Data.Aeson.decodeStrict byteString of
-        Nothing -> throwError "getAPI': Parse error"
+        Nothing -> throwError $ "getAPI': Parse error " <> showJS byteString
         Just x  -> return x
   where
-    request = Request {
-            reqMethod          = GET
-          , reqURI             = baseURL <> path
-          , reqLogin           = Nothing
-          , reqHeaders         = headers
-          , reqWithCredentials = xhrWithCredentials
-          , reqData            = NoData
-          }
+    request = Request { reqMethod          = GET
+                      , reqURI             = baseURL <> path
+                      , reqLogin           = Nothing
+                      , reqHeaders         = headers
+                      , reqWithCredentials = xhrWithCredentials
+                      , reqData            = NoData
+                      }
 
 {-|
 Same as `getAPI'`, but without the ability to set headers.

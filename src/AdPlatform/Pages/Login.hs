@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE JavaScriptFFI       #-}
 
 module AdPlatform.Pages.Login
   ( Username
@@ -16,15 +17,15 @@ import           Control.Applicative
 import qualified Data.List
 import           Data.Monoid
 
-import           GHCJS.Types                    (JSString)
+import           GHCJS.Types                    (JSString, JSVal)
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
                                                  tbody, td, text, th, thead, tr)
 import qualified Web.VirtualDom.Html            as E
 import           Web.VirtualDom.Html.Attributes (class_, src, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
-                                                 stopPropagation, submit, value)
+import           Web.VirtualDom.Html.Events     (change, click, preventDefault, Event(..),
+                                                 stopPropagation, submit, value, keyup)
 
 import           Lubeck.App                     (Html)
 import           Lubeck.Forms
@@ -32,6 +33,10 @@ import           Lubeck.FRP
 
 import           BD.Types
 import           BD.Utils
+
+
+foreign import javascript unsafe "$1.which"
+  which :: Event -> Int
 
 loginPageW :: Widget Credentials (Submit Credentials)
 loginPageW sink (name, passw) =
@@ -47,12 +52,15 @@ loginPageW sink (name, passw) =
           [ div [class_ "form-group form-group-lg"]
             [ E.input [ class_ "form-control bottom-buffer"
                       , A.value name
+                      , keyup $ \e -> if which e == 13 then sink (Submit (name, passw)) else return ()
                       , change $ \e -> preventDefault e >> sink (DontSubmit (value e, passw))] []
             , E.input [ class_ "form-control bottom-buffer"
                       , A.value passw -- FIXME is it ok to pre-set passwords?
                       , A.type_ "password"
+                      , keyup $ \e -> if which e == 13 then sink (Submit (name, passw)) else return ()
                       , change $ \e -> preventDefault e >> sink (DontSubmit (name, value e))] []
             , button [ class_ "form-control btn btn-link"
+                     , keyup $ \e -> if which e == 13 then sink (Submit (name, passw)) else return ()
                      , click $ \_ -> sink (Submit (name, passw))] [text "Login"]
             ]
           ]
