@@ -25,9 +25,10 @@ module Lubeck.App
 import Prelude hiding (div)
 import qualified Prelude
 
-import Control.Concurrent (threadDelay, forkIO)
+import Control.Concurrent (threadDelay, forkIO, myThreadId)
 import Control.Monad (forM_, forever, unless)
 import Control.Monad.STM (atomically)
+import Control.Exception (catch, SomeException)
 import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
 import qualified Data.List
@@ -37,6 +38,7 @@ import Data.Default (def)
 
 import Data.IORef (newIORef, readIORef, writeIORef)
 import qualified Web.VirtualDom as VD
+import GHCJS.Concurrent(isThreadSynchronous, isThreadContinueAsync)
 
 -- import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 -- import GHCJS.VDOM.Event (initEventDelegation)
@@ -53,9 +55,12 @@ runAppStatic :: Html -> IO ()
 runAppStatic x = runAppReactive (pure x)
 
 runAppReactive :: Signal Html -> IO ()
-runAppReactive s = do
+runAppReactive s = flip catch (\e -> print (e :: SomeException)) $ do
   -- VD = Virtual DOM, RD = Real DOM
-  print "Setting up first VD"
+
+  -- print "Setting up first VD"
+  -- showThreadInfo
+
   initVD <- pollBehavior $ current s
   initRD <- VD.createElement initVD
   varVD <- newIORef initVD
@@ -64,7 +69,8 @@ runAppReactive s = do
   VD.appendToBody initRD
 
   subscribeEvent (updates s) $ \newVD -> do
-    print "Updating VD"
+    -- print "Updating VD"
+    -- showThreadInfo
 
     prevVD <- readIORef varVD
     prevRD <- readIORef varRD
@@ -76,9 +82,13 @@ runAppReactive s = do
     writeIORef varRD newRD
     return ()
   return ()
-
+  where
+    showThreadInfo = do
+      putStrLn (replicate 50 '-')
+      putStrLn . ("myThreadId:            " ++) . show =<< myThreadId
+      putStrLn . ("isThreadSynchronous:   " ++) . show =<< isThreadSynchronous =<< myThreadId
+      putStrLn . ("isThreadContinueAsync: " ++) . show =<< isThreadContinueAsync =<< myThreadId
 -- runAppReactive r = runAppPureS (pure $ pure r) (flip const)
-
 
 runAppPure
   :: (Events action -> IO (Behavior model))

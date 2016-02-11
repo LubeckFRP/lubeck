@@ -6,6 +6,9 @@ module Lubeck.Util
   ( eitherToError
   -- , withError
   , withErrorIO
+
+  , reactimateIOAsync
+
   , showJS
   , row6H
   , row12H
@@ -37,6 +40,9 @@ import Data.Time (Day(..), UTCTime(..))
 import qualified Data.Time.Format
 import qualified Data.List
 
+import GHCJS.Concurrent                         (synchronously)
+import Control.Concurrent                       (forkIO)
+
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
                                                  tbody, td, text, th, thead, tr)
@@ -60,8 +66,8 @@ eitherToError sink (Right x) = return (Just x)
 
 withErrorIO :: Sink (Maybe Notification) -> Events (IO (Either AppError a)) -> IO (Events a)
 withErrorIO notifSink bl = do
-  b1 <- reactimateIO $ fmap (fmap (eitherToError notifSink)) bl
-  b2 <- reactimateIO b1
+  b1 <- reactimateIOAsync $ fmap (fmap (eitherToError notifSink)) bl
+  b2 <- reactimateIOAsync b1
   return $ filterJust b2
 
 showJS :: Show a => a -> JSString
@@ -154,3 +160,18 @@ newEventOf _ = newEvent
 -- XXX this blocks the whole js thread until a user clicks a dialog button
 -- TODO non-blocking confirm dialog
 foreign import javascript unsafe "confirm($1) + 0" jsConfirm :: JSString -> IO Int
+
+
+-- | Like 'reactimateIO', except each IO action is called out in a new thread.
+--
+-- Results are fed back into the returned event using @GHCJS.Concurrent.synchronously@,
+-- to prevent overlapping access to the FRP system.
+--
+-- As every action is carried out in a separate thread, this function does not preserve order.
+-- This is quite unlike 'reactimateIO' which does preserve order.
+---
+reactimateIOAsync :: Events (IO a) -> IO (Events a)
+reactimateIOAsync actions = do
+  (sendOn, results) <- newEvent
+  _ <- reactimateIO $ fmap (\action -> forkIO $ action >>= \result -> synchronously (sendOn result)) actions
+  return results

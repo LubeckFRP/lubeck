@@ -7,6 +7,7 @@ module Lubeck.Forms.Basic
     , dateWidget
     , hideableDateWidget
     , hideableIntegerWidget
+    , staticStringWidget
     ) where
 
 import qualified Data.List
@@ -23,10 +24,18 @@ import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.Forms
 import Lubeck.Forms.Select
-import Lubeck.Util(formatDateFromUTC, parseDateToUTC)
+import Lubeck.Util(formatDateFromUTC, parseDateToUTC, showJS)
 
 -- TODO the text varieties (password, search, textarea)
 -- TODO double rational version of integer/range
+
+-- | Displays a static string.
+staticStringWidget :: Widget JSString a
+staticStringWidget _ val = E.div
+  [ A.class_ "col-xs-2" ]
+  [ E.p [ A.class_ "text-center" ]
+        [ E.text (showJS val) ]
+  ]
 
 rangeWidget :: Int -> Int -> Int -> Widget' Int
 rangeWidget minBound maxBound step
