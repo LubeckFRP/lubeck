@@ -10,6 +10,7 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
+import qualified Control.Monad.Parallel         as Par
 import qualified Data.Map.Strict                as Map
 import qualified Data.List
 import           Data.Maybe                     (fromMaybe, catMaybes)
@@ -106,13 +107,13 @@ userPageW sink ((Just acc), (Just (perfByCampIdMap, camps))) =
 
     g f = \camp -> fromMaybe "n/a" $ showJS . f <$> Map.lookup (AdC.fbid camp) perfByCampIdMap
 
--- TODO concurrent mapM
 loadPerformance :: Behavior (Maybe Ac.Account) -> [AdC.AdCampaign] -> IO [Either AppError AdC.AdCampaignPerformance]
 loadPerformance userB camps = do
   mbAcc <- pollBehavior userB
   case mbAcc of
     Nothing -> return [Left . BLError $ "can't load ad campaigns performance data: no user o_O"]
-    Just acc -> mapM (loadP acc) camps
+    -- Just acc -> Par.replicateM 5 (loadP acc (camps !! 0))
+    Just acc -> Par.mapM (loadP acc) camps
       where loadP :: Ac.Account -> AdC.AdCampaign -> IO (Either AppError AdC.AdCampaignPerformance)
             loadP a c = do
               res <- AdC.getCampaignPerformanceOrError (Ac.username a) (AdC.fbid c)

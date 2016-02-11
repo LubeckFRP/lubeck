@@ -75,6 +75,7 @@ library
                      , containers
                      , aeson
                      , bytestring
+                     , monad-parallel
 
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -162,6 +163,7 @@ executable bd-adplatform
                      , containers
                      , aeson
                      , bytestring
+                     , monad-parallel
 
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
