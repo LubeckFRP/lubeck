@@ -27,15 +27,15 @@ import           BD.Types
 type PGArray a = [a]
 
 data Ad = Ad
-  { fb_adset_id    :: Int
-  , campaign_id    :: Int
-  , fb_ad_id       :: Int
-  , fb_creative_id :: Int
-  , image_ids      :: PGArray Int
+  { fb_adset_id    :: Integer
+  , campaign_id    :: Integer
+  , fb_ad_id       :: Integer
+  , fb_creative_id :: Integer
+  , image_ids      :: PGArray Integer
   , ad_title       :: Text
   , ad_caption     :: Text
   , current_budget :: USDcents
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Show)
 
 instance FromJSON Ad
 instance ToJSON Ad
@@ -46,11 +46,11 @@ getCampaignAds unm campid =  unsafeGetAPI $ unm <> "/ads/" <> campid
 getCampaignAdsOrError :: JSString -> JSString -> IO (Either AppError [Ad])
 getCampaignAdsOrError unm campid = getAPIEither (unm <> "/ads/" <> campid) >>= return . bimap ApiError id
 
-updateStatusOrError :: JSString -> Int -> AdStatus -> IO (Either AppError Ok)
+updateStatusOrError :: JSString -> Integer -> AdStatus -> IO (Either AppError Ok)
 updateStatusOrError unm adId status = postAPIEither (unm <> "/ad-status/" <> showJS adId <> "/" <> showStatus status) () >>= return . first ApiError
   where showStatus Paused   = "paused"
         showStatus Running  = "running"
         showStatus Archived = "archived"
 
-updateBudgetOrError :: JSString -> Int -> USDcents -> IO (Either AppError Ok)
+updateBudgetOrError :: JSString -> Integer -> USDcents -> IO (Either AppError Ok)
 updateBudgetOrError unm adId budget = postAPIEither (unm <> "/set-ad-budget/" <> showJS adId <> "/" <> showJS budget) () >>= return . first ApiError
