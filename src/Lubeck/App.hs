@@ -88,20 +88,17 @@ runAppReactive s = flip catch (\e -> print (e :: SomeException)) $ do
       putStrLn . ("myThreadId:            " ++) . show =<< myThreadId
       putStrLn . ("isThreadSynchronous:   " ++) . show =<< isThreadSynchronous =<< myThreadId
       putStrLn . ("isThreadContinueAsync: " ++) . show =<< isThreadContinueAsync =<< myThreadId
--- runAppReactive r = runAppPureS (pure $ pure r) (flip const)
 
+
+{-# DEPRECATED runAppPure "Please use runAppStatic or runAppReactive" #-}
 runAppPure
   :: (Events action -> IO (Behavior model))
   -> (Sink action -> model -> Html)
   -> IO ()
 runAppPure update render = runApp (fmap (fmap $ \x -> (x,Nothing)) . update) render
 
-runAppPureS
-  :: (Events action -> IO (Signal model))
-  -> (Sink action -> model -> Html)
-  -> IO ()
-runAppPureS update render = runAppS (fmap (fmap $ \x -> (x,Nothing)) . update) render
-
+{-# DEPRECATED runApp "Please use runAppStatic or runAppReactive" #-}
+-- | Run an application, Elm-style.
 runApp
   :: (Events action -> IO (Behavior (model, Maybe (IO action))))
   -> (Sink action -> model -> Html)
@@ -122,65 +119,6 @@ runApp update render = do
   -- Compile FRP system
   forkIO $ do
     system <- runFRP' update
-    -- Propagate initial value (or we won't see anything)
-    (frpSystemState system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
-    -- Register output
-    (frpSystemOutput system) $ \(st, job) -> do
-        atomically $ TVar.writeTVar frpState st
-        case job of
-            Nothing -> return ()
-            Just job -> atomically $ TChan.writeTChan frpJobs job
-        atomically $ TChan.writeTChan frpUpdated ()
-    forever $ do
-      i <- atomically $ TChan.readTChan frpIn
-      -- putStrLn $ "Processing event: " ++ show i
-      (frpSystemInput system) i
-
-  -- Job thread
-  forkIO $
-    forever $ do
-      job <- atomically $ TChan.readTChan frpJobs
-      -- putStrLn "Starting a job"
-      res <- job
-      -- putStrLn "Job finished"
-      atomically $ TChan.writeTChan frpIn res
-
-  -- Enter rendering loop on main thread
-  do
-    -- initEventDelegation []
-    renderingLoop $ do
-      atomically $ TChan.readTChan frpUpdated
-      st <- atomically $ TVar.readTVar frpState
-      return $ render (atomically . TChan.writeTChan frpIn) st
-
-  where
-    -- Repeatedly call the given function to produce a VDOM, then patch it into the given DOM node.
-    renderingLoop :: IO VD.Node -> IO ()
-    renderingLoop = VD.renderingLoop VD.appendToBody
-
-
--- TODO consolidate
-runAppS
-  :: (Events action -> IO (Signal (model, Maybe (IO action))))
-  -> (Sink action -> model -> Html)
-  -> IO ()
-runAppS update render = do
-  -- Setup chans/vars to hook into the FRP system
-
-  -- Actions to run (from user or finished jobs)
-  frpIn      <- (TChan.newTChanIO :: IO (TChan.TChan action))
-  -- Fired whenever state has been updated
-  frpUpdated <- (TChan.newTChanIO :: IO (TChan.TChan ()))
-  -- Current state
-  -- Should not be read before frpUpdated has been emitted at least once
-  frpState   <- (TVar.newTVarIO (error "Should not be sampled") :: IO (TVar.TVar model))
-  -- Jobs for worked thread
-  frpJobs    <- (TChan.newTChanIO :: IO (TChan.TChan (IO action)))
-
-  -- Compile FRP system
-  forkIO $ do
-    let splitSignal s = (current s, updates s)
-    system <- runFRP (fmap splitSignal . update)
     -- Propagate initial value (or we won't see anything)
     (frpSystemState system) (\(st, _) -> atomically $ TVar.writeTVar frpState st >> TChan.writeTChan frpUpdated ())
     -- Register output
