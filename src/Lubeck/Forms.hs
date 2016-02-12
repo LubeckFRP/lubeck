@@ -40,6 +40,7 @@ module Lubeck.Forms
   , componentEvent
   , componentSink
   , componentRW
+  , componentListen
   , componentR
   , componentW
   , formComponent
@@ -207,6 +208,9 @@ componentRW initialState widget = do
   let htmlS       = fmap (widget internalSink) aS
   return (htmlS, internalEvents, internalSink)
 
+-- TODO: 
+-- generalComponent :: (b -> a -> a) -> (c -> a -> a) -> a -> WidgetT r a b -> Event c -> IO (Signal r, Signal a) 
+
 componentEvent :: a -> WidgetT r a a -> Events a -> IO (Signal r, Events a)
 componentEvent initState widget inputs = do
   (signal, outputs, inSink) <- componentRW initState widget
@@ -237,6 +241,9 @@ componentW :: a -> Widget' a -> IO (Signal Html, Sink a)
 componentW initialState widget = do
   (htmlS, _, internalSink) <- componentRW initialState widget
   return (htmlS, internalSink)
+
+componentListen ::  WidgetT r a b -> Signal a -> Signal r 
+componentListen widget signal = fmap (widget emptySink) signal 
 
 repackValue :: (CanSubmit, Submit a) -> (CanSubmit, a)
 repackValue (x, Submit y)     = (x, y)

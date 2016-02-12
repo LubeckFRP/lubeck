@@ -23,6 +23,7 @@ import Data.Time (UTCTime(..), DiffTime, Day(..))
 
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
+import Data.JSString (pack)
 import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
 import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
 import Web.VirtualDom.Html.Attributes (src, width, class_, type_, href, target, width, src, style)
@@ -32,9 +33,9 @@ import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppReactive)
-import Lubeck.Forms (Widget, Widget')
+import Lubeck.Forms 
 import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
-import Lubeck.Util (showIntegerWithThousandSeparators, contentPanel, showJS)
+import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
 import qualified Lubeck.Drawing as Drawing
 
 import qualified BD.Data.Account as A
@@ -44,50 +45,55 @@ import BD.Data.SearchPost(SearchPost)
 import qualified BD.Data.Interaction as I
 import BD.Data.Interaction hiding (interactions)
 
-data Action
-  = NoAction
-  | LoadAction (Maybe JSString) (Maybe JSString)
-  | ChangeModel (Model -> Model)
-  | ReplaceModel Model -- (ReplaceModel x) == (ChangeModel (const x))
+-- data Action
+--   = NoAction
+--   | LoadAction (Maybe JSString) (Maybe JSString)
+--   | ChangeModel (Model -> Model)
+--   | ReplaceModel Model -- (ReplaceModel x) == (ChangeModel (const x))
+-- 
+-- -- For debugging only
+-- instance Show Action where
+--   show = g where
+--     g NoAction         = "NoAction"
+--     g (LoadAction _ _) = "LoadAction"
+--     g (ChangeModel _)  = "ChangeModel"
+--     g (ReplaceModel _) = "ReplaceModel"
+-- 
+-- data Model = Model
+--   { _requested    :: (Maybe JSString, Maybe JSString)
+--   , _interactions :: InteractionSet SearchPost }
+-- makeLenses ''Model
+-- 
+-- update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
+-- update = foldpR step initial
+--   where
+--     initial = (Model (Just "beautifuldestinations", Just "forbestravelguide") $ InteractionSet Nothing Nothing [], Nothing)
+-- 
+--     truncateInteractions :: InteractionSet a -> InteractionSet a
+--     truncateInteractions x = x { I.interactions = (take 20 $ I.interactions x) }
+--     
+--     step :: Action -> (Model, Maybe (IO Action)) -> (Model, Maybe (IO Action)) 
+--     step NoAction             (model,_) = (model,   Nothing)
+--     step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- fmap truncateInteractions $ loadShoutouts a b ; return $ ChangeModel (set interactions so) })
+--     step (ReplaceModel model) (_,_)     = (model,   Nothing)
+--     step (ChangeModel f) (model,_)      = (f model, Nothing)
+-- 
+type TwoAccounts = (Maybe JSString, Maybe JSString) 
+ 
+-- render :: Widget Model Action
+-- render actions model = div
+--   -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
+--   [ style "width: 900px; margin-left: auto; margin-right: auto" ]
+--   [ div [class_ "page-header"]
+--       [ h1 [] [ text "Shoutout browser" ] ]
+--   , div []
+--     [ buttonW actions (_requested model) ]
+--   , div [class_ "panel panel-default"]
+--     [ interactionSetW actions (_interactions model) ]
+--   ]
 
--- For debugging only
-instance Show Action where
-  show = g where
-    g NoAction         = "NoAction"
-    g (LoadAction _ _) = "LoadAction"
-    g (ChangeModel _)  = "ChangeModel"
-    g (ReplaceModel _) = "ReplaceModel"
 
-data Model = Model
-  { _requested    :: (Maybe JSString, Maybe JSString)
-  , _interactions :: InteractionSet SearchPost }
-makeLenses ''Model
-
-update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
-update = foldpR step initial
-  where
-    initial = (Model (Just "beautifuldestinations", Just "forbestravelguide") $ InteractionSet Nothing Nothing [], Nothing)
-
-    step NoAction             (model,_) = (model,   Nothing)
-    step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- fmap truncateInteractions $ loadShoutouts a b ; return $ ChangeModel (set interactions so) })
-    step (ReplaceModel model) (_,_)     = (model,   Nothing)
-    step (ChangeModel f) (model,_)      = (f model, Nothing)
-
-truncateInteractions x = x { I.interactions = (take 20 $ I.interactions x) }
-
-render :: Widget Model Action
-render actions model = div
-  -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
-  [ style "width: 900px; margin-left: auto; margin-right: auto" ]
-  [ div [class_ "page-header"]
-      [ h1 [] [ text "Shoutout browser" ] ]
-  , div []
-    [ buttonW actions (_requested model) ]
-  , div [class_ "panel panel-default"]
-    [ interactionSetW actions (_interactions model) ]
-  ]
-
-buttonW :: Widget (Maybe JSString, Maybe JSString) Action
+buttonW :: Widget TwoAccounts (Submit TwoAccounts)
 buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
   [ div [ class_ "form-group form-inline" ] $
     [ label [class_ "control-label col-xs-1"] [text "From"]
@@ -95,7 +101,7 @@ buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
         [ E.input [ class_ "form-control"
                   , A.value $ nToEmpty x
                   , A.style "width: 100%"
-                  , change $ \e -> sink (ChangeModel (set (requested._1) (emptyToN $ value e)))]
+                  , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ] 
                   [] ]
     ]
   , div [ class_ "form-group form-inline" ] $
@@ -104,13 +110,13 @@ buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
         [ E.input [ class_ "form-control"
                   , A.style "width: 100%"
                   , A.value $ nToEmpty y
-                  , change $ \e -> sink (ChangeModel (set (requested._2) (emptyToN $ value e)))]
+                  , change $ \e -> sink (DontSubmit (x,emptyToN $ value e)) ]  
                   [] ]
     ]
   , div [ class_ "form-group" ] $
     pure $ button
       [ class_ "btn btn-success col-xs-offset-1 col-xs-3"
-      , click $ \e -> sink (LoadAction x y) >> preventDefault e ]
+      , click $ \e -> sink (Submit (x,y)) >> preventDefault e ]
       [ text "Load shoutouts!"] ]
   where
     _1 f (x,y) = fmap (,y) $ f x
@@ -120,14 +126,14 @@ buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
     nToEmpty Nothing   = ""
     nToEmpty (Just xs) = xs
 
-interactionSetW :: Widget (InteractionSet SearchPost) Action
+interactionSetW :: Widget (InteractionSet SearchPost) () 
 interactionSetW actions model = div [class_ "panel-body"]
   [ p [] [ text $ "Showing " <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
          , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div [] (Data.List.intersperse (hr [] []) $ fmap (interactionW actions) $ model .: I.interactions)
   ]
 
-interactionW :: Widget (Interaction SearchPost) Action
+interactionW :: Widget (Interaction SearchPost) () 
 interactionW actions model = div []
   [ p [] [text (showJS $ model .: interaction_time)]
   , div [class_ "row"]
@@ -174,8 +180,12 @@ interactionW actions model = div []
 -- MAIN
 
 main :: IO ()
-main = runApp update render
-
+main = do
+  (btnS, btnE) <- formComponent (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") buttonW  
+  let initInteractions = InteractionSet Nothing Nothing [] 
+  interactionsE <- reactimateIOAsync (fmap (uncurry loadShoutouts) btnE)    
+  interactS <- componentListen interactionSetW <$> stepperS initInteractions interactionsE
+  runAppReactive $ mappend btnS interactS
 
 -- UTILITY
 
