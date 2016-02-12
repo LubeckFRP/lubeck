@@ -118,6 +118,14 @@ executable bd-example-dynamic-page
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
+executable bd-example-api-req
+  main-is:             src/ExampleApiReq.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
 executable bd-interactions
   main-is:             src/Interactions.hs
   build-depends:       base >=4.8 && <4.9

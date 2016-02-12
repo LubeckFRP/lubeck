@@ -29,6 +29,8 @@ type Layout =
     :<|>
   "example-widget-composition" :> Raw
     :<|>
+  "example-api-req" :> Raw
+    :<|>
   Raw
 
 resources =
@@ -61,6 +63,7 @@ main = do
       exampleStaticServer      <- serveApp jsExeDir "bd-example-static-page"
       exampleDynamicServer     <- serveApp jsExeDir "bd-example-dynamic-page"
       exampleWidgetComposition <- serveApp jsExeDir "bd-example-widget-composition"
+      exampleApiReq            <- serveApp jsExeDir "bd-example-api-req"
       indexServer              <- serveApp jsExeDir "bd-index"
 
       putStrLn $ "Listening on " ++ show port
@@ -71,6 +74,7 @@ main = do
           :<|> exampleStaticServer
           :<|> exampleDynamicServer
           :<|> exampleWidgetComposition
+          :<|> exampleApiReq
           :<|> indexServer
 
 serveApp :: String -> String -> IO (Server Raw)
