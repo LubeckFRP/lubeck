@@ -44,15 +44,15 @@ import qualified Data.Colour.Names as Colors
 -- MAIN
 
 testSimple1, testSimple2, testSimple3 :: Drawing
-testSimple1 = simpleLinePlot showJS showJS
+testSimple1 = snd $ simpleLinePlot showJS showJS
   id id id id 10 10
   [(0.2, 0.3), (0.4, 1), (1,1)]
 
-testSimple2 = simpleLinePlot showJS showJS
+testSimple2 = snd $ simpleLinePlot showJS showJS
   id id id id 10 10
   (zip [-10,1,3,4,7,15] [10,20,0,300,30,50])
 
-testSimple3 = simpleLinePlot showJS showJS
+testSimple3 = snd $ simpleLinePlot showJS showJS
   utcTimeToApproxReal realToApproxUTCTime id id 10 10
   (zip
     (fmap ((\(Just x) -> x) . parseDateAndTimeToUTC)

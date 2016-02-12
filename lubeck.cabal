@@ -132,6 +132,10 @@ executable bd-example-plots
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
+                     , time
+                     , vector-space
+                     , vector-space-points
+                     , colour
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
