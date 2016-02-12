@@ -64,7 +64,6 @@ loadAdInsights userB ads = do
   mbAcc <- pollBehavior userB
   case mbAcc of
     Nothing -> return [Left . BLError $ "can't load ads insight data: no user o_O"]
-    -- Just acc -> Par.replicateM 5 (load acc (ads !! 0))
     Just acc -> Par.mapM (load acc) ads
       where load :: Account.Account -> Ad.Ad -> IO (Either AppError AdInsights)
             load ac ad = do
@@ -82,8 +81,8 @@ updateBudget acc ad budget = Ad.updateBudgetOrError (Account.username acc) (Ad.f
 getCampaigns :: Account.Account -> IO (Either AppError [AdC.AdCampaign])
 getCampaigns acc = AdC.getUserCampaignsOrError (Account.username acc)
 
-campaignPageW :: Widget (AdC.AdCampaign, (AdInsightMap, Ads)) Action
-campaignPageW sink (camp, (insMap, ads)) =
+campaignPageW :: Widget (AdC.AdCampaign, AdInsightMap, Ads) Action
+campaignPageW sink (camp, insMap, ads) =
   contentPanel $
     E.ul [class_ "list-group"]
       [ E.li [class_ "list-group-item"]
@@ -218,11 +217,10 @@ campaignPage busySink notifSink loadAdsE userB = do
   adsInsightsMapS        <- stepperS Nothing (fmap (Just . toHash) adsInsightsE)                     :: IO (Signal (Maybe AdInsightMap))
   adsS                   <- stepperS Nothing (fmap Just adsE)                                        :: IO (Signal (Maybe Ads))
 
-  let bS                 = liftA2 (liftA2 (,)) adsInsightsMapS adsS                                   ::     Signal (Maybe (AdInsightMap, Ads))
-  latestLoadedCampaignS  <- stepperS Nothing (fmap Just loadAdsE)                                     :: IO (Signal (Maybe AdC.AdCampaign))
-  let lastestAndAdsS     = liftA2 (liftA2 (,)) latestLoadedCampaignS bS                               ::     Signal (Maybe (AdC.AdCampaign, (AdInsightMap, Ads)))
+  latestLoadedCampaignS  <- stepperS Nothing (fmap Just loadAdsE)                                    :: IO (Signal (Maybe AdC.AdCampaign))
+  let zS                 = liftA3 (liftA3 (,,)) latestLoadedCampaignS adsInsightsMapS adsS           ::     Signal (Maybe (AdC.AdCampaign, AdInsightMap, Ads))
 
-  let adsView            = fmap ((altW mempty campaignPageW) actionSink) lastestAndAdsS
+  let adsView            = fmap ((altW mempty campaignPageW) actionSink) zS
 
   return adsView
 
