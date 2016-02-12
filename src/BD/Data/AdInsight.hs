@@ -42,5 +42,5 @@ data AdInsight = AdInsight
 instance FromJSON AdInsight
 instance ToJSON AdInsight
 
-getAdPerformance :: JSString -> Ad -> IO (Either AppError [AdInsight])
-getAdPerformance unm ad =  getAPIEither (unm <> "/ad-performance/" <> showJS (BD.Data.Ad.fb_adset_id ad)) >>= return . first ApiError
+getAdPerformance :: JSString -> Integer -> IO (Either AppError [AdInsight])
+getAdPerformance unm adId =  getAPIEither (unm <> "/ad-performance/" <> showJS adId) >>= return . first ApiError
