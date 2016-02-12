@@ -31,6 +31,7 @@ library
                      , BD.Data.Account
                      , BD.Data.AdTypes
                      , BD.Data.Ad
+                     , BD.Data.AdInsight
                      , BD.Data.AdCampaign
                      , BD.Data.Image
                      , BD.Data.Count

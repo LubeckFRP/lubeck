@@ -7,7 +7,7 @@ packages:
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
 - location:
     git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: 221445568cad312b1f4f42b3cd845b94bd1e4e0e
+    commit: b725daeac3edb6d0afdd290661b73a28897b1f78
 - location:
     git: git@github.com:msakai/data-interval.git
     commit: f57e950e53e5499f1cbc2609382521bf52105b5e

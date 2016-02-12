@@ -15,6 +15,11 @@ import qualified Prelude
 
 import           Control.Applicative
 import           Control.Lens                   (lens, over, set, view)
+import           Control.Monad                  (void)
+
+import           Control.Concurrent             (forkIO)
+import           GHCJS.Concurrent               (synchronously)
+
 import           Data.Aeson
 import           Data.Bifunctor                 (bimap)
 import qualified Data.List
@@ -121,9 +126,11 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
   in contentPanel $
     div [class_ "form-horizontal"]
       [ longStringWidget "Caption"
+                         True
                          (contramapSink (\new -> DontSubmit $ newAd { caption = new }) outputSink)
                          (caption newAd)
       , longStringWidget "Click URL"
+                         False
                          (contramapSink (\new -> DontSubmit $ newAd { click_link = new }) outputSink)
                          (click_link newAd)
       , campaignSelectWidget mbAc
@@ -166,15 +173,15 @@ createAdPage busySink notifSink mUserNameB imsB campB = do
   subscribeEvent adCreated $ \newAd -> do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
-      Just username ->  do
-        res <- ((withBusy2 busySink postNewAd) username newAd) >>= (eitherToError notifSink)
+      Just username -> void $ forkIO $ do
+        res <- ((withBusy2 (synchronously . busySink) postNewAd) username newAd) >>= (eitherToError (synchronously . notifSink))
         case res of
-          Just (Ok s)  -> notifSink . Just . NSuccess $ "Ad created! :-)"
-          Just (Nok s) -> notifSink . Just . apiError $ s
+          Just (Ok s)  -> synchronously . notifSink . Just . NSuccess $ "Ad created! :-)"
+          Just (Nok s) -> synchronously . notifSink . Just . apiError $ s
           Nothing      -> print "Error already should have been reported"
         return ()
 
-      Nothing -> notifSink . Just . blError $ "can't create ad: no username!"
+      Nothing -> synchronously . notifSink . Just . blError $ "can't create ad: no username!"
     return ()
 
   return view

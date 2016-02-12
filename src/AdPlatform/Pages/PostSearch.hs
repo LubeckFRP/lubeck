@@ -14,6 +14,7 @@ import qualified Prelude
 
 import           Control.Applicative
 import           Control.Lens                   (lens, over, set, view)
+import           Control.Monad                  (void)
 import qualified Data.List
 import           Data.Map                       (Map)
 import qualified Data.Map                       as Map
@@ -22,8 +23,11 @@ import           Data.Monoid
 import           Data.Time.Calendar             (Day (..))
 import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
+import           Control.Concurrent             (forkIO)
 import qualified Data.JSString
+import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
+
 import           Web.VirtualDom.Html            (Property, a, button, div, form,
                                                  h1, hr, img, input, label, p,
                                                  table, tbody, td, text, th, tr)
@@ -41,9 +45,9 @@ import           Lubeck.Forms
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    (divideFromEnd, showJS, contentPanel,
-                                                 newEventOf,
-                                                 showIntegerWithThousandSeparators)
+import           Lubeck.Util                    (contentPanel, divideFromEnd,
+                                                 newEventOf, showIntegerWithThousandSeparators,
+                                                 showJS, which)
 import           Lubeck.Web.URI                 (getURIParameter)
 
 import           BD.Api
@@ -57,19 +61,22 @@ import           BD.Types
 
 
 import           AdPlatform.Types
-import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2,
-                                                 busyIndicatorComponent)
+import           Components.BusyIndicator       (BusyCmd (..),
+                                                 busyIndicatorComponent,
+                                                 withBusy, withBusy2)
 
 
 -- TODO finish
 searchForm :: Day -> Widget SimplePostQuery (Submit SimplePostQuery)
 searchForm dayNow output query =
   contentPanel $
-    div [class_ "form-horizontal"]
-      [ longStringWidget "Caption"   (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
-      , longStringWidget "Comment"   (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
-      , longStringWidget "Hashtag"   (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
-      , longStringWidget "User name" (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
+    div [ class_ "form-horizontal"
+        , keyup $ \e -> if which e == 13 then output (Submit query) else return ()
+        ]  -- event delegation
+      [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
+      , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
+      , longStringWidget "Hashtag"   False (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
+      , longStringWidget "User name" False (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
 
       , integerIntervalWidget "Poster followers"    (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
       , dateIntervalWidget    dayNow "Posting date" (contramapSink (\new -> DontSubmit $ query { date = new }) output)      (PQ.date query)
@@ -189,32 +196,30 @@ searchPage busySink notifSink ipcSink mUserNameB = do
   -- API calls
 
   -- Create ad
-  subscribeEvent uploadedImage $ \(UploadImage post) -> do
-    -- print (userName, P.ig_web_url post)
+  subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
-      Nothing -> notifSink . Just . blError $ "No account to upload post to"
+      Nothing -> synchronously . notifSink . Just . blError $ "No account to upload post to"
       Just userName -> do
-        res <- (withBusy2 busySink postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+        res <- (withBusy2 (synchronously . busySink) postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
-          Left e        -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
-          Right (Ok s)  -> notifSink (Just . NSuccess $ "Image uploaded successfully! :-)")
-                        >> ipcSink ImageLibraryUpdated
-          Right (Nok s) -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
+          Left e        -> synchronously . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
+          Right (Ok s)  -> (synchronously . notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (synchronously . ipcSink $ ImageLibraryUpdated)
+          Right (Nok s) -> synchronously . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
 
   -- Fetch Posts
-  subscribeEvent searchRequested $ \query -> do
+  subscribeEvent searchRequested $ \query -> void $ forkIO $ do
     receiveSearchResult Nothing -- reset previous search results
 
     let complexQuery = PostQuery $ complexifyPostQuery query
-    eQueryId <- (withBusy2 busySink postAPIEither) "internal/queries" $ complexQuery
+    eQueryId <- (withBusy2 (synchronously . busySink) postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
-      Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
-      Right queryId -> do
-        eitherPosts <- (withBusy busySink getAPIEither) $ "internal/queries/" <> queryId <> "/results"
+      Left e        -> synchronously . notifSink . Just . apiError $ "Failed posting query: " <> showJS e
+      Right queryId -> void $ forkIO $ do
+        eitherPosts <- (withBusy (synchronously . busySink) getAPIEither) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
-          Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-          Right ps -> receiveSearchResult $ Just ps
+          Left e   -> synchronously . notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
+          Right ps -> synchronously . receiveSearchResult $ Just ps
     return ()
 
   return view

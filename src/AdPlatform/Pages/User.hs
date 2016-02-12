@@ -147,9 +147,9 @@ userPage busySink notifSink userB campaignsS = do
 
   let campaignsE        = filterJust . updates $ campaignsS                                           :: Events Campaigns
 
-  campaignPerformanceE  <- reactimateIO $ fmap (withBusy busySink (loadPerformance userB)) campaignsE :: IO (Events [Either AppError AdC.AdCampaignPerformance])
+  campaignPerformanceE  <- reactimateIOAsync $ fmap (withBusy busySink (loadPerformance userB)) campaignsE :: IO (Events [Either AppError AdC.AdCampaignPerformance])
 
-  aE                    <- reactimateIO $ fmap (reportErrors notifSink) campaignPerformanceE          :: IO (Events [Maybe AdC.AdCampaignPerformance])
+  aE                    <- reactimateIOAsync $ fmap (reportErrors notifSink) campaignPerformanceE          :: IO (Events [Maybe AdC.AdCampaignPerformance])
   aS                    <- stepperS Nothing (fmap (Just . toHash) aE)                                 :: IO (Signal (Maybe CampsPerfMap))
   let bS                = liftA2 (liftA2 (,)) aS campaignsS                                           :: Signal (Maybe (CampsPerfMap, Campaigns))
   let cS                = snapshotS userB bS                                                          :: Signal ((Maybe Ac.Account), (Maybe (CampsPerfMap, Campaigns)))

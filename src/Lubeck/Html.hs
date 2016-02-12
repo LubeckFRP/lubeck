@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP, TypeSynonymInstances #-}
 
 {-|
-Provides a HTML representation. This is just a wrapper around @virtual-dom@.
+Provides a HTML representation. This is just a wrapper around "Web.VirtualDom".
 
 For details, see:
 

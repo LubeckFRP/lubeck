@@ -55,10 +55,10 @@ loadAds account camp = Ad.getCampaignAdsOrError username campid
         username = maybe "" Account.username $ account
 
 updateStatus :: Account.Account -> Ad.Ad -> AdT.AdStatus -> IO (Either AppError Ok)
-updateStatus acc ad status = Ad.updateStatusOrError (Account.username acc) (Ad.fb_ad_id ad) status
+updateStatus acc ad status = Ad.updateStatusOrError (Account.username acc) (Ad.fb_adset_id ad) status
 
 updateBudget :: Account.Account -> Ad.Ad -> AdT.USDcents -> IO (Either AppError Ok)
-updateBudget acc ad budget = Ad.updateBudgetOrError (Account.username acc) (Ad.fb_ad_id ad) budget
+updateBudget acc ad budget = Ad.updateBudgetOrError (Account.username acc) (Ad.fb_adset_id ad) budget
 
 getCampaigns :: Account.Account -> IO (Either AppError [AdCampaign.AdCampaign])
 getCampaigns acc = AdCampaign.getUserCampaignsOrError (Account.username acc)
@@ -104,7 +104,7 @@ campaignPageW sink (camp, ads) =
                   , (AdT.Running,  "Running")
                   , (AdT.Archived, "Archived") ]
                   (contramapSink (\newAdStatus -> UpdateStatus ad newAdStatus) sink)
-                  (AdT.Unknown)
+                  (Ad.status ad)
               ]
       ]
 
@@ -153,7 +153,7 @@ campaignPage :: Sink BusyCmd
 campaignPage busySink notifSink loadAdsE userB = do
   (actionSink, actionsE) <- newEventOf (undefined                                          :: Action)
 
-  secondaryActionsE      <- reactimateIO $ fmap (update busySink notifSink userB) actionsE :: IO (Events (Maybe SecondaryAction))
+  secondaryActionsE      <- reactimateIOAsync $ fmap (update busySink notifSink userB) actionsE :: IO (Events (Maybe SecondaryAction))
   campaignB              <- stepper Nothing (fmap Just loadAdsE)                           :: IO (Behavior (Maybe AdCampaign.AdCampaign))
   let reloadAdsE         = filterJust $ sample campaignB (FRP.filter justReloads secondaryActionsE) :: Events AdCampaign.AdCampaign
 

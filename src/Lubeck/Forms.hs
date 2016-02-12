@@ -1,5 +1,9 @@
 
-{-# LANGUAGE NoMonomorphismRestriction, RankNTypes, TypeFamilies, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 {-|
 Provides high-level way of constructing forms and other interfaces.
@@ -55,26 +59,35 @@ module Lubeck.Forms
 
   ) where
 
-import Lubeck.FRP
-import Lubeck.Html (Html)
-import Prelude hiding (div)
+import           Lubeck.FRP
+import           Lubeck.Html                    (Html)
+import           Prelude                        hiding (div)
 import qualified Prelude
 
-import GHCJS.Types(JSString, jsval)
 import           Control.Applicative
+import           Data.Monoid                    ((<>))
+import           GHCJS.Types                    (JSString, jsval)
 
-import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
-import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
-import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom                 as VD
+import           Web.VirtualDom.Html            (a, button, div, form, h1, hr,
+                                                 img, input, label, p, table,
+                                                 tbody, td, text, th, tr)
+import qualified Web.VirtualDom.Html            as E
+import           Web.VirtualDom.Html.Attributes (class_, href, src, src, target,
+                                                 width, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import qualified Web.VirtualDom.Html.Events as Ev
+import           Web.VirtualDom.Html.Events     (change, click, keyup,
+                                                 preventDefault,
+                                                 stopPropagation, submit, value)
+import qualified Web.VirtualDom.Html.Events     as Ev
 
-import Control.Lens (over, under, set, view, review, preview, lens, Lens, Lens', Prism, Prism', Iso, Iso')
+import           Control.Lens                   (Iso, Iso', Lens, Lens', Prism,
+                                                 Prism', lens, over, preview,
+                                                 review, set, under, view)
 import qualified Control.Lens
-import Control.Lens.TH (makeLenses)
+import           Control.Lens.TH                (makeLenses)
 
-import BD.Types
+import           BD.Types
 
 {-|
 Provides a way of:
@@ -225,8 +238,9 @@ componentW initialState widget = do
   (htmlS, _, internalSink) <- componentRW initialState widget
   return (htmlS, internalSink)
 
-repack :: (CanSubmit, Submit a) -> (CanSubmit, a)
-repack (x, Submit y) = (x, y)
+repackValue :: (CanSubmit, Submit a) -> (CanSubmit, a)
+repackValue (x, Submit y)     = (x, y)
+repackValue (x, DontSubmit y) = (x, y)
 
 formWithValidationComponent :: Validator a -> a -> Widget (CanSubmit, a) (Submit a) -> IO (Signal Html, Events a)
 formWithValidationComponent validate z w = do
@@ -238,7 +252,7 @@ formWithValidationComponent validate z w = do
 
   let aS          = liftA2 (,) isValidS aEventS                               -- :: IO (Signal (CanSubmit, Submit a))
 
-  let htmlS = fmap (w aSink . repack) aS
+  let htmlS = fmap (w aSink . repackValue) aS
   return (htmlS, submits aEvent)
 
 -- | A variant of component that supports chanching its value internally without
@@ -321,22 +335,23 @@ submits = filterJust . fmap g
     g _          = Nothing
 
 
-longStringWidget :: JSString -> Widget' JSString
-longStringWidget title update value = div
+longStringWidget :: JSString -> Bool -> Widget' JSString
+longStringWidget title focus update value = div
   [ class_ "form-group" ]
   [ label [class_ "control-label col-xs-2"] [text title]
   , div [class_ "col-xs-10"]
       [ input
-        [ A.type_ "search"
+        ([ A.type_ "search"
         -- TODO size
         , A.class_ "form-control"
         , A.value value
         , change  $ contramapSink Ev.value update
         , keyup $ contramapSink Ev.value update
-        ] []
-
+        ] <> fcs) []
       ]
   ]
+  where
+    fcs = if focus then [(VD.attribute "autofocus") "true"] else []
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
 altW :: Html -> Widget a b -> Widget (Maybe a) b
