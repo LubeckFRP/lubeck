@@ -127,6 +127,14 @@ executable bd-example-api-req
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
+executable bd-example-plots
+  main-is:             src/ExamplePlots.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
 executable bd-interactions
   main-is:             src/Interactions.hs
   build-depends:       base >=4.8 && <4.9
