@@ -34,6 +34,9 @@ notImplError = NError . NotImplementedError
 data CanSubmit = CanSubmit | CanNotSubmit
 type Validator a = a -> CanSubmit
 
+data CanSubmitVerbose a = CanSubmitVerbose | CanNotSubmitVerbose a
+type ValidatorIO a b = a -> IO (CanSubmitVerbose b)
+
 -- FIXME should be in Ad Platform types probably
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages
   deriving (Show, Eq)
