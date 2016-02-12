@@ -72,9 +72,10 @@ sample2 b e1 e2 = sample b (mappend e1' e2')
 
 main :: IO ()
 main = do
-  (intBtnDisp, intE) <- component 0 $ intButtons 20 
+  (intBtnDisp, intE) <- component 0 $ intButtons 20
   (resetDisp, resetE) <- component () resetButton
   sumAndResB <- sumAndReset intE resetE
   let sumAndResetE = sample2 sumAndResB intE resetE
   (sumDisp, _) <- componentEvent 0 sumWidget $ sumAndResetE
+  
   runAppReactive $ mconcat [intBtnDisp, sumDisp, resetDisp]
