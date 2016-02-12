@@ -309,5 +309,6 @@ div, h1, h2, img, p, span {
   margin-bottom : 10px;
   border        : 1px solid transparent;
   border-radius : 4px;
-  opacity: 0.9;
+  opacity       : 0.9;
+  box-shadow    : 0px 1px 3px 0px rgba(0,0,0,0.1);
 }

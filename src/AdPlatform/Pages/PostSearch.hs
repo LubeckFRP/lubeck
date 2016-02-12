@@ -215,7 +215,7 @@ searchPage busySink notifSink ipcSink mUserNameB = do
     eQueryId <- (withBusy2 (synchronously . busySink) postAPIEither) "internal/queries" $ complexQuery
     case eQueryId of
       Left e        -> synchronously . notifSink . Just . apiError $ "Failed posting query: " <> showJS e
-      Right queryId -> do
+      Right queryId -> void $ forkIO $ do
         eitherPosts <- (withBusy (synchronously . busySink) getAPIEither) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
           Left e   -> synchronously . notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
