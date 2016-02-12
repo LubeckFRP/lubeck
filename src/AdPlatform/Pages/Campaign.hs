@@ -91,34 +91,32 @@ campaignPageW sink (camp, (insMap, ads)) =
       , E.li [class_ "list-group-item"]
           [ div [] [text "Daily budget: ", text $ showJS $ AdC.daily_budget camp ] ]
       , E.li [class_ "list-group-item"]
-          [ renderAdList sink ads ]
+          [ renderAdList sink (insMap, ads) ]
       ]
 
   where
-    renderAdList :: Widget [Ad.Ad] Action
-    renderAdList _ ads = table [class_ "table"] [
+    renderAdList :: Widget (AdInsightMap, Ads) Action
+    renderAdList _ (insMap, ads) = table [class_ "table"] [
         tableHeaders ["FB adset id", "Name", "Caption", "Impressions", "Clicks", "Spend, ¢", "Budget, ¢", "Status"]
-      , tbody [] (map (adRow sink) ads)
+      , tbody [] (map (\ad -> adRow sink (ad, (fromMaybe [] (Map.lookup (Ad.fb_adset_id ad) insMap)))) ads)
       ]
 
-    getImpressions = g AdIn.unique_impressions
-    getClicks      = g AdIn.unique_clicks
-    getSpend       = g AdIn.spend
-
-    g f = \ad -> listH $ fromMaybe [] $ fmap (fmap f) (Map.lookup (Ad.fb_adset_id ad) insMap)
+    getImpressions = fmap AdIn.unique_impressions
+    getClicks      = fmap AdIn.unique_clicks
+    getSpend       = fmap AdIn.spend
 
     listH [] = E.span [] [ E.span [class_ "badge badge-info"] [text "n/a"]]
     listH xs = E.span [] (fmap (\x -> E.span [class_ "badge badge-info"] [text $ showJS x]) xs)
 
-    adRow :: Widget Ad.Ad Action
-    adRow sink ad = tr []
+    adRow :: Widget (Ad.Ad, AdInsights) Action
+    adRow sink (ad, is) = tr []
       [ td [] [ text $ showJS $ Ad.fb_adset_id ad]
       , td [] [ text $ Ad.ad_title ad]
       , td [] [ text $ Ad.ad_caption ad]
 
-      , td [] [ getImpressions ad]
-      , td [] [ getClicks ad]
-      , td [] [ getSpend ad]
+      , td [] [ listH $ getImpressions is]
+      , td [] [ listH $ getClicks is]
+      , td [] [ listH $ getSpend is]
 
       , td [ A.style "width: 150px;", A.class_ "no-border-input" ]
               [ E.input [ A.title "Set budget"
