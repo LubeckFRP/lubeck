@@ -54,7 +54,7 @@ resources =
   , ("static/favicon.png",               "favicon.png")
   ]
 
--- pattern to look for in `recources'` and replace with git commit hash
+-- pattern to look for in `resources'` and replace with git commit hash
 replacePattern = "%xxx%" :: Text
 
 -- resources to search and replace `replacePattern` with git commit hash
