@@ -15,9 +15,12 @@ module Lubeck.App
     -- * Standard
     , runAppStatic
     , runAppReactive
+    , runAppReactiveX
     -- * Elm-style
     , runApp
     , runAppPure
+
+    , KbdEvents(..)
     ) where
 import Prelude hiding (div)
 import qualified Prelude
@@ -36,6 +39,10 @@ import Data.Default (def)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import qualified Web.VirtualDom as VD
 import GHCJS.Concurrent(isThreadSynchronous, isThreadContinueAsync)
+import GHCJS.Foreign.Callback
+
+import qualified Web.VirtualDom.Html.Events as DE
+
 
 -- import GHCJS.VDOM (mount, diff, patch, VNode, DOMNode)
 -- import GHCJS.VDOM.Event (initEventDelegation)
@@ -43,10 +50,28 @@ import GHCJS.Concurrent(isThreadSynchronous, isThreadContinueAsync)
 import qualified Web.VirtualDom as VD
 
 import GHCJS.Foreign.QQ (js, jsu, jsu')
-import GHCJS.Types(JSString, jsval)
+import GHCJS.Types(JSString, jsval, JSVal)
 
 import Lubeck.FRP
 import Lubeck.Html
+import Lubeck.Util (which)
+
+data KbdEvents = Key Int deriving (Show)
+
+foreign import javascript unsafe "document.addEventListener('keyup', $1);"
+  js_JSFunListener :: (Callback (JSVal -> IO ())) -> IO ()
+
+jsFunListener :: (Callback (JSVal -> IO ())) -> IO ()
+jsFunListener cb = js_JSFunListener cb
+
+foreign import javascript unsafe "(function() { /* console.log($1); */ return $1; })()"
+  makeDamnEvent :: JSVal -> DE.Event
+
+kbdListener :: (JSVal -> IO()) -> IO ()
+kbdListener handler = do
+    callback <- asyncCallback1 handler -- synchronously?
+    jsFunListener  callback
+
 
 -- |
 -- Run an application a static HTML page. The page is rendered to the DOM immediately.
@@ -58,7 +83,10 @@ runAppStatic x = runAppReactive (pure x)
 -- subsequently whenever the signal is updated.
 --
 runAppReactive :: Signal Html -> IO ()
-runAppReactive s = flip catch (\e -> print (e :: SomeException)) $ do
+runAppReactive s = runAppReactiveX (s, Nothing)
+
+runAppReactiveX :: (Signal Html, Maybe (Sink KbdEvents)) -> IO ()
+runAppReactiveX (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $ do
   -- VD = Virtual DOM, RD = Real DOM
 
   -- print "Setting up first VD"
@@ -70,6 +98,11 @@ runAppReactive s = flip catch (\e -> print (e :: SomeException)) $ do
   varRD <- newIORef initRD
 
   VD.appendToBody initRD
+
+  -- may include all kinds of UI input: mouse pos, remote terminal input etc
+  case mbKbdSink of
+    Just kbdSink -> kbdListener $ \e -> kbdSink $ Key (which . makeDamnEvent $ e)
+    Nothing      -> pure ()
 
   subscribeEvent (updates s) $ \newVD -> do
     -- print "Updating VD"
