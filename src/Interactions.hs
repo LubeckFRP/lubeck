@@ -33,7 +33,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppReactive)
-import Lubeck.Forms 
+import Lubeck.Forms
 import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
 import qualified Lubeck.Drawing as Drawing
@@ -45,12 +45,14 @@ import BD.Data.SearchPost(SearchPost)
 import qualified BD.Data.Interaction as I
 import BD.Data.Interaction hiding (interactions)
 
+import           Components.BusyIndicator       (withBusy, BusyCmd(..), busyIndicatorComponent)
+
 -- data Action
 --   = NoAction
 --   | LoadAction (Maybe JSString) (Maybe JSString)
 --   | ChangeModel (Model -> Model)
 --   | ReplaceModel Model -- (ReplaceModel x) == (ChangeModel (const x))
--- 
+--
 -- -- For debugging only
 -- instance Show Action where
 --   show = g where
@@ -58,28 +60,28 @@ import BD.Data.Interaction hiding (interactions)
 --     g (LoadAction _ _) = "LoadAction"
 --     g (ChangeModel _)  = "ChangeModel"
 --     g (ReplaceModel _) = "ReplaceModel"
--- 
+--
 -- data Model = Model
 --   { _requested    :: (Maybe JSString, Maybe JSString)
 --   , _interactions :: InteractionSet SearchPost }
 -- makeLenses ''Model
--- 
+--
 -- update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
 -- update = foldpR step initial
 --   where
 --     initial = (Model (Just "beautifuldestinations", Just "forbestravelguide") $ InteractionSet Nothing Nothing [], Nothing)
--- 
+--
 --     truncateInteractions :: InteractionSet a -> InteractionSet a
 --     truncateInteractions x = x { I.interactions = (take 20 $ I.interactions x) }
---     
---     step :: Action -> (Model, Maybe (IO Action)) -> (Model, Maybe (IO Action)) 
+--
+--     step :: Action -> (Model, Maybe (IO Action)) -> (Model, Maybe (IO Action))
 --     step NoAction             (model,_) = (model,   Nothing)
 --     step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- fmap truncateInteractions $ loadShoutouts a b ; return $ ChangeModel (set interactions so) })
 --     step (ReplaceModel model) (_,_)     = (model,   Nothing)
 --     step (ChangeModel f) (model,_)      = (f model, Nothing)
--- 
-type TwoAccounts = (Maybe JSString, Maybe JSString) 
- 
+--
+type TwoAccounts = (Maybe JSString, Maybe JSString)
+
 -- render :: Widget Model Action
 -- render actions model = div
 --   -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
@@ -101,7 +103,7 @@ buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
         [ E.input [ class_ "form-control"
                   , A.value $ nToEmpty x
                   , A.style "width: 100%"
-                  , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ] 
+                  , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ]
                   [] ]
     ]
   , div [ class_ "form-group form-inline" ] $
@@ -110,7 +112,7 @@ buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
         [ E.input [ class_ "form-control"
                   , A.style "width: 100%"
                   , A.value $ nToEmpty y
-                  , change $ \e -> sink (DontSubmit (x,emptyToN $ value e)) ]  
+                  , change $ \e -> sink (DontSubmit (x,emptyToN $ value e)) ]
                   [] ]
     ]
   , div [ class_ "form-group" ] $
@@ -126,14 +128,14 @@ buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
     nToEmpty Nothing   = ""
     nToEmpty (Just xs) = xs
 
-interactionSetW :: Widget (InteractionSet SearchPost) () 
+interactionSetW :: Widget (InteractionSet SearchPost) ()
 interactionSetW actions model = div [class_ "panel-body"]
   [ p [] [ text $ "Showing " <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
          , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
   , div [] (Data.List.intersperse (hr [] []) $ fmap (interactionW actions) $ model .: I.interactions)
   ]
 
-interactionW :: Widget (Interaction SearchPost) () 
+interactionW :: Widget (Interaction SearchPost) ()
 interactionW actions model = div []
   [ p [] [text (showJS $ model .: interaction_time)]
   , div [class_ "row"]
@@ -181,11 +183,13 @@ interactionW actions model = div []
 
 main :: IO ()
 main = do
-  (btnS, btnE) <- formComponent (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") buttonW  
-  let initInteractions = InteractionSet Nothing Nothing [] 
-  interactionsE <- reactimateIOAsync (fmap (uncurry loadShoutouts) btnE)    
+  (busyView, busySink)    <- busyIndicatorComponent []
+
+  (btnS, btnE) <- formComponent (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") buttonW
+  let initInteractions = InteractionSet Nothing Nothing []
+  interactionsE <- reactimateIOAsync (fmap (withBusy busySink (uncurry loadShoutouts)) btnE)
   interactS <- componentListen interactionSetW <$> stepperS initInteractions interactionsE
-  runAppReactive $ mappend btnS interactS
+  runAppReactive $ busyView <> btnS <> interactS
 
 -- UTILITY
 
