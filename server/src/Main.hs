@@ -19,7 +19,7 @@ import           System.Process
 import qualified System.Process
 import           System.Random
 
-import           Util.ParseEnv             (getJsExeBinPathFromEnv)
+import           Util.ParseEnv             (getJsExeBinPathFromEnv, getApiDocPathFromEnv)
 import           Util.StackEnv             (getStackEnv)
 
 type Layout =
@@ -38,6 +38,8 @@ type Layout =
   "example-api-req" :> Raw
     :<|>
   "example-plots" :> Raw
+    :<|>
+  "doc" :> Raw
     :<|>
   Raw
 
@@ -69,6 +71,7 @@ main = do
   -- Extracts environment with the Stack additions
   -- Uses some heuristics to find the location of the compiled code (see getJsExeBinPathFromEnv)
   jsExeDir <- fmap getJsExeBinPathFromEnv getStackEnv
+  docDir   <- fmap getApiDocPathFromEnv getStackEnv
 
   -- If successful, serve the compiled code
   case jsExeDir of
@@ -85,6 +88,9 @@ main = do
       exampleApiReq            <- serveApp rnd jsExeDir "bd-example-api-req"
       examplePlots             <- serveApp rnd jsExeDir "bd-example-plots"
       indexServer              <- serveApp rnd jsExeDir "bd-index"
+      docServer <- case docDir of
+        Left msg     -> print "Warning: Could not find documentation" >> serveNothing "documentation"
+        Right docDir -> serveDir "documentation" docDir
 
       putStrLn $ "Listening on " ++ show port
       Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) $
@@ -96,7 +102,18 @@ main = do
           :<|> exampleWidgetComposition
           :<|> exampleApiReq
           :<|> examplePlots
+          :<|> docServer
           :<|> indexServer
+
+-- TODO nicer way of generating a non-existent endpoint?
+serveNothing :: String -> IO (Server Raw)
+serveNothing hint = serveDir hint "directory-that-does-not-exist-91276341"
+
+serveDir :: String -> String -> IO (Server Raw)
+serveDir hint dir = do
+  putStrLn $ "Serving " ++ hint ++ ", from"
+  putStrLn $ " " ++ dir
+  return $ serveDirectory $ dir
 
 serveApp :: String -> String -> String -> IO (Server Raw)
 serveApp rnd jsExeDir appName = do
