@@ -10,6 +10,7 @@ import Control.Monad.IO.Class(liftIO)
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM(atomically)
 import Control.Concurrent(forkIO)
+import Control.Exception(SomeException, catch)
 import Control.Monad(forever)
 
 main = do
@@ -17,9 +18,9 @@ main = do
   forkIO $ forever $ do
     atomically $ readTChan ch
     print "Fetching code"
-    liftIO $ runGitPull
+    liftIO $ runGitPull `catch` (\e -> print (e :: SomeException))
     print "Starting build"
-    liftIO $ runMake
+    liftIO $ runMake `catch` (\e -> print (e :: SomeException))
     print "Rebuild done"
     return ()
   scotty 3001 $ do
