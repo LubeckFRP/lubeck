@@ -4,6 +4,8 @@
 module Util.RunMake (
     runGitPull
   , runMake
+  , startServer
+  , stopServer
 ) where
 
 import Control.Applicative
@@ -16,6 +18,18 @@ import System.Process -- TODO
 import System.Exit (ExitCode(..))
 import System.Environment(getEnvironment)
 import qualified Data.Map as Map
+
+-- TODO find out
+kServerPath = "/root/.local/bin/lubeck-server"
+
+-- stopServer :: IO ()
+stopServer ph = do
+  terminateProcess ph
+  getProcessExitCode ph
+
+startServer = do
+  (_,_,_,ph) <- System.Process.createProcess_ "startServer" ((proc kServerPath []) { cwd = Just ".." })
+  return ph
 
 -- | Run `git pull` in `..`
 runGitPull :: IO ()
@@ -38,7 +52,7 @@ runMake = do
   let cwd = Just ".."
   (r,out,err) <- flip System.Process.readCreateProcessWithExitCode "" $ (\x -> x
         { std_out = Inherit, std_err = Inherit, cwd = cwd, env = env }) $
-    System.Process.proc exe ["build-client"]
+    System.Process.proc exe ["build-client", "build-server"]
   case r of
     ExitSuccess   -> return ()
     ExitFailure e -> fail $ exe ++ " exited with code " ++ show e ++ " and message " ++ err
