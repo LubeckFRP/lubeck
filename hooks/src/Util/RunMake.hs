@@ -38,7 +38,7 @@ runMake = do
   let cwd = Just ".."
   (r,out,err) <- flip System.Process.readCreateProcessWithExitCode "" $ (\x -> x
         { std_out = Inherit, std_err = Inherit, cwd = cwd, env = env }) $
-    System.Process.proc exe []
+    System.Process.proc exe ["build-client"]
   case r of
     ExitSuccess   -> return ()
     ExitFailure e -> fail $ exe ++ " exited with code " ++ show e ++ " and message " ++ err
