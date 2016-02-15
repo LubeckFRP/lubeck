@@ -7,9 +7,23 @@ import Web.Scotty
 import Data.Monoid (mconcat)
 import Util.RunMake(runMake, runGitPull)
 import Control.Monad.IO.Class(liftIO)
+import Control.Concurrent.STM.TChan
+import Control.Concurrent.STM(atomically)
+import Control.Concurrent(forkIO)
+import Control.Monad(forever)
 
-main = scotty 3000 $ do
-    get "/:word" $ do
-        liftIO $ runGitPull >> runMake
-        beam <- param "word"
-        html $ mconcat ["<h1>Scotty, ", beam, " me up!!!</h1>"]
+main = do
+  ch <- atomically $ newTChan :: IO (TChan ())
+  forkIO $ forever $ do
+    atomically $ readTChan ch
+    print "Fetching code"
+    liftIO $ runGitPull
+    print "Starting build"
+    liftIO $ runMake
+    print "Rebuild done"
+    return ()
+  scotty 3001 $ do
+    post "/:word" $ do
+        liftIO $ atomically $ writeTChan ch ()
+        -- beam <- param "word"
+        html $ mempty -- TODO just the 200
