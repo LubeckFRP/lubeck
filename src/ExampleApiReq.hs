@@ -27,7 +27,7 @@ type Username = JSString
 numPosts :: Widget' (Maybe Int)
 numPosts sink numPost = E.div
   [ A.class_ "row" ]
-  [ E.p [ A.class_ "text-center" ] [ E.text $ pack "NumPosts:" ]
+  [ E.p [ A.class_ "text-center" ] [ E.text $ pack "Number of posts:" ]
   , E.p [ A.class_ "text-center" ]
         [ E.text . pack . show $
             case numPost of
