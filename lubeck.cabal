@@ -84,7 +84,7 @@ library
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-example-app
-  main-is:             src/Example.hs
+  main-is:             src/ExampleReactive.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
