@@ -15,20 +15,38 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
-import Lubeck.App (Html, runAppStatic)
+import Lubeck.App (Html, runAppReactive)
 import JavaScript.Cast (cast) -- JSVal -> Maybe a
 import Lubeck.Web.History
 import Lubeck.Forms
-import Lubeck.Forms.Basic (rangeWidget)
+import Lubeck.Forms.Basic (rangeWidget, integerWidget)
 import Lubeck.FRP.History
 
-page :: IO (Signal Html)
-page = do
+page :: Sink () -> History -> IO (Signal Html)
+page saveHistory history = do
   (inputView, intsE) <- componentEvent 0 (rangeWidget 0 100 1) mempty
-  let outputView   = componentListen integerWidget (stepperS 0 intsE)
+  intsS              <- stepperS 0 intsE
+
+  subscribeEvent (fmap (const ()) intsE) saveHistory
+  intsS' <- chronicleS history intsS
+
+  let outputView    = componentListen integerWidget intsS'
   return $ mconcat [inputView, outputView]
 
 -- MAIN
 
 main :: IO ()
-main = page >>= runAppReactive
+main = do
+  history <- newHistory
+
+  (saveHistoryS, saveHistoryE) <- newEvent
+  subscribeEvent saveHistoryE $ \_ -> do
+    moment <- capture history
+    pushState (jsval moment) "" ""
+    return ()
+  onpopstate $ \popStateEvent -> do
+    case cast $ getPopStateEventState (popStateEvent) of
+      Nothing     -> return ()
+      Just moment -> restore history moment
+
+  page >>= runAppReactive history saveHistoryS
