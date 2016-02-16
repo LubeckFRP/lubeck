@@ -2,12 +2,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lubeck.Forms.Basic
-    ( rangeWidget
+    (
+    -- * Basic types
+    -- ** Numbers
+      rangeWidget
     , integerWidget
     , dateWidget
+    -- ** Strings
+    , staticStringWidget
+    -- * Hideable widgets
     , hideableDateWidget
     , hideableIntegerWidget
-    , staticStringWidget
+    , hideableRangeWidget
     ) where
 
 import qualified Data.List
@@ -37,7 +43,12 @@ staticStringWidget _ val = E.div
         [ E.text (showJS val) ]
   ]
 
-rangeWidget :: Int -> Int -> Int -> Widget' Int
+-- | A widget for selecting an integer from a range.
+rangeWidget
+  :: Int    -- ^ Min value (included)
+  -> Int    -- ^ Max value (included)
+  -> Int    -- ^ Step size
+  -> Widget' Int
 rangeWidget minBound maxBound step
   sink val = E.input
   [ A.class_ "form-control"
@@ -63,6 +74,7 @@ rangeWidget minBound maxBound step
   ]
   []
 
+-- | A widget for selecting an integer.
 integerWidget :: Widget' Int
 integerWidget sink val = E.input
   [ A.class_ "form-control"
@@ -79,6 +91,7 @@ integerWidget sink val = E.input
   ]
   []
 
+-- | A widget for selecting a calendar date.
 dateWidget :: Widget' Day
 dateWidget sink val = E.input
   [ A.class_ "form-control"
@@ -98,6 +111,10 @@ dateWidget sink val = E.input
 hideableIntegerWidget :: Bool -> Widget' Int
 hideableIntegerWidget False = const $ const mempty
 hideableIntegerWidget True  = integerWidget
+
+hideableRangeWidget :: Int -> Int -> Int -> Bool -> Widget' Int
+hideableRangeWidget _  _  _ False = const $ const mempty
+hideableRangeWidget lb ub s True  = rangeWidget lb ub s
 
 hideableDateWidget :: Bool -> Widget' Day
 hideableDateWidget False = const $ const mempty

@@ -26,13 +26,46 @@ import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
--- TODO Do not rely on show
+-- TODO Do not rely on show for these
+
+-- |
+-- A Widget that visualizes all possible values of a type that is 'Enum' and 'Bounded'.
+--
+-- @
+-- selectEnumWidget :: Widget' Bool
+-- selectEnumWidget :: Widget' Word32
+--
+-- data BaseColor = Red | Green | Blue
+-- selectEnumWidget :: Widget' BaseColor
+-- @
+--
+-- See https://developer.mozilla.org/en/docs/Web/HTML/Element/Input
+--
 selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
 selectEnumBoundedWidget = selectEnumWidget minBound maxBound
 
+-- |
+-- A Widget that visualizes the given range of an 'Enum' type.
+--
+-- @
+-- selectEnumWidget [1..10] :: Widget' Integer
+-- @
+--
+-- See https://developer.mozilla.org/en/docs/Web/HTML/Element/Input
+--
 selectEnumWidget :: (Eq a, Enum a, Show a) => a -> a -> Widget' a
 selectEnumWidget lb ub = selectWidget $ fmap (\n -> (n, pack $ show n)) $ enumFromTo lb ub
 
+-- |
+-- A Widget that visualizes a given set of values..
+--
+-- @
+-- data Undo = DoNothing | Undo Int
+-- selectWidget [(DoNothing, "Do nothing"), (Undo 1, "Undo once")]
+-- @
+--
+-- See https://developer.mozilla.org/en/docs/Web/HTML/Element/Input
+--
 selectWidget :: Eq a => [(a, JSString)] -> Widget' a
 selectWidget xs = dimapWidget (pack . show . toInt) (fromInt . read . unpack) $ selectWidget' (zip count names)
   where
