@@ -1,5 +1,5 @@
 
-module Lubeck.FRP.Moment
+module Lubeck.FRP.History
     ( History
     -- ** Creating History objects
     , newHistory
