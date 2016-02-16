@@ -1,4 +1,3 @@
-
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
 module Main where
@@ -13,13 +12,13 @@ import Data.String (fromString)
 import qualified Data.Map as Map
 import Data.Map(Map)
 import qualified Data.List
+import Data.List.Zipper (fromList, beginp, empty, emptyp, endp, cursor, start, end, left, right, Zipper(..))
 import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
 import Data.Time (UTCTime(..), DiffTime, Day(..))
-
 
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import GHCJS.Types(JSString, jsval)
@@ -45,56 +44,23 @@ import BD.Data.SearchPost(SearchPost)
 import qualified BD.Data.Interaction as I
 import BD.Data.Interaction hiding (interactions)
 
--- data Action
---   = NoAction
---   | LoadAction (Maybe JSString) (Maybe JSString)
---   | ChangeModel (Model -> Model)
---   | ReplaceModel Model -- (ReplaceModel x) == (ChangeModel (const x))
--- 
--- -- For debugging only
--- instance Show Action where
---   show = g where
---     g NoAction         = "NoAction"
---     g (LoadAction _ _) = "LoadAction"
---     g (ChangeModel _)  = "ChangeModel"
---     g (ReplaceModel _) = "ReplaceModel"
--- 
--- data Model = Model
---   { _requested    :: (Maybe JSString, Maybe JSString)
---   , _interactions :: InteractionSet SearchPost }
--- makeLenses ''Model
--- 
--- update :: Events Action -> IO (Behavior (Model, Maybe (IO Action)))
--- update = foldpR step initial
---   where
---     initial = (Model (Just "beautifuldestinations", Just "forbestravelguide") $ InteractionSet Nothing Nothing [], Nothing)
--- 
---     truncateInteractions :: InteractionSet a -> InteractionSet a
---     truncateInteractions x = x { I.interactions = (take 20 $ I.interactions x) }
---     
---     step :: Action -> (Model, Maybe (IO Action)) -> (Model, Maybe (IO Action)) 
---     step NoAction             (model,_) = (model,   Nothing)
---     step (LoadAction a b)     (model,_) = (model,   Just $ do { so <- fmap truncateInteractions $ loadShoutouts a b ; return $ ChangeModel (set interactions so) })
---     step (ReplaceModel model) (_,_)     = (model,   Nothing)
---     step (ChangeModel f) (model,_)      = (f model, Nothing)
--- 
 type TwoAccounts = (Maybe JSString, Maybe JSString) 
- 
--- render :: Widget Model Action
--- render actions model = div
---   -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
---   [ style "width: 900px; margin-left: auto; margin-right: auto" ]
---   [ div [class_ "page-header"]
---       [ h1 [] [ text "Shoutout browser" ] ]
---   , div []
---     [ buttonW actions (_requested model) ]
---   , div [class_ "panel panel-default"]
---     [ interactionSetW actions (_interactions model) ]
---   ]
+type Shoutouts = Zipper (Interaction SearchPost)
 
+render :: Html -> Html -> Html -> Html 
+render loadInteractsForm displayAccs interaction = div
+  -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
+  [ style "width: 900px; margin-left: auto; margin-right: auto" ]
+  [ div [class_ "page-header"]
+      [ h1 [] [ text "Shoutout browser" ] ]
+  , div []
+    [ loadInteractsForm ]
+  , div [class_ "panel panel-default"]
+    [ displayAccs, interaction ]
+  ]
 
-buttonW :: Widget TwoAccounts (Submit TwoAccounts)
-buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
+loadInteractionsW :: Widget TwoAccounts (Submit TwoAccounts)
+loadInteractionsW sink (x,y) = div [ class_ "form-horizontal"  ]
   [ div [ class_ "form-group form-inline" ] $
     [ label [class_ "control-label col-xs-1"] [text "From"]
     , E.div [class_ "col-xs-3", A.style "padding: 0"]
@@ -126,28 +92,67 @@ buttonW sink (x,y) = div [ class_ "form-horizontal"  ]
     nToEmpty Nothing   = ""
     nToEmpty (Just xs) = xs
 
-interactionSetW :: Widget (InteractionSet SearchPost) () 
-interactionSetW actions model = div [class_ "panel-body"]
-  [ p [] [ text $ "Showing " <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: from_account .:? A.username)
-         , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ model .: to_account .:? A.username) ]
-  , div [] (Data.List.intersperse (hr [] []) $ fmap (interactionW actions) $ model .: I.interactions)
+displayAccsW :: Widget (InteractionSet SearchPost) ()
+displayAccsW _ interactionSet = div [class_ "panel-body"]
+  [ p [] [ text $ "Showing " <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: from_account .:? A.username)
+         , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: to_account .:? A.username) ]
   ]
 
+prevBtnAction :: Shoutouts -> () -> Shoutouts 
+prevBtnAction shoutoutZ _  
+  | beginp shoutoutZ = left $ end shoutoutZ 
+  | otherwise = left shoutoutZ  
+
+nextBtnAction :: Shoutouts -> () -> Shoutouts
+nextBtnAction shoutoutZ _  
+  | endp next = start shoutoutZ
+  | otherwise = next 
+  where next = right shoutoutZ   
+
+buttonW :: String -> Widget' ()
+buttonW label sink val = div 
+  [ A.class_ "btn btn-primary"
+  , Ev.click $ \_ -> sink ()
+  ]
+  [ E.text $ pack label ]
+
+displayIndex :: Widget (Int,Int) ()
+displayIndex _ (nOutOf,m) = div
+  []
+  [ E.text $ pack $ show (nOutOf + 1) ++ " / " ++ show m ]
+
+interactionBrowserW :: Widget Shoutouts Shoutouts
+interactionBrowserW shoutoutSink shoutoutZ =
+  if emptyp shoutoutZ then div [] []
+  else div []
+    [ interactionW emptySink $ cursor shoutoutZ  
+    , div [ A.class_ "row" ] 
+      [ div [ A.class_ "col-xs-4 col-lg-4" ]
+	    [ buttonW "Previous" (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
+      , div [ A.class_ "col-xs-3 col-lg-3" ]
+	    [ displayIndex emptySink $ nOutOfM shoutoutZ ]   
+      , div [ A.class_ "col-xs-1 col-lg-1" ] 
+	    [ buttonW "Next" (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
+      ]  
+    ] 
+  where nOutOfM (Zip xs ys) = let lenXs = length xs in (lenXs, lenXs + length ys)
+
 interactionW :: Widget (Interaction SearchPost) () 
-interactionW actions model = div []
-  [ p [] [text (showJS $ model .: interaction_time)]
+interactionW _ interaction = div 
+  []
+  [ p [ A.class_ "text-center" ] [text (showJS $ interaction .: interaction_time)]
   , div [class_ "row"]
-    [ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
-      [ interactionPlotOrNot
-      ]
-    , div [ class_ "col-xs-4 col-lg-4" ]
-      [ linkedImage
-      , div [] [ caption ] ]
-    ]
+	[ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
+	      [ interactionPlotOrNot ]
+	, div [ class_ "col-xs-4 col-lg-4" ]
+	      [ linkedImage
+	      , div [] [ caption ]
+	      ]	
+	]
   ]
   where
     interactionPlotOrNot =
-      if null (I.target_counts model)
+      if null (I.target_counts interaction)
         then div [] [text "(No data available)"]
         else interactionPlot
 
@@ -156,8 +161,8 @@ interactionW actions model = div []
           showIntegerWithThousandSeparators
           fromIntegral
           round
-          [model .: interaction_time]
-          (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts model)
+          [interaction .: interaction_time]
+          (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts interaction)
 
     caption = case P.description sPost of
       Nothing   -> text ""
@@ -167,9 +172,9 @@ interactionW actions model = div []
       Nothing  -> a []         [ image ]
       Just url -> a [href url] [ image ]
 
-    sPost      = I.medium model
+    sPost      = I.medium interaction
 
-    image = img [src (model .: medium .: P.url), width 200] []
+    image = img [src (interaction .: medium .: P.url), width 200] []
 
     render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
     renderOpts = Drawing.defaultRenderingOptions
@@ -177,15 +182,18 @@ interactionW actions model = div []
       , Drawing.origoPlacement = Drawing.BottomLeft }
 
 
--- MAIN
+getShoutouts :: TwoAccounts -> IO (InteractionSet SearchPost)
+getShoutouts = uncurry loadShoutouts
 
 main :: IO ()
 main = do
-  (btnS, btnE) <- formComponent (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") buttonW  
   let initInteractions = InteractionSet Nothing Nothing [] 
-  interactionsE <- reactimateIOAsync (fmap (uncurry loadShoutouts) btnE)    
-  interactS <- componentListen interactionSetW <$> stepperS initInteractions interactionsE
-  runAppReactive $ mappend btnS interactS
+      initFormContent = (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") 
+  (loadInteractionsS, loadInterBtnE) <- formComponent initFormContent loadInteractionsW 
+  loadInteractionsE <- reactimateIOAsync $ fmap getShoutouts loadInterBtnE 
+  displayAccsS <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE 
+  (interactionBrowserS, _) <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE  
+  runAppReactive $ render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS 
 
 -- UTILITY
 
@@ -194,3 +202,18 @@ main = do
 
 (.:?) :: Maybe a -> (a -> b) -> Maybe b
 (.:?) x f = fmap f x
+
+newEventOf :: a -> IO (Sink a, Events a)
+newEventOf x = newEvent
+
+-- Widget' (Zipper (Interaction SearchPost))
+-- Widget' ()
+-- Widget' (Interaction SeachPost) ()
+-- 
+-- WidgetT Html (Zipper (Interaction SearchPost)) (Zipper (Interaction SearchPost))
+-- WidgetT Html () ()
+-- WidgetT Html (Interaction SearchPost) ()
+-- 
+-- interactionBrowserW :: Sink (Zipper (Interaction SearchPost)) -> Zipper (Interaction SearchPost) -> Html 
+-- buttonW :: String -> Sink () -> () -> Html 
+-- interactionW :: Sink () -> Interaction SearchPost -> Html

@@ -17,5 +17,5 @@ packages:
 - location:
     git: https://github.com/EugeneN/ghcjs-base.git
     commit: 861ef792b91063cf01daa573bcb4d96f4db0cf09
-extra-deps: []
+extra-deps: [ ListZipper-1.2.0.2 ]
 resolver: nightly-2015-12-14
