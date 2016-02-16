@@ -1,4 +1,6 @@
 
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
+
 module Lubeck.FRP.History
     ( History
     -- ** Creating History objects
@@ -13,13 +15,13 @@ module Lubeck.FRP.History
     ) where
 
 import Lubeck.FRP
-import GHCJS.Types(JSString, JSVal, jsval)
+import GHCJS.Types(JSString, IsJSVal(..), jsval)
 import qualified Data.Maybe
 import qualified Data.Map
 import Data.Map (Map)
 
-data History = History Int
-data Moment = Moment Int
+newtype History = History ()
+newtype Moment = Moment JsString
   deriving (Eq, IsJSVal)
 
 -- | Create a new 'History'.
