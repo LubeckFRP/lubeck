@@ -21,6 +21,7 @@ import qualified Data.Maybe
 import qualified Data.Map
 import Data.Map (Map)
 
+import Data.Monoid
 import Control.Monad.STM (atomically)
 import Control.Concurrent.STM.TVar(TVar, newTVarIO, readTVar, modifyTVar)
 import System.IO.Unsafe(unsafePerformIO)
