@@ -129,7 +129,7 @@ executable bd-example-api-req
   default-language:    Haskell2010
 
 executable bd-example-history
-  main-is:             example/History.hs
+  main-is:             examples/History.hs
   build-depends:       base
                      , lubeck
                      , virtual-dom
