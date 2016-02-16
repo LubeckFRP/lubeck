@@ -46,6 +46,8 @@ import BD.Data.Interaction hiding (interactions)
 
 import           Components.BusyIndicator       (withBusy, BusyCmd(..), busyIndicatorComponent)
 
+{-
+
 type TwoAccounts = (Maybe JSString, Maybe JSString) 
 type Shoutouts = Zipper (Interaction SearchPost)
 
@@ -215,3 +217,5 @@ main = do
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf x = newEvent
 
+-}
+main = return ()
