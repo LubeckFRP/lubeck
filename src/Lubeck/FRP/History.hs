@@ -9,7 +9,7 @@ module Lubeck.FRP.History
     , chronicle
     , chronicleS
     -- * Capturing and restoring moments in history
-    , Moment(..)
+    , Moment
     , capture
     , restore
     ) where
