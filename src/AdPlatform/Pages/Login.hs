@@ -38,15 +38,15 @@ import           BD.Types
 import           BD.Utils
 
 
-loginPageW :: Widget (CanSubmit, Credentials) (Submit Credentials)
+loginPageW :: Widget (FormValid (), Credentials) (Submit Credentials)
 loginPageW sink (canSubmit, (name, passw)) =
   let canSubmitAttr = case canSubmit of
-                        CanSubmit    -> [ click $ \e -> sink $ Submit (name, passw) ]
-                        CanNotSubmit -> [ (VD.attribute "disabled") "true" ]
+                        FormValid      -> [ click $ \e -> sink $ Submit (name, passw) ]
+                        FormNotValid _ -> [ (VD.attribute "disabled") "true" ]
 
       handleEnter e = if which e == 13
                         then case validate (name, passw) of
-                          CanSubmit -> sink $ Submit (name, passw)
+                          FormValid -> sink $ Submit (name, passw)
                           _         -> return ()
                         else return ()
 
@@ -86,9 +86,9 @@ type Credentials = (Username, Password)
 type Username = JSString
 type Password = JSString
 
-validate :: Credentials -> CanSubmit
+validate :: Credentials -> FormValid ()
 validate (username, password) =
-  if username /= "" && password /= "" then CanSubmit else CanNotSubmit
+  if username /= "" && password /= "" then FormValid else FormNotValid ()
 
 loginPage :: Credentials -> IO (Signal Html, Events Credentials)
 loginPage z = do

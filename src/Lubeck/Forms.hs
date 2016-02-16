@@ -208,20 +208,20 @@ componentRW initialState widget = do
   let htmlS       = fmap (widget internalSink) aS
   return (htmlS, internalEvents, internalSink)
 
--- TODO: 
--- generalComponent :: (b -> a -> a) -> (c -> a -> a) -> a -> WidgetT r a b -> Event c -> IO (Signal r, Signal a) 
+-- TODO:
+-- generalComponent :: (b -> a -> a) -> (c -> a -> a) -> a -> WidgetT r a b -> Event c -> IO (Signal r, Signal a)
 
 componentEvent :: a -> WidgetT r a a -> Events a -> IO (Signal r, Events a)
 componentEvent initState widget inputs = do
   (signal, outputs, inSink) <- componentRW initState widget
   subscribeEvent inputs inSink
-  return (signal, outputs) 
+  return (signal, outputs)
 
 componentSink :: a -> WidgetT r a a -> Sink a -> IO (Signal r, Sink a)
 componentSink initState widget outputSink = do
   (htmlSignal, outputs, inSink) <- componentRW initState widget
-  subscribeEvent outputs outputSink 
-  return (htmlSignal, inSink) 
+  subscribeEvent outputs outputSink
+  return (htmlSignal, inSink)
 
 -- "internal read" component
 -- Initialized with initial state and widget, returns signal of html and
@@ -242,22 +242,22 @@ componentW initialState widget = do
   (htmlS, _, internalSink) <- componentRW initialState widget
   return (htmlS, internalSink)
 
-componentListen ::  WidgetT r a b -> Signal a -> Signal r 
-componentListen widget signal = fmap (widget emptySink) signal 
+componentListen ::  WidgetT r a b -> Signal a -> Signal r
+componentListen widget signal = fmap (widget emptySink) signal
 
-repackValue :: (CanSubmit, Submit a) -> (CanSubmit, a)
+repackValue :: (FormValid e, Submit a) -> (FormValid e, a)
 repackValue (x, Submit y)     = (x, y)
 repackValue (x, DontSubmit y) = (x, y)
 
-formWithValidationComponent :: Validator a -> a -> Widget (CanSubmit, a) (Submit a) -> IO (Signal Html, Events a)
+formWithValidationComponent :: Validator a e -> a -> Widget (FormValid e, a) (Submit a) -> IO (Signal Html, Events a)
 formWithValidationComponent validate z w = do
   (aSink, aEvent) <- newEvent                                                   :: IO (Sink (Submit a), Events (Submit a))
 
-  let isValidE    = fmap (validate . submitValue) aEvent                     -- :: Events CanSubmit
+  let isValidE    = fmap (validate . submitValue) aEvent                     -- :: Events FormValid
   isValidS        <- stepperS (validate z) isValidE
   aEventS         <- stepperS (DontSubmit z) aEvent
 
-  let aS          = liftA2 (,) isValidS aEventS                               -- :: IO (Signal (CanSubmit, Submit a))
+  let aS          = liftA2 (,) isValidS aEventS                               -- :: IO (Signal (FormValid, Submit a))
 
   let htmlS = fmap (w aSink . repackValue) aS
   return (htmlS, submits aEvent)
@@ -304,9 +304,9 @@ formComponentExtra2 bB cB az w = do
 -- let's see if this is generalisable later
 formWithValidationComponentExtra2 :: Behavior b
                                   -> Behavior c
-                                  -> Validator a
+                                  -> Validator a e
                                   -> a
-                                  -> Widget (CanSubmit, (c, (b, a))) (Submit a)
+                                  -> Widget (FormValid e, (c, (b, a))) (Submit a)
                                   -> IO (Signal Html, Events a)
 formWithValidationComponentExtra2 bB cB validate az w = do
   (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
