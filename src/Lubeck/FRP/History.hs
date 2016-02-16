@@ -34,22 +34,35 @@ instance Eq Moment where
 -- | Create a new 'History'.
 newHistory :: IO History
 newHistory = undefined
+-- (capture :: Sink/Event Moment, restore :: Sink/Event Moment)
 
--- | Samples the given behaviorwhenever capture' is called and sends
--- an update on the returned event whenever ’restore' is called.
+-- | Samples the given behaviorwhenever 'capture' is called and sends
+-- an update on the returned event whenever 'restore' is called.
 chronicle  :: History -> Behavior a -> IO (Events a)
 chronicle = undefined
+-- Create event that snapshots given B on H.capture :: Event (a, Moment)
+-- Accumulate behavior :: B (Map Moment a)
+-- Create event that looks up map :: E (Maybe a)
+-- Scatter :: E a
 
--- | Samples the given beh/signal whenever ’Moment' is called and sends an update
--- on the returned signal whenever ’restore' is called. Otherwise the returned signal
+-- | Samples the given beh/signal whenever 'capture' is called and sends an update
+-- on the returned signal whenever 'restore' is called. Otherwise the returned signal
 -- behaves like the given signal.
+--
+-- TODO beware of propagation order
+--
 chronicleS :: History -> Signal a -> IO (Signal a)
 chronicleS = undefined
+-- chronicle on (current S)
+-- Step from (pollB $ current S) to chronicle result
 
 -- | Capture the current value of all chronicled behaviors and signals in the history.
 capture       :: History -> IO Moment
 capture = undefined
+-- Create new Moment
+-- Send capture event
 
 -- | Restore the given moment of all chronicled behaviors and signals in the history.
 restore    :: Moment -> IO ()
 restore = undefined
+-- Send restore event
