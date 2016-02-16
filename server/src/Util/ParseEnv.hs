@@ -4,6 +4,7 @@
 -- | Utilities for extracting compiler name and package database locations from the environment.
 module Util.ParseEnv (
   getJsExeBinPathFromEnv,
+  getApiDocPathFromEnv,
 
   -- * Parsers
   Parser,
@@ -26,7 +27,24 @@ import qualified Text.Parser.Char as CP
 import qualified Text.Parsec as Parsec
 
 {-|
+Get the path of generated documentation. This is the directory containing `index.html` and a subdirectory
+for each included package.
+
+I.e.
+/root/lubeck/.stack-work/install/x86_64-linux/nightly-2015-12-14/ghcjs-0.2.0.20151230.3_ghc-7.10.2/doc
+
+-}
+getApiDocPathFromEnv :: (Monad m, MonadError s m, s ~ String) => String -> m String
+getApiDocPathFromEnv = fmap binToDoc . getJsExeBinPathFromEnv
+  where
+    binToDoc  = (++ "doc") . dropEnd 3
+    dropEnd n = reverse . drop n . reverse
+
+{-|
 Extract the PATH entry containing '.stack-work/install', to which we should append '/PGMNAME.jsexe' to get the full js exe path.
+
+I.e.
+/root/lubeck/.stack-work/install/x86_64-linux/nightly-2015-12-14/ghcjs-0.2.0.20151230.3_ghc-7.10.2/bin
 -}
 getJsExeBinPathFromEnv :: (Monad m, MonadError s m, s ~ String) => String -> m String
 getJsExeBinPathFromEnv str = case runParser jsExePathParser str of

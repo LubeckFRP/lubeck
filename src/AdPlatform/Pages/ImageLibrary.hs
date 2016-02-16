@@ -29,7 +29,7 @@ import           Web.VirtualDom.Html.Events     (change, click, keyup,
                                                  preventDefault,
                                                  stopPropagation, submit, value)
 
-import           Lubeck.App                     (Html)
+import           Lubeck.App                     (Html, KbdEvents(..))
 import           Lubeck.Forms
 import           Lubeck.Forms.File
 import           Lubeck.FRP
@@ -273,7 +273,7 @@ imageLibraryPage :: Sink BusyCmd
                  -> Sink IPCMessage
                  -> Events IPCMessage
                  -> Events Account.Account
-                 -> IO (Signal Html, Behavior (Maybe [Im.Image]))
+                 -> IO (Signal Html, Behavior (Maybe [Im.Image]), Sink KbdEvents)
 imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
   (actionsSink,  actionsE)  <- newEventOf (undefined :: ImgLibraryActions)
   (actionsSink2, actionsE2) <- newEventOf (undefined :: ImgLibraryActions)
@@ -293,7 +293,21 @@ imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
   let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)
   let galleryView = fmap ((altW mempty galleryW) actionsSink) galleryS                :: Signal Html
 
-  return (layout <$> galleryView <*> imageView, current galleryS)
+  (kbdSink, kbdE) <- newEventOf (undefined :: KbdEvents)
+
+  subscribeEvent kbdE $ \e -> do
+    curImage <- pollBehavior (current imageViewS)
+    case curImage of
+      Nothing    -> return ()
+      Just image -> case e of
+        Key 37 -> actionsSink $ ViewPrevImg image -- left arrow
+        Key 39 -> actionsSink $ ViewNextImg image -- right arrow
+        Key 46 -> actionsSink $ DeleteImg image   -- delete
+        Key 13 -> actionsSink $ EnhanceImg image  -- enter
+        Key 38 -> actionsSink $ ViewGalleryIndex  -- up arrow
+        _      -> return ()
+
+  return (layout <$> galleryView <*> imageView, current galleryS, kbdSink)
 
   where
     layout indexView imageView = case imageView of

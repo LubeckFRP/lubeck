@@ -8,17 +8,10 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import Control.Concurrent( forkIO )
--- import Control.Concurrent.Chan
-import Control.Concurrent.MVar
-import Control.Monad( forever )
 
 import           Data.Monoid
+import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString, JSVal)
-
-import GHCJS.Foreign
-import GHCJS.Types
-import           Unsafe.Coerce
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -29,7 +22,7 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import           Web.VirtualDom.Html.Events     (change, click, preventDefault, Event(),
                                                  stopPropagation, submit, value)
 
-import           Lubeck.App                     (Html, runAppReactive)
+import           Lubeck.App                     (Html, runAppReactiveX, KbdEvents(..))
 import           Lubeck.Forms
 import           Lubeck.FRP
 
@@ -59,11 +52,8 @@ import           Components.MainMenu            (mainMenuComponent)
 
 import           Lubeck.Util
 import           AdPlatform.Types
-import           AdPlatform.Config              (useAuth)
+import           AdPlatform.Config
 
-
-defaultUsername = "forbestravelguide"
-defaultPassword = "secret123"
 
 menuItems =
   [ (NavUser,     "User")
@@ -97,83 +87,76 @@ rootLayout goTo menu err busy login user ads search createAd imlib = case goTo o
           , page
           ] ]
 
-data KbdEvents = Key Int deriving (Show)
 
--- stolen from here: https://github.com/SodiumFRP/sodium/issues/8
-foreign import javascript unsafe "document.addEventListener('keyup', (function(){ var x= h$makeMVarListener($1, false, false, false); /* console.log($1, x); */ return x; })()  );"
-    js_addKbdListener :: JSVal -> IO ()
 
-mvarRef :: MVar a -> JSVal
-mvarRef = unsafeCoerce
-
-kbdListener :: (Event -> IO()) -> IO ()
-kbdListener handler = do
-    mv <- newEmptyMVar :: IO (MVar Event)
-    forkIO (forever $ takeMVar mv >>= handler)
-    js_addKbdListener (mvarRef mv)
-
-adPlatform :: IO (Signal Html)
+adPlatform :: IO (Signal Html, Maybe (Sink KbdEvents))
 adPlatform = do
-  (kbdSink, kbdEvents)    <- newEventOf (undefined :: KbdEvents)
+  (kbdSink, kbdEvents)                  <- newEventOf (undefined :: KbdEvents)
+  (ipcSink, ipcEvents)                  <- newEventOf (undefined :: IPCMessage)
 
-  kbdListener $ \e -> do
-    print $ "hello " <> showJS (which e)
-    kbdSink $ Key (which e)
+  (notifView, notifSink, notifKbdSink)  <- notificationsComponent []
+  (busyView, busySink)                  <- busyIndicatorComponent []
 
-  subscribeEvent kbdEvents $ \e -> do
-    print $ showJS e
-    return ()
+  (loginView, userLoginE)               <- loginPage (fromString defaultUsername, fromString defaultPassword)
+  userLoginB                            <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
-  (notifView, notifSink)  <- notificationsComponent []
-  (busyView, busySink)    <- busyIndicatorComponent []
+  authOk                                <- withErrorIO notifSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
+  let validUserLoginE                   = sample userLoginB authOk :: Events (Maybe Username)
 
-  (ipcSink, ipcEvents)    <- newEventOf (undefined :: IPCMessage)
+  let bypassAuthUserE                   = fmap fst userLoginE
+  userE                                 <- withErrorIO notifSink $ fmap (withBusy busySink Account.getUserOrError)
+                                                                        (if useAuth then (filterJust validUserLoginE)
+                                                                                    else bypassAuthUserE)
 
-  (loginView, userLoginE) <- loginPage (defaultUsername, defaultPassword)
-  userLoginB              <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
+  camapaignsE                           <- withErrorIO notifSink $ fmap (withBusy busySink getCampaigns) userE
 
-  authOk                  <- withErrorIO notifSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
-  let validUserLoginE     = sample userLoginB authOk :: Events (Maybe Username)
+  userS                                 <- stepperS Nothing (fmap Just userE)
+  campaignsS                            <- stepperS Nothing (fmap Just camapaignsE)
 
-  let bypassAuthUserE     = fmap fst userLoginE
-  userE                   <- withErrorIO notifSink $ fmap (withBusy busySink Account.getUserOrError)
-                                                          (if useAuth then (filterJust validUserLoginE)
-                                                                      else bypassAuthUserE)
+  let userB                             = current userS
+  let usernameB                         = fmap (fmap Account.username) userB
 
-  camapaignsE             <- withErrorIO notifSink $ fmap (withBusy busySink getCampaigns) userE
+  (userView, loadAdsE)                  <- userPage         busySink notifSink                   userB campaignsS
+  adsView                               <- campaignPage     busySink notifSink loadAdsE          userB
+  (imageLibView, imsB, imlibKbdSink)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
+  searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB
+  createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
-  userS                   <- stepperS Nothing (fmap Just userE)
-  campaignsS              <- stepperS Nothing (fmap Just camapaignsE)
-
-  let userB               = current userS
-  let usernameB           = fmap (fmap Account.username) userB
-
-  (userView, loadAdsE)    <- userPage         busySink notifSink                   userB    campaignsS
-  adsView                 <- campaignPage     busySink notifSink                   loadAdsE userB
-  (imageLibView, imsB)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
-  searchPageView          <- searchPage       busySink notifSink ipcSink           usernameB
-  createAdView            <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
-
-  let firstPage           = NavUser
+  let firstPage                         = NavUser
 
   -- first time menu gets rendered with initial state argument
-  (menuView, menuNavE)    <- mainMenuComponent menuItems "Ad Platform" firstPage
+  (menuView, menuNavE)                  <- mainMenuComponent menuItems "Ad Platform" firstPage
 
-  let postLoginNavE       = fmap (const firstPage) validUserLoginE --(updates userS)
-  let campaignNavE        = fmap (const NavCampaign) (updates adsView)
-  navS                    <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
+  let postLoginNavE                     = fmap (const firstPage) validUserLoginE --(updates userS)
+  let campaignNavE                      = fmap (const NavCampaign) (updates adsView)
+  navS                                  <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
+
+  -- composition of keyboard listeners, looks like an inverse to Html signal distribution & flow
+  subscribeEvent kbdEvents $ \e -> do
+    print . showJS $ e
+
+    nav <- pollBehavior (current navS)
+    -- global listeners
+    notifKbdSink e -- notifications always get keys to close from anywhere on esc etc
+
+    -- local listeners
+    case nav of
+      NavImages -> imlibKbdSink e
+      _         -> return ()
+
+    return ()
 
   let mainView = rootLayout <$> navS
-                          <*> menuView
-                          <*> notifView
-                          <*> busyView
-                          <*> loginView
-                          <*> userView
-                          <*> adsView
-                          <*> searchPageView
-                          <*> createAdView
-                          <*> imageLibView
+                            <*> menuView
+                            <*> notifView
+                            <*> busyView
+                            <*> loginView
+                            <*> userView
+                            <*> adsView
+                            <*> searchPageView
+                            <*> createAdView
+                            <*> imageLibView
 
-  return mainView
+  return (mainView, Just kbdSink)
 
-main = adPlatform >>= runAppReactive
+main = adPlatform >>= runAppReactiveX

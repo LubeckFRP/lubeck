@@ -31,11 +31,11 @@ apiError     = NError . ApiError
 blError      = NError . BLError
 notImplError = NError . NotImplementedError
 
-data CanSubmit = CanSubmit | CanNotSubmit
-type Validator a = a -> CanSubmit
+data FormValid e = FormValid | FormNotValid e
+type Validator a e = a -> FormValid e
 
-data CanSubmitVerbose a = CanSubmitVerbose | CanNotSubmitVerbose a
-type ValidatorIO a b = a -> IO (CanSubmitVerbose b)
+data FormValidIO a = FormValidIO | FormNotValidIO a
+type ValidatorIO a e = a -> IO (FormValidIO e)
 
 -- FIXME should be in Ad Platform types probably
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages

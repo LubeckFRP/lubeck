@@ -32,7 +32,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppReactive)
-import Lubeck.Forms 
+import Lubeck.Forms
 import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
 import qualified Lubeck.Drawing as Drawing
@@ -43,6 +43,8 @@ import qualified BD.Data.SearchPost as P
 import BD.Data.SearchPost(SearchPost)
 import qualified BD.Data.Interaction as I
 import BD.Data.Interaction hiding (interactions)
+
+import           Components.BusyIndicator       (withBusy, BusyCmd(..), busyIndicatorComponent)
 
 type TwoAccounts = (Maybe JSString, Maybe JSString) 
 type Shoutouts = Zipper (Interaction SearchPost)
@@ -67,7 +69,7 @@ loadInteractionsW sink (x,y) = div [ class_ "form-horizontal"  ]
         [ E.input [ class_ "form-control"
                   , A.value $ nToEmpty x
                   , A.style "width: 100%"
-                  , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ] 
+                  , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ]
                   [] ]
     ]
   , div [ class_ "form-group form-inline" ] $
@@ -76,7 +78,7 @@ loadInteractionsW sink (x,y) = div [ class_ "form-horizontal"  ]
         [ E.input [ class_ "form-control"
                   , A.style "width: 100%"
                   , A.value $ nToEmpty y
-                  , change $ \e -> sink (DontSubmit (x,emptyToN $ value e)) ]  
+                  , change $ \e -> sink (DontSubmit (x,emptyToN $ value e)) ]
                   [] ]
     ]
   , div [ class_ "form-group" ] $
@@ -194,6 +196,13 @@ main = do
   displayAccsS <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE 
   (interactionBrowserS, _) <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE  
   runAppReactive $ render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS 
+--  (busyView, busySink)    <- busyIndicatorComponent []
+
+  (btnS, btnE) <- formComponent (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") buttonW
+  let initInteractions = InteractionSet Nothing Nothing []
+--  interactionsE <- reactimateIOAsync (fmap (withBusy busySink (uncurry loadShoutouts)) btnE)
+  interactS <- componentListen interactionSetW <$> stepperS initInteractions interactionsE
+--  runAppReactive $ busyView <> btnS <> interactS
 
 -- UTILITY
 
@@ -206,14 +215,3 @@ main = do
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf x = newEvent
 
--- Widget' (Zipper (Interaction SearchPost))
--- Widget' ()
--- Widget' (Interaction SeachPost) ()
--- 
--- WidgetT Html (Zipper (Interaction SearchPost)) (Zipper (Interaction SearchPost))
--- WidgetT Html () ()
--- WidgetT Html (Interaction SearchPost) ()
--- 
--- interactionBrowserW :: Sink (Zipper (Interaction SearchPost)) -> Zipper (Interaction SearchPost) -> Html 
--- buttonW :: String -> Sink () -> () -> Html 
--- interactionW :: Sink () -> Interaction SearchPost -> Html

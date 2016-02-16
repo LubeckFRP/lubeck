@@ -67,19 +67,17 @@ module Lubeck.FRP (
 
     -- ** Past-dependent events
     foldpE,
-    scanlE,
     accumE,
     gather,
     buffer,
-    withPreviousWith,
-    withPrevious,
+    -- withPrevious,
+    -- withPreviousWith,
 
     -- ** Building behaviors
     counter,
     stepper,
     switcher,
     accumB,
-    scanlR,
     foldpR,
 
     -- ** Sampling behaviors
@@ -92,7 +90,7 @@ module Lubeck.FRP (
     accumS,
     snapshotS,
     snapshotWithS,
- 
+
     -- ** Sampling signals
     updates,
     current,
@@ -459,20 +457,12 @@ snapshotWith :: (a -> b -> c) -> Behavior a -> Events b -> Events c
 snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
 -- | Create a past-dependent behavior.
-scanlR :: (a -> b -> a) -> a -> Events b -> IO (Behavior a)
-scanlR f = foldpR (flip f)
-
--- | Create a past-dependent behavior.
 foldpR :: (a -> b -> b) -> b -> Events a -> IO (Behavior b)
 foldpR f z e = accumB z (mapE f e)
 
 -- | Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> Events a -> IO (Events b)
 foldpE f a e = a `accumE` (f <$> e)
-
--- | Create a past-dependent event stream. This combinator corresponds to 'scanl' on streams.
-scanlE :: (a -> b -> a) -> a -> Events b -> IO (Events a)
-scanlE f = foldpE (flip f)
 
 
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b

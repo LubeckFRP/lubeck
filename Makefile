@@ -10,7 +10,7 @@ typecheck-client:
 .PHONY: build-client
 build-client:
 	clear && \
-	stack build -j8 --install-ghc
+	time stack build -j4 --fast --install-ghc
 
 .PHONY: build-server
 build-server:

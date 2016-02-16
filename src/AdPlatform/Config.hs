@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings          #-}
+
 module AdPlatform.Config where
 
 -- Get auth token using username/password or launch the app without it.
@@ -8,3 +10,6 @@ useAuth            = True
 -- Currently disabled because of bad `Access-Control-Allow-Origin: *` header set by the server.
 -- Once server will be fixed and the API will require authentication set this to True.
 xhrWithCredentials = False
+
+defaultUsername = "forbestravelguide"
+defaultPassword = "secret123"
