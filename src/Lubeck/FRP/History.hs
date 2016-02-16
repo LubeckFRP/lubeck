@@ -21,7 +21,7 @@ import qualified Data.Map
 import Data.Map (Map)
 
 newtype History = History ()
-newtype Moment = Moment JsString
+newtype Moment = Moment JSString
   deriving (Eq, IsJSVal)
 
 -- | Create a new 'History'.
