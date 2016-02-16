@@ -68,10 +68,9 @@ chronicle h b = do
 --
 chronicleS :: History -> Signal a -> IO (Signal a)
 chronicleS h s = do
-  let b = current s
-  z  <- pollBehavior b
-  es <- chronicle h b
-  stepperS z es
+  initialValue <- pollBehavior (current s)
+  restoreE <- chronicle h (current s)
+  stepperS initialValue (restoreE <> updates s)
 
 -- | Capture the current value of all chronicled behaviors and signals in the history.
 capture :: History -> IO Moment
