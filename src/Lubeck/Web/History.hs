@@ -51,7 +51,7 @@ foreign import javascript safe "$1.state"
 -- See https://developer.mozilla.org/en-US/docs/Web/API/WindowEventHandlers/onpopstate
 onpopstate :: (PopStateEvent -> IO ()) -> IO ()
 onpopstate f = do
-  cb <- syncCallback1 ThrowWouldBlock f
+  cb <- syncCallback1 ThrowWouldBlock (f . PopStateEvent)
   js_onpopstate cb
 
 foreign import javascript unsafe "window.onpopstate($1)"
