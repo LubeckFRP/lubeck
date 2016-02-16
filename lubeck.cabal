@@ -12,6 +12,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Lubeck.FRP
                      , Lubeck.FRP.Events
+                     , Lubeck.FRP.History
                      , Lubeck.App
                      , Lubeck.Drawing
                      , Lubeck.Util
