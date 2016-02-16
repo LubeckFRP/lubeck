@@ -11,10 +11,13 @@ import GHCJS.Types (JSVal)
 import GHCJS.Foreign.QQ (js, js_, jsu_, jsu')
 import GHCJS.Types(JSString, jsval)
 
-
+-- |
+-- See https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/decodeURIComponent
 decodeURIComponent :: JSString -> JSString
 decodeURIComponent x = [jsu'| decodeURIComponent(`x) |]
 
+-- |
+-- See https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
 encodeURIComponent :: JSString -> JSString
 encodeURIComponent x = [jsu'| encodeURIComponent(`x) |]
 

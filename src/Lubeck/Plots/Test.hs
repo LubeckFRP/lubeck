@@ -1,25 +1,9 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, QuasiQuotes, CPP, NoMonomorphismRestriction #-}
 
-{-|
-
-
-Plotting conventions:
-
-  All data points/values are received unformatted. Each axis has a definition with sensible defaults that tells us
-    - The bounds of the axis (min,max).
-    - The type of scale (only linear for now)
-    - Where the labels go.
-  The axis and data give rise to a number of points inside the square (0,0) to (1,1).
-    This is scaled to the requested dimensions of the plotting area (not necessarily a square).
-  Axes defs are used to generate legend (if necessary).
-  Axes are generated from their defs and the plotting area.
-  Data plotting:
-    Points:   List Point
-    Lines:    LinearEquation
-    Growth:   List Point
-      (show as line segments, with or without area)
- -}
+-- | Basic plotting.
+--
+-- /DEPRECATED/
 module Lubeck.Plots.Test
     ( DataPlot(..)
     , Fit(..)

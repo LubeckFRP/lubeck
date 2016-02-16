@@ -1,6 +1,8 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
+-- |
+-- Basic normalized visualization.
 module Lubeck.Plots.SimpleNormalized
     ( simpleLinePlot
     , simpleTimeSeries

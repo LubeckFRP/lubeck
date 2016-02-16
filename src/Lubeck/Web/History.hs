@@ -2,11 +2,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
 
 {-|
-Bindings to Web History API.
+Low-level bindings to Web History API.
+
+For a more high-level interface, see "Lubeck.FRP.History".
 
 See https://developer.mozilla.org/en-US/docs/Web/API/History_API
-
-/Experimental/
 -}
 module Lubeck.Web.History
   (
@@ -27,8 +27,14 @@ import GHCJS.Types(JSString, jsval)
 
 import GHCJS.Foreign.Callback (Callback, syncCallback1, OnBlocked(ThrowWouldBlock))
 
-forward, back :: IO ()
+-- |
+-- See https://developer.mozilla.org/en-US/docs/Web/API/History/forward
+forward :: IO ()
 forward = go 1
+
+-- |
+-- See https://developer.mozilla.org/en-US/docs/Web/API/History/back
+back :: IO ()
 back    = go (-1)
 
 -- |
