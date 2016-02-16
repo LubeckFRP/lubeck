@@ -22,6 +22,8 @@ import Lubeck.Forms
 import Lubeck.Forms.Basic (rangeWidget, integerWidget)
 import Lubeck.FRP.History
 
+import qualified Unsafe.Coerce
+
 page :: Sink () -> History -> IO (Signal Html)
 page saveHistory history = do
   (inputView, intsE) <- componentEvent 0 (rangeWidget 0 100 1) mempty
@@ -44,9 +46,12 @@ main = do
     moment <- capture history
     pushState (jsval moment) "" ""
     return ()
-  onpopstate $ \popStateEvent -> do
-    case cast $ getPopStateEventState (popStateEvent) of
-      Nothing     -> return ()
-      Just moment -> restore history moment
 
-  page >>= runAppReactive history saveHistoryS
+  -- onpopstate $ \popStateEvent -> do
+    -- case Unsafe.Coerce.unsafeCoerce $ getPopStateEventState (popStateEvent) of
+
+      -- Nothing     -> return ()
+      -- Just
+      -- moment -> restore history moment
+
+  page saveHistoryS history >>= runAppReactive
