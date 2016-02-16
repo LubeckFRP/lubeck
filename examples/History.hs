@@ -50,7 +50,7 @@ main = do
 
   onpopstate $ \popStateEvent -> do
     -- TODO extract a Moment/JSString from a JSVal without unsafeCoerce
-    case unsafeCoerce $ getPopStateEventState popStateEvent of
+    case unsafeCoerce $ getState popStateEvent of
       moment -> restore history moment
 
   page saveHistoryS history >>= runAppReactive

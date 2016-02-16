@@ -14,10 +14,11 @@ module Lubeck.Web.History
     forward
   , back
   , go
-  -- * Reacting to bavigation
+  -- * Reacting to navigation
   , pushState
   , PopStateEvent
-  , getPopStateEventState
+  , getState
+  -- ** 'onpopstate' event handler
   , onpopstate
   ) where
 
@@ -44,18 +45,23 @@ go n = [jsu_| window.history.go(`n) |]
 
 -- |
 -- See https://developer.mozilla.org/en-US/docs/Web/API/History/pushState
-pushState :: JSVal -> JSString -> JSString -> IO ()
+pushState
+  :: JSVal
+  -> JSString
+  -> JSString
+  -> IO ()
 pushState state title url = [jsu_| window.history.pushState(`state, `title, `url) |]
 -- pushState state title url = [jsu_| console.log([`state, `title, `url]) |]
 
-
+-- | Type of events passed to 'onpopstate'.
 newtype PopStateEvent = PopStateEvent JSVal
 
+-- | The value embedded in a 'PopStateEvent'.
 foreign import javascript safe "$1.state"
-  getPopStateEventState :: PopStateEvent -> JSVal
+  getState :: PopStateEvent -> JSVal
 
 -- foreign import javascript safe "((function() { console.log($1.state); return $1.state; })())"
-  -- getPopStateEventState :: PopStateEvent -> JSVal
+  -- getState :: PopStateEvent -> JSVal
 
 -- |
 -- See https://developer.mozilla.org/en-US/docs/Web/API/WindowEventHandlers/onpopstate
