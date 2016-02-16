@@ -25,6 +25,7 @@ page = div [] [h1 [] [text "Index"]
     , li [] [a [href "example-dynamic/"] [text "Example: Counters"]]
     , li [] [a [href "example-api-req/"] [text "Example: BD Api"]]
     , li [] [a [href "example/"]         [text "Example: Reactive page"]]
+    , li [] [a [href "doc/"]             [text "Haddock docs"]]
     ]
   ]
 
