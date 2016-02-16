@@ -29,7 +29,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 -- TODO Do not rely on show for these
 
 -- |
--- A Widget that visualizes all possible values of a type that is 'Enum' and 'Bounded'.
+-- A widget that visualizes all possible values of a type that is 'Enum' and 'Bounded'.
 --
 -- @
 -- selectEnumWidget :: Widget' Bool
@@ -45,7 +45,7 @@ selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
 selectEnumBoundedWidget = selectEnumWidget minBound maxBound
 
 -- |
--- A Widget that visualizes the given range of an 'Enum' type.
+-- A widget that visualizes the given range of an 'Enum' type.
 --
 -- @
 -- selectEnumWidget [1..10] :: Widget' Integer
@@ -57,7 +57,7 @@ selectEnumWidget :: (Eq a, Enum a, Show a) => a -> a -> Widget' a
 selectEnumWidget lb ub = selectWidget $ fmap (\n -> (n, pack $ show n)) $ enumFromTo lb ub
 
 -- |
--- A Widget that visualizes a given set of values..
+-- A widget that visualizes a given set of values..
 --
 -- @
 -- data Undo = DoNothing | Undo Int
