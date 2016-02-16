@@ -39,6 +39,8 @@ type Layout =
     :<|>
   "example-plots" :> Raw
     :<|>
+  "example-history" :> Raw
+    :<|>
   "doc" :> Raw
     :<|>
   Raw
@@ -87,6 +89,7 @@ main = do
       exampleWidgetComposition <- serveApp rnd jsExeDir "bd-example-widget-composition"
       exampleApiReq            <- serveApp rnd jsExeDir "bd-example-api-req"
       examplePlots             <- serveApp rnd jsExeDir "bd-example-plots"
+      exampleHistoryServer     <- serveApp rnd jsExeDir "bd-example-history"
       indexServer              <- serveApp rnd jsExeDir "bd-index"
       docServer <- case docDir of
         Left msg     -> print "Warning: Could not find documentation" >> serveNothing "documentation"
@@ -102,6 +105,7 @@ main = do
           :<|> exampleWidgetComposition
           :<|> exampleApiReq
           :<|> examplePlots
+          :<|> exampleHistoryServer
           :<|> docServer
           :<|> indexServer
 

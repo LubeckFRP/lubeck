@@ -9,7 +9,7 @@ module Lubeck.FRP.History
     , chronicle
     , chronicleS
     -- * Capturing and restoring moments in history
-    , Moment
+    , Moment(..)
     , capture
     , restore
     ) where
@@ -42,7 +42,7 @@ newtype Moment = Moment JSString
 instance Eq Moment where
   Moment x == Moment y  =  unpack x == unpack y
 instance Ord Moment where
-  Moment x < Moment y  =  unpack x < unpack y
+  Moment x <= Moment y  =  unpack x <= unpack y
 
 -- | Create a new 'History'.
 newHistory :: IO History
@@ -50,7 +50,6 @@ newHistory = do
   (cs, ce) <- newEvent
   (rs, re) <- newEvent
   return $ History cs rs ce re
--- (capture :: Sink/Event Moment, restore :: Sink/Event Moment)
 
 -- | Samples the given behaviorwhenever 'capture' is called and sends
 -- an update on the returned event whenever 'restore' is called.
@@ -58,8 +57,14 @@ chronicle  :: History -> Behavior a -> IO (Events a)
 chronicle h b = do
   let captures = snapshot b (captureE h) -- :: (Events (a, Moment))
   values <- accumB mempty (fmap (\(value, moment) -> Data.Map.insert moment value) captures) -- :: IO (Behavior (Map Moment a))
-  return $ filterJust $
-    snapshotWith (\values moment -> Data.Map.lookup moment values) values (restoreE h)
+
+  -- TODO this line crashes!
+  return $ filterJust $ snapshotWith (\values moment -> Data.Map.lookup moment values) values (restoreE h)
+
+  -- return $ filterJust $
+    -- snapshotWith (\values moment -> Just undefined) values (restoreE h)
+
+  -- return (fmap undefined $ restoreE h)
 
 -- | Samples the given beh/signal whenever 'capture' is called and sends an update
 -- on the returned signal whenever 'restore' is called. Otherwise the returned signal
