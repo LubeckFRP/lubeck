@@ -116,12 +116,12 @@ imageH cur_img_hash sink image =
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
 
-createAdForm :: Widget (CanSubmit, (Maybe [AdCampaign.AdCampaign], (Maybe [Im.Image], NewAd))) (Submit NewAd)
+createAdForm :: Widget (FormValid (), (Maybe [AdCampaign.AdCampaign], (Maybe [Im.Image], NewAd))) (Submit NewAd)
 createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
   let (canSubmitAttr, cantSubmitMsg) = case canSubmit of
-                                        CanSubmit    -> ([ click $ \e -> outputSink $ Submit newAd
-                                                         , A.title "Please fill in required fields" ], "")
-                                        CanNotSubmit -> ([ (VD.attribute "disabled") "true" ]
+                                        FormValid      -> ([ click $ \e -> outputSink $ Submit newAd
+                                                           , A.title "Please fill in required fields" ], "")
+                                        FormNotValid _ -> ([ (VD.attribute "disabled") "true" ]
                                                         , "Please fill in all fields")
   in contentPanel $
     div [class_ "form-horizontal"]
@@ -153,11 +153,11 @@ postNewAd unm newAd = do
   res <- postAPIEither (unm <> "/create-ad") newAd
   return $ bimap ApiError id res
 
-validate :: NewAd -> CanSubmit
+validate :: NewAd -> FormValid ()
 validate (NewAd caption image_hash campaign click_link) =
   if caption /= "" && image_hash /= "" && campaign /= 0 && click_link /= ""
-    then CanSubmit
-    else CanNotSubmit
+    then FormValid
+    else FormNotValid ()
 
 createAdPage :: Sink BusyCmd
              -> Sink (Maybe Notification)
