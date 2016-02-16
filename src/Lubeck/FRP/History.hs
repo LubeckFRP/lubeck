@@ -13,12 +13,14 @@ module Lubeck.FRP.History
     ) where
 
 import Lubeck.FRP
+import GHCJS.Types(JSString, JSVal, jsval)
 import qualified Data.Maybe
 import qualified Data.Map
 import Data.Map (Map)
 
-data History
-data Moment (Eq, IsJSVal)
+data History = History Int
+data Moment = Moment Int
+  deriving (Eq, IsJSVal)
 
 -- | Create a new 'History'.
 newHistory :: IO History
