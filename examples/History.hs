@@ -5,25 +5,20 @@ module Main where
 
 import Prelude hiding (div)
 import qualified Prelude
-
 import GHCJS.Types(JSString, jsval)
 import Web.VirtualDom.Html (text)
--- import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
--- import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
 import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
+import Unsafe.Coerce(unsafeCoerce)
 
 import Lubeck.FRP
 import Lubeck.App (Html, runAppReactive)
-import JavaScript.Cast (cast) -- JSVal -> Maybe a
 import Lubeck.Web.History
 import Lubeck.Forms
 import Lubeck.Forms.Basic (rangeWidget, integerWidget)
 import Lubeck.FRP.History
 import Lubeck.Util(showJS)
-
-import Unsafe.Coerce(unsafeCoerce)
 
 page :: Sink () -> History -> IO (Signal Html)
 page saveHistory history = do
