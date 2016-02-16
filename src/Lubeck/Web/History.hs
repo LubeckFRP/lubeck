@@ -40,12 +40,16 @@ go n = [jsu_| window.history.go(`n) |]
 -- See https://developer.mozilla.org/en-US/docs/Web/API/History/pushState
 pushState :: JSVal -> JSString -> JSString -> IO ()
 pushState state title url = [jsu_| window.history.pushState(`state, `title, `url) |]
+-- pushState state title url = [jsu_| console.log([`state, `title, `url]) |]
 
 
 newtype PopStateEvent = PopStateEvent JSVal
 
 foreign import javascript safe "$1.state"
   getPopStateEventState :: PopStateEvent -> JSVal
+
+-- foreign import javascript safe "((function() { console.log($1.state); return $1.state; })())"
+  -- getPopStateEventState :: PopStateEvent -> JSVal
 
 -- |
 -- See https://developer.mozilla.org/en-US/docs/Web/API/WindowEventHandlers/onpopstate
@@ -54,5 +58,6 @@ onpopstate f = do
   cb <- syncCallback1 ThrowWouldBlock (f . PopStateEvent)
   js_onpopstate cb
 
-foreign import javascript unsafe "window.onpopstate($1)"
+foreign import javascript unsafe "window.onpopstate = $1"
+-- foreign import javascript unsafe "window.bdpop = $1"
   js_onpopstate :: Callback (JSVal -> IO ()) -> IO ()

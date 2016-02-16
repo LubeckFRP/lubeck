@@ -21,13 +21,15 @@ import Lubeck.Web.History
 import Lubeck.Forms
 import Lubeck.Forms.Basic (rangeWidget, integerWidget)
 import Lubeck.FRP.History
+import Lubeck.Util(showJS)
 
 import qualified Unsafe.Coerce
 
 page :: Sink () -> History -> IO (Signal Html)
 page saveHistory history = do
-  (inputView, intsE) <- componentEvent 0 (rangeWidget 0 100 1) mempty
+  (inputView, intsE) <- componentEvent 0 integerWidget mempty
   intsS              <- stepperS 0 intsE
+  intsB              <- stepper  0 intsE
 
   subscribeEvent (fmap (const ()) intsE) saveHistory
   intsS' <- chronicleS history intsS
@@ -47,11 +49,12 @@ main = do
     pushState (jsval moment) "" ""
     return ()
 
-  -- onpopstate $ \popStateEvent -> do
-    -- case Unsafe.Coerce.unsafeCoerce $ getPopStateEventState (popStateEvent) of
-
-      -- Nothing     -> return ()
-      -- Just
-      -- moment -> restore history moment
+  onpopstate $ \popStateEvent -> do
+    case Unsafe.Coerce.unsafeCoerce $ getPopStateEventState popStateEvent of
+      moment -> do
+        -- print "Restoring"
+        restore history moment
+        -- print "Ok!"
+        -- return ()
 
   page saveHistoryS history >>= runAppReactive
