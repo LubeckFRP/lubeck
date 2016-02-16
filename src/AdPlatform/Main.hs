@@ -10,6 +10,7 @@ import qualified Prelude
 import           Control.Applicative
 
 import           Data.Monoid
+import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString, JSVal)
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -51,11 +52,8 @@ import           Components.MainMenu            (mainMenuComponent)
 
 import           Lubeck.Util
 import           AdPlatform.Types
-import           AdPlatform.Config              (useAuth)
+import           AdPlatform.Config
 
-
-defaultUsername = "forbestravelguide"
-defaultPassword = "secret123"
 
 menuItems =
   [ (NavUser,     "User")
@@ -99,7 +97,7 @@ adPlatform = do
   (notifView, notifSink, notifKbdSink)  <- notificationsComponent []
   (busyView, busySink)                  <- busyIndicatorComponent []
 
-  (loginView, userLoginE)               <- loginPage (defaultUsername, defaultPassword)
+  (loginView, userLoginE)               <- loginPage (fromString defaultUsername, fromString defaultPassword)
   userLoginB                            <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
   authOk                                <- withErrorIO notifSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
@@ -118,11 +116,11 @@ adPlatform = do
   let userB                             = current userS
   let usernameB                         = fmap (fmap Account.username) userB
 
-  (userView, loadAdsE)                  <- userPage busySink notifSink userB campaignsS
-  adsView                               <- campaignPage busySink notifSink loadAdsE userB
+  (userView, loadAdsE)                  <- userPage         busySink notifSink                   userB campaignsS
+  adsView                               <- campaignPage     busySink notifSink loadAdsE          userB
   (imageLibView, imsB, imlibKbdSink)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
-  searchPageView                        <- searchPage busySink notifSink ipcSink usernameB
-  createAdView                          <- createAdPage busySink notifSink usernameB imsB (current campaignsS)
+  searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB
+  createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
   let firstPage                         = NavUser
 
@@ -149,15 +147,15 @@ adPlatform = do
     return ()
 
   let mainView = rootLayout <$> navS
-                          <*> menuView
-                          <*> notifView
-                          <*> busyView
-                          <*> loginView
-                          <*> userView
-                          <*> adsView
-                          <*> searchPageView
-                          <*> createAdView
-                          <*> imageLibView
+                            <*> menuView
+                            <*> notifView
+                            <*> busyView
+                            <*> loginView
+                            <*> userView
+                            <*> adsView
+                            <*> searchPageView
+                            <*> createAdView
+                            <*> imageLibView
 
   return (mainView, Just kbdSink)
 
