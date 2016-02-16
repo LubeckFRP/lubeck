@@ -9,8 +9,15 @@ See https://developer.mozilla.org/en-US/docs/Web/API/History_API
 /Experimental/
 -}
 module Lubeck.Web.History
-  ( go
+  (
+  -- * Navigating the browser
+    forward
+  , back
+  , go
+  -- * Reacting to bavigation
   , pushState
+  , PopStateEvent
+  , getPopStateEventState
   , onpopstate
   ) where
 
@@ -19,6 +26,10 @@ import GHCJS.Foreign.QQ (js_, jsu_)
 import GHCJS.Types(JSString, jsval)
 
 import GHCJS.Foreign.Callback (Callback, syncCallback1, OnBlocked(ThrowWouldBlock))
+
+forward, back :: IO ()
+forward = go 1
+back    = go (-1)
 
 -- |
 -- See https://developer.mozilla.org/en-US/docs/Web/API/History/go
@@ -30,9 +41,15 @@ go n = [jsu_| window.history.go(`n) |]
 pushState :: JSVal -> JSString -> JSString -> IO ()
 pushState state title url = [jsu_| window.history.pushState(`state, `title, `url) |]
 
+
+newtype PopStateEvent = PopStateEvent JSVal
+
+foreign import javascript safe "$1.state"
+  getPopStateEventState :: PopStateEvent -> JSVal
+
 -- |
 -- See https://developer.mozilla.org/en-US/docs/Web/API/WindowEventHandlers/onpopstate
-onpopstate :: (JSVal -> IO ()) -> IO ()
+onpopstate :: (PopStateEvent -> IO ()) -> IO ()
 onpopstate f = do
   cb <- syncCallback1 ThrowWouldBlock f
   js_onpopstate cb
