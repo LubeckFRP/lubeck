@@ -16,13 +16,20 @@ module Lubeck.FRP.History
 
 import Lubeck.FRP
 import GHCJS.Types(JSString, IsJSVal(..), jsval)
+import Data.JSString(pack, unpack)
 import qualified Data.Maybe
 import qualified Data.Map
 import Data.Map (Map)
 
 newtype History = History ()
+
 newtype Moment = Moment JSString
-  deriving (Eq, IsJSVal)
+  deriving (IsJSVal)
+
+-- TODO efficient compare
+-- Why is JSString not an Eq instance?
+instance Eq Moment where
+  Moment x == Moment y  =  unpack x == unpack y
 
 -- | Create a new 'History'.
 newHistory :: IO History
