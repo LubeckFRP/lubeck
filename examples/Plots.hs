@@ -69,22 +69,21 @@ testSimple3 = snd $ simpleLinePlot showJS showJS
 
 main :: IO ()
 main = do
-  let staticPlot = testSimple3
-  -- let staticPlot = mconcat
-              -- [ mempty
-              -- , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              -- , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              -- , boxData [0.5,1,0.05]
-              -- , ticks
-              --     (zip [0.1,0.2..1] (fmap showJS [1..]))
-              --     (zip [0.1,0.2..1] (fmap showJS [1..]))
-              -- , labeledAxis "Usually time" "Interesting stuff"
-              -- , scale 10 $ xyAxis
-              -- , smokeBackground
-              -- ]
+  let x = pure $ mconcat
+              [ mempty
+              , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
+              , boxData [0.5,1,0.05]
+              , ticks
+                  (zip [0.1,0.2..1] (fmap showJS [1..]))
+                  (zip [0.1,0.2..1] (fmap showJS [1..]))
+              , labeledAxis "Usually time" "Interesting stuff"
+              , scale 10 $ xyAxis
+              , smokeBackground
+              ]
 
-  let x = pure staticPlot
-  runAppReactive $ fmap (toSvg defaultRenderingOptions) x
+  -- let x = pure (testSimple1 <> testSimple2 <> testSimple3)
+  runAppReactive $ fmap (toSvg defaultRenderingOptions . (xyAxis <>)) x
   where
     ps = zipWith Point rand1 rand2
 

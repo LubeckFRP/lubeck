@@ -141,7 +141,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
       [ lineData points
       , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
       , labeledAxis "" ""
-      , scale 100 smokeBackground
+      -- , scale 100 smokeBackground
       ]
 
     tickLabelsA  = fmap (showA . d2a) ticksA
