@@ -483,7 +483,7 @@ smokeBackground = fillColor C.whitesmoke $ scale 500 $ square
 --
 {-| Draw the X and Y axis (their intersection is the origin). -}
 xyAxis :: Drawing
-xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 500 $ stack [horizontalLine, verticalLine]
+xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizontalLine, verticalLine]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
