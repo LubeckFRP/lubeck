@@ -124,14 +124,9 @@ barData ps = scale 300 $ mconcat $
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
 linearData :: Double -> Double -> Drawing
-linearData a b = scale 300 $ lineData $ t [Point 0 0, Point 1 1]
+linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
   where
-    t = fmap (transformPoint (translationY b <> scalingY a))
-    -- translationY b  = translation 0 b
-    -- scalingY b      = scaling 1 b
-    -- translation a b = Transformation (1,0,0,1,a,b)
-    -- scaling a b     = Transformation (a,0,0,b,0,0)
-
+    f x = a*x + b
 
 
 

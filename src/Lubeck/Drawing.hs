@@ -420,8 +420,8 @@ transform :: Transformation -> Drawing -> Drawing
 transform = Transf
 
 translationX a  = translation a 0
-scalingX a      = scaling     a 1
 translationY b  = translation 0 b
+scalingX a      = scaling     a 1
 scalingY b      = scaling     1 b
 translation a b = Transformation (1,0,0,1,a,b)
 scaling a b     = Transformation (a,0,0,b,0,0)
