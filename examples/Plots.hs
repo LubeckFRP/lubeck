@@ -33,6 +33,7 @@ import Lubeck.Plots.Drawing
 import Lubeck.Plots.SimpleNormalized
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms
+import Lubeck.Forms.Select
   -- (Widget, Widget', component, bothWidget)
 import Lubeck.Forms.Basic
 import Lubeck.Drawing
@@ -68,23 +69,18 @@ testSimple3 = snd $ simpleLinePlot showJS showJS
     [10,15,-1]
     )
 
+
+
+chooseDrawing :: [Drawing] -> IO (Signal Html)
+chooseDrawing ds = do
+  (view, intE) <- componentEvent 0 (selectEnumWidget 0 (length ds - 1)) mempty
+  drawingS <- stepperS mempty (fmap (ds !!) intE)
+  return $ mconcat [view, (fmap (toSvg defaultRenderingOptions . (xyAxis <>)) drawingS)]
+
 main :: IO ()
 main = do
-  let x = pure $ mconcat
-              [ mempty
-              , scatterData ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              , lineData    ps --[Point 0.1 0.1, Point 0.3 0.3, Point 0.55 0.1, Point 1 1]
-              , boxData [0.5,1,0.05]
-              , ticks
-                  (zip [0.1,0.2..1] (fmap showJS [1..]))
-                  (zip [0.1,0.2..1] (fmap showJS [1..]))
-              , labeledAxis "Usually time" "Interesting stuff"
-              , scale 10 $ xyAxis
-              , smokeBackground
-              ]
-
-  -- let x = pure (testSimple1 <> testSimple2 <> testSimple3)
-  runAppReactive $ fmap (toSvg defaultRenderingOptions . (xyAxis <>)) x
+  dS <- chooseDrawing [testSimple1, testSimple2, testSimple3]
+  runAppReactive $ dS
   where
     ps = zipWith Point rand1 rand2
 
