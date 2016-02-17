@@ -14,6 +14,8 @@ module Lubeck.Forms.Basic
     , hideableDateWidget
     , hideableIntegerWidget
     , hideableRangeWidget
+    -- * Display widgets
+    , intDisplayWidget
     ) where
 
 import qualified Data.List
@@ -119,3 +121,12 @@ hideableRangeWidget lb ub s True  = rangeWidget lb ub s
 hideableDateWidget :: Bool -> Widget' Day
 hideableDateWidget False = const $ const mempty
 hideableDateWidget True  = dateWidget
+
+-- | A widget for displaying an integer
+intDisplayWidget :: Widget Int ()
+intDisplayWidget _ val = E.div
+  [ A.class_ "col-xs-2" ]
+  [ E.p [ A.class_ "text-center" ]
+        [ E.text (pack $ show val) ]
+  ]
+
