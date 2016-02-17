@@ -33,6 +33,7 @@ import qualified Web.VirtualDom.Html.Events as Ev
 import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppReactive)
 import Lubeck.Forms
+import Lubeck.Forms.Button (buttonWidget, multiButtonWidget)
 import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
 import qualified Lubeck.Drawing as Drawing
@@ -111,13 +112,6 @@ nextBtnAction shoutoutZ _
   | otherwise = next 
   where next = right shoutoutZ   
 
-buttonW :: String -> Widget' ()
-buttonW label sink val = div 
-  [ A.class_ "btn btn-primary"
-  , Ev.click $ \_ -> sink ()
-  ]
-  [ E.text $ pack label ]
-
 displayIndex :: Widget (Int,Int) ()
 displayIndex _ (nOutOf,m) = div
   []
@@ -130,11 +124,11 @@ interactionBrowserW shoutoutSink shoutoutZ =
     [ interactionW emptySink $ cursor shoutoutZ  
     , div [ A.class_ "row" ] 
       [ div [ A.class_ "col-xs-4 col-lg-4" ]
-	    [ buttonW "Previous" (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
+	    [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
       , div [ A.class_ "col-xs-3 col-lg-3" ]
 	    [ displayIndex emptySink $ nOutOfM shoutoutZ ]   
       , div [ A.class_ "col-xs-1 col-lg-1" ] 
-	    [ buttonW "Next" (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
+	    [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
       ]  
     ] 
   where nOutOfM (Zip xs ys) = let lenXs = length xs in (lenXs, lenXs + length ys)
@@ -198,7 +192,6 @@ main = do
   loadInteractionsE <- reactimateIOAsync $ fmap (withBusy busySink getShoutouts) loadInterBtnE 
   displayAccsS <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE 
   (interactionBrowserS, _) <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE  
-  
   runAppReactive $ busyView <> (render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS) 
 
 -- UTILITY
