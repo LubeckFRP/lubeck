@@ -106,7 +106,7 @@ module Lubeck.Drawing (
 import Control.Applicative
 import Data.AffineSpace
 import Data.AffineSpace.Point hiding (Point)
-import Data.Colour (Colour, AlphaColour)
+import Data.Colour (Colour, AlphaColour, withOpacity)
 import Data.Map(Map)
 import Data.Monoid
 import Data.Semigroup(Max(..))
@@ -488,7 +488,7 @@ xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizont
 
 {-| Draw the X and Y axis (their intersection is the origin). -}
 xyCoords :: Drawing
-xyCoords = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizontalLine, verticalLine, circle, square]
+xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizontalLine, verticalLine, circle, square]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
