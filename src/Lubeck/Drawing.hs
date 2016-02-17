@@ -93,6 +93,7 @@ module Lubeck.Drawing (
     stack,
     -- ** Utility
     xyAxis,
+    xyCoords,
     smokeBackground,
 
     -- * Render
@@ -484,6 +485,10 @@ smokeBackground = fillColor C.whitesmoke $ scale 500 $ square
 {-| Draw the X and Y axis (their intersection is the origin). -}
 xyAxis :: Drawing
 xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizontalLine, verticalLine]
+
+{-| Draw the X and Y axis (their intersection is the origin). -}
+xyCoords :: Drawing
+xyCoords = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizontalLine, verticalLine, circle, square]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
