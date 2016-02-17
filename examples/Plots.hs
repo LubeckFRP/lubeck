@@ -93,17 +93,30 @@ main = do
     , scatterData  ordRandPoints
     , scatterDataX ordRandPoints
     , scatterDataY ordRandPoints
-    , combine [lineData, scatterData]      ordRandPoints
+
     , combine [scatterDataX, scatterData]  ordRandPoints
     , combine [scatterDataY, scatterData]  ordRandPoints
     , combine [scatterDataX, scatterDataY] ordRandPoints
+
+    , combine [lineData, scatterData]      ordRandPoints
+    , mconcat [lineData ordRandPoints, scatterData (lastOnly ordRandPoints)]
+    , mconcat [lineData ordRandPoints, scatterData (firstOnly ordRandPoints)]
+
+
 
     , barData (take 10 rand1)
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
     ps           = zipWith Point rand1 rand2
+
+
+    -- combine [f, g...] x = mconcat [f x, g x...]
     combine fs x = mconcat $ fmap ($ x) fs
+
+    headOnly xs = if null xs then [] else [head xs]
+    lastOnly xs = if null xs then [] else [last xs]
+
 
 randPoints, ordRandPoints :: [Point]
 ordRandPoints = (Data.List.sortBy (Data.Ord.comparing x) $ take 10 randPoints)

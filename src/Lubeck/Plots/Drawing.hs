@@ -126,6 +126,15 @@ barData ps = scale 300 $ mconcat $
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
 
+
+
+
+
+
+
+
+
+
 -- | Draw ticks.
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
 -- Positions outside the normalized range are discarded.
@@ -175,6 +184,14 @@ axisY = strokeWidth 1.5 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 
 crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
 crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
+
+
+
+
+
+
+
+
 
 
 
