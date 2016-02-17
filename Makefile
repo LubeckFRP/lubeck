@@ -25,15 +25,17 @@ run-server: build-server stop-server
 	 { ~/.local/bin/lubeck-server & echo $$! > server.PID; }
 
 
-.PHONY: run-selenium-server
-run-selenium-server:
+.PHONY: stop-selenium-server
+stop-selenium-server:
 	if [ -f selenium.PID ]; then ( kill `cat selenium.PID` 2>/dev/null || echo 'No selenium process to kill.' ); fi
-	java -jar tests/selenium-server-standalone-2.52.0.jar -Dwebdriver.chrome.driver=tests/chromedriver & echo $$! > selenium.PID
+
+.PHONY: run-selenium-server
+run-selenium-server: stop-selenium-server
+	{ java -jar tests/selenium-server-standalone-2.52.0.jar -Dwebdriver.chrome.driver=tests/chromedriver & echo $$! > selenium.PID; }
 
 .PHONY: run-selenium-tests
 build-selenium-tests:
 	(cd tests && stack install -j8 --install-ghc)
-
 
 .PHONY: run-selenium-tests
 run-selenium-tests: build-selenium-tests
