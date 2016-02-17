@@ -14,6 +14,9 @@
 --  * The position of each data points is mapped from the hypercube into the plotting rectangle
 --    (currently hardcoded as @[(0,0)..(300,300])@).
 --
+--  * Returns data in the 'Styled' monad. Basic idea is that exctracting values from 'Styled'
+--    may affect display (sometimes dramatically), but never the basic semantics of the data.
+--
 --  Consequently:
 --
 --  * Data must be normalized and labels, and the labels normalized in the same withOpacity
@@ -28,10 +31,11 @@
 -- Input should be normalized so that for each point @Point x y@ in input, x ∈ [0,1], y ∈ [0,1].
 module Lubeck.Plots.Drawing
     (
+      Styled
     -- * Drawing data
     --   $normalizeInputPoint
     --   $normalizeInputScalar
-      scatterData
+    , scatterData
     , scatterDataX
     , scatterDataY
     , lineData
@@ -69,6 +73,9 @@ import Lubeck.Drawing
 import Lubeck.Util(showJS)
 import qualified Lubeck.Drawing
 
+
+type Styled a = a
+
 -- Line overlays, box plots, heat maps
 -- Stacking and graphing box plots
 -- Generating legends
@@ -84,28 +91,28 @@ import qualified Lubeck.Drawing
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
 
 -- | Draw data for a scatter plot.
-scatterData :: [R2] -> Drawing
+scatterData :: [R2] -> Styled Drawing
 scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
   where
     base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
     origin = Point 0 0
 
 -- | Draw data for a scatter plot ignoring Y values.
-scatterDataX :: [R2] -> Drawing
+scatterDataX :: [R2] -> Styled Drawing
 scatterDataX ps = scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
   where
     base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
     origin = Point 0 0
 
 -- | Draw data for a scatter plot ignoring X values.
-scatterDataY :: [R2] -> Drawing
+scatterDataY :: [R2] -> Styled Drawing
 scatterDataY ps = scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
   where
     base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
     origin = Point 0 0
 
 -- | Draw data for a line plot.
-lineData :: [R2] -> Drawing
+lineData :: [R2] -> Styled Drawing
 lineData []     = mempty
 lineData [_]    = mempty
 lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
@@ -114,7 +121,7 @@ lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ 
     origin = Point 0 0
 
 -- | Draw a box plot.
-barData :: [R] -> Drawing
+barData :: [R] -> Styled Drawing
 barData ps = scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
   where
@@ -123,7 +130,7 @@ barData ps = scale 300 $ mconcat $
 
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
-linearData :: R -> R -> Drawing
+linearData :: R -> R -> Styled Drawing
 linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
   where
     f x = a*x + b
@@ -140,7 +147,7 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
 ticks
   :: [(Double, JSString)] -- ^ X axis ticks.
   -> [(Double, JSString)] -- ^ Y axis ticks.
-  -> Drawing
+  -> Styled Drawing
 ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
   where
     filterTicks = filter (withinNormRange . fst)
@@ -152,7 +159,7 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
 ticksNoFilter
   :: [(Double, JSString)] -- ^ X axis ticks.
   -> [(Double, JSString)] -- ^ Y axis ticks.
-  -> Drawing
+  -> Styled Drawing
 ticksNoFilter xt yt = mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
@@ -171,7 +178,7 @@ ticksNoFilter xt yt = mconcat [xTicks, yTicks]
 labeledAxis
   :: JSString -- ^ X axis label.
   -> JSString -- ^ Y axis label.
-  -> Drawing
+  -> Styled Drawing
 labeledAxis labelX labelY = mconcat
   [ scale 300 $ axis
   , translateY (300/2) $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
