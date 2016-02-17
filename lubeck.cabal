@@ -145,6 +145,7 @@ executable bd-example-plots
                      , vector-space
                      , vector-space-points
                      , colour
+                     , random
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
