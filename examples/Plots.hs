@@ -100,7 +100,7 @@ main = do
 
     , combine [lineData, scatterData]      ordRandPoints
     , mconcat [lineData ordRandPoints, scatterData (lastOnly ordRandPoints)]
-    , mconcat [lineData ordRandPoints, scatterData (firstOnly ordRandPoints)]
+    , mconcat [lineData ordRandPoints, scatterData (headOnly ordRandPoints)]
 
 
 
