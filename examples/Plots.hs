@@ -29,6 +29,7 @@ import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
 
 import Lubeck.FRP
+import Lubeck.Plots.Drawing
 import Lubeck.Plots.SimpleNormalized
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms

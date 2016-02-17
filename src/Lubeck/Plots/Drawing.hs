@@ -23,32 +23,21 @@ import Data.AffineSpace
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 import Data.Monoid ((<>))
-
-import GHCJS.Types(JSString, jsval)
-import qualified Web.VirtualDom as VD
-import qualified Web.VirtualDom.Html as H
-import qualified Web.VirtualDom.Html.Attributes as H
-import qualified Web.VirtualDom.Html.Events as H
-import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
+import GHCJS.Types(JSString, jsval)
 
--- TODO move
-import Data.Time (UTCTime(..), DiffTime, Day(..))
-
-
--- TODO Debug
-import Control.Concurrent(forkIO, threadDelay)
-import Control.Monad(forever)
+-- import qualified Web.VirtualDom as VD
+-- import qualified Web.VirtualDom.Html as H
+-- import qualified Web.VirtualDom.Html.Attributes as H
+-- import qualified Web.VirtualDom.Html.Events as H
+-- import qualified Web.VirtualDom.Svg.Events as SvgEv
 
 -- import Lubeck.FRP
 -- import Lubeck.Forms
 -- import Lubeck.Forms.Basic
-
 import Lubeck.Drawing
 import Lubeck.Util(showJS)
 import qualified Lubeck.Drawing
-
--- TODO
 
 -- Line overlays, box plots, heat maps
 -- Stacking and graphing box plots
