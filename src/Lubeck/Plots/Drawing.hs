@@ -35,7 +35,7 @@ module Lubeck.Plots.Drawing
     , scatterDataX
     , scatterDataY
     , lineData
-    , boxData
+    , barData
     -- ** Drawing ticks and axis
     , ticks
     , ticksNoFilter
@@ -82,8 +82,7 @@ import qualified Lubeck.Drawing
 -- Pie charts
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
 
--- | Draw a scatter plot.
---   Can be combined with 'lineData'.
+-- | Draw data for a scatter plot.
 scatterData :: [Point] -> Drawing
 scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
   where
@@ -91,7 +90,7 @@ scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base
     origin = Point 0 0
     -- scaling a b = Transformation (a,0,0,b,0,0)
 
--- | Plot a series of values as lines perpendicular to the X axis, Y values is ignored.
+-- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: [Point] -> Drawing
 scatterDataX ps = scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
   where
@@ -99,7 +98,7 @@ scatterDataX ps = scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
     origin = Point 0 0
     -- scaling a b = Transformation (a,0,0,b,0,0)
 
--- | Plot a series of values as lines perpendicular to the X axis, Y values is ignored.
+-- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: [Point] -> Drawing
 scatterDataY ps = scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
   where
@@ -107,8 +106,7 @@ scatterDataY ps = scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
     origin = Point 0 0
     -- scaling a b = Transformation (a,0,0,b,0,0)
 
--- | Draw a line plot.
---   Can be combined with 'scatterData'.
+-- | Draw data for a line plot.
 lineData :: [Point] -> Drawing
 lineData []     = mempty
 lineData [_]    = mempty
@@ -120,8 +118,8 @@ lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ 
     origin = Point 0 0
 
 -- | Draw a box plot.
-boxData :: [Double] -> Drawing
-boxData ps = scale 300 $ mconcat $
+barData :: [Double] -> Drawing
+barData ps = scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
   where
     -- TODO horizontal stacking (nicer with proper envelopes!)

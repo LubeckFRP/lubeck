@@ -16,6 +16,8 @@ import qualified Web.VirtualDom.Html.Events as H
 import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
 
+import qualified Data.List
+import qualified Data.Ord
 import System.Random (mkStdGen, randoms, split)
 
 
@@ -73,35 +75,42 @@ testSimple3 = snd $ simpleLinePlot showJS showJS
 
 chooseDrawing :: [Drawing] -> IO (Signal Html)
 chooseDrawing ds = do
-  (view, intE) <- componentEvent 0 (selectEnumWidget 0 (length ds - 1)) mempty
+  (view, intE) <- componentEvent 0 (rangeWidget 0 (length ds - 1) 1) mempty
   drawingS <- stepperS mempty (fmap (ds !!) intE)
   return $ mconcat [view, (fmap (toSvg defaultRenderingOptions . (xyAxis <>)) drawingS)]
+
 
 main :: IO ()
 main = do
   dS <- chooseDrawing
+    -- All based on simpleLinePlot (auto-scaling and axis)
     [ testSimple1
     , testSimple2
     , testSimple3
 
-    , lineData     (take 10 randPoints)
-    , scatterData  (take 10 randPoints)
-    , scatterDataX (take 10 randPoints)
-    , scatterDataY (take 10 randPoints)
+    -- Line, scatter and combinations
+    , lineData     ordRandPoints
+    , scatterData  ordRandPoints
+    , scatterDataX ordRandPoints
+    , scatterDataY ordRandPoints
+    , combine [lineData, scatterData]      ordRandPoints
+    , combine [scatterDataX, scatterData]  ordRandPoints
+    , combine [scatterDataY, scatterData]  ordRandPoints
+    , combine [scatterDataX, scatterDataY] ordRandPoints
 
-    , boxData (take 10 rand1)
+    , barData (take 10 rand1)
     ]
-  runAppReactive $ dS
+  runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
-    ps = zipWith Point rand1 rand2
+    ps           = zipWith Point rand1 rand2
+    combine fs x = mconcat $ fmap ($ x) fs
 
-
-
-
-randPoints = zipWith Point rand1 rand2
-
+randPoints, ordRandPoints :: [Point]
+ordRandPoints = (Data.List.sortBy (Data.Ord.comparing x) $ take 10 randPoints)
+randPoints    = zipWith Point rand1 rand2
 rand1, rand2 :: [Double]
 rand1 = randoms $ fst $ split randG
 rand2 = randoms $ snd $ split randG
 
-randG = (mkStdGen 8712261455)
+-- randG = (mkStdGen 8712261455)
+randG = (mkStdGen 123456789)
