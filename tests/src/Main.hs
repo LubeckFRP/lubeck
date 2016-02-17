@@ -2,22 +2,22 @@
 
 module Main where
 
+import Control.Monad
+
 import Test.WebDriver
 import Test.WebDriver.Commands.Wait
 
 import qualified Data.Text as T
 
+
 firefoxConfig :: WDConfig
 firefoxConfig = defaultConfig
-
 chromeConfig = useBrowser chrome defaultConfig
 
-main = runSession firefoxConfig $ do
-
+testLogin = do
   openPage "http://localhost:8090/adplatform/"
 
-  waitUntil 15 $
-    expect . (== "http://localhost:8090/adplatform/") =<< getCurrentURL
+  waitUntil 15 $ expect . (== "http://localhost:8090/adplatform/") =<< getCurrentURL
 
   userInput  <- findElem ( ById "username-input" )
   passInput  <- findElem ( ById "password-input" )
@@ -36,5 +36,11 @@ main = runSession firefoxConfig $ do
     errorMsg  <- findElem ( ByCSS "body > div > div > div.notifPanel > div > div > div > span" )
     expect . ("Sorry" `T.isInfixOf`)  =<< (getText errorMsg)
 
+  -- closeSession
 
-  closeSession
+testCase c = void . runSession c . finallyClose $ testLogin
+
+
+main = do
+  mapM_ testCase  [firefoxConfig, chromeConfig]
+  print "Done - if you see this then tests probably completed without errors."
