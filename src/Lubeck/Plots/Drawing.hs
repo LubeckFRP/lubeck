@@ -33,6 +33,7 @@ module Lubeck.Plots.Drawing
     --   $normalizeInputScalar
       scatterData
     , scatterDataX
+    , scatterDataY
     , lineData
     , boxData
     -- ** Drawing ticks and axis
@@ -95,6 +96,14 @@ scatterDataX :: [Point] -> Drawing
 scatterDataX ps = scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
   where
     base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
+    origin = Point 0 0
+    -- scaling a b = Transformation (a,0,0,b,0,0)
+
+-- | Plot a series of values as lines perpendicular to the X axis, Y values is ignored.
+scatterDataY :: [Point] -> Drawing
+scatterDataY ps = scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
+  where
+    base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
     origin = Point 0 0
     -- scaling a b = Transformation (a,0,0,b,0,0)
 

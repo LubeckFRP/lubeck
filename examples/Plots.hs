@@ -79,7 +79,18 @@ chooseDrawing ds = do
 
 main :: IO ()
 main = do
-  dS <- chooseDrawing [testSimple1, testSimple2, testSimple3]
+  dS <- chooseDrawing
+    [ testSimple1
+    , testSimple2
+    , testSimple3
+
+    , lineData     (take 10 randPoints)
+    , scatterData  (take 10 randPoints)
+    , scatterDataX (take 10 randPoints)
+    , scatterDataY (take 10 randPoints)
+
+    , boxData (take 10 rand1)
+    ]
   runAppReactive $ dS
   where
     ps = zipWith Point rand1 rand2
@@ -87,17 +98,8 @@ main = do
 
 
 
--- -- Work around 'blocked indefinitely' issue by embedding a dummy handler
--- runAppReactive2 :: Signal Html -> IO ()
--- runAppReactive2 x = do
---   (s,e) <- newEvent
---   s2 <- fmap (x <>) $ stepperS mempty e
---   runAppReactive $
---     fmap
---       (\html -> VD.node "div" [VD.on "unlikelythingtohappen" $ \_ -> s undefined] [html])
---       s2
+randPoints = zipWith Point rand1 rand2
 
--- length 100
 rand1, rand2 :: [Double]
 rand1 = randoms $ fst $ split randG
 rand2 = randoms $ snd $ split randG
