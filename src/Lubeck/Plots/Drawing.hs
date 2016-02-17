@@ -175,3 +175,14 @@ axisY = strokeWidth 1.5 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 
 crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
 crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
+
+
+
+-- Interactive
+--
+-- -- | Draw data for a scatter plot with an optional drawing pop-up.
+-- scatterData :: [(Point, Maybe Drawing)] -> IO (Signal Drawing)
+-- scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
+--   where
+--     base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
+--     origin = Point 0 0
