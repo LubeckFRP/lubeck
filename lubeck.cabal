@@ -18,6 +18,7 @@ library
                      , Lubeck.Util
                      , Lubeck.Forms
                      , Lubeck.Forms.Basic
+                     , Lubeck.Forms.Button                     
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
