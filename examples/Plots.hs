@@ -102,7 +102,7 @@ main = do
 --       s2
 
 -- length 100
-rands1, rands2 :: [Double]
+rand1, rand2 :: [Double]
 rand1 = randoms $ fst $ split randG
 rand2 = randoms $ snd $ split randG
 
