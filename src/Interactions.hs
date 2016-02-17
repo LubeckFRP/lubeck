@@ -44,9 +44,7 @@ import BD.Data.SearchPost(SearchPost)
 import qualified BD.Data.Interaction as I
 import BD.Data.Interaction hiding (interactions)
 
-import           Components.BusyIndicator       (withBusy, BusyCmd(..), busyIndicatorComponent)
-
-{-
+import Components.BusyIndicator (withBusy, BusyCmd(..), busyIndicatorComponent)
 
 type TwoAccounts = (Maybe JSString, Maybe JSString) 
 type Shoutouts = Zipper (Interaction SearchPost)
@@ -191,20 +189,17 @@ getShoutouts = uncurry loadShoutouts
 
 main :: IO ()
 main = do
+  (busyView, busySink) <- busyIndicatorComponent []
+
   let initInteractions = InteractionSet Nothing Nothing [] 
       initFormContent = (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") 
+  
   (loadInteractionsS, loadInterBtnE) <- formComponent initFormContent loadInteractionsW 
-  loadInteractionsE <- reactimateIOAsync $ fmap getShoutouts loadInterBtnE 
+  loadInteractionsE <- reactimateIOAsync $ fmap (withBusy busySink getShoutouts) loadInterBtnE 
   displayAccsS <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE 
   (interactionBrowserS, _) <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE  
-  runAppReactive $ render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS 
---  (busyView, busySink)    <- busyIndicatorComponent []
-
-  (btnS, btnE) <- formComponent (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") buttonW
-  let initInteractions = InteractionSet Nothing Nothing []
---  interactionsE <- reactimateIOAsync (fmap (withBusy busySink (uncurry loadShoutouts)) btnE)
-  interactS <- componentListen interactionSetW <$> stepperS initInteractions interactionsE
---  runAppReactive $ busyView <> btnS <> interactS
+  
+  runAppReactive $ busyView <> (render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS) 
 
 -- UTILITY
 
@@ -214,8 +209,3 @@ main = do
 (.:?) :: Maybe a -> (a -> b) -> Maybe b
 (.:?) x f = fmap f x
 
-newEventOf :: a -> IO (Sink a, Events a)
-newEventOf x = newEvent
-
--}
-main = return ()
