@@ -84,7 +84,7 @@ library
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-example-app
-  main-is:             src/Example.hs
+  main-is:             examples/Reactive.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
@@ -96,7 +96,7 @@ executable bd-example-app
   default-language:    Haskell2010
 
 executable bd-example-static-page
-  main-is:             src/ExampleStatic.hs
+  main-is:             examples/Static.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
@@ -104,7 +104,7 @@ executable bd-example-static-page
   default-language:    Haskell2010
 
 executable bd-example-widget-composition
-  main-is:             src/ExampleWidgetComposition.hs
+  main-is:             examples/WidgetComposition.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
@@ -112,7 +112,7 @@ executable bd-example-widget-composition
   default-language:    Haskell2010
 
 executable bd-example-dynamic-page
-  main-is:             src/ExampleDynamic.hs
+  main-is:             examples/Dynamic.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
@@ -120,7 +120,7 @@ executable bd-example-dynamic-page
   default-language:    Haskell2010
 
 executable bd-example-api-req
-  main-is:             src/ExampleApiReq.hs
+  main-is:             examples/ApiReq.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
@@ -136,7 +136,7 @@ executable bd-example-history
   default-language:    Haskell2010
 
 executable bd-example-plots
-  main-is:             src/ExamplePlots.hs
+  main-is:             examples/Plots.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom

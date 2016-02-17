@@ -1,6 +1,9 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
 
+-- |
+-- Basics for drawing plots.
+--
 module Lubeck.Plots.Drawing
     ( scatterData
     , scatterDataX

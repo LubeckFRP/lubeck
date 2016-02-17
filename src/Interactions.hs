@@ -44,7 +44,7 @@ import BD.Data.SearchPost(SearchPost)
 import qualified BD.Data.Interaction as I
 import BD.Data.Interaction hiding (interactions)
 
-import           Components.BusyIndicator       (withBusy, BusyCmd(..), busyIndicatorComponent)
+import Components.BusyIndicator (withBusy, BusyCmd(..), busyIndicatorComponent)
 
 type TwoAccounts = (Maybe JSString, Maybe JSString) 
 type Shoutouts = Zipper (Interaction SearchPost)

@@ -26,9 +26,11 @@ import Lubeck.Forms.Select
 data IntervalRange = Any | LessThan | GreaterThan | Between
   deriving (Show, Eq)
 
+-- | A widget for selecting an integer range.
 integerIntervalWidget :: JSString -> Widget' (Interval Int)
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
 
+-- | A widget for selecting a date range.
 dateIntervalWidget :: Day -> JSString -> Widget' (Interval Day)
 dateIntervalWidget dayNow = customIntervalWidget dayNow hideableDateWidget
 
@@ -91,6 +93,6 @@ customIntervalWidget z numW title = id
       LessThan    -> (False, True)
       Between     -> (True, True)
 
--- TODO is the (Monoid Html) instance what we need?
-composeWidget :: Widget' a -> Widget' b -> Widget (a,b) (a,b)
-composeWidget a b = bothWidget mappend (subWidget Control.Lens._1 a) (subWidget Control.Lens._2 b)
+    -- TODO is the (Monoid Html) instance what we need?
+    composeWidget :: Widget' a -> Widget' b -> Widget (a,b) (a,b)
+    composeWidget a b = bothWidget mappend (subWidget Control.Lens._1 a) (subWidget Control.Lens._2 b)

@@ -63,6 +63,7 @@ loginPageW sink (canSubmit, (name, passw)) =
                 , keyup handleEnter ] -- event delegation
             [ E.input [ class_ "form-control bottom-buffer"
                       , A.value name
+                      , A.id "username-input"
                       , A.style "display: inline-block;"
                       , (VD.attribute "placeholder") "Username"
                       , (VD.attribute "autofocus") "true"
@@ -70,12 +71,13 @@ loginPageW sink (canSubmit, (name, passw)) =
 
             , E.input [ class_ "form-control bottom-buffer"
                       , A.value passw -- FIXME is it ok to pre-set passwords?
+                      , A.id "password-input"
                       , A.style "display: inline-block;"
                       , (VD.attribute "placeholder") "Password"
                       , A.type_ "password"
                       , change $ \e -> preventDefault e >> sink (DontSubmit (name, value e))] []
 
-            , button ([ class_ "form-control btn btn-info"] <> canSubmitAttr) [text "Login"]
+            , button ([ A.id "login-submit", class_ "form-control btn btn-info"] <> canSubmitAttr) [text "Login"]
             ]
           ]
         ]

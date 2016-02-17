@@ -32,7 +32,12 @@ inputCSS = "position: absolute; "
         <> "padding: 0px;"
         <> "border: none"
 
-filesSelectWidget :: JSString -> Maybe JSString -> Bool -> Widget' [(JSString, FormDataVal)]
+-- | A widget for selecting files.
+filesSelectWidget
+  :: JSString               -- ^ Form field name.
+  -> Maybe JSString         -- ^ MIME type.
+  -> Bool                   -- ^ Multiple file selection.
+  -> Widget' [(JSString, FormDataVal)]
 filesSelectWidget formFieldName mime multi sink _ =
   let multiAttr  = if multi then [(VD.attribute "multiple") "true"] else []
       acceptAttr = case mime of

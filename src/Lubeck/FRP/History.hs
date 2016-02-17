@@ -9,7 +9,7 @@ module Lubeck.FRP.History
     , chronicle
     , chronicleS
     -- * Capturing and restoring moments in history
-    , Moment(..)
+    , Moment
     , capture
     , restore
     ) where
@@ -51,26 +51,19 @@ newHistory = do
   (rs, re) <- newEvent
   return $ History cs rs ce re
 
--- | Samples the given behaviorwhenever 'capture' is called and sends
+-- | Samples the given behavior whenever 'capture' is called and sends
 -- an update on the returned event whenever 'restore' is called.
 chronicle  :: History -> Behavior a -> IO (Events a)
 chronicle h b = do
   let captures = snapshot b (captureE h) -- :: (Events (a, Moment))
   values <- accumB mempty (fmap (\(value, moment) -> Data.Map.insert moment value) captures) -- :: IO (Behavior (Map Moment a))
-
-  -- TODO this line crashes!
   return $ filterJust $ snapshotWith (\values moment -> Data.Map.lookup moment values) values (restoreE h)
 
-  -- return $ filterJust $
-    -- snapshotWith (\values moment -> Just undefined) values (restoreE h)
-
-  -- return (fmap undefined $ restoreE h)
-
--- | Samples the given beh/signal whenever 'capture' is called and sends an update
+-- | Samples the given signal whenever 'capture' is called and sends an update
 -- on the returned signal whenever 'restore' is called. Otherwise the returned signal
 -- behaves like the given signal.
 --
--- TODO beware of propagation order
+-- Note that the order in which 'restore' reverts the signals created using 'chronicleS' is undefined.
 --
 chronicleS :: History -> Signal a -> IO (Signal a)
 chronicleS h s = do

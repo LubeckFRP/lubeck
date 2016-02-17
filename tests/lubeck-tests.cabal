@@ -1,0 +1,23 @@
+
+name:                lubeck-tests
+version:             0.1.0.0
+synopsis:            Run Selenium tests
+license:             AllRightsReserved
+license-file:        ../LICENSE
+author:              Beautiful Destinations
+maintainer:          hans@beautifuldestinations.com
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable lubeck-tests
+  main-is:             Main.hs
+  build-depends:       base           >=4.8 && <4.9
+                     , mtl
+                     , transformers
+                     , containers
+                     , process
+                     , stm
+                     , webdriver
+                     , text
+  hs-source-dirs:      src
+  default-language:    Haskell2010

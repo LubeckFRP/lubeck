@@ -5,25 +5,20 @@ module Main where
 
 import Prelude hiding (div)
 import qualified Prelude
-
 import GHCJS.Types(JSString, jsval)
--- import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label, ul, li)
--- import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
--- import Web.VirtualDom.Html.Attributes (src, width, class_, href, target, width, src)
+import Web.VirtualDom.Html (text)
 import qualified Web.VirtualDom.Html as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
+import Unsafe.Coerce(unsafeCoerce)
 
 import Lubeck.FRP
 import Lubeck.App (Html, runAppReactive)
-import JavaScript.Cast (cast) -- JSVal -> Maybe a
 import Lubeck.Web.History
 import Lubeck.Forms
 import Lubeck.Forms.Basic (rangeWidget, integerWidget)
 import Lubeck.FRP.History
 import Lubeck.Util(showJS)
-
-import qualified Unsafe.Coerce
 
 page :: Sink () -> History -> IO (Signal Html)
 page saveHistory history = do
@@ -35,7 +30,11 @@ page saveHistory history = do
   intsS' <- chronicleS history intsS
 
   let outputView    = componentListen integerWidget intsS'
-  return $ mconcat [inputView, outputView]
+  return $ mconcat
+    [ pure $ text "Change this value:", inputView
+    , pure $ text "See what happens to this value:", outputView
+    , pure $ text "Try using the back and forward buttons!"
+    ]
 
 -- MAIN
 
@@ -50,11 +49,8 @@ main = do
     return ()
 
   onpopstate $ \popStateEvent -> do
-    case Unsafe.Coerce.unsafeCoerce $ getPopStateEventState popStateEvent of
-      moment -> do
-        -- print "Restoring"
-        restore history moment
-        -- print "Ok!"
-        -- return ()
+    -- TODO extract a Moment/JSString from a JSVal without unsafeCoerce
+    case unsafeCoerce $ getState popStateEvent of
+      moment -> restore history moment
 
   page saveHistoryS history >>= runAppReactive
