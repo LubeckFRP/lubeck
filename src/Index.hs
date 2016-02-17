@@ -27,6 +27,7 @@ page = div [] [h1 [] [text "Index"]
     , li [] [a [href "example-history/"] [text "Example: History"]]
     , li [] [a [href "example/"]         [text "Example: Reactive page"]]
     , li [] [a [href "doc/"]             [text "Haddock docs"]]
+    , li [] [a [href "https://www.stackage.org/nightly-2015-12-14"] [text "Stackage docs"]]
     ]
   ]
 
