@@ -12,6 +12,12 @@ The API is a rather stripped-down version of Diagrams.
 -}
 module Lubeck.Drawing (
     -- ** Basics
+    R,
+    V,
+    R2,
+    V2,
+    R3,
+    V3,
     Point(..),
     Vector(..),
     Dimension(..),
@@ -139,6 +145,13 @@ data Point = Point { x :: Double, y :: Double }
 {-| A vector (distance between two points) in 2D space. -}
 data Vector = Vector { dx :: Double, dy :: Double }
   deriving (Eq, Ord, Show)
+
+type R = Double
+type V = Double
+type R2 = Point
+type V2 = Vector
+type R3 = (Double,Double,Double)
+type V3 = (Double,Double,Double)
 
 instance AdditiveGroup Vector where
   zeroV   = Vector 0 0
