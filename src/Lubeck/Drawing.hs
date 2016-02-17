@@ -28,9 +28,18 @@ module Lubeck.Drawing (
     apTransformation,
     transformVector,
     transformPoint,
-    (!<>),
+    -- (!<>),
     transformationToMatrix,
 
+    -- ** Raw transformations
+    translation,
+    translationX,
+    translationY,
+    scaling,
+    scalingX,
+    scalingY,
+    rotation,
+    shearing,
     -- ** Applying transformations
     transform,
     translate,
@@ -41,7 +50,8 @@ module Lubeck.Drawing (
     scaleX,
     scaleY,
     rotate,
-    shearXY,
+    shear,
+
 
     -- ** Styling
     Style,
@@ -190,6 +200,9 @@ newtype Transformation = Transformation { getTransformation ::
      Double,Double,
      Double,Double)
      }
+instance Monoid Transformation where
+  mempty  = emptyTransformation
+  mappend = apTransformation
 
 -- We use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
 --
@@ -219,7 +232,7 @@ apTransformation
        a1*e2 + c1*f2 + e1,
        b1*e2 + d1*f2 + f1)
 
-infixr 6 !<>
+-- infixr 6 !<>
 
 transformVector :: Transformation -> Vector -> Vector
 transformVector (Transformation (a,b,c,d,e,f)) (Vector x y) = Vector (a*x+c*y) (b*x+d*y)
@@ -227,9 +240,9 @@ transformVector (Transformation (a,b,c,d,e,f)) (Vector x y) = Vector (a*x+c*y) (
 transformPoint :: Transformation -> Point -> Point
 transformPoint (Transformation (a,b,c,d,e,f)) (Point x y) = Point (a*x+c*y+e) (b*x+d*y+f)
 
-{-| Compose two transformations. -}
-(!<>) :: Transformation -> Transformation -> Transformation
-(!<>) = apTransformation
+-- {-| Compose two transformations. -}
+-- (!<>) :: Transformation -> Transformation -> Transformation
+-- (!<>) = apTransformation
 
 {-| -}
 transformationToMatrix :: Transformation -> (Double, Double, Double, Double, Double, Double)
@@ -406,6 +419,15 @@ transform s (transform t image) = transform (s <> t) image
 transform :: Transformation -> Drawing -> Drawing
 transform = Transf
 
+translationX a  = translation a 0
+scalingX a      = scaling     a 1
+translationY b  = translation 0 b
+scalingY b      = scaling     1 b
+translation a b = Transformation (1,0,0,1,a,b)
+scaling a b     = Transformation (a,0,0,b,0,0)
+rotation a      = Transformation (cos a, 0 - sin a, sin a, cos a, 0, 0)
+shearing a b    = Transformation (1, b, a, 1, 0, 0)
+
 
 {-| Translate (move) an image. -}
 translate :: Vector -> Drawing -> Drawing
@@ -443,8 +465,8 @@ rotate    a   = transform $ Transformation (cos a, 0 - sin a, sin a, cos a, 0, 0
 -- The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
-shearXY :: Double -> Double -> Drawing -> Drawing
-shearXY   a b = transform $ Transformation (1, b, a, 1, 0, 0)
+shear :: Double -> Double -> Drawing -> Drawing
+shear   a b = transform $ Transformation (1, b, a, 1, 0, 0)
 
 
 

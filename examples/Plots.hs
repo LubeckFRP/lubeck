@@ -103,7 +103,13 @@ main = do
     , mconcat [lineData ordRandPoints, scatterData (headOnly ordRandPoints)]
 
 
+    , mconcat [linearData 0 1, scatterData ordRandPoints]
+    , mconcat [linearData 1 0, scatterData ordRandPoints]
+    , mconcat [linearData (-1) 0.5, scatterData ordRandPoints]
 
+    , lineData [Point 0 0, Point 1 1]
+    , lineData [Point 0 0, Point 0 0, Point 1 1]
+    , lineData [Point 0.5 0.5, Point 1 1]
     , barData (take 10 rand1)
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS

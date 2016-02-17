@@ -35,6 +35,7 @@ module Lubeck.Plots.Drawing
     , scatterDataX
     , scatterDataY
     , lineData
+    , linearData
     , barData
     -- ** Drawing ticks and axis
     , ticks
@@ -88,7 +89,6 @@ scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base
   where
     base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
     origin = Point 0 0
-    -- scaling a b = Transformation (a,0,0,b,0,0)
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: [Point] -> Drawing
@@ -96,7 +96,6 @@ scatterDataX ps = scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
   where
     base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
     origin = Point 0 0
-    -- scaling a b = Transformation (a,0,0,b,0,0)
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: [Point] -> Drawing
@@ -104,7 +103,6 @@ scatterDataY ps = scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
   where
     base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
     origin = Point 0 0
-    -- scaling a b = Transformation (a,0,0,b,0,0)
 
 -- | Draw data for a line plot.
 lineData :: [Point] -> Drawing
@@ -113,8 +111,6 @@ lineData [_]    = mempty
 lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
   where
     lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
-    -- translation a b = Transformation (0,0,0,0,a,b)
-    -- scaling a b = Transformation (a,0,0,b,0,0)
     origin = Point 0 0
 
 -- | Draw a box plot.
@@ -125,8 +121,16 @@ barData ps = scale 300 $ mconcat $
     -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
-
-
+-- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
+--   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
+linearData :: Double -> Double -> Drawing
+linearData a b = scale 300 $ lineData $ t [Point 0 0, Point 1 1]
+  where
+    t = fmap (transformPoint (translationY b <> scalingY a))
+    -- translationY b  = translation 0 b
+    -- scalingY b      = scaling 1 b
+    -- translation a b = Transformation (1,0,0,1,a,b)
+    -- scaling a b     = Transformation (a,0,0,b,0,0)
 
 
 
