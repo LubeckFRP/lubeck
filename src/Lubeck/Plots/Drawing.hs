@@ -52,13 +52,15 @@ module Lubeck.Plots.Drawing
 
 import Prelude hiding (div)
 import qualified Prelude
-import Data.VectorSpace
-import Data.AffineSpace
+
+import qualified Data.JSString
+import GHCJS.Types(JSString, jsval)
+
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 import Data.Monoid ((<>))
-import qualified Data.JSString
-import GHCJS.Types(JSString, jsval)
+import Data.VectorSpace
+import Data.AffineSpace
 
 -- import qualified Web.VirtualDom as VD
 -- import qualified Web.VirtualDom.Html as H
