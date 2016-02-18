@@ -48,13 +48,15 @@ import           AdPlatform.Pages.User          (userPage)
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
 import           Components.Notifications       (notificationsComponent)
-import           Components.MainMenu            (mainMenuComponent)
+import           Components.MainMenu            (mainMenuComponent, MenuItems())
 
 import           Lubeck.Util
+import           Lubeck.Types
 import           AdPlatform.Types
 import           AdPlatform.Config
 
 
+menuItems :: MenuItems Nav
 menuItems =
   [ (NavUser,     "User")
   , (NavSearch,   "Search")

@@ -48,6 +48,7 @@ import           BD.Api
 import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
+import           Lubeck.Types
 
 
 data Action          = Noop | UpdateBudget Ad.Ad AdT.USDcents | UpdateStatus Ad.Ad AdT.AdStatus

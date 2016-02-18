@@ -64,6 +64,7 @@ import           BD.Types
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy2)
 import           Lubeck.Util
+import           Lubeck.Types
 
 data NewAd = NewAd { caption    :: JSString,
                      image_hash :: JSString,

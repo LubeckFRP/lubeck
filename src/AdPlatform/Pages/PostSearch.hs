@@ -42,6 +42,7 @@ import qualified Web.VirtualDom.Html.Events     as Ev
 
 import           Lubeck.App                     (Html, runAppReactive)
 import           Lubeck.Forms
+import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
