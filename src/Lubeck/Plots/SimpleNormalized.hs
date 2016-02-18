@@ -45,7 +45,7 @@ import Lubeck.Forms.Basic
 import Lubeck.Drawing
 import Lubeck.Util(showJS, formatDateAndTimeFromUTC)
 import qualified Lubeck.Drawing
-import Lubeck.Plots.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
+import Lubeck.Plots.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis, withDefaultStyle)
 
 
 
@@ -137,7 +137,7 @@ simpleLinePlot
 simpleLinePlot _     _     _   _   _   _   _         _         [] = ((id,id), mempty)
 simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, normB), drawing)
   where
-    drawing = mconcat
+    drawing = withDefaultStyle $ mconcat
       [ lineData points
       , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
       , labeledAxis "" ""

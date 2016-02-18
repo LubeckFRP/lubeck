@@ -1,6 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
-{-# LANGUAGE , TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- Basics for drawing plots.
@@ -35,7 +35,7 @@ module Lubeck.Plots.Drawing
     -- * Drawing data
     --   $normalizeInputPoint
     --   $normalizeInputScalar
-    , scatterData
+      scatterData
     , scatterDataX
     , scatterDataY
     , lineData
@@ -54,7 +54,8 @@ module Lubeck.Plots.Drawing
     , defStyling
     -- TODO all lenses here
     , Styled
-    , runStyled
+    , getStyled
+    , withDefaultStyle
 
     ) where
 
@@ -67,6 +68,7 @@ import GHCJS.Types(JSString, jsval)
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 import Data.Monoid ((<>))
+import Control.Applicative
 import Data.VectorSpace
 import Data.AffineSpace
 
@@ -90,6 +92,17 @@ import qualified Lubeck.Drawing
 
 data Styling = Styling
   { _dummy :: ()
+  -- Rendering rectangle (default (300x300))
+
+
+  -- Line plots
+    -- stroke color, stroke width (absolute)
+  -- Scatter plots
+    -- point size, fillColor, strokeColor, shape?
+
+  -- Bar plots
+    --
+
 
   }
   deriving (Read, Show)
@@ -98,12 +111,19 @@ defStyling = Styling
   { _dummy = ()
 
   }
-makeLenses ''FooBar
+makeLenses ''Styling
 
-newtype Styled a = Reader Styling
+newtype Styled a = Styled (Reader Styling a)
   deriving (Functor, Applicative, Monad, MonadReader Styling)
+instance Monoid a => Monoid (Styled a) where
+  mempty = pure mempty
+  mappend = liftA2 mappend
 
-runStyled = runReader
+getStyled :: Styled a -> Styling -> a
+getStyled = runReader
+
+withDefaultStyle :: Styled a -> a
+withDefaultStyle = runStyled defStyling
 
 -- Line overlays, box plots, heat maps
 -- Stacking and graphing box plots
@@ -121,21 +141,21 @@ runStyled = runReader
 
 -- | Draw data for a scatter plot.
 scatterData :: [R2] -> Styled Drawing
-scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
+scatterData ps = return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
   where
     base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
     origin = Point 0 0
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: [R2] -> Styled Drawing
-scatterDataX ps = scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
+scatterDataX ps = return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
   where
     base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
     origin = Point 0 0
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: [R2] -> Styled Drawing
-scatterDataY ps = scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
+scatterDataY ps = return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
   where
     base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
     origin = Point 0 0
@@ -144,14 +164,14 @@ scatterDataY ps = scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
 lineData :: [R2] -> Styled Drawing
 lineData []     = mempty
 lineData [_]    = mempty
-lineData (p:ps) = scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
+lineData (p:ps) = return $ scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
   where
     lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
     origin = Point 0 0
 
 -- | Draw a box plot.
 barData :: [R] -> Styled Drawing
-barData ps = scale 300 $ mconcat $
+barData ps = return $ scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
   where
     -- TODO horizontal stacking (nicer with proper envelopes!)
@@ -189,7 +209,7 @@ ticksNoFilter
   :: [(Double, JSString)] -- ^ X axis ticks.
   -> [(Double, JSString)] -- ^ Y axis ticks.
   -> Styled Drawing
-ticksNoFilter xt yt = mconcat [xTicks, yTicks]
+ticksNoFilter xt yt = return $ mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
       \(pos,str) -> translateX (pos * 300) $
@@ -208,7 +228,7 @@ labeledAxis
   :: JSString -- ^ X axis label.
   -> JSString -- ^ Y axis label.
   -> Styled Drawing
-labeledAxis labelX labelY = mconcat
+labeledAxis labelX labelY = return $ mconcat
   [ scale 300 $ axis
   , translateY (300/2) $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
   , translateX (300/2) $ translateY (-20) $ textMiddle labelX]
