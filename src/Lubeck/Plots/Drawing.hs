@@ -125,13 +125,28 @@ data Styling = Styling
 
 
   -- Line plots
-    -- stroke color, stroke width (absolute)
+    -- stroke color, stroke width (absolute), dashed etc
+
   -- Scatter plots
     -- point size, fillColor, strokeColor, shape?
 
   -- Bar plots
-    --
+    -- Group separation (if group)
+    -- Bar separation
+    -- Percentage of horizintal dim taken up by plots
+      -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
 
+  -- Color allocator
+    -- TODO idea: to allocate colors to categories/dimensions
+    -- I.e. when generating overlapping scatter plots, grouped bar graphs, AND or legends
+    -- the color have a semantic purpose and thus should not be defined in styling (see above)
+    -- To solve this, Styling provides an (infinite ?) supply of colors, and functions
+    -- below can just use enumerations/categories as their arguments
+    -- I.e.
+      -- multiLineData :: Enum a => (a, [R2]) -> Styled Drawing
+      -- stackedAndColoredBarData4 :: [R4] -> Styled Drawing
+      -- stackedAndGroupedBarData4 :: [R4] -> Styled Drawing
+      -- legend :: (Enum a, Show a) => [a] -> Styled Drawing
 
   -- Axis/ticks
     -- X,Y axis name
@@ -220,6 +235,10 @@ barData ps = return $ scale 300 $ mconcat $
     -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
+-- | Visualizes a ratio. Essentially a 1-category bar graph.
+-- ratioData :: R -> Styled Drawing
+-- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
+
 -- TODO bar graphs can be transposed (x/y)
 
 -- Higher order bar graphs.
@@ -259,6 +278,9 @@ Algrorithm:
 
 -- TODO we should generalize this not to assume 2 axes
 -- As far as we are concerned here there might be up to 4 axes (there may be more by overlaying)
+
+-- TODO some creative tick positioning here
+-- https://knowledge.infogr.am/featured
 
 -- | Draw ticks.
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
