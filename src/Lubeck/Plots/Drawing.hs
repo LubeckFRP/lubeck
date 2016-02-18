@@ -113,17 +113,18 @@ defStyling = Styling
   }
 makeLenses ''Styling
 
-newtype Styled a = Styled (Reader Styling a)
+newtype Styled a = Styled { _getStyled :: Reader Styling a }
   deriving (Functor, Applicative, Monad, MonadReader Styling)
+
 instance Monoid a => Monoid (Styled a) where
   mempty = pure mempty
   mappend = liftA2 mappend
 
 getStyled :: Styled a -> Styling -> a
-getStyled = runReader
+getStyled = runReader . _getStyled
 
 withDefaultStyle :: Styled a -> a
-withDefaultStyle = runStyled defStyling
+withDefaultStyle x = getStyled x defStyling
 
 -- Line overlays, box plots, heat maps
 -- Stacking and graphing box plots

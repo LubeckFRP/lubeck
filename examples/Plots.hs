@@ -82,7 +82,7 @@ chooseDrawing ds = do
 
 main :: IO ()
 main = do
-  dS <- chooseDrawing
+  dS <- chooseDrawing $ fmap withDefaultStyle
     -- All based on simpleLinePlot (auto-scaling and axis)
     [ testSimple1
     , testSimple2
