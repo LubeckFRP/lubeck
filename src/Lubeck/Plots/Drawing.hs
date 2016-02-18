@@ -220,6 +220,10 @@ lineData (p:ps) = return $ scale 300 $ translate (p .-. origin) $ lineStyle $ se
     lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
     origin = Point 0 0
 
+-- Step chart, see Visualize this p 124
+stepData :: R2 -> [V2] -> Styled Drawing
+stepData z vs = lineData (offsetVectors z vs)
+
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
 linearData :: R -> R -> Styled Drawing
@@ -234,6 +238,17 @@ barData ps = return $ scale 300 $ mconcat $
   where
     -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
+
+-- | Visualizes a count
+-- See "Visualize this" pXXII (Godfather example)
+-- discreteData :: Enum a => [(a, Int)] -> Styled Drawing
+
+-- TODO calendar map, see Visualize this p70
+
+-- | Discrete 2D heat map
+-- See "Visualize this, p 233"
+-- heatDiscrete2D :: (Enum a, Enum b) => (a -> b -> Double)
+
 
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- ratioData :: R -> Styled Drawing
@@ -263,8 +278,9 @@ barData ps = return $ scale 300 $ mconcat $
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 
--- TODO square graph like bottom one here:
+-- TODO tree map like bottom one here:
 -- https://infogr.am/link-building-strategies-from-the-experts
+-- See also "Visualize this, p 157"
 {-
 Algrorithm:
   Split horizontally, put 2 largest values to the left (split vertically), rest of values to the right by
