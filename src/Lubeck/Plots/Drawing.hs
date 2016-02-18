@@ -30,6 +30,21 @@
 --
 -- $normalizeInputPoint
 -- Input should be normalized so that for each point @Point x y@ in input, x ∈ [0,1], y ∈ [0,1].
+
+
+{-
+ABSTRACTION BOUNDARIES
+
+This module should NOT handle:
+
+  - Data normalization (it expects everything in the unit hypercube)
+  - Fancy overloading (all data is in concrete types: arguments to functions below)
+  - Styling (everything parameterized on the style record)
+    - Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
+
+
+-}
+
 module Lubeck.Plots.Drawing
     (
     -- * Drawing data
@@ -41,13 +56,27 @@ module Lubeck.Plots.Drawing
     , lineData
     , linearData
     , barData
-    -- ** Drawing ticks and axis
+
+    -- * Drawing axes
     , ticks
     , ticksNoFilter
     , labeledAxis
     -- ** Utilities
     , crossLineX
     , crossLineY
+
+    -- * Drawing legends
+
+    -- * Drawing titles
+
+    -- * Drawing overlays/explanatories
+
+    -- Line overlays, box plots, heat maps
+    -- Stacking and graphing box plots
+    -- Generating legends
+    -- Generating proper axises
+    -- Visualize pairs, lists, ordered sets, maps, trees, directed graphs
+    -- Pie charts
 
     -- * Styling
     , Styling
@@ -104,6 +133,23 @@ data Styling = Styling
     --
 
 
+  -- Axis/ticks
+    -- X,Y axis name
+      -- NOTE: Standard styles: left/below centered, at end
+
+    -- X Axis standard (usually left) line (strokeWith, strokeColorA)
+    -- X Axis opposite                line (strokeWith, strokeColorA)
+    -- Y Axis standard                line (strokeWith, strokeColorA)
+    -- Y Axis opposite                line (strokeWith, strokeColorA)
+
+    -- Axis arrow end?
+
+    -- NOTE: strike-through/background ticks are rarely used together
+    -- X,Y strike-through/background ticks
+    -- X,Y tick (length, width, pos rel axis (see below), strokeColorA)
+    -- Text position relative tick
+    -- Text rotation
+      -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
   }
   deriving (Read, Show)
 
@@ -125,17 +171,6 @@ getStyled = runReader . _getStyled
 
 withDefaultStyle :: Styled a -> a
 withDefaultStyle x = getStyled x defStyling
-
--- Line overlays, box plots, heat maps
--- Stacking and graphing box plots
--- Generating legends
--- Generating (proper axises)
--- Visualize pairs, lists, ordered sets, maps, trees, directed graphs
--- Overlay lines (i.e. for interaction browser)
-
--- We will require basic envelopes
--- Optimally, also textual envelopes
-
 
 -- Pie charts
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
@@ -170,14 +205,6 @@ lineData (p:ps) = return $ scale 300 $ translate (p .-. origin) $ lineStyle $ se
     lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
     origin = Point 0 0
 
--- | Draw a box plot.
-barData :: [R] -> Styled Drawing
-barData ps = return $ scale 300 $ mconcat $
-    fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
-  where
-    -- TODO horizontal stacking (nicer with proper envelopes!)
-    base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
-
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
 linearData :: R -> R -> Styled Drawing
@@ -185,11 +212,53 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
   where
     f x = a*x + b
 
+-- | Draw a bar graph.
+barData :: [R] -> Styled Drawing
+barData ps = return $ scale 300 $ mconcat $
+    fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
+  where
+    -- TODO horizontal stacking (nicer with proper envelopes!)
+    base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
+
+-- TODO bar graphs can be transposed (x/y)
+
+-- Higher order bar graphs.
+-- Can render these by
+-- color mapping + one of
+--   stacking, grouping, alternating (same as grouping with no spacing), above/below (2 dimensions only)
+
+-- | Draw a bar graph.
+-- barData2 :: [R2] -> Styled Drawing
+-- barData2 :: [R3] -> Styled Drawing
+-- barData2 :: [R4] -> Styled Drawing
 
 
+-- circleData :: [R] -> Styled Drawing
+-- circleData = do
+--   s <- getStyling
+--   sizedData (baseCircleFromStyling c)
+--   where
+--     baseCircleFromStyling = ...
+
+-- | A size graph: scales the given objets and places them side by side.
+-- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 
+-- TODO square graph like bottom one here:
+-- https://infogr.am/link-building-strategies-from-the-experts
+{-
+Algrorithm:
+  Split horizontally, put 2 largest values to the left (split vertically), rest of values to the right by
+  Split vertically, put 2 largest values at the top (split horizontally), rest of values at the bottom by
+  etc
 
+  (What to do if given an odd number of elements?)
+-}
+
+-- TODO alternating tick size (i.e. every 50 year, 100 year etc)
+
+-- TODO we should generalize this not to assume 2 axes
+-- As far as we are concerned here there might be up to 4 axes (there may be more by overlaying)
 
 -- | Draw ticks.
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
