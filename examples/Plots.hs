@@ -84,9 +84,9 @@ main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap withDefaultStyle
     -- All based on simpleLinePlot (auto-scaling and axis)
-    [ testSimple1
-    , testSimple2
-    , testSimple3
+    [ pure testSimple1
+    , pure testSimple2
+    , pure testSimple3
 
     -- Line, scatter and combinations
     , lineData     ordRandPoints
@@ -102,7 +102,7 @@ main = do
     , mconcat [lineData ordRandPoints, scatterData (lastOnly ordRandPoints)]
     , mconcat [lineData ordRandPoints, scatterData (headOnly ordRandPoints)]
 
-
+    
     , mconcat [linearData 1 0, scatterData ordRandPoints]
     , mconcat [linearData (-1) 0.5, scatterData ordRandPoints]
     , mconcat [linearData (-1) 1, scatterData ordRandPoints]
