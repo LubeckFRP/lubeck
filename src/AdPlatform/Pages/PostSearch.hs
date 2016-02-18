@@ -92,8 +92,8 @@ searchForm dayNow output query =
                 , (PostByCreated,   "Posting time") ]
                 (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
             , selectWidget
-                [ (Asc,   "from lowest to highest")
-                , (Desc,  "from highest to lowest") ]
+                [ (Desc,  "from highest to lowest")
+                , (Asc,   "from lowest to highest") ]
                 (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
             ]
         ]

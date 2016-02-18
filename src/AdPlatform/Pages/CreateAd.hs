@@ -74,6 +74,8 @@ data NewAd = NewAd { caption    :: JSString,
 instance ToJSON NewAd
 instance FromJSON NewAd
 
+invalidCampaignId = 0
+
 campaignSelectWidget :: Maybe [AdCampaign.AdCampaign] -> Widget' AdTypes.FBGraphId
 campaignSelectWidget Nothing sink curCamp =
   wrapper "Campaign" $ text "No campaigns"
@@ -81,7 +83,13 @@ campaignSelectWidget Nothing sink curCamp =
 campaignSelectWidget (Just camps) sink curCamp =
   wrapper "Campaign" $
     div [ class_ "form-inline" ]
-        [ selectWidget ([(0, "None")] <> makeOptions camps) sink curCamp ]
+        [ selectWithPromptWidget (makeOptions camps)
+                                 (contramapSink g sink)
+                                 curCamp ]
+
+  where
+    g (Just x) = x
+    g Nothing  = invalidCampaignId
 
 makeOptions :: [AdCampaign.AdCampaign] -> [(AdTypes.FBGraphId, JSString)]
 makeOptions = fmap (\c -> (AdCampaign.fbid c, AdCampaign.campaign_name c))
@@ -156,7 +164,7 @@ postNewAd unm newAd = do
 
 validate :: NewAd -> FormValid ()
 validate (NewAd caption image_hash campaign click_link) =
-  if caption /= "" && image_hash /= "" && campaign /= 0 && click_link /= ""
+  if caption /= "" && image_hash /= "" && campaign /= invalidCampaignId && click_link /= ""
     then FormValid
     else FormNotValid ()
 
@@ -167,7 +175,7 @@ createAdPage :: Sink BusyCmd
              -> Behavior (Maybe [AdCampaign.AdCampaign])
              -> IO (Signal Html)
 createAdPage busySink notifSink mUserNameB imsB campB = do
-  let initNewAd = NewAd "" "" 0 ""
+  let initNewAd = NewAd "" "" invalidCampaignId ""
 
   (view, adCreated) <- formWithValidationComponentExtra2 imsB campB validate initNewAd createAdForm
 
