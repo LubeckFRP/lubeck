@@ -1,5 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE , TemplateHaskell #-}
 
 -- |
 -- Basics for drawing plots.
@@ -31,7 +32,6 @@
 -- Input should be normalized so that for each point @Point x y@ in input, x ∈ [0,1], y ∈ [0,1].
 module Lubeck.Plots.Drawing
     (
-      Styled
     -- * Drawing data
     --   $normalizeInputPoint
     --   $normalizeInputScalar
@@ -48,6 +48,14 @@ module Lubeck.Plots.Drawing
     -- ** Utilities
     , crossLineX
     , crossLineY
+
+    -- * Styling
+    , Styling
+    , defStyling
+    -- TODO all lenses here
+    , Styled
+    , runStyled
+
     ) where
 
 import Prelude hiding (div)
@@ -62,6 +70,11 @@ import Data.Monoid ((<>))
 import Data.VectorSpace
 import Data.AffineSpace
 
+import Control.Monad.Reader
+
+import Control.Lens ()
+import Control.Lens.TH (makeLenses)
+
 -- import qualified Web.VirtualDom as VD
 -- import qualified Web.VirtualDom.Html as H
 -- import qualified Web.VirtualDom.Html.Attributes as H
@@ -75,8 +88,22 @@ import Lubeck.Drawing
 import Lubeck.Util(showJS)
 import qualified Lubeck.Drawing
 
+data Styling = Styling
+  { _dummy :: ()
 
-type Styled a = a
+  }
+  deriving (Read, Show)
+
+defStyling = Styling
+  { _dummy = ()
+
+  }
+makeLenses ''FooBar
+
+newtype Styled a = Reader Styling
+  deriving (Functor, Applicative, Monad, MonadReader Styling)
+
+runStyled = runReader
 
 -- Line overlays, box plots, heat maps
 -- Stacking and graphing box plots
