@@ -172,6 +172,7 @@ defStyling = Styling
   { _dummy = ()
 
   }
+
 makeLenses ''Styling
 
 newtype Styled a = Styled { _getStyled :: Reader Styling a }

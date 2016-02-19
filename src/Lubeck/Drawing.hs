@@ -93,6 +93,7 @@ module Lubeck.Drawing (
     text,
     textMiddle,
     textEnd,
+    TextAnchor(..),
     TextOptions(..),
     textWithOptions,
     -- ** Combination
