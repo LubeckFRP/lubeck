@@ -20,6 +20,9 @@ module Lubeck.Drawing (
     V3,
     R4,
     V4,
+    R5,
+    V5,
+
     Point(..),
     Vector(..),
     Dimension(..),
@@ -154,10 +157,12 @@ type R = Double
 type V = Double
 type R2 = Point
 type V2 = Vector
-type R3 = (Double,Double,Double)
-type V3 = (Double,Double,Double)
-type R4 = (Double,Double,Double,Double)
-type V4 = (Double,Double,Double,Double)
+type R3 = (R,R,R)
+type V3 = (R,R,R)
+type R4 = (R,R,R,R)
+type V4 = (R,R,R,R)
+type R5 = (R,R,R,R,R)
+type V5 = (R,R,R,R,R)
 
 instance AdditiveGroup Vector where
   zeroV   = Vector 0 0

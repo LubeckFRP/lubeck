@@ -53,17 +53,29 @@ module Lubeck.Plots.Drawing
       scatterData
     , scatterDataX
     , scatterDataY
+
     , lineData
+    , stepData
     , linearData
+
     , barData
     , barData2
     , barData3
     , barData4
+
+    , barDataWithColor
+    , barDataWithColor2
+    , barDataWithColor3
+    , barDataWithColor4
+
     , discreteData
     , intData
-    , ratioData
-    , circleGraph
+    , sizeData
+    , sizeDataWithColor
+
     , treeMapGraph
+    , treeMapGraphWithColor
+    , discreteHeatMap
 
     -- * Drawing axes
     , ticks
@@ -309,6 +321,12 @@ barData3 :: [R3] -> Styled Drawing
 barData4 :: [R4] -> Styled Drawing
 [barData2, barData3, barData4] = undefined
 
+barDataWithColor  :: [R2] -> Styled Drawing
+barDataWithColor2 :: [R3] -> Styled Drawing
+barDataWithColor3 :: [R4] -> Styled Drawing
+barDataWithColor4 :: [R5] -> Styled Drawing
+[barDataWithColor, barDataWithColor2, barDataWithColor3, barDataWithColor4] = undefined
+
 -- | Visualizes a count
 -- See "Visualize this" pXXII (Godfather example)
 discreteData :: Enum a => [(a, Int)] -> Styled Drawing
@@ -327,8 +345,18 @@ intData = undefined
 
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioData :: R -> Styled Drawing
-ratioData = undefined
+sizeData :: R -> Styled Drawing
+sizeData = undefined
+
+-- | Visualizes ration with colour.
+-- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
+sizeDataWithColor :: R2 -> Styled Drawing
+sizeDataWithColor = undefined
+-- sizeDataWithColor = do
+--   s <- getStyling
+--   sizedData (baseCircleFromStyling c)
+--   where
+--     baseCircleFromStyling = ...
 
 -- Higher order bar graphs.
 -- Can render these by
@@ -340,19 +368,17 @@ ratioData = undefined
 -- barData2 :: [R3] -> Styled Drawing
 -- barData2 :: [R4] -> Styled Drawing
 
-circleGraph :: [R] -> Styled Drawing
-circleGraph = undefined
--- circleData = do
---   s <- getStyling
---   sizedData (baseCircleFromStyling c)
---   where
---     baseCircleFromStyling = ...
-
 -- | A size graph: scales the given objets and places them side by side.
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 treeMapGraph :: [R] -> Styled Drawing
 treeMapGraph = undefined
+
+treeMapGraphWithColor :: [R2] -> Styled Drawing
+treeMapGraphWithColor = undefined
+
+discreteHeatMap :: (Int -> Int -> R) -> Styled Drawing
+discreteHeatMap = undefined
 
 -- TODO tree map like bottom one here:
 -- https://infogr.am/link-building-strategies-from-the-experts
