@@ -46,6 +46,7 @@ module Lubeck.Drawing (
     scalingY,
     rotation,
     shearing,
+    matrix,
     -- ** Applying transformations
     transform,
     translate,
@@ -96,7 +97,7 @@ module Lubeck.Drawing (
     textWithOptions,
     -- ** Combination
     -- over,
-    -- stack,
+    -- mconcat,
     -- ** Utility
     xyAxis,
     xyCoords,
@@ -319,7 +320,7 @@ newtype Envelope = Envelope (Vector -> Max Extent)
   local origin (or to put it differently: the local origin is the midpoint of the image). To move an image, use
   the [translate](#translate) functions.
 
-  Images can be composed using [over](#over) and [stack](#stack), which overlays the two images so that their origins match exactly.
+  Images can be composed using the 'Monoid' instance, which overlays the two images so that their origins match exactly.
 -}
 data Drawing
   = Circle
@@ -434,19 +435,38 @@ transform s (transform t image) = transform (s <> t) image
 transform :: Transformation -> Drawing -> Drawing
 transform = Transf
 
+{-| Translates (move) an object. -}
+translation a b = matrix (1,0,0,1,a,b)
+
+{-| Translates (move) an object along the horizonal axis.
+A positive argument will move the object to the right. -}
 translationX a  = translation a 0
+
+{-| Translates (move) an object along the vertical axis.
+A positive argument will move the object upwards (as opposed to standard SVG behavior). -}
 translationY b  = translation 0 b
+
+{-| Scales (stretch) an object, preserving its horizontal/vertical proportion. -}
+scaling a b     = matrix (a,0,0,b,0,0)
+
+{-| Scales(stretch) an object. -}
 scalingX a      = scaling     a 1
+
+{-| Scales (stretch) an object. -}
 scalingY b      = scaling     1 b
-translation a b = Transformation (1,0,0,1,a,b)
-scaling a b     = Transformation (a,0,0,b,0,0)
-rotation a      = Transformation (cos a, 0 - sin a, sin a, cos a, 0, 0)
-shearing a b    = Transformation (1, b, a, 1, 0, 0)
+
+{-| Rotates an object. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
+rotation a      = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+
+{-| Shears an object. -}
+shearing a b    = matrix (1, b, a, 1, 0, 0)
+
+matrix = Transformation
 
 
 {-| Translate (move) an image. -}
 translate :: Vector -> Drawing -> Drawing
-translate (Vector { dx, dy }) = transform $ Transformation (1,0,0,1,dx,dy)
+translate (Vector { dx, dy }) = transform $ matrix (1,0,0,1,dx,dy)
 
 {-| Translate (move) an image along the horizonal axis.
 A positive argument will move the image to the right. -}
@@ -460,7 +480,7 @@ translateY y = translate (Vector 0 y)
 
 {-| Scale (stretch) an image. -}
 scaleXY :: Double -> Double -> Drawing -> Drawing
-scaleXY     x y = transform $ Transformation (x,0,0,y,0,0)
+scaleXY     x y = transform $ matrix (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
 scale :: Double -> Drawing -> Drawing
@@ -476,12 +496,12 @@ scaleY      y = scaleXY 1 y
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
 rotate :: Angle -> Drawing -> Drawing
-rotate    a   = transform $ Transformation (cos a, 0 - sin a, sin a, cos a, 0, 0)
+rotate    a   = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 -- The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
 shear :: Double -> Double -> Drawing -> Drawing
-shear   a b = transform $ Transformation (1, b, a, 1, 0, 0)
+shear   a b = transform $ matrix (1, b, a, 1, 0, 0)
 
 
 
@@ -498,11 +518,13 @@ smokeBackground = fillColor C.whitesmoke $ scale 5000 $ square
 --
 {-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
 xyAxis :: Drawing
-xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ stack [horizontalLine, verticalLine]
+xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $
+  stack [horizontalLine, verticalLine]
 
 {-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
 xyCoords :: Drawing
-xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $ strokeWidth 0.5 $ stack [horizontalLine, verticalLine, circle, square]
+xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $
+  strokeWidth 0.5 $ stack [horizontalLine, verticalLine, circle, square]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
