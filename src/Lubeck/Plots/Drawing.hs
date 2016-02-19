@@ -56,6 +56,14 @@ module Lubeck.Plots.Drawing
     , lineData
     , linearData
     , barData
+    , barData2
+    , barData3
+    , barData4
+    , discreteData
+    , intData
+    , ratioData
+    , circleGraph
+    , treeMapGraph
 
     -- * Drawing axes
     , ticks
@@ -85,6 +93,7 @@ module Lubeck.Plots.Drawing
     , linePlotStrokeColor
     , linePlotStrokeWidth
     , linePlotStrokeType
+    , linePlotFillColor
 
     , scatterPlotStrokeColor
     , scatterPlotFillColor
@@ -144,6 +153,7 @@ data Styling = Styling
   , _linePlotStrokeColor :: AlphaColour Double
   , _linePlotStrokeWidth :: AlphaColour Double
   , _linePlotStrokeType  :: ()
+  , _linePlotFillColor   :: AlphaColour Double
 
   -- Scatter plots
     -- point size, fillColor, strokeColor, shape?
@@ -211,11 +221,11 @@ instance Monoid Styling where
     , _linePlotStrokeColor         = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth         = Colors.red `withOpacity` 0.6
     , _linePlotStrokeType          = mempty
+    , _linePlotFillColor           = Colors.black `withOpacity` 0
 
     , _scatterPlotStrokeColor      = Colors.red `withOpacity` 0.6
     , _scatterPlotFillColor        = Colors.red `withOpacity` 0.6
     , _scatterPlotShape            = mempty
-
 
     , _barPlotBarColor             = Colors.blue `withOpacity` 0.6
     , _barPlotWidth                = First $ Just $ Vector 0 1
@@ -286,6 +296,7 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
     f x = a*x + b
 
 -- | Draw a bar graph.
+-- TODO bar graphs can be transposed (x/y) (how?)
 barData :: [R] -> Styled Drawing
 barData ps = return $ scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
@@ -293,9 +304,15 @@ barData ps = return $ scale 300 $ mconcat $
     -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
+barData2 :: [R2] -> Styled Drawing
+barData3 :: [R3] -> Styled Drawing
+barData4 :: [R4] -> Styled Drawing
+[barData2, barData3, barData4] = undefined
+
 -- | Visualizes a count
 -- See "Visualize this" pXXII (Godfather example)
--- discreteData :: Enum a => [(a, Int)] -> Styled Drawing
+discreteData :: Enum a => [(a, Int)] -> Styled Drawing
+discreteData = undefined
 
 -- TODO calendar map, see Visualize this p70
 
@@ -303,12 +320,15 @@ barData ps = return $ scale 300 $ mconcat $
 -- See "Visualize this, p 233"
 -- heatDiscrete2D :: (Enum a, Enum b) => (a -> b -> Double)
 
+-- | Visualizes a ratio. Essentially a 1-category bar graph.
+-- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
+intData :: Int -> Styled Drawing
+intData = undefined
 
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
--- ratioData :: R -> Styled Drawing
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-
--- TODO bar graphs can be transposed (x/y)
+ratioData :: R -> Styled Drawing
+ratioData = undefined
 
 -- Higher order bar graphs.
 -- Can render these by
@@ -320,8 +340,8 @@ barData ps = return $ scale 300 $ mconcat $
 -- barData2 :: [R3] -> Styled Drawing
 -- barData2 :: [R4] -> Styled Drawing
 
-
--- circleData :: [R] -> Styled Drawing
+circleGraph :: [R] -> Styled Drawing
+circleGraph = undefined
 -- circleData = do
 --   s <- getStyling
 --   sizedData (baseCircleFromStyling c)
@@ -331,6 +351,8 @@ barData ps = return $ scale 300 $ mconcat $
 -- | A size graph: scales the given objets and places them side by side.
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
+treeMapGraph :: [R] -> Styled Drawing
+treeMapGraph = undefined
 
 -- TODO tree map like bottom one here:
 -- https://infogr.am/link-building-strategies-from-the-experts
@@ -343,6 +365,10 @@ Algrorithm:
 
   (What to do if given an odd number of elements?)
 -}
+
+
+
+
 
 -- TODO alternating tick size (i.e. every 50 year, 100 year etc)
 
