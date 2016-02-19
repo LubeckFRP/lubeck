@@ -50,14 +50,18 @@ module Lubeck.Plots.Drawing
     -- * Drawing data
     --   $normalizeInputPoint
     --   $normalizeInputScalar
+
+    -- ** Scatter
       scatterData
     , scatterDataX
     , scatterDataY
 
+    -- ** Lines
     , lineData
     , stepData
     , linearData
 
+    -- ** Bars and sizes
     , barData
     , barData2
     , barData3
@@ -68,14 +72,19 @@ module Lubeck.Plots.Drawing
     , barDataWithColor3
     , barDataWithColor4
 
+    , circleData
+    , circleDataWithColor
+
+    , ratioData
+    , ratioDataWithColor
+
+    -- ** Discrete data and counts
     , discreteData
     , intData
-    , sizeData
-    , sizeDataWithColor
+    , discreteHeatMap
 
     , treeMapGraph
     , treeMapGraphWithColor
-    , discreteHeatMap
 
     -- * Drawing axes
     , ticks
@@ -296,7 +305,9 @@ lineData (p:ps) = return $ scale 300 $ translate (p .-. origin) $ lineStyle $ se
     lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
     origin = Point 0 0
 
--- Step chart, see Visualize this p 124
+-- | Step chart
+--
+-- See Visualize this p 124
 stepData :: R2 -> [V2] -> Styled Drawing
 stepData z vs = lineData (offsetVectors z vs)
 
@@ -316,14 +327,21 @@ barData ps = return $ scale 300 $ mconcat $
     -- TODO horizontal stacking (nicer with proper envelopes!)
     base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
+-- | Draw
 barData2 :: [R2] -> Styled Drawing
+-- | Draw
 barData3 :: [R3] -> Styled Drawing
+-- | Draw
 barData4 :: [R4] -> Styled Drawing
 [barData2, barData3, barData4] = undefined
 
+-- | Draw
 barDataWithColor  :: [R2] -> Styled Drawing
+-- | Draw
 barDataWithColor2 :: [R3] -> Styled Drawing
+-- | Draw
 barDataWithColor3 :: [R4] -> Styled Drawing
+-- | Draw
 barDataWithColor4 :: [R5] -> Styled Drawing
 [barDataWithColor, barDataWithColor2, barDataWithColor3, barDataWithColor4] = undefined
 
@@ -345,14 +363,24 @@ intData = undefined
 
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-sizeData :: R -> Styled Drawing
-sizeData = undefined
+ratioData :: R -> Styled Drawing
+ratioData = undefined
 
 -- | Visualizes ration with colour.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-sizeDataWithColor :: R2 -> Styled Drawing
-sizeDataWithColor = undefined
--- sizeDataWithColor = do
+ratioDataWithColor :: R2 -> Styled Drawing
+ratioDataWithColor = undefined
+
+
+-- | Draw
+circleData :: [R] -> Styled Drawing
+circleData = undefined
+
+-- | Draw
+circleDataWithColor :: [R2] -> Styled Drawing
+circleDataWithColor = undefined
+
+-- circleDataWithColor = do
 --   s <- getStyling
 --   sizedData (baseCircleFromStyling c)
 --   where
@@ -371,12 +399,15 @@ sizeDataWithColor = undefined
 -- | A size graph: scales the given objets and places them side by side.
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
+-- | Draw
 treeMapGraph :: [R] -> Styled Drawing
 treeMapGraph = undefined
 
+-- | Draw
 treeMapGraphWithColor :: [R2] -> Styled Drawing
 treeMapGraphWithColor = undefined
 
+-- | Draw
 discreteHeatMap :: (Int -> Int -> R) -> Styled Drawing
 discreteHeatMap = undefined
 
