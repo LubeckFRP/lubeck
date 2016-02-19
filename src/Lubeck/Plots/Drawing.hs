@@ -1,6 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections,
-  TemplateHaskell #-}
+  TemplateHaskell, CPP #-}
 
 -- |
 -- Basics for drawing plots.
@@ -132,7 +132,7 @@ import qualified Lubeck.Drawing
 data Styling = Styling
   { _dummy :: ()
   -- Rendering rectangle (default (300x300))
-  , _renderingRectangle :: First Vector
+  , _renderingRectangle :: First Vector -- ^ Rectangle in which the plot will be rendered (default @300 x 300@).
 
   -- Line plots
     -- stroke color, stroke width (absolute), dashed etc
@@ -184,8 +184,9 @@ data Styling = Styling
   }
   deriving (Show)
 
--- | Rectangle in which the plot will be rendered (default @300 x 300@).
-renderingRectangle :: Lens' Styling (First Vector)
+
+
+-- renderingRectangle :: Lens' Styling (First Vector)
 
 makeLenses ''Styling
 
