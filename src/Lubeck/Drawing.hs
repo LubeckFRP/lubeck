@@ -484,24 +484,24 @@ shear   a b = transform $ Transformation (1, b, a, 1, 0, 0)
 
 
 
--- {-| A smoke-colored background big enough to fill the whole screen.
---
--- Useful to see the boundary of the canvas, as in:
---
--- ```elm
---   (fillColor "red" square) `over` smokeBackground
--- ```
--- -}
-smokeBackground :: Drawing
-smokeBackground = fillColor C.whitesmoke $ scale 500 $ square
---
-{-| Draw the X and Y axis (their intersection is the origin). -}
-xyAxis :: Drawing
-xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizontalLine, verticalLine]
+{-| A "big" smoke-colored background.
 
-{-| Draw the X and Y axis (their intersection is the origin). -}
+Useful to see the boundary of the canvas, as in:
+
+@
+  (fillColor "red" square) `over` smokeBackground
+@
+-}
+smokeBackground :: Drawing
+smokeBackground = fillColor C.whitesmoke $ scale 5000 $ square
+--
+{-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
+xyAxis :: Drawing
+xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $ stack [horizontalLine, verticalLine]
+
+{-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
 xyCoords :: Drawing
-xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $ strokeWidth 0.5 $ scale 600 $ stack [horizontalLine, verticalLine, circle, square]
+xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $ strokeWidth 0.5 $ stack [horizontalLine, verticalLine, circle, square]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing

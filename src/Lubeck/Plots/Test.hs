@@ -210,7 +210,7 @@ plotTest _ = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.di
       --       ])
       --   in (stack [plot, scale 1.1 plot, scale 1.3 plot])
       --   `over`
-      D.xyAxis
+      (D.scale 600 D.xyAxis)
         `D.over`
       D.smokeBackground
         -- (translateX 1 $ Style "fill: red" Circle)

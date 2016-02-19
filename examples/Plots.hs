@@ -77,7 +77,7 @@ chooseDrawing :: [Drawing] -> IO (Signal Html)
 chooseDrawing ds = do
   (view, intE) <- componentEvent 0 (rangeWidget 0 (length ds - 1) 1) mempty
   drawingS <- stepperS mempty (fmap (ds !!) intE)
-  return $ mconcat [view, (fmap (toSvg defaultRenderingOptions . (xyCoords <>)) drawingS)]
+  return $ mconcat [view, (fmap (toSvg defaultRenderingOptions . (scale 600 xyCoords <>)) drawingS)]
 
 
 main :: IO ()
@@ -102,7 +102,7 @@ main = do
     , mconcat [lineData ordRandPoints, scatterData (lastOnly ordRandPoints)]
     , mconcat [lineData ordRandPoints, scatterData (headOnly ordRandPoints)]
 
-    
+
     , mconcat [linearData 1 0, scatterData ordRandPoints]
     , mconcat [linearData (-1) 0.5, scatterData ordRandPoints]
     , mconcat [linearData (-1) 1, scatterData ordRandPoints]
