@@ -3,7 +3,7 @@
 all: build-client run-server
 
 .PHONY: all-fast
-all: build-client-fast run-server
+all-fast: build-client-fast run-server
 
 .PHONY: typecheck-client
 typecheck-client:
