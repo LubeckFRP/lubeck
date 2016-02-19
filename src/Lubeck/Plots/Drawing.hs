@@ -1,6 +1,6 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections,
+  TemplateHaskell #-}
 
 -- |
 -- Basics for drawing plots.
@@ -80,8 +80,17 @@ module Lubeck.Plots.Drawing
 
     -- * Styling
     , Styling
-    , defStyling
     -- TODO all lenses here
+    , renderingRectangle
+    , linePlotStrokeColor
+    , linePlotStrokeWidth
+    , linePlotStrokeType
+
+    , scatterPlotStrokeColor
+    , scatterPlotFillColor
+    , scatterPlotShape
+
+
     , Styled
     , getStyled
     , withDefaultStyle
@@ -94,11 +103,12 @@ import qualified Prelude
 import qualified Data.JSString
 import GHCJS.Types(JSString, jsval)
 
-import Data.Colour (withOpacity)
+import Data.Colour (Colour, AlphaColour, withOpacity)
 import qualified Data.Colour.Names as Colors
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), First(..))
 import Control.Applicative
 import Data.VectorSpace
+import qualified Data.VectorSpace as VS
 import Data.AffineSpace
 
 import Control.Monad.Reader
@@ -122,13 +132,19 @@ import qualified Lubeck.Drawing
 data Styling = Styling
   { _dummy :: ()
   -- Rendering rectangle (default (300x300))
-
+  , _renderingRectangle :: First Vector
 
   -- Line plots
     -- stroke color, stroke width (absolute), dashed etc
+  , _linePlotStrokeColor :: AlphaColour Double
+  , _linePlotStrokeWidth :: AlphaColour Double
+  , _linePlotStrokeType  :: ()
 
   -- Scatter plots
     -- point size, fillColor, strokeColor, shape?
+  , _scatterPlotStrokeColor :: AlphaColour Double
+  , _scatterPlotFillColor   :: AlphaColour Double
+  , _scatterPlotShape       :: ()
 
   -- Bar plots
     -- Group separation (if group)
@@ -166,14 +182,27 @@ data Styling = Styling
     -- Text rotation
       -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
   }
-  deriving (Read, Show)
+  deriving (Show)
 
-defStyling = Styling
-  { _dummy = ()
-
-  }
+-- | Rectangle in which the plot will be rendered (default @300 x 300@).
+renderingRectangle :: Lens' Styling (First Vector)
 
 makeLenses ''Styling
+
+instance Monoid Styling where
+  mempty = Styling
+    { _dummy = mempty
+    , _renderingRectangle = First (Just $ Vector 300 300)
+    , _linePlotStrokeColor = mempty
+    , _linePlotStrokeWidth = mempty
+    , _linePlotStrokeType = mempty
+
+    , _scatterPlotStrokeColor = mempty
+    , _scatterPlotFillColor = mempty
+    , _scatterPlotShape = mempty
+    }
+  mappend = const
+
 
 newtype Styled a = Styled { _getStyled :: Reader Styling a }
   deriving (Functor, Applicative, Monad, MonadReader Styling)
@@ -187,7 +216,7 @@ getStyled :: Styled a -> Styling -> a
 getStyled = runReader . _getStyled
 
 withDefaultStyle :: Styled a -> a
-withDefaultStyle x = getStyled x defStyling
+withDefaultStyle x = getStyled x mempty
 
 -- Pie charts
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
