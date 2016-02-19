@@ -159,7 +159,7 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
 
 postNewAd :: JSString -> NewAd -> IO (Either AppError Ok)
 postNewAd unm newAd = do
-  res <- postAPIEither (unm <> "/create-ad") newAd
+  res <- postAPIEither BD.Api.defaultAPI (unm <> "/create-ad") newAd
   return $ bimap ApiError id res
 
 validate :: NewAd -> FormValid ()

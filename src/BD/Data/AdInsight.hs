@@ -43,4 +43,4 @@ instance FromJSON AdInsight
 instance ToJSON AdInsight
 
 getAdPerformance :: JSString -> Integer -> IO (Either AppError [AdInsight])
-getAdPerformance unm adId =  getAPIEither (unm <> "/ad-performance/" <> showJS adId) >>= return . first ApiError
+getAdPerformance unm adId =  getAPIEither (BD.Api.defaultAPI) (unm <> "/ad-performance/" <> showJS adId) >>= return . first ApiError

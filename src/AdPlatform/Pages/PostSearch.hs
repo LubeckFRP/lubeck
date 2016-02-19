@@ -202,7 +202,7 @@ searchPage busySink notifSink ipcSink mUserNameB = do
     case mUserName of
       Nothing -> synchronously . notifSink . Just . blError $ "No account to upload post to"
       Just userName -> do
-        res <- (withBusy2 (synchronously . busySink) postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+        res <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
           Left e        -> synchronously . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
           Right (Ok s)  -> (synchronously . notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (synchronously . ipcSink $ ImageLibraryUpdated)
@@ -213,11 +213,11 @@ searchPage busySink notifSink ipcSink mUserNameB = do
     receiveSearchResult Nothing -- reset previous search results
 
     let complexQuery = PostQuery $ complexifyPostQuery query
-    eQueryId <- (withBusy2 (synchronously . busySink) postAPIEither) "internal/queries" $ complexQuery
+    eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
     case eQueryId of
       Left e        -> synchronously . notifSink . Just . apiError $ "Failed posting query: " <> showJS e
       Right queryId -> void $ forkIO $ do
-        eitherPosts <- (withBusy (synchronously . busySink) getAPIEither) $ "internal/queries/" <> queryId <> "/results"
+        eitherPosts <- (withBusy (synchronously . busySink) (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
           Left e   -> synchronously . notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
           Right ps -> synchronously . receiveSearchResult $ Just ps

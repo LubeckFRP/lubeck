@@ -41,7 +41,7 @@ instance ToJSON AdCampaign
 
 
 getUserCampaigns :: JSString -> IO [AdCampaign]
-getUserCampaigns unm = fmap payload $ unsafeGetAPI $ unm <> "/ad-campaigns"
+getUserCampaigns unm = fmap payload $ unsafeGetAPI BD.Api.defaultAPI $ unm <> "/ad-campaigns"
 
 getUserCampaignsOrError :: JSString -> IO (Either AppError [AdCampaign])
-getUserCampaignsOrError unm = getAPIEither (unm <> "/ad-campaigns") >>= return . bimap ApiError payload
+getUserCampaignsOrError unm = getAPIEither (BD.Api.defaultAPI) (unm <> "/ad-campaigns") >>= return . bimap ApiError payload
