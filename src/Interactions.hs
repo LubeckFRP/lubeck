@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
-
 module Main where
 
 import Prelude hiding (div)
@@ -124,11 +123,11 @@ interactionBrowserW shoutoutSink shoutoutZ =
     [ interactionW emptySink $ cursor shoutoutZ  
     , div [ A.class_ "row" ] 
       [ div [ A.class_ "col-xs-4 col-lg-4" ]
-	    [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
+            [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
       , div [ A.class_ "col-xs-3 col-lg-3" ]
-	    [ displayIndex emptySink $ nOutOfM shoutoutZ ]   
+            [ displayIndex emptySink $ nOutOfM shoutoutZ ]   
       , div [ A.class_ "col-xs-1 col-lg-1" ] 
-	    [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
+            [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
       ]  
     ] 
   where nOutOfM (Zip xs ys) = let lenXs = length xs in (lenXs, lenXs + length ys)
@@ -138,13 +137,13 @@ interactionW _ interaction = div
   []
   [ p [ A.class_ "text-center" ] [text (showJS $ interaction .: interaction_time)]
   , div [class_ "row"]
-	[ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
-	      [ interactionPlotOrNot ]
-	, div [ class_ "col-xs-4 col-lg-4" ]
-	      [ linkedImage
-	      , div [] [ caption ]
-	      ]	
-	]
+        [ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
+              [ interactionPlotOrNot ]
+        , div [ class_ "col-xs-4 col-lg-4" ]
+              [ linkedImage
+              , div [] [ caption ]
+              ]
+        ]
   ]
   where
     interactionPlotOrNot =

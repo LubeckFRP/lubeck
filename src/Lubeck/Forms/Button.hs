@@ -24,7 +24,7 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev 
 
 buttonWidget :: JSString -> Widget' () 
-buttonWidget label sink val = E.div
+buttonWidget label sink val = E.button
   [ A.class_ "btn btn-primary"
   , Ev.click $ \_ -> sink ()
   ] 
@@ -32,7 +32,7 @@ buttonWidget label sink val = E.div
 
 multiButtonWidget :: [(JSString,b)] -> Widget a b
 multiButtonWidget lbls sink val = E.div
-  [ A.class_ "row" ] $ 
+  [ A.class_ "btn-group" ] $ 
   map (makeBtn sink) lbls 
   where
     makeBtn :: Sink b -> (JSString,b) -> E.Html

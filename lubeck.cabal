@@ -199,6 +199,19 @@ executable bd-adplatform
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
 
+executable bd-label-refiner
+  main-is:             src/LabelRefiner.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , colour
+                     , vector-space
+                     , time
+                     , lens
+                     , aeson
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
 executable bd-index
   main-is:             src/Index.hs
   build-depends:       base >=4.8 && <4.9

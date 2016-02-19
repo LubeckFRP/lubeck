@@ -42,16 +42,16 @@ instance FromJSON Ad
 instance ToJSON Ad
 
 getCampaignAds :: JSString -> JSString -> IO [Ad]
-getCampaignAds unm campid =  unsafeGetAPI $ unm <> "/ads/" <> campid
+getCampaignAds unm campid =  unsafeGetAPI BD.Api.defaultAPI $ unm <> "/ads/" <> campid
 
 getCampaignAdsOrError :: JSString -> JSString -> IO (Either AppError [Ad])
-getCampaignAdsOrError unm campid = getAPIEither (unm <> "/ads/" <> campid) >>= return . bimap ApiError id
+getCampaignAdsOrError unm campid = getAPIEither BD.Api.defaultAPI (unm <> "/ads/" <> campid) >>= return . bimap ApiError id
 
 updateStatusOrError :: JSString -> Integer -> AdStatus -> IO (Either AppError Ok)
-updateStatusOrError unm adId status = postAPIEither (unm <> "/ad-status/" <> showJS adId <> "/" <> showStatus status) () >>= return . first ApiError
+updateStatusOrError unm adId status = postAPIEither BD.Api.defaultAPI (unm <> "/ad-status/" <> showJS adId <> "/" <> showStatus status) () >>= return . first ApiError
   where showStatus Paused   = "paused"
         showStatus Running  = "running"
         showStatus Archived = "archived"
 
 updateBudgetOrError :: JSString -> Integer -> USDcents -> IO (Either AppError Ok)
-updateBudgetOrError unm adId budget = postAPIEither (unm <> "/set-ad-budget/" <> showJS adId <> "/" <> showJS budget) () >>= return . first ApiError
+updateBudgetOrError unm adId budget = postAPIEither BD.Api.defaultAPI (unm <> "/set-ad-budget/" <> showJS adId <> "/" <> showJS budget) () >>= return . first ApiError
