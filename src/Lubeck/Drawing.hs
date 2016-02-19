@@ -312,13 +312,13 @@ newtype Envelope = Envelope (Vector -> Max Extent)
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
 
-  Because the image is infinite, basic images have simple proportions, for example [circle](#circle), [square](#square)
-  and [horizontalLine](#horizontalLine) all have a width of one. To obtain other sizes, use the [transform](#transform) or [scale](#scale) functions.
+  Because the image is infinite, basic images have simple proportions, for example 'circle', 'square',
+  and 'horizontalLine' all have a width of one. To obtain other sizes, use the 'transform' or 'scale' functions.
 
   Every image has a notion of a local origin, or "midpoint". Transformations such as scaling, rotation and
   reflection are carried out with respect to the local origin. By default, most shapes are centered around the
   local origin (or to put it differently: the local origin is the midpoint of the image). To move an image, use
-  the [translate](#translate) functions.
+  the 'translate' functions.
 
   Images can be composed using the 'Monoid' instance, which overlays the two images so that their origins match exactly.
 -}
@@ -342,8 +342,7 @@ instance Monoid Drawing where
   mempty  = transparent
   mappend = over
 
-{-| An empty and transparent drawing.
-    Identity for [over](#over) and [stack](#stack). -}
+{-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
 transparent      = Em
 
@@ -363,15 +362,15 @@ horizontalLine = translateX (-0.5) Line
 verticalLine :: Drawing
 verticalLine = rotate (turn/4) horizontalLine
 
-{-| -}
+{-| Draw a sequence of line segments. -}
 segments :: [Vector] -> Drawing
 segments = Lines False
 
-{-| -}
+{-| Draw a polygon. -}
 polygon :: [Vector] -> Drawing
 polygon = Lines True
 
-{-| -}
+{-| Draw text. See also 'textWithOptions'. -}
 text :: JSString -> Drawing
 text = Text
 
