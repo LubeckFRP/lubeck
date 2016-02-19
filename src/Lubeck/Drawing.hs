@@ -30,8 +30,8 @@ module Lubeck.Drawing (
 
     -- ** Transformations
     Transformation(..), -- TODO hide internals
-    emptyTransformation,
-    apTransformation,
+    -- emptyTransformation,
+    -- apTransformation,
     transformVector,
     transformPoint,
     -- (!<>),
@@ -61,7 +61,7 @@ module Lubeck.Drawing (
 
     -- ** Styling
     Style,
-    emptyStyle,
+    -- emptyStyle,
     styleNamed,
     apStyle,
     style,
@@ -95,8 +95,8 @@ module Lubeck.Drawing (
     TextOptions(..),
     textWithOptions,
     -- ** Combination
-    over,
-    stack,
+    -- over,
+    -- stack,
     -- ** Utility
     xyAxis,
     xyCoords,
@@ -263,25 +263,26 @@ transformationToMatrix :: Transformation -> (Double, Double, Double, Double, Dou
 transformationToMatrix = getTransformation
 
 {-| -}
-type Style = Map JSString JSString
+newtype Style = S { getS :: Map JSString JSString }
+  deriving (Monoid)
 -- TODO newtype wrapper
 -- Monoid
 
 {-| -}
 emptyStyle :: Style
-emptyStyle = Data.Map.empty
+emptyStyle = S $ Data.Map.empty
 
 {-| -}
 styleNamed :: JSString -> JSString -> Style
-styleNamed = Data.Map.singleton
+styleNamed k v = S $ Data.Map.singleton k v
 
 {-| -}
 apStyle :: Style -> Style -> Style
-apStyle = Data.Map.union
+apStyle (S a) (S b) = S $ Data.Map.union a b
 
 {-| -}
 styleToAttrString :: Style -> JSString
-styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) ""
+styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getS
 
 {-| Embed an SVG property on a drawing.
     Intended to be used with the event handlers in "Web.VirtualDom.Svg.Events".
@@ -509,11 +510,11 @@ style = Style
 
 {-| -}
 fillColor :: Colour Double -> Drawing -> Drawing
-fillColor x = style (Data.Map.singleton "fill" $ showColor x)
+fillColor x = style (styleNamed "fill" $ showColor x)
 
 {-| -}
 strokeColor :: Colour Double -> Drawing -> Drawing
-strokeColor x = style (Data.Map.singleton "stroke" $ showColor x)
+strokeColor x = style (styleNamed "stroke" $ showColor x)
 
 showColor = Data.JSString.pack . Data.Colour.SRGB.sRGB24show
 
@@ -521,7 +522,7 @@ showColor = Data.JSString.pack . Data.Colour.SRGB.sRGB24show
 fillColorA :: AlphaColour Double -> Drawing -> Drawing
 fillColorA x = fillColor c . alpha a
   where
-    alpha a = style (Data.Map.singleton "fill-opacity" $ showJS a)
+    alpha a = style (styleNamed "fill-opacity" $ showJS a)
     c = Data.Colour.over x C.black
     a = Data.Colour.alphaChannel x
 
@@ -529,7 +530,7 @@ fillColorA x = fillColor c . alpha a
 strokeColorA :: AlphaColour Double -> Drawing -> Drawing
 strokeColorA x = strokeColor c . alpha a
   where
-    alpha a = style (Data.Map.singleton "stroke-opacity" $ showJS a)
+    alpha a = style (styleNamed "stroke-opacity" $ showJS a)
     c = Data.Colour.over x C.black
     a = Data.Colour.alphaChannel x
 
