@@ -2,18 +2,26 @@
 .PHONY: all
 all: build-client run-server
 
+.PHONY: all-fast
+all: build-client-fast run-server
+
 .PHONY: typecheck-client
 typecheck-client:
 	clear && \
 	time stack build --ghc-options="-fno-code" -j8
 
-build-client-loop:
-	time stack build --fast --haddock --exec 'make run-server' -j8 --file-watch
+# build-client-loop:
+# 	time stack build --fast --haddock --exec 'make run-server' -j8 --file-watch
 
 .PHONY: build-client
 build-client:
 	clear && \
 	time stack build -j4 --fast --install-ghc
+
+.PHONY: build-client-fast
+build-client-fast:
+	clear && \
+	time stack build -j4 --fast --haddock
 
 .PHONY: build-server
 build-server:
