@@ -342,8 +342,7 @@ instance Monoid Drawing where
   mempty  = transparent
   mappend = over
 
-{-| An empty and transparent drawing.
-    Identity for [over](#over) and [stack](#stack). -}
+{-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
 transparent      = Em
 

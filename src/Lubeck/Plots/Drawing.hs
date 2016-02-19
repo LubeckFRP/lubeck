@@ -181,6 +181,7 @@ instance Monoid a => Monoid (Styled a) where
   mempty = pure mempty
   mappend = liftA2 mappend
 
+-- | Extract a 'Styled' value.
 getStyled :: Styled a -> Styling -> a
 getStyled = runReader . _getStyled
 
