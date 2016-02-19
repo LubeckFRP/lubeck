@@ -7,6 +7,9 @@ typecheck-client:
 	clear && \
 	time stack build --ghc-options="-fno-code" -j8
 
+build-client-loop:
+	time stack build --pedantic --haddock --exec 'make run-server' -j8 --file-watch
+
 .PHONY: build-client
 build-client:
 	clear && \
