@@ -90,6 +90,11 @@ module Lubeck.Plots.Drawing
     , scatterPlotFillColor
     , scatterPlotShape
 
+    , barPlotBarColor
+    , barPlotWidth
+    , barPlotStandardOffset
+    , barPlotGroupInternalOffset
+    , barPlotSpaceUsed
 
     , Styled
     , getStyled
@@ -131,11 +136,11 @@ import qualified Lubeck.Drawing
 
 data Styling = Styling
   { _dummy :: ()
-  -- Rendering rectangle (default (300x300))
-  , _renderingRectangle :: First Vector -- ^ Rectangle in which the plot will be rendered (default @300 x 300@).
+
+  -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
+  , _renderingRectangle :: First Vector
 
   -- Line plots
-    -- stroke color, stroke width (absolute), dashed etc
   , _linePlotStrokeColor :: AlphaColour Double
   , _linePlotStrokeWidth :: AlphaColour Double
   , _linePlotStrokeType  :: ()
@@ -147,10 +152,22 @@ data Styling = Styling
   , _scatterPlotShape       :: ()
 
   -- Bar plots
-    -- Group separation (if group)
-    -- Bar separation
-    -- Percentage of horizintal dim taken up by plots
-      -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
+
+  , _barPlotBarColor :: AlphaColour Double
+  -- Bar width
+  -- Default 1
+  , _barPlotWidth :: First Vector
+  -- Space between bars/bar groups (if used)
+  -- Default 0.5
+  , _barPlotStandardOffset :: First Vector
+  -- Space between bars in the same group (if used)
+  -- Default 0
+  , _barPlotGroupInternalOffset :: First Vector
+  -- Extra offset between bar groups (if used)
+
+  -- Percentage of horizintal dim taken up by plots, in [0..1] (default 1)
+  -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
+  , _barPlotSpaceUsed :: Double
 
   -- Color allocator
     -- TODO idea: to allocate colors to categories/dimensions
@@ -184,23 +201,28 @@ data Styling = Styling
   }
   deriving (Show)
 
-
-
--- renderingRectangle :: Lens' Styling (First Vector)
-
 makeLenses ''Styling
 
 instance Monoid Styling where
   mempty = Styling
     { _dummy = mempty
-    , _renderingRectangle = First (Just $ Vector 300 300)
-    , _linePlotStrokeColor = mempty
-    , _linePlotStrokeWidth = mempty
-    , _linePlotStrokeType = mempty
+    , _renderingRectangle = First $ Just $ Vector 300 300
 
-    , _scatterPlotStrokeColor = mempty
-    , _scatterPlotFillColor = mempty
-    , _scatterPlotShape = mempty
+    , _linePlotStrokeColor         = Colors.red `withOpacity` 0.6
+    , _linePlotStrokeWidth         = Colors.red `withOpacity` 0.6
+    , _linePlotStrokeType          = mempty
+
+    , _scatterPlotStrokeColor      = Colors.red `withOpacity` 0.6
+    , _scatterPlotFillColor        = Colors.red `withOpacity` 0.6
+    , _scatterPlotShape            = mempty
+
+
+    , _barPlotBarColor             = Colors.blue `withOpacity` 0.6
+    , _barPlotWidth                = First $ Just $ Vector 0 1
+    , _barPlotStandardOffset       = First $ Just $ Vector 0 0.5
+    , _barPlotGroupInternalOffset  = First $ Just $ Vector 0 0
+    , _barPlotSpaceUsed = 1
+
     }
   mappend = const
 
