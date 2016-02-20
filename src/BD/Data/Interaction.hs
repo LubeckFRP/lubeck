@@ -8,6 +8,7 @@ module BD.Data.Interaction
     ) where
 
 import Control.Monad
+import Control.Monad.Except
 import Data.Aeson -- TODO proper
 import Data.Data
 import Data.Time.Clock (UTCTime)
@@ -81,15 +82,20 @@ instance FromJSON m => FromJSON (Interaction m)
 instance FromJSON m => FromJSON (InteractionSet m)
 
 -- | Monad for backend interaction. Currently same as IO, we should probably do some wrapping eventually.
-type DB = IO
+
+data ResponseError = NoResponse String 
+                   | ParseError String 
+                  deriving (Show)
+
+type DB = ExceptT ResponseError IO
 
 loadShoutouts :: Maybe JSString -> Maybe JSString -> DB (InteractionSet SearchPost)
 loadShoutouts mFrom mTo = do
-  r <- getFromAPI -- TODO params
+  r <- liftIO getFromAPI -- TODO params
   case contents r of
-    Nothing          -> error "TODO no response"
+    Nothing          -> throwError $ NoResponse "API was unresponsive"
     Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> error "TODO parse error"
+      Nothing -> throwError $ ParseError "Could not decode API response as InteractionSet SearchPost" 
       Just x  -> return x
   where
     fromAccName = fromMaybe "any" mFrom
