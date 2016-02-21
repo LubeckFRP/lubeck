@@ -186,7 +186,8 @@ data Styling = Styling
 
   -- Bar plots
 
-  , _barPlotBarColor :: AlphaColour Double
+  -- Infinite list of bar colours
+  , _barPlotBarColor :: [AlphaColour Double]
   -- Bar width
   -- Default 1
   , _barPlotWidth :: First Vector
@@ -281,21 +282,23 @@ withDefaultStyle x = getStyled x mempty
 scatterData :: [R2] -> Styled Drawing
 scatterData ps = do
   style <- ask
-  let base = fillColorA (style^.scatterPlotFillColor) $ scale (10/300) circle
+  let base = fillColorA (style^.scatterPlotFillColor) $ strokeColorA (style^.scatterPlotStrokeColor) $ scale (10/300) circle
   let origin = Point 0 0
   return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: [R2] -> Styled Drawing
 scatterDataX ps = do
-  let base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
+  style <- ask
+  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = Point 0 0
   return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: [R2] -> Styled Drawing
 scatterDataY ps = do
-  let base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
+  style <- ask
+  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
   let origin = Point 0 0
   return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
 
@@ -304,7 +307,8 @@ lineData :: [R2] -> Styled Drawing
 lineData []     = mempty
 lineData [_]    = mempty
 lineData (p:ps) = do
-  let lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
+  style <- ask
+  let lineStyle = strokeColorA (style^.linePlotStrokeColor) . fillColorA (style^.linePlotFillColor) . strokeWidth 2.5
   let origin = Point 0 0
   return $ scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
 
@@ -325,8 +329,8 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
 -- TODO bar graphs can be transposed (x/y) (how?)
 barData :: [R] -> Styled Drawing
 barData ps = do
-  -- TODO horizontal stacking (nicer with proper envelopes!)
-  let base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
+  style <- ask
+  let base = fillColorA (style^.barPlotBarColor !! 0) $ square
   return $ scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
 
