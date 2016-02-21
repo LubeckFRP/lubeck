@@ -258,8 +258,8 @@ instance Monoid Styling where
     , _barPlotStackedOffset         = Vector 0   0.1
     , _barPlotSpaceUsed             = 9/10
 
-    , _ratioPlotBackgroundColor     = Colors.lightgrey `withOpacity` 0.9
-    , _ratioPlotForegroundColor     = Colors.red `withOpacity` 0.6
+    , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
+    , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
     }
   mappend = const
 
@@ -400,12 +400,11 @@ ratioData v = do
   style <- ask
   let fg = style^.ratioPlotForegroundColor
   let bg = style^.ratioPlotBackgroundColor
-  return $ transform (scalingRR style) (alignBL $ fillColorA fg (scaleX v square) <> fillColorA bg square)
+  return $ transform (scalingRR style) (alignBL $ fillColorA fg (scaleY v square) <> fillColorA bg square)
   where
     -- TODO move
     alignBL = translate (Vector 0.5 0.5)
-    -- scalingXY x y = (scalingX x <> scalingY y)
-    scalingRR style = scaling $ style^.renderingRectangle
+    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
 -- | Visualizes ration with colour.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard

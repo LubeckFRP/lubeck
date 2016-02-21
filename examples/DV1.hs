@@ -100,9 +100,9 @@ main = do
 
     , barData (take 10 rand1)
 
-    , ratioData (rands !! 0)
-    , ratioData (rands !! 1)
-    , ratioData (rands !! 2)
+    , ratioData (rand1 !! 0)
+    , ratioData (rand1 !! 1)
+    , ratioData (rand1 !! 2)
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
