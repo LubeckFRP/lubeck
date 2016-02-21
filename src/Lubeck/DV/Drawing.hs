@@ -251,7 +251,8 @@ instance Monoid Styling where
     , _scatterPlotFillColor        = Colors.red `withOpacity` 0.6
     , _scatterPlotShape            = mempty
 
-    , _barPlotBarColor             = Colors.blue `withOpacity` 0.6
+    , _barPlotBarColor             = fmap (`withOpacity` 0.6) $
+        cycle [Colors.red, Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple]
     , _barPlotWidth                = First $ Just $ Vector 0 1
     , _barPlotStandardOffset       = First $ Just $ Vector 0 0.5
     , _barPlotGroupInternalOffset  = First $ Just $ Vector 0 0
