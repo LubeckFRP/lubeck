@@ -483,28 +483,11 @@ labeledAxis labelX labelY = return $ mconcat
   , translateY (300/2) $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
   , translateX (300/2) $ translateY (-20) $ textMiddle labelX]
 
+axis, axisX, axisY :: Drawing
 axis = mconcat [axisY, axisX]
 axisX = strokeWidth 1.5 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
 axisY = strokeWidth 1.5 $ strokeColor Colors.black $ translateY 0.5 verticalLine
 
+crossLineX, crossLineY :: Double -> Drawing
 crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
 crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
-
-
-
-
-
-
-
-
-
-
-
--- Interactive
---
--- -- | Draw data for a scatter plot with an optional drawing pop-up.
--- scatterData :: [(R2, Maybe Drawing)] -> IO (Signal Drawing)
--- scatterData ps = scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
---   where
---     base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
---     origin = R2 0 0
