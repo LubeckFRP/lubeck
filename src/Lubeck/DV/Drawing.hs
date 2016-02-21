@@ -351,11 +351,11 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
 barData :: [R] -> Styled Drawing
 barData ps = do
   style <- ask
+  let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (dx $ style^.barPlotUngroupedOffset)
-  let barWidth = (1/fromIntegral (length ps + 1)) * barFullOffset
   let base = fillColorA ((style^.barPlotBarColors) !! 0) $ square
-  -- let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
-  return $ scale 300 $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
+  -- TODO use renderingRectangle
+  return $ scale 200 $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
 
 -- | Draw
