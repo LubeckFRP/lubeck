@@ -117,7 +117,7 @@ module Lubeck.DV.Drawing
     , scatterPlotFillColor
     , scatterPlotShape
 
-    , barPlotBarColor
+    , barPlotBarColors
     , barPlotWidth
     , barPlotStandardOffset
     , barPlotGroupInternalOffset
@@ -166,6 +166,10 @@ import Lubeck.Drawing
 import Lubeck.Util(showJS)
 import qualified Lubeck.Drawing
 
+data VerticalHorizontal = Vertical | Horizontal
+-- How to display a bar plot with more than two dimensions.§
+data BarPlotType = Grouped | Stacked | TwoSides
+
 data Styling = Styling
   { _dummy :: ()
 
@@ -174,29 +178,31 @@ data Styling = Styling
 
   -- Line plots
   , _linePlotStrokeColor :: AlphaColour Double
-  , _linePlotStrokeWidth :: AlphaColour Double
-  , _linePlotStrokeType  :: ()
+  , _linePlotStrokeWidth :: Double
+  , _linePlotStrokeType  :: () -- TODO
   , _linePlotFillColor   :: AlphaColour Double
 
   -- Scatter plots
     -- point size, fillColor, strokeColor, shape?
   , _scatterPlotStrokeColor :: AlphaColour Double
+  , _scatterPlotStrokeWidth :: Double
   , _scatterPlotFillColor   :: AlphaColour Double
+  , _scatterPlotSize        :: Double
   , _scatterPlotShape       :: ()
 
   -- Bar plots
 
   -- Infinite list of bar colours
-  , _barPlotBarColor :: [AlphaColour Double]
+  , _barPlotBarColors :: [AlphaColour Double]
   -- Bar width
   -- Default 1
   , _barPlotWidth :: First Vector
   -- Space between bars/bar groups (if used)
   -- Default 0.5
-  , _barPlotStandardOffset :: First Vector
+  , _barPlotUngroupedOffset :: First Vector
   -- Space between bars in the same group (if used)
   -- Default 0
-  , _barPlotGroupInternalOffset :: First Vector
+  , _barPlotGroupedOffset :: First Vector
   -- Extra offset between bar groups (if used)
 
   -- Percentage of horizintal dim taken up by plots, in [0..1] (default 1)
@@ -242,19 +248,21 @@ instance Monoid Styling where
     , _renderingRectangle = First $ Just $ Vector 300 300
 
     , _linePlotStrokeColor         = Colors.red `withOpacity` 0.6
-    , _linePlotStrokeWidth         = Colors.red `withOpacity` 0.6
+    , _linePlotStrokeWidth         = 2.5
     , _linePlotStrokeType          = mempty
     , _linePlotFillColor           = Colors.black `withOpacity` 0
 
     , _scatterPlotStrokeColor      = Colors.red `withOpacity` 0.6
+    , _scatterPlotStrokeWidth      = 1
     , _scatterPlotFillColor        = Colors.red `withOpacity` 0.6
+    , _scatterPlotSize             = 10/300
     , _scatterPlotShape            = mempty
 
-    , _barPlotBarColor             = fmap (`withOpacity` 0.6) $
+    , _barPlotBarColors             = fmap (`withOpacity` 0.6) $
         cycle [Colors.red, Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple]
     , _barPlotWidth                = First $ Just $ Vector 0 1
-    , _barPlotStandardOffset       = First $ Just $ Vector 0 0.5
-    , _barPlotGroupInternalOffset  = First $ Just $ Vector 0 0
+    , _barPlotUngroupedOffset       = First $ Just $ Vector 0 0.5
+    , _barPlotGroupedOffset  = First $ Just $ Vector 0 0
     , _barPlotSpaceUsed = 1
 
     }
@@ -290,7 +298,10 @@ withDefaultStyleT x = getStyledT x mempty
 scatterData :: Monad m => [R2] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
-  let base = fillColorA (style^.scatterPlotFillColor) $ strokeColorA (style^.scatterPlotStrokeColor) $ scale (10/300) circle
+  let base  = id
+            $ fillColorA (style^.scatterPlotFillColor)
+            $ strokeColorA (style^.scatterPlotStrokeColor)
+            $ scale (style^.scatterPlotSize) circle
   let origin = Point 0 0
   return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
 
@@ -316,7 +327,10 @@ lineData []     = mempty
 lineData [_]    = mempty
 lineData (p:ps) = do
   style <- ask
-  let lineStyle = strokeColorA (style^.linePlotStrokeColor) . fillColorA (style^.linePlotFillColor) . strokeWidth 2.5
+  let lineStyle = id
+                . strokeColorA  (style^.linePlotStrokeColor)
+                . fillColorA    (style^.linePlotFillColor)
+                . strokeWidth   (style^.linePlotStrokeWidth)
   let origin = Point 0 0
   return $ scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
 

@@ -96,8 +96,8 @@ main = do
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
     plotStyle =
-      linePlotStrokeColor .~ (Colors.green  `withOpacity` 0.5) $
-      barPlotBarColor     .~ cycle [Colors.purple `withOpacity` 0.5] $
+      linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5) $
+      barPlotBarColors    .~ cycle [Colors.purple `withOpacity` 0.5] $
       mempty
 
     ps           = zipWith Point rand1 rand2
