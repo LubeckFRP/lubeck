@@ -20,6 +20,7 @@ import qualified Data.List
 import qualified Data.Ord
 import System.Random (mkStdGen, randoms, split)
 
+import Control.Lens.Operators
 
 
 -- TODO move
@@ -82,7 +83,7 @@ chooseDrawing ds = do
 
 main :: IO ()
 main = do
-  dS <- chooseDrawing $ fmap withDefaultStyle
+  dS <- chooseDrawing $ fmap (`getStyled` plotStyle)
     -- All based on simpleLinePlot (auto-scaling and axis)
     [ pure testSimple1
     , pure testSimple2
@@ -114,8 +115,11 @@ main = do
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
-    ps           = zipWith Point rand1 rand2
+    plotStyle =
+      linePlotStrokeColor .~ (Colors.green `withOpacity` 0.5) $
+      mempty
 
+    ps           = zipWith Point rand1 rand2
 
     -- combine [f, g...] x = mconcat [f x, g x...]
     combine fs x = mconcat $ fmap ($ x) fs

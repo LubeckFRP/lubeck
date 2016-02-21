@@ -150,6 +150,7 @@ import Data.AffineSpace
 import Control.Monad.Reader
 
 import Control.Lens ()
+import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 
 -- import qualified Web.VirtualDom as VD
@@ -278,10 +279,11 @@ withDefaultStyle x = getStyled x mempty
 
 -- | Draw data for a scatter plot.
 scatterData :: [R2] -> Styled Drawing
-scatterData ps = return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
-  where
-    base = fillColorA (Colors.red `withOpacity` 0.6) $ scale (10/300) circle
-    origin = Point 0 0
+scatterData ps = do
+  style <- ask
+  let base = fillColorA (style^.scatterPlotFillColor) $ scale (10/300) circle
+  let origin = Point 0 0
+  return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: [R2] -> Styled Drawing
