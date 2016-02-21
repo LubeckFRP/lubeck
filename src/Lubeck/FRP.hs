@@ -459,15 +459,15 @@ snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
 -- | Create a past-dependent behavior.
 foldpR :: (a -> b -> b) -> b -> Events a -> IO (Behavior b)
-foldpR f z e = accumB z (mapE f e)
+foldpR f z e = accumB z (fmap f e)
 
 -- | Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> Events a -> IO (Events b)
 foldpE f a e = a `accumE` (f <$> e)
 
 -- | Create a past-dependent signal.
-foldpS :: (a -> b -> b) -> b -> Events a -> IO (Signal b)
-foldpS f z e = accumS z (mapS f e)
+foldpS :: (a -> b -> b) -> b -> Signal a -> IO (Signal b)
+foldpS f z s = accumS z (fmap f $ updates s)
 
 
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
@@ -475,6 +475,8 @@ foldpS f z e = accumS z (mapS f e)
 
 -- filter :: (a -> Bool) -> E a -> E a
 -- filter p = scatter . mapE (\x -> if p x then [x] else [])
+
+{-# DEPRECATED sample "Use 'snapshotWith const'" #-}
 
 -- | Get the current value of the behavior whenever an event occurs.
 sample :: Behavior a -> Events b -> Events a
