@@ -334,7 +334,8 @@ data Drawing
   = Circle
   | Rect
   | Line -- conceptually a line from point a to point b
-  | Lines Bool [Vector] -- sequence of straight lines, closed or not. For closed lines, there is no need to return the original point (i.e. the sum of the vector does not have to be zeroV).
+  | Lines Bool [Vector] -- sequence of straight lines, closed or not. For closed lines, there is no need to return
+                        -- the original point (i.e. the sum of the vector does not have to be zeroV).
 
   | Text JSString
   | Transf Transformation Drawing
