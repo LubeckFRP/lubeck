@@ -227,7 +227,7 @@ makeLenses ''Styling
 instance Monoid Styling where
   mempty = Styling
     { _dummy                        = mempty
-    , _renderingRectangle           = First $ Just $ Vector 300 300
+    , _renderingRectangle           = Vector 300 300
 
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
@@ -248,10 +248,10 @@ instance Monoid Styling where
                                       , Colors.orange
                                       , Colors.purple
                                       ]
-    , _barPlotWidth                 = First $ Just $ Vector 1   0
-    , _barPlotUngroupedOffset       = First $ Just $ Vector 0.5 0
-    , _barPlotGroupedOffset         = First $ Just $ Vector 0   0
-    , _barPlotStackedOffset         = First $ Just $ Vector 0   0.1
+    , _barPlotWidth                 = Vector 1   0
+    , _barPlotUngroupedOffset       = Vector 0.5 0
+    , _barPlotGroupedOffset         = Vector 0   0
+    , _barPlotStackedOffset         = Vector 0   0.1
     , _barPlotSpaceUsed             = 9/10
 
     }
@@ -292,8 +292,8 @@ scatterData ps = do
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
   let origin = Point 0 0
-  let p2 = transformPoint mempty p
-  return $ scale 300 $ mconcat $ fmap (\p -> translate (p2 .-. origin) base) ps
+  let intoRect = transformPoint (scalingX (x $ style^.renderingRectangle) <> (y $ style^.renderingRectangle))
+  return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: Monad m => [R2] -> StyledT m Drawing
@@ -301,8 +301,8 @@ scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = Point 0 0
-  let p2 = transformPoint mempty p
-  return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p2) base) ps
+  let intoRect = transformPoint mempty
+  return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: Monad m => [R2] ->  StyledT m Drawing
@@ -310,8 +310,8 @@ scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
   let origin = Point 0 0
-  let p2 = transformPoint mempty p
-  return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p2) base) ps
+  let intoRect = transformPoint mempty
+  return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) (fmap intoRect ps)
 
 -- | Draw data for a line plot.
 lineData :: [R2] -> Styled Drawing
@@ -324,7 +324,8 @@ lineData (p:ps) = do
                 . fillColorA    (style^.linePlotFillColor)
                 . strokeWidth   (style^.linePlotStrokeWidth)
   let origin = Point 0 0
-  return $ scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
+  let intoRect = transformPoint mempty
+  return $ scale 300 $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 -- | Step chart
 --
