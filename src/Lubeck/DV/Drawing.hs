@@ -51,8 +51,9 @@
 module Lubeck.DV.Drawing
     (
     -- * Drawing data
-    --   $normalizeInputPoint
-    --   $normalizeInputScalar
+
+    -- $normalizeInputPoint
+    -- $normalizeInputScalar
 
     -- ** Scatter
       scatterData
@@ -105,8 +106,9 @@ module Lubeck.DV.Drawing
     -- * Drawing overlays/explanatories
 
     -- * Styling
+
     , Styling
-    -- TODO all lenses here
+    -- TODO exort all lenses here
     , renderingRectangle
     , linePlotStrokeColor
     , linePlotStrokeWidth
@@ -119,8 +121,8 @@ module Lubeck.DV.Drawing
 
     , barPlotBarColors
     , barPlotWidth
-    , barPlotStandardOffset
-    , barPlotGroupInternalOffset
+    , barPlotUngroupedOffset
+    , barPlotGroupedOffset
     , barPlotSpaceUsed
 
     , Styled
@@ -135,33 +137,21 @@ module Lubeck.DV.Drawing
 import Prelude hiding (div)
 import qualified Prelude
 
-import qualified Data.JSString
-import GHCJS.Types(JSString, jsval)
-
-import Data.Colour (Colour, AlphaColour, withOpacity)
-import qualified Data.Colour.Names as Colors
-import Data.Monoid ((<>), First(..))
 import Control.Applicative
-import Data.VectorSpace
-import qualified Data.VectorSpace as VS
-import Data.AffineSpace
-
-import Control.Monad.Reader
-import Control.Monad.Identity
-
 import Control.Lens ()
 import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
+import Control.Monad.Identity
+import Control.Monad.Reader
+import Data.AffineSpace
+import Data.Colour (Colour, AlphaColour, withOpacity)
+import Data.Monoid ((<>), First(..))
+import Data.VectorSpace
+import GHCJS.Types(JSString, jsval)
+import qualified Data.Colour.Names as Colors
+import qualified Data.JSString
+import qualified Data.VectorSpace as VS
 
--- import qualified Web.VirtualDom as VD
--- import qualified Web.VirtualDom.Html as H
--- import qualified Web.VirtualDom.Html.Attributes as H
--- import qualified Web.VirtualDom.Html.Events as H
--- import qualified Web.VirtualDom.Svg.Events as SvgEv
-
--- import Lubeck.FRP
--- import Lubeck.Forms
--- import Lubeck.Forms.Basic
 import Lubeck.Drawing
 import Lubeck.Util(showJS)
 import qualified Lubeck.Drawing
@@ -171,43 +161,35 @@ data VerticalHorizontal = Vertical | Horizontal
 data BarPlotType = Grouped | Stacked | TwoSides
 
 data Styling = Styling
-  { _dummy :: ()
+  { _dummy                            :: ()
 
   -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
-  , _renderingRectangle :: First Vector
+  , _renderingRectangle               :: First Vector
 
   -- Line plots
-  , _linePlotStrokeColor :: AlphaColour Double
-  , _linePlotStrokeWidth :: Double
-  , _linePlotStrokeType  :: () -- TODO
-  , _linePlotFillColor   :: AlphaColour Double
+  , _linePlotStrokeColor              :: AlphaColour Double
+  , _linePlotStrokeWidth              :: Double
+  , _linePlotStrokeType               :: () -- TODO
+  , _linePlotFillColor                :: AlphaColour Double
 
   -- Scatter plots
-    -- point size, fillColor, strokeColor, shape?
-  , _scatterPlotStrokeColor :: AlphaColour Double
-  , _scatterPlotStrokeWidth :: Double
-  , _scatterPlotFillColor   :: AlphaColour Double
-  , _scatterPlotSize        :: Double
-  , _scatterPlotShape       :: ()
+  , _scatterPlotStrokeColor           :: AlphaColour Double
+  , _scatterPlotStrokeWidth           :: Double
+  , _scatterPlotFillColor             :: AlphaColour Double
+  , _scatterPlotSize                  :: Double
+  , _scatterPlotShape                 :: ()
 
   -- Bar plots
 
-  -- Infinite list of bar colours
-  , _barPlotBarColors :: [AlphaColour Double]
-  -- Bar width
-  -- Default 1
-  , _barPlotWidth :: First Vector
-  -- Space between bars/bar groups (if used)
-  -- Default 0.5
-  , _barPlotUngroupedOffset :: First Vector
-  -- Space between bars in the same group (if used)
-  -- Default 0
-  , _barPlotGroupedOffset :: First Vector
-  -- Extra offset between bar groups (if used)
-
-  -- Percentage of horizintal dim taken up by plots, in [0..1] (default 1)
+  -- Infinite list of bar colours:
+  , _barPlotBarColors                 :: [AlphaColour Double]
+  , _barPlotWidth                     :: First Vector
+  , _barPlotUngroupedOffset           :: First Vector
+  , _barPlotGroupedOffset             :: First Vector
+  , _barPlotStackedOffset             :: First Vector
+  -- Percentage of horizontal dim taken up by plots, in [0..1] (default 1)
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
-  , _barPlotSpaceUsed :: Double
+  , _barPlotSpaceUsed                 :: Double
 
   -- Color allocator
     -- TODO idea: to allocate colors to categories/dimensions
@@ -244,26 +226,33 @@ makeLenses ''Styling
 
 instance Monoid Styling where
   mempty = Styling
-    { _dummy = mempty
-    , _renderingRectangle = First $ Just $ Vector 300 300
+    { _dummy                        = mempty
+    , _renderingRectangle           = First $ Just $ Vector 300 300
 
-    , _linePlotStrokeColor         = Colors.red `withOpacity` 0.6
-    , _linePlotStrokeWidth         = 2.5
-    , _linePlotStrokeType          = mempty
-    , _linePlotFillColor           = Colors.black `withOpacity` 0
+    , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
+    , _linePlotStrokeWidth          = 2.5
+    , _linePlotStrokeType           = mempty
+    , _linePlotFillColor            = Colors.black `withOpacity` 0
 
-    , _scatterPlotStrokeColor      = Colors.red `withOpacity` 0.6
-    , _scatterPlotStrokeWidth      = 1
-    , _scatterPlotFillColor        = Colors.red `withOpacity` 0.6
-    , _scatterPlotSize             = 10/300
-    , _scatterPlotShape            = mempty
+    , _scatterPlotStrokeColor       = Colors.red `withOpacity` 0.6
+    , _scatterPlotStrokeWidth       = 1
+    , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
+    , _scatterPlotSize              = 10/300
+    , _scatterPlotShape             = mempty
 
-    , _barPlotBarColors             = fmap (`withOpacity` 0.6) $
-        cycle [Colors.red, Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple]
-    , _barPlotWidth                = First $ Just $ Vector 0 1
-    , _barPlotUngroupedOffset       = First $ Just $ Vector 0 0.5
-    , _barPlotGroupedOffset  = First $ Just $ Vector 0 0
-    , _barPlotSpaceUsed = 1
+    , _barPlotBarColors             = fmap (`withOpacity` 0.6) $ cycle
+                                      [ Colors.red
+                                      , Colors.green
+                                      , Colors.blue
+                                      , Colors.pink
+                                      , Colors.orange
+                                      , Colors.purple
+                                      ]
+    , _barPlotWidth                 = First $ Just $ Vector 1   0
+    , _barPlotUngroupedOffset       = First $ Just $ Vector 0.5 0
+    , _barPlotGroupedOffset         = First $ Just $ Vector 0   0.1
+    , _barPlotStackedOffset         = First $ Just $ Vector
+    , _barPlotSpaceUsed             = 9/10
 
     }
   mappend = const
