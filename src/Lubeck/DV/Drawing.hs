@@ -250,8 +250,8 @@ instance Monoid Styling where
                                       ]
     , _barPlotWidth                 = First $ Just $ Vector 1   0
     , _barPlotUngroupedOffset       = First $ Just $ Vector 0.5 0
-    , _barPlotGroupedOffset         = First $ Just $ Vector 0   0.1
-    , _barPlotStackedOffset         = First $ Just $ Vector
+    , _barPlotGroupedOffset         = First $ Just $ Vector 0   0
+    , _barPlotStackedOffset         = First $ Just $ Vector 0   0.1
     , _barPlotSpaceUsed             = 9/10
 
     }
