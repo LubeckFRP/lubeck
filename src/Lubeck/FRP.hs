@@ -66,8 +66,8 @@ module Lubeck.FRP (
     scatter,
 
     -- ** Past-dependent events
-    foldpE,
     accumE,
+    foldpE,
     gather,
     buffer,
     -- withPrevious,
@@ -88,6 +88,7 @@ module Lubeck.FRP (
     -- ** Building signals
     stepperS,
     accumS,
+    foldpS,
     snapshotS,
     snapshotWithS,
 
@@ -464,6 +465,10 @@ foldpR f z e = accumB z (mapE f e)
 foldpE :: (a -> b -> b) -> b -> Events a -> IO (Events b)
 foldpE f a e = a `accumE` (f <$> e)
 
+-- | Create a past-dependent signal.
+foldpS :: (a -> b -> b) -> b -> Events a -> IO (Signal b)
+foldpS f z e = accumS z (mapS f e)
+
 
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
 -- foldpR const :: b -> Stream b -> Signal b
@@ -556,9 +561,11 @@ accumS z e = do
   r <- accumB z e
   return $ S (fmap (const ()) e, r)
 
+-- | Sample the current value of a behavior whenever a signal is updated.
 snapshotS :: Behavior a -> Signal b -> Signal (a, b)
 snapshotS b1 (S (e,b2)) = S (e, liftA2 (,) b1 b2)
 
+-- | Similar to 'snapshotS', but uses the given function go combine the values.
 snapshotWithS :: (a -> b -> c) -> Behavior a -> Signal b -> Signal c
 snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
 
@@ -572,6 +579,9 @@ current :: Signal a -> Behavior a
 current (S (e,r)) = r
 
 
+{-# DEPRECATED runFRP   "Use newEvent/subscribeEvent/pollBehavior" #-}
+{-# DEPRECATED runFRP'  "Use newEvent/subscribeEvent/pollBehavior" #-}
+{-# DEPRECATED runFRP'' "Use newEvent/subscribeEvent/pollBehavior" #-}
 
 -- | Run an FRP system, producing a behavior.
 -- You can poll the sstem for the current state, or subscribe to changes in its output.
