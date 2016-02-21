@@ -12,6 +12,7 @@ import Web.VirtualDom.Html.Attributes (href)
 
 import Lubeck.App (Html, runAppStatic)
 
+
 page :: Html
 page = div [] [h1 [] [text "Index"]
   , h2 [] [text "Applications"]

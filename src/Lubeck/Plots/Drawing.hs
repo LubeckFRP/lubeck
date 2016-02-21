@@ -75,6 +75,7 @@ module Lubeck.Plots.Drawing
     , circleData
     , circleDataWithColor
 
+    -- | Ratios
     , ratioData
     , ratioDataWithColor
 

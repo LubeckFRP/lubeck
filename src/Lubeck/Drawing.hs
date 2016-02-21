@@ -34,7 +34,7 @@ module Lubeck.Drawing (
     angleToDegrees,
 
     -- ** Transformations
-    Transformation(..), -- TODO hide internals
+    Transformation, -- TODO hide internals
     -- emptyTransformation,
     -- apTransformation,
     transformVector,
