@@ -131,6 +131,10 @@ module Lubeck.DV.Drawing
     , getStyled
     , withDefaultStyle
 
+    , StyledT
+    , getStyledT
+    , withDefaultStyleT
+
     ) where
 
 import Prelude hiding (div)
@@ -148,6 +152,7 @@ import qualified Data.VectorSpace as VS
 import Data.AffineSpace
 
 import Control.Monad.Reader
+import Control.Monad.Identity
 
 import Control.Lens ()
 import Control.Lens.Operators
@@ -260,11 +265,12 @@ instance Monoid Styling where
     }
   mappend = const
 
+type Styled = StyledT Identity
 
-newtype Styled a = Styled { _getStyled :: Reader Styling a }
+newtype StyledT m a = Styled { _getStyled :: ReaderT Styling m a }
   deriving (Functor, Applicative, Monad, MonadReader Styling)
 
-instance Monoid a => Monoid (Styled a) where
+instance (Monad m, Monoid a) => Monoid (StyledT m a) where
   mempty = pure mempty
   mappend = liftA2 mappend
 
@@ -272,8 +278,15 @@ instance Monoid a => Monoid (Styled a) where
 getStyled :: Styled a -> Styling -> a
 getStyled = runReader . _getStyled
 
+-- | Extract a 'Styled' value.
+getStyledT :: StyledT m a -> Styling -> m a
+getStyledT = runReaderT . _getStyled
+
 withDefaultStyle :: Styled a -> a
 withDefaultStyle x = getStyled x mempty
+
+withDefaultStyleT :: StyledT m a -> m a
+withDefaultStyleT x = getStyledT x mempty
 
 -- Pie charts
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
