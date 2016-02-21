@@ -192,6 +192,9 @@ data Styling = Styling
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
   , _barPlotSpaceUsed                 :: Double
 
+  , _ratioPlotBackgroundColor         :: AlphaColour Double
+  , _ratioPlotForegroundColor         :: AlphaColour Double
+
   -- Color allocator
     -- TODO idea: to allocate colors to categories/dimensions
     -- This could work very well with Control.Monad.Reader.local.
@@ -255,6 +258,8 @@ instance Monoid Styling where
     , _barPlotStackedOffset         = Vector 0   0.1
     , _barPlotSpaceUsed             = 9/10
 
+    , _ratioPlotBackgroundColor     = Colors.lightgrey `withOpacity` 0.9
+    , _ratioPlotForegroundColor     = Colors.red `withOpacity` 0.6
     }
   mappend = const
 
@@ -391,7 +396,18 @@ intData = undefined
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
 ratioData :: R -> Styled Drawing
-ratioData = undefined
+ratioData x = do
+  style <- ask
+  let fg = style^._ratioPlotForegroundColor
+  let bg = style^.ratioPlotBackgroundColor
+  return $ transform (scalingRR style) (alignBL $ fillColorA fg rect <> fillColorA bg rect)
+  where
+    -- TODO move
+    alignBL = translate (Vector 0.5 0.5)
+    scalingXY x y = (scalingX x <> scalingY y)
+    scalingRR style = scalingXY
+                        (dx $ style^.renderingRectangle)
+                        (dy $ style^.renderingRectangle)
 
 -- | Visualizes ration with colour.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
