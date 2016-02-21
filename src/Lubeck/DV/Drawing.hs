@@ -164,7 +164,7 @@ data Styling = Styling
   { _dummy                            :: ()
 
   -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
-  , _renderingRectangle               :: First Vector
+  , _renderingRectangle               :: Vector
 
   -- Line plots
   , _linePlotStrokeColor              :: AlphaColour Double
@@ -183,10 +183,10 @@ data Styling = Styling
 
   -- Infinite list of bar colours:
   , _barPlotBarColors                 :: [AlphaColour Double]
-  , _barPlotWidth                     :: First Vector
-  , _barPlotUngroupedOffset           :: First Vector
-  , _barPlotGroupedOffset             :: First Vector
-  , _barPlotStackedOffset             :: First Vector
+  , _barPlotWidth                     :: Vector
+  , _barPlotUngroupedOffset           :: Vector
+  , _barPlotGroupedOffset             :: Vector
+  , _barPlotStackedOffset             :: Vector
   -- Percentage of horizontal dim taken up by plots, in [0..1] (default 1)
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
   , _barPlotSpaceUsed                 :: Double
