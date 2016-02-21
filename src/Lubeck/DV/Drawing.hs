@@ -396,18 +396,16 @@ intData = undefined
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
 ratioData :: R -> Styled Drawing
-ratioData x = do
+ratioData v = do
   style <- ask
-  let fg = style^._ratioPlotForegroundColor
+  let fg = style^.ratioPlotForegroundColor
   let bg = style^.ratioPlotBackgroundColor
-  return $ transform (scalingRR style) (alignBL $ fillColorA fg rect <> fillColorA bg rect)
+  return $ transform (scalingRR style) (alignBL $ fillColorA fg (scaleX v square) <> fillColorA bg square)
   where
     -- TODO move
     alignBL = translate (Vector 0.5 0.5)
-    scalingXY x y = (scalingX x <> scalingY y)
-    scalingRR style = scalingXY
-                        (dx $ style^.renderingRectangle)
-                        (dy $ style^.renderingRectangle)
+    -- scalingXY x y = (scalingX x <> scalingY y)
+    scalingRR style = scaling $ style^.renderingRectangle
 
 -- | Visualizes ration with colour.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard

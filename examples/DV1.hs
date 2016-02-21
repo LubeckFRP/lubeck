@@ -97,7 +97,12 @@ main = do
     , lineData [Point 0 0, Point 1 1]
     , lineData [Point 0 0, Point 0 0, Point 1 1]
     , lineData [Point 0.5 0.5, Point 1 1]
+
     , barData (take 10 rand1)
+
+    , ratioData (rands !! 0)
+    , ratioData (rands !! 1)
+    , ratioData (rands !! 2)
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
