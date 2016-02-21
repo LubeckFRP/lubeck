@@ -287,26 +287,26 @@ scatterData ps = do
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: [R2] -> Styled Drawing
-scatterDataX ps = return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
-  where
-    base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
-    origin = Point 0 0
+scatterDataX ps = do
+  let base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
+  let origin = Point 0 0
+  return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: [R2] -> Styled Drawing
-scatterDataY ps = return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
-  where
-    base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
-    origin = Point 0 0
+scatterDataY ps = do
+  let base = strokeColorA (Colors.red `withOpacity` 0.6) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
+  let origin = Point 0 0
+  return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
 
 -- | Draw data for a line plot.
 lineData :: [R2] -> Styled Drawing
 lineData []     = mempty
 lineData [_]    = mempty
-lineData (p:ps) = return $ scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
-  where
-    lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
-    origin = Point 0 0
+lineData (p:ps) = do
+  let lineStyle = strokeColorA (Colors.red `withOpacity` 0.6) . fillColorA (Colors.black `withOpacity` 0) . strokeWidth 2.5
+  let origin = Point 0 0
+  return $ scale 300 $ translate (p .-. origin) $ lineStyle $ segments $ betweenPoints $ (p:ps)
 
 -- | Step chart
 --
@@ -324,11 +324,11 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
 -- | Draw a bar graph.
 -- TODO bar graphs can be transposed (x/y) (how?)
 barData :: [R] -> Styled Drawing
-barData ps = return $ scale 300 $ mconcat $
+barData ps = do
+  -- TODO horizontal stacking (nicer with proper envelopes!)
+  let base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
+  return $ scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
-  where
-    -- TODO horizontal stacking (nicer with proper envelopes!)
-    base = fillColorA (Colors.blue `withOpacity` 0.6) $ square
 
 -- | Draw
 barData2 :: [R2] -> Styled Drawing
@@ -461,10 +461,12 @@ ticksNoFilter xt yt = return $ mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
       \(pos,str) -> translateX (pos * 300) $
-        (scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateY (-0.5) verticalLine) <> (translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/8)) (textEnd str)
+        (scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateY (-0.5) verticalLine)
+          <> (translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/8)) (textEnd str)
     yTicks = mconcat $ flip fmap yt $
       \(pos,str) -> translateY (pos * 300) $
-        (scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine) <> (translateX (kBasicTickLength * (-1.5)) .rotate (turn*0.00001/8)) (textEnd str)
+        (scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine)
+          <> (translateX (kBasicTickLength * (-1.5)) .rotate (turn*0.00001/8)) (textEnd str)
 
     kBasicTickLength = 10
     -- Note: Add infinitesimal slant to non-slanted text to get same anti-aliasing behavior
