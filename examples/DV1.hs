@@ -99,6 +99,7 @@ main = do
     , lineData [Point 0.5 0.5, Point 1 1]
 
     , barData (take 10 rand1)
+    , barData (take 3 rand2)
 
     , ratioData (rand1 !! 0)
     , ratioData (rand1 !! 1)
@@ -129,5 +130,5 @@ rand1 = randoms $ fst $ split randG
 rand2 = randoms $ snd $ split randG
 
 -- randG = (mkStdGen 8712261455)
--- randG = (mkStdGen 123456789)
-randG = (mkStdGen 3141599999)
+randG = (mkStdGen 123456789)
+-- randG = (mkStdGen 3141599999)

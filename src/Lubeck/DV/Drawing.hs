@@ -307,7 +307,7 @@ scatterDataX ps = do
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = Point 0 0
   let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
-  return $ mconcat $ fmap (\p -> translateX (x p) base) (fmap intoRect ps)
+  return $ mconcat $ fmap (\p -> scaleY (dy $ style^.renderingRectangle) $ translateX (x p) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: Monad m => [R2] ->  StyledT m Drawing
@@ -316,7 +316,7 @@ scatterDataY ps = do
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
   let origin = Point 0 0
   let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
-  return $ mconcat $ fmap (\p -> translateY (y p) base) (fmap intoRect ps)
+  return $ mconcat $ fmap (\p -> scaleX (dy $ style^.renderingRectangle) $ translateY (y p) base) (fmap intoRect ps)
 
 -- | Draw data for a line plot.
 lineData :: [R2] -> Styled Drawing
