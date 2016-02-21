@@ -87,26 +87,19 @@ module Lubeck.DV.Drawing
     , treeMapGraph
     , treeMapGraphWithColor
 
+
     -- * Drawing axes
     , ticks
     , ticksNoFilter
     , labeledAxis
-    -- ** Utilities
-    , crossLineX
-    , crossLineY
+    -- , crossLineX
+    -- , crossLineY
 
     -- * Drawing legends
 
     -- * Drawing titles
 
     -- * Drawing overlays/explanatories
-
-    -- Line overlays, box plots, heat maps
-    -- Stacking and graphing box plots
-    -- Generating legends
-    -- Generating proper axises
-    -- Visualize pairs, lists, ordered sets, maps, trees, directed graphs
-    -- Pie charts
 
     -- * Styling
     , Styling
@@ -134,7 +127,6 @@ module Lubeck.DV.Drawing
     , StyledT
     , getStyledT
     , withDefaultStyleT
-
     ) where
 
 import Prelude hiding (div)
@@ -444,6 +436,11 @@ treeMapGraphWithColor = undefined
 discreteHeatMap :: (Int -> Int -> R) -> Styled Drawing
 discreteHeatMap = undefined
 
+
+
+
+-- TODO Visualize pairs, lists, ordered sets, maps, trees, directed graphs
+-- TODO Pie charts
 
 
 
