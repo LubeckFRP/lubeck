@@ -137,7 +137,7 @@ executable bd-example-history
   default-language:    Haskell2010
 
 executable bd-example-plots
-  main-is:             examples/Plots.hs
+  main-is:             examples/DV1.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom

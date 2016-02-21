@@ -31,8 +31,8 @@ import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
 
 import Lubeck.FRP
-import Lubeck.Plots.Drawing
-import Lubeck.Plots.SimpleNormalized
+import Lubeck.DV.Drawing
+import Lubeck.DV.SimpleNormalized
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms
 import Lubeck.Forms.Select
