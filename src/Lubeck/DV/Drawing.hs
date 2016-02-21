@@ -78,6 +78,7 @@ module Lubeck.DV.Drawing
 
     , circleData
     , circleDataWithColor
+    , pieChartData
 
     -- | Ratios
     , ratioData
@@ -237,7 +238,7 @@ instance Monoid Styling where
     , _scatterPlotStrokeColor       = Colors.red `withOpacity` 0.6
     , _scatterPlotStrokeWidth       = 1
     , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
-    , _scatterPlotSize              = 10/300
+    , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
     , _scatterPlotShape             = mempty
 
     , _barPlotBarColors             = fmap (`withOpacity` 0.6) $ cycle
@@ -280,8 +281,7 @@ withDefaultStyle x = getStyled x mempty
 withDefaultStyleT :: StyledT m a -> m a
 withDefaultStyleT x = getStyledT x mempty
 
--- Pie charts
--- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
+-- TODO consolidate origin, intoRect
 
 -- | Draw data for a scatter plot.
 scatterData :: Monad m => [R2] -> StyledT m Drawing
@@ -292,8 +292,8 @@ scatterData ps = do
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
   let origin = Point 0 0
-  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> (dy $ style^.renderingRectangle))
-  return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
+  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
+  return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: Monad m => [R2] -> StyledT m Drawing
@@ -301,8 +301,8 @@ scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = Point 0 0
-  let intoRect = transformPoint mempty
-  return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) (fmap intoRect ps)
+  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
+  return $ mconcat $ fmap (\p -> translateX (x p) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: Monad m => [R2] ->  StyledT m Drawing
@@ -310,8 +310,8 @@ scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
   let origin = Point 0 0
-  let intoRect = transformPoint mempty
-  return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) (fmap intoRect ps)
+  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
+  return $ mconcat $ fmap (\p -> translateY (y p) base) (fmap intoRect ps)
 
 -- | Draw data for a line plot.
 lineData :: [R2] -> Styled Drawing
@@ -324,8 +324,8 @@ lineData (p:ps) = do
                 . fillColorA    (style^.linePlotFillColor)
                 . strokeWidth   (style^.linePlotStrokeWidth)
   let origin = Point 0 0
-  let intoRect = transformPoint mempty
-  return $ scale 300 $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
+  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
+  return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 -- | Step chart
 --
@@ -347,6 +347,7 @@ barData :: [R] -> Styled Drawing
 barData ps = do
   style <- ask
   let base = fillColorA ((style^.barPlotBarColors) !! 0) $ square
+  -- let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
   return $ scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
 
@@ -402,6 +403,12 @@ ratioDataWithColor = undefined
 -- TODO use area not radius
 circleData :: [R] -> Styled Drawing
 circleData = undefined
+
+-- | Draw
+pieChartData :: [R] -> Styled Drawing
+pieChartData = undefined
+-- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
+
 
 -- | Draw
 circleDataWithColor :: [R2] -> Styled Drawing
