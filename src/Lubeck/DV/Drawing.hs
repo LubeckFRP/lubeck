@@ -395,6 +395,7 @@ ratioDataWithColor = undefined
 
 
 -- | Draw
+-- TODO use area not radius
 circleData :: [R] -> Styled Drawing
 circleData = undefined
 

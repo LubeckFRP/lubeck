@@ -57,8 +57,10 @@ chooseDrawing :: [Drawing] -> IO (Signal Html)
 chooseDrawing ds = do
   (view, intE) <- componentEvent 0 (rangeWidget 0 (length ds - 1) 1) mempty
   drawingS <- stepperS mempty (fmap (ds !!) intE)
-  return $ mconcat [view, (fmap (toSvg defaultRenderingOptions . (scale 600 xyCoords <>)) drawingS)]
-
+  return $ mconcat [view, (fmap (toSvg rendOpts . (background <>)) drawingS)]
+  where
+    rendOpts = defaultRenderingOptions { origoPlacement = BottomLeft, dimension = Point 400 400 }
+    background = scale 600 xyCoords
 
 main :: IO ()
 main = do
