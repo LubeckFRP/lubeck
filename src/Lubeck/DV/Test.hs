@@ -4,7 +4,7 @@
 -- | Basic plotting.
 --
 -- /DEPRECATED/
-module Lubeck.Plots.Test
+module Lubeck.DV.Test
     ( DataPlot(..)
     , Fit(..)
     , Plot(..)

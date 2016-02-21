@@ -18,13 +18,13 @@ library
                      , Lubeck.Util
                      , Lubeck.Forms
                      , Lubeck.Forms.Basic
-                     , Lubeck.Forms.Button                     
+                     , Lubeck.Forms.Button
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
-                     , Lubeck.Plots.Drawing
-                     , Lubeck.Plots.SimpleNormalized
-                     , Lubeck.Plots.Test
+                     , Lubeck.DV.Drawing
+                     , Lubeck.DV.SimpleNormalized
+                     , Lubeck.DV.Test
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI

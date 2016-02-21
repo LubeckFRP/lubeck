@@ -34,7 +34,7 @@ import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppReactive)
 import Lubeck.Forms
 import Lubeck.Forms.Button (buttonWidget, multiButtonWidget)
-import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
+import Lubeck.DV.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
 import qualified Lubeck.Drawing as Drawing
 

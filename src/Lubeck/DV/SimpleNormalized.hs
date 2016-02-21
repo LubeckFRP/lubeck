@@ -3,7 +3,7 @@
 
 -- |
 -- Basic normalized visualization.
-module Lubeck.Plots.SimpleNormalized
+module Lubeck.DV.SimpleNormalized
     ( simpleLinePlot
     , simpleTimeSeries
     , simpleTimeSeriesWithOverlay
@@ -45,7 +45,7 @@ import Lubeck.Forms.Basic
 import Lubeck.Drawing
 import Lubeck.Util(showJS, formatDateAndTimeFromUTC)
 import qualified Lubeck.Drawing
-import Lubeck.Plots.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis, withDefaultStyle)
+import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis, withDefaultStyle)
 
 
 

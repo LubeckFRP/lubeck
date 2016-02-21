@@ -45,7 +45,7 @@ This module should NOT handle:
 
 -}
 
-module Lubeck.Plots.Drawing
+module Lubeck.DV.Drawing
     (
     -- * Drawing data
     --   $normalizeInputPoint
