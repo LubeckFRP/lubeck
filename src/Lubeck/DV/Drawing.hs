@@ -292,7 +292,8 @@ scatterData ps = do
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
   let origin = Point 0 0
-  return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
+  let p2 = transformPoint mempty p
+  return $ scale 300 $ mconcat $ fmap (\p -> translate (p2 .-. origin) base) ps
 
 -- | Draw data for a scatter plot ignoring Y values.
 scatterDataX :: Monad m => [R2] -> StyledT m Drawing
@@ -300,7 +301,8 @@ scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = Point 0 0
-  return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
+  let p2 = transformPoint mempty p
+  return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p2) base) ps
 
 -- | Draw data for a scatter plot ignoring X values.
 scatterDataY :: Monad m => [R2] ->  StyledT m Drawing
@@ -308,7 +310,8 @@ scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
   let origin = Point 0 0
-  return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p) base) ps
+  let p2 = transformPoint mempty p
+  return $ scale 300 $ mconcat $ fmap (\p -> translateY (y p2) base) ps
 
 -- | Draw data for a line plot.
 lineData :: [R2] -> Styled Drawing

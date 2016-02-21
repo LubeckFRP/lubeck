@@ -122,4 +122,5 @@ rand1 = randoms $ fst $ split randG
 rand2 = randoms $ snd $ split randG
 
 -- randG = (mkStdGen 8712261455)
-randG = (mkStdGen 123456789)
+-- randG = (mkStdGen 123456789)
+randG = (mkStdGen 3141599999)
