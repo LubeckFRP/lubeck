@@ -70,8 +70,6 @@ module Lubeck.FRP (
     foldpE,
     gather,
     buffer,
-    -- withPrevious,
-    -- withPreviousWith,
 
     -- ** Building behaviors
     counter,
