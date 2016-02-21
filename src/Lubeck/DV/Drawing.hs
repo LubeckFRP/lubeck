@@ -30,20 +30,23 @@
 --
 -- $normalizeInputPoint
 -- Input should be normalized so that for each point @Point x y@ in input, x ∈ [0,1], y ∈ [0,1].
-
-
-{-
-ABSTRACTION BOUNDARIES
-
-This module should NOT handle:
-
-  - Data normalization (it expects everything in the unit hypercube)
-  - Fancy overloading (all data is in concrete types: arguments to functions below)
-  - Styling (everything parameterized on the style record)
-    - Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
-
-
--}
+--
+--
+-- TODO nice docs
+--
+-- Essentially:
+-- - This modlules draws basic static, animated and interactive graphics
+--   For static graphics, use 'Styled', for animatedinteractive, use 'StyledT Behavior' or similar.
+-- - Looks are provided by the 'Styled' monad. Use lens API to modify styling attributes.
+-- - TODO substyling
+-- - Data is generally recieved in R^n. Do normalization and axes  elsewhere.
+--
+-- This module should NOT handle:
+--
+--  - Data normalization (it expects everything in the unit hypercube)
+--  - Fancy overloading (all data is in concrete types: arguments to functions below)
+--  - Styling (everything parameterized on the style record)
+--    - Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
 
 module Lubeck.DV.Drawing
     (
@@ -284,7 +287,7 @@ withDefaultStyleT x = getStyledT x mempty
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
 
 -- | Draw data for a scatter plot.
-scatterData :: [R2] -> Styled Drawing
+scatterData :: Monad m => [R2] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
   let base = fillColorA (style^.scatterPlotFillColor) $ strokeColorA (style^.scatterPlotStrokeColor) $ scale (10/300) circle
@@ -292,7 +295,7 @@ scatterData ps = do
   return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) ps
 
 -- | Draw data for a scatter plot ignoring Y values.
-scatterDataX :: [R2] -> Styled Drawing
+scatterDataX :: Monad m => [R2] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
@@ -300,7 +303,7 @@ scatterDataX ps = do
   return $ scale 300 $ mconcat $ fmap (\p -> translateX (x p) base) ps
 
 -- | Draw data for a scatter plot ignoring X values.
-scatterDataY :: [R2] -> Styled Drawing
+scatterDataY :: Monad m => [R2] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
@@ -347,6 +350,9 @@ barData3 :: [R3] -> Styled Drawing
 -- | Draw
 barData4 :: [R4] -> Styled Drawing
 [barData2, barData3, barData4] = undefined
+
+-- rawBarData4 :: [[R]] -> Styled Drawing
+
 
 -- | Draw
 barDataWithColor  :: [R2] -> Styled Drawing
