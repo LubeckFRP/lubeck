@@ -89,6 +89,10 @@ data ResponseError = NoResponse String
 
 type DB = ExceptT ResponseError IO
 
+interactionURI :: JSString -> JSString -> JSString
+interactionURI fromAccName toAccName = baseURI <> fromAccName <> "/" <> toAccName <> "/shoutouts"
+  where baseURI = "http://data.beautifuldestinations.com/api/v1/interactions/"
+
 loadShoutouts :: Maybe JSString -> Maybe JSString -> DB (InteractionSet SearchPost)
 loadShoutouts mFrom mTo = do
   r <- liftIO getFromAPI -- TODO params
@@ -104,8 +108,7 @@ loadShoutouts mFrom mTo = do
       where
         r = Request {
             reqMethod          = GET
-          , reqURI             = "http://data.beautifuldestinations.com/api/v1/interactions/"
-                                    <> fromAccName <> "/" <> toAccName <> "/shoutouts"
+          , reqURI             = interactionURI fromAccName toAccName
           , reqLogin           = Nothing
           , reqHeaders         = []
           , reqWithCredentials = False
