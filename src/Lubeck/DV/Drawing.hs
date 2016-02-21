@@ -205,15 +205,14 @@ data Styling = Styling
 
   -- Color allocator
     -- TODO idea: to allocate colors to categories/dimensions
-    -- I.e. when generating overlapping scatter plots, grouped bar graphs, AND or legends
-    -- the color have a semantic purpose and thus should not be defined in styling (see above)
-    -- To solve this, Styling provides an (infinite ?) supply of colors, and functions
-    -- below can just use enumerations/categories as their arguments
-    -- I.e.
-      -- multiLineData :: Enum a => (a, [R2]) -> Styled Drawing
-      -- stackedAndColoredBarData4 :: [R4] -> Styled Drawing
-      -- stackedAndGroupedBarData4 :: [R4] -> Styled Drawing
-      -- legend :: (Enum a, Show a) => [a] -> Styled Drawing
+    -- This could work very well with Control.Monad.Reader.local.
+
+    -- I.e. there should be a function (subStyle 1 4 :: Styling -> Styling) that transforms the styling
+    -- (in this case 1 out of 4), by recursively applying over all styles that support this (i.e. the bar colour space).
+
+    -- NOTE there are two ways of using color with this API: through styling (appropriate for
+    -- bar groups etc where the color is not strictly bound to the data), or through an extra R dimension ("withColor",
+    -- appropriate for heat maps etc)
 
   -- Axis/ticks
     -- X,Y axis name
@@ -326,12 +325,13 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
   where
     f x = a*x + b
 
--- | Draw a bar graph.
 -- TODO bar graphs can be transposed (x/y) (how?)
+
+-- | Draw a bar graph.
 barData :: [R] -> Styled Drawing
 barData ps = do
   style <- ask
-  let base = fillColorA (style^.barPlotBarColor !! 0) $ square
+  let base = fillColorA ((style^.barPlotBarColor) !! 0) $ square
   return $ scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
 
@@ -407,23 +407,14 @@ circleDataWithColor = undefined
 -- | A size graph: scales the given objets and places them side by side.
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
--- | Draw
+-- | Draw a tree map.
 treeMapGraph :: [R] -> Styled Drawing
 treeMapGraph = undefined
-
--- | Draw
-treeMapGraphWithColor :: [R2] -> Styled Drawing
-treeMapGraphWithColor = undefined
-
--- | Draw
-discreteHeatMap :: (Int -> Int -> R) -> Styled Drawing
-discreteHeatMap = undefined
-
--- TODO tree map like bottom one here:
--- https://infogr.am/link-building-strategies-from-the-experts
--- See also "Visualize this, p 157"
 {-
-Algrorithm:
+Tree map like bottom one here:
+https://infogr.am/link-building-strategies-from-the-experts
+See also "Visualize this, p 157"
+:
   Split horizontally, put 2 largest values to the left (split vertically), rest of values to the right by
   Split vertically, put 2 largest values at the top (split horizontally), rest of values at the bottom by
   etc
@@ -432,8 +423,18 @@ Algrorithm:
 -}
 
 
+-- | Like 'treeMapGraph', mapping the last dimension to colour.
+treeMapGraphWithColor :: [R2] -> Styled Drawing
+treeMapGraphWithColor = undefined
+
+-- | Draw a discrete heat map.
+discreteHeatMap :: (Int -> Int -> R) -> Styled Drawing
+discreteHeatMap = undefined
 
 
+
+
+-
 
 -- TODO alternating tick size (i.e. every 50 year, 100 year etc)
 

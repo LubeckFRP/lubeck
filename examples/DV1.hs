@@ -97,7 +97,7 @@ main = do
   where
     plotStyle =
       linePlotStrokeColor .~ (Colors.green  `withOpacity` 0.5) $
-      barPlotBarColor     .~ (Colors.purple `withOpacity` 0.5)
+      barPlotBarColor     .~ cycle [Colors.purple `withOpacity` 0.5] $
       mempty
 
     ps           = zipWith Point rand1 rand2
