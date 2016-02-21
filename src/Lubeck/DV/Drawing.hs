@@ -292,7 +292,7 @@ scatterData ps = do
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
   let origin = Point 0 0
-  let intoRect = transformPoint (scalingX (x $ style^.renderingRectangle) <> (y $ style^.renderingRectangle))
+  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> (dy $ style^.renderingRectangle))
   return $ scale 300 $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring Y values.
