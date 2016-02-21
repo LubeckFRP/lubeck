@@ -59,7 +59,10 @@ chooseDrawing ds = do
   drawingS <- stepperS mempty (fmap (ds !!) intE)
   return $ mconcat [view, (fmap (toSvg rendOpts . (background <>)) drawingS)]
   where
-    rendOpts = defaultRenderingOptions { origoPlacement = BottomLeft, dimension = Point 400 400 }
+    rendOpts  = defaultRenderingOptions
+                { origoPlacement = BottomLeft
+                , dimensions = Point 400 400
+                }
     background = scale 600 xyCoords
 
 main :: IO ()
