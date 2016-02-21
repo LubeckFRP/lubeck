@@ -353,7 +353,7 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
 barData :: [R] -> Styled Drawing
 barData ps = do
   style <- ask
-  let base = fillColorA ((style^.barPlotBarColor) !! 0) $ square
+  let base = fillColorA ((style^.barPlotBarColors) !! 0) $ square
   return $ scale 300 $ mconcat $
     fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
 
