@@ -101,9 +101,7 @@ module Lubeck.Drawing (
     TextAnchor(..),
     TextOptions(..),
     textWithOptions,
-    -- ** Combination
-    -- over,
-    -- mconcat,
+
     -- ** Utility
     xyAxis,
     xyCoords,
