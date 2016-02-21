@@ -107,7 +107,7 @@ main = do
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
     plotStyle =
-      renderingRectangle  .~ Vector 500 300 $
+      renderingRectangle  .~ Vector 300 300 $
       linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5) $
       barPlotBarColors    .~ cycle [Colors.purple `withOpacity` 0.5] $
       mempty

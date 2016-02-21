@@ -252,7 +252,7 @@ instance Monoid Styling where
                                       , Colors.orange
                                       , Colors.purple
                                       ]
-    , _barPlotWidth                 = Vector 1   0
+    , _barPlotWidth                 = Vector 1   0 -- TODO not actually used as other values are relative this anyway
     , _barPlotUngroupedOffset       = Vector 0.5 0
     , _barPlotGroupedOffset         = Vector 0   0
     , _barPlotStackedOffset         = Vector 0   0.1
@@ -351,10 +351,12 @@ linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
 barData :: [R] -> Styled Drawing
 barData ps = do
   style <- ask
+  let barFullOffset = barWidth + barWidth * (dx $ style^.barPlotUngroupedOffset)
+  let barWidth = (1/fromIntegral (length ps + 1)) * barFullOffset
   let base = fillColorA ((style^.barPlotBarColors) !! 0) $ square
   -- let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
-  return $ scale 300 $ mconcat $
-    fmap (\p -> scaleX (1/fromIntegral (length ps)) $ scaleY p $ base) ps
+  return $ scale 300 $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
+    fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
 
 -- | Draw
 barData2 :: [R2] -> Styled Drawing
@@ -400,7 +402,7 @@ ratioData v = do
   style <- ask
   let fg = style^.ratioPlotForegroundColor
   let bg = style^.ratioPlotBackgroundColor
-  return $ transform (scalingRR style) (alignBL $ fillColorA fg (scaleY v square) <> fillColorA bg square)
+  return $ transform (scalingRR style) (fillColorA fg (scaleY v (alignBL square)) <> fillColorA bg (alignBL square))
   where
     -- TODO move
     alignBL = translate (Vector 0.5 0.5)
