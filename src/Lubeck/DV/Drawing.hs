@@ -434,7 +434,7 @@ discreteHeatMap = undefined
 
 
 
--
+
 
 -- TODO alternating tick size (i.e. every 50 year, 100 year etc)
 
