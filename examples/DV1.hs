@@ -103,7 +103,7 @@ main = do
 
     , barData (take 10 rand1)
     , barData (take 3 rand2)
-    , barData [0,0.1..1]
+    , barData [1,1.1..1]
 
     , ratioData (rand1 !! 0)
     , ratioData (rand1 !! 1)
