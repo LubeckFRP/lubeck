@@ -99,6 +99,9 @@ module Lubeck.DV.Drawing
     , labeledAxis
     -- , crossLineX
     -- , crossLineY
+    , plotRectangle
+
+    
 
     -- * Drawing legends
 
@@ -406,6 +409,15 @@ ratioData v = do
   where
     -- TODO move
     alignBL = translate (Vector 0.5 0.5)
+    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
+
+
+-- | Visualizes the plotting rectangle. Useful for deugging.
+plotRectangle :: R -> Styled Drawing
+plotRectangle v = do
+  style <- ask
+  return $ transform (scalingRR style) xyCoords
+  where
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
 -- | Visualizes ration with colour.

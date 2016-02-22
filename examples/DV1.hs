@@ -97,6 +97,9 @@ main = do
     , lineData [Point 0 0, Point 1 1]
     , lineData [Point 0 0, Point 0 0, Point 1 1]
     , lineData [Point 0.5 0.5, Point 1 1]
+    , stepData (Point 0 0.5)
+      [ Vector 0 0, Vector 0.2 0, Vector 0 0.3
+      , Vector 0.5 0, Vector 0 (-0.2), Vector 0.5 0, Vector 0 0.2]
 
     , barData (take 10 rand1)
     , barData (take 3 rand2)
