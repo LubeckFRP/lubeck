@@ -344,10 +344,11 @@ barData ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (dx $ style^.barPlotUngroupedOffset)
-  let base = fillColorA ((style^.barPlotBarColors) !! 0) $ square
-  return $ scale (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
+  let base = alignB $ fillColorA ((style^.barPlotBarColors) !! 0) $ square
+  return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
   where
+    alignB = translate (Vector 0 0.5)
     scaleRR = transform . scalingRR
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
