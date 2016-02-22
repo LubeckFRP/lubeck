@@ -366,11 +366,11 @@ barData ps = do
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (dx $ style^.barPlotUngroupedOffset)
   let base = fillColorA ((style^.barPlotBarColors) !! 0) $ square
-  -- TODO use renderingRectangle
   return $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
   where
-    scaleRR style = let r = style^.renderingRectangle in scale (dx r) (dy r)
+    scaleRR = transform . scalingRR
+    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
 -- | Draw
 barData2 :: [R2] -> Styled Drawing
