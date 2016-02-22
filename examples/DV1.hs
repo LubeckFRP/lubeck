@@ -107,6 +107,11 @@ main = do
     , ratioData (rand1 !! 0)
     , ratioData (rand1 !! 1)
     , ratioData (rand1 !! 2)
+
+    , ratioDataWithColor $ Point (rand1 !! 0) 0
+    , ratioDataWithColor $ Point (rand1 !! 1) 0.2
+    , ratioDataWithColor $ Point (rand1 !! 2) 0.7
+
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where

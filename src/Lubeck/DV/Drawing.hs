@@ -150,7 +150,7 @@ import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Data.AffineSpace
-import Data.Colour (Colour, AlphaColour, withOpacity)
+import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid ((<>), First(..))
 import Data.VectorSpace
 import GHCJS.Types(JSString, jsval)
@@ -228,6 +228,10 @@ data Styling = Styling
     -- Text position relative tick
     -- Text rotation
       -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
+
+  , _heatMapColour1                   :: AlphaColour Double
+  , _heatMapColour2                   :: AlphaColour Double
+
   }
   deriving (Show)
 
@@ -265,6 +269,9 @@ instance Monoid Styling where
 
     , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
     , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
+
+    , _heatMapColour1               = Colors.red        `withOpacity` 1
+    , _heatMapColour2               = Colors.purple     `withOpacity` 1
     }
   mappend = const
 
@@ -414,6 +421,24 @@ ratioData v = do
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
 
+-- | Visualizes ration with colour.
+-- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
+ratioDataWithColor :: R2 -> Styled Drawing
+ratioDataWithColor (Point v1 v2) = do
+  style <- ask
+  let bg  = style^.ratioPlotBackgroundColor
+  let fg1 = style^.heatMapColour1
+  let fg2 = style^.heatMapColour2
+  let fg  = blend v2 fg1 fg2
+  return $ transform (scalingRR style) (fillColorA fg (scaleY v1 (alignBL square)) <> fillColorA bg (alignBL square))
+  where
+    -- TODO move
+    alignBL = translate (Vector 0.5 0.5)
+    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
+
+-- TODO consolidate ratioData, ratioDataWithColor
+
+
 -- | Visualizes the plotting rectangle. Useful for deugging.
 plotRectangle :: Styled Drawing
 plotRectangle = do
@@ -421,12 +446,6 @@ plotRectangle = do
   return $ transform (scalingRR style) (scale 2 xyCoords)
   where
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
-
--- | Visualizes ration with colour.
--- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioDataWithColor :: R2 -> Styled Drawing
-ratioDataWithColor = undefined
-
 
 -- | Draw
 -- TODO use area not radius
