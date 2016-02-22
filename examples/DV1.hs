@@ -99,7 +99,7 @@ main = do
     , lineData [Point 0.5 0.5, Point 1 1]
     , stepData (Point 0 0.5)
       [ Vector 0 0, Vector 0.2 0, Vector 0 0.3
-      , Vector 0.5 0, Vector 0 (-0.2), Vector 0.5 0, Vector 0 0.2]
+      , Vector 0.5 0, Vector 0 (-0.2), Vector 0.3 0, Vector 0 0.2]
 
     , barData (take 10 rand1)
     , barData (take 3 rand2)
@@ -137,6 +137,6 @@ rand1, rand2 :: [Double]
 rand1 = randoms $ fst $ split randG
 rand2 = randoms $ snd $ split randG
 
--- randG = (mkStdGen 8712261455)
-randG = (mkStdGen 123456789)
+randG = (mkStdGen 8712261455)
+-- randG = (mkStdGen 123456789)
 -- randG = (mkStdGen 3141599999)
