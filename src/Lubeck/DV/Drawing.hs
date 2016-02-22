@@ -2,9 +2,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections,
   TemplateHaskell, CPP #-}
 
--- |
--- Basics for drawing plots.
---
 -- These are all low-level drawing functions.
 --
 -- Conventions:
@@ -32,22 +29,33 @@
 -- Input should be normalized so that for each point @Point x y@ in input, x ∈ [0,1], y ∈ [0,1].
 --
 --
+
+
+-- |
+-- Basics for drawing plots.
+--
 -- TODO nice docs
 --
 -- Essentially:
--- - This modlules draws basic static, animated and interactive graphics
+--
+-- * This modlules draws basic static, animated and interactive graphics
 --   For static graphics, use 'Styled', for animatedinteractive, use 'StyledT Behavior' or similar.
--- - Looks are provided by the 'Styled' monad. Use lens API to modify styling attributes.
--- - TODO substyling
--- - Data is generally recieved in R^n. Do normalization and axes  elsewhere.
+--
+-- * Looks are provided by the 'Styled' monad. Use lens API to modify styling attributes.
+--
+-- * TODO substyling
+--
+-- * Data is generally recieved in R^n. Do normalization and axes  elsewhere.
 --
 -- This module should NOT handle:
 --
---  - Data normalization (it expects everything in the unit hypercube)
---  - Fancy overloading (all data is in concrete types: arguments to functions below)
---  - Styling (everything parameterized on the style record)
---    - Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
-
+--  * Data normalization (it expects everything in the unit hypercube)
+--
+--  * Fancy overloading (all data is in concrete types: arguments to functions below)
+--
+--  * Styling (everything parameterized on the style record)
+--
+--    ** Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
 module Lubeck.DV.Drawing
     (
     -- * Drawing data
@@ -186,7 +194,6 @@ data Styling = Styling
   , _scatterPlotShape                 :: ()
 
   -- Bar plots
-
   -- Infinite list of bar colours:
   , _barPlotBarColors                 :: [AlphaColour Double]
   , _barPlotWidth                     :: Vector
@@ -229,6 +236,7 @@ data Styling = Styling
     -- Text rotation
       -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
 
+  -- Heat maps and related
   , _heatMapColour1                   :: AlphaColour Double
   , _heatMapColour2                   :: AlphaColour Double
 
