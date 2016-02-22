@@ -60,8 +60,8 @@ chooseDrawing ds = do
   return $ mconcat [view, (fmap (toSvg rendOpts) drawingS)]
   where
     rendOpts  = defaultRenderingOptions
-                { OriginPlacement = Center
-                , dimensions = Point 800 800
+                { originPlacement = Center
+                , dimensions      = Point 800 800
                 }
     -- backgroundGrid = scale 600 xyCoords
 
