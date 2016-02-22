@@ -366,7 +366,7 @@ barData ps = do
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (dx $ style^.barPlotUngroupedOffset)
   let base = fillColorA ((style^.barPlotBarColors) !! 0) $ square
-  return $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
+  return $ scale (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
   where
     scaleRR = transform . scalingRR
