@@ -101,7 +101,7 @@ module Lubeck.DV.Drawing
     -- , crossLineY
     , plotRectangle
 
-    
+
 
     -- * Drawing legends
 
@@ -111,6 +111,7 @@ module Lubeck.DV.Drawing
 
     -- * Styling
 
+    -- ** Building a style
     , Styling
     -- TODO exort all lenses here
     , renderingRectangle
@@ -129,6 +130,7 @@ module Lubeck.DV.Drawing
     , barPlotGroupedOffset
     , barPlotSpaceUsed
 
+    -- ** Running a style
     , Styled
     , getStyled
     , withDefaultStyle
@@ -413,10 +415,10 @@ ratioData v = do
 
 
 -- | Visualizes the plotting rectangle. Useful for deugging.
-plotRectangle :: R -> Styled Drawing
-plotRectangle v = do
+plotRectangle :: Styled Drawing
+plotRectangle = do
   style <- ask
-  return $ transform (scalingRR style) xyCoords
+  return $ transform (scalingRR style) (scale 2 xyCoords)
   where
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
