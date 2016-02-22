@@ -61,7 +61,7 @@ chooseDrawing ds = do
   where
     rendOpts  = defaultRenderingOptions
                 { originPlacement = Center
-                , dimensions      = Point 800 800
+                , dimensions      = Point 1000 500
                 }
     -- backgroundGrid = scale 600 xyCoords
 
@@ -117,7 +117,7 @@ main = do
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
     plotStyle = id
-      $ renderingRectangle  .~ Vector 800 400
+      $ renderingRectangle  .~ Vector 500 250
       $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
       $ barPlotBarColors    .~ cycle [Colors.purple `withOpacity` 0.5]
       $ mempty
