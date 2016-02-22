@@ -16,12 +16,12 @@ typecheck-client:
 .PHONY: build-client
 build-client:
 	clear && \
-	time stack build -j4 --fast --install-ghc
+	time stack build -j4 --fast --install-ghc --haddock
 
 .PHONY: build-client-fast
 build-client-fast:
 	clear && \
-	time stack build -j4 --fast --haddock
+	time stack build -j4 --fast
 
 .PHONY: build-server
 build-server:
