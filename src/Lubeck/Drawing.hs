@@ -108,7 +108,7 @@ module Lubeck.Drawing (
     smokeBackground,
 
     -- * Render
-    OrigoPlacement(..),
+    OriginPlacement(..),
     RenderingOptions(..),
     defaultRenderingOptions,
     toSvg,
@@ -573,7 +573,7 @@ strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
 
 
 {-| Where to place origo in the generated SVG. -}
-data OrigoPlacement
+data OriginPlacement
   = TopLeft
   | BottomLeft
   | Center
@@ -582,7 +582,7 @@ data OrigoPlacement
 {-| Specifies how to generate an SVG from a Drawing. -}
 data RenderingOptions = RenderingOptions
   { dimensions     :: Point                   -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
-  , origoPlacement :: OrigoPlacement          -- ^ Where to place origo in the generated image.
+  , OriginPlacement :: OriginPlacement          -- ^ Where to place origo in the generated image.
   }
   deriving (Eq, Ord, Show)
 
@@ -591,7 +591,7 @@ defaultRenderingOptions = RenderingOptions (Point 800 800) Center
 
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
-toSvg (RenderingOptions {dimensions, origoPlacement}) drawing =
+toSvg (RenderingOptions {dimensions, OriginPlacement}) drawing =
   svgTopNode
     (showJS $ floor x)
     (showJS $ floor y)
@@ -607,7 +607,7 @@ toSvg (RenderingOptions {dimensions, origoPlacement}) drawing =
       , A.viewBox vb ]
 
     placeOrigo :: Drawing -> Drawing
-    placeOrigo = case origoPlacement of
+    placeOrigo = case OriginPlacement of
       TopLeft     -> id
       Center      -> translateX (x/2) . translateY (y/(-2))
       BottomLeft  -> translateY (y*(-1))

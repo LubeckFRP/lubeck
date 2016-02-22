@@ -175,7 +175,7 @@ interactionW _ interaction = div
     render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
     renderOpts = Drawing.defaultRenderingOptions
       { Drawing.dimensions     = Drawing.Point 600 600
-      , Drawing.origoPlacement = Drawing.BottomLeft }
+      , Drawing.OriginPlacement = Drawing.BottomLeft }
 
 
 getShoutouts :: TwoAccounts -> IO (InteractionSet SearchPost)

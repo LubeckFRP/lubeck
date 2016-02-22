@@ -125,7 +125,7 @@ basicDataGrowth f x = let
 
 -- {-| -}
 plotDrawingToSvg :: Drawing -> Svg
-plotDrawingToSvg x = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $ D.translate (20%%20) x
+plotDrawingToSvg x = D.toSvg (D.RenderingOptions { D.OriginPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $ D.translate (20%%20) x
 
 
 {-| -}
@@ -155,7 +155,7 @@ examplePlot =
 
 {-| -}
 plotTest :: a -> Svg
-plotTest _ = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $
+plotTest _ = D.toSvg (D.RenderingOptions { D.OriginPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $
   D.translate (20%%20) $ D.scale 1 $
       D.transparent
       -- (plotPoints {color=Just "red"}
