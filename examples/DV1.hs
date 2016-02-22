@@ -131,9 +131,12 @@ main = do
     lastOnly xs = if null xs then [] else [last xs]
 
 
+-- Some random series for testing
+
 randPoints, ordRandPoints :: [Point]
 ordRandPoints = (Data.List.sortBy (Data.Ord.comparing x) $ take 10 randPoints)
 randPoints    = zipWith Point rand1 rand2
+
 rand1, rand2 :: [Double]
 rand1 = randoms $ fst $ split randG
 rand2 = randoms $ snd $ split randG
