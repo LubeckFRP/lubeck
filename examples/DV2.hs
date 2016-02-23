@@ -10,9 +10,6 @@ import Data.Monoid ((<>))
 
 import GHCJS.Types(JSString, jsval)
 import qualified Web.VirtualDom.Html as H
-import qualified Web.VirtualDom.Html.Attributes as H
-import qualified Web.VirtualDom.Html.Events as H
-import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
 
 import qualified Data.List
@@ -77,6 +74,10 @@ main = do
     [ (redCircle ||| blueCircle) <> xyCoords
     , (redCircle ||| blueCircle ||| redCircle) <> xyCoords
     , (redCircle === blueCircle) <> xyCoords
+
+    , (scale 3 redCircle ||| blueCircle) <> xyCoords
+    , (redCircle ||| scale 10 blueCircle ||| scale 2 redCircle) <> xyCoords
+    , (redCircle === scale 2 blueCircle) <> xyCoords
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
