@@ -134,6 +134,12 @@ module Lubeck.Drawing (
     (===),
     juxtapose,
 
+    boundaries,
+    align',
+    align,
+    OctagonSide(..),
+    
+
 
     -- ** Drawings
     Drawing,
@@ -541,6 +547,31 @@ envelopeVMay' v = fmap ((*^ v) . ($ v)) . appEnvelope
   where
     appEnvelope (Envelope e) = e
 
+-- | Takes a line and a direction (represented as a vector, whose magnitude is ignored).
+-- Returns the two lowest and highest point on the line that falls insiode the envelope,
+-- ordering by closeness to the infinity the vector points towards. I.e. given unitX,
+-- returns the leftMost and rightMost point inside the envelope.
+boundaries :: (Functor v, Num n, Num (v n), Additive v) => v n -> Envelope v n -> Maybe (Point v n, Point v n)
+boundaries v e = liftA2 (,) lb ub
+  where
+    lb = (origin .+^) <$> envelopeVMay' (-v) e
+    ub = (origin .+^) <$> envelopeVMay' v e
+
+align' :: (Functor v, Num n, Num (v n), Additive v) => v n -> n -> Envelope v n -> Maybe (Point v n)
+align v n e = g <$> boundaries v e
+  where
+    g (lb, ub) = lerp n
+
+data OctagonSide = BL | TR | TL | BR | L | R | T | B
+
+align BL  = align' posDiagonal 0
+align TR  = align' posDiagonal 1
+align TL  = align' negDiagonal 0
+align BR  = align' negDiagonal 0
+align L   = align' unitX 0
+align R   = align' unitX 1
+align T   = align' unitY 1
+align B   = align' unitY 0
 
   -- case (envelope a, envelope b) of
   -- (Envelope (Just f), Envelope (Just g)) ->
