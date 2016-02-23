@@ -8,7 +8,9 @@ High-level vector graphics library. Renders to as SVG using "Web.VirtualDom.Svg"
 The API is a rather stripped-down version of Diagrams.
 
 Similar to diagrams:
+
 * Based on "linear", points, vectors and transformations
+
 * Has monoidal overlay of transparent images, local origins and envelpoes
 
 Main differences from Diagrams:
