@@ -128,14 +128,24 @@ import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
 import Control.Monad.Reader
-import Data.AffineSpace
+-- import Data.AffineSpace
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid ((<>), First(..))
-import Data.VectorSpace
+-- import Data.VectorSpace
 import GHCJS.Types(JSString, jsval)
 import qualified Data.Colour.Names as Colors
 import qualified Data.JSString
 import qualified Data.VectorSpace as VS
+
+import Linear.Vector
+import Linear.Affine
+-- import Linear.Matrix hiding (translation)
+-- import Linear.Metric -- Needed?
+import Linear.V0
+import Linear.V1
+import Linear.V2
+import Linear.V3
+import Linear.V4
 
 import Lubeck.Drawing
 import Lubeck.Util(showJS)
@@ -149,7 +159,7 @@ data Styling = Styling
   { _dummy                            :: ()
 
   -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
-  , _renderingRectangle               :: Vector
+  , _renderingRectangle               :: V2 Double
 
   -- Line plots
   , _linePlotStrokeColor              :: AlphaColour Double
@@ -167,10 +177,10 @@ data Styling = Styling
   -- Bar plots
   -- Infinite list of bar colours:
   , _barPlotBarColors                 :: [AlphaColour Double]
-  , _barPlotWidth                     :: Vector
-  , _barPlotUngroupedOffset           :: Vector
-  , _barPlotGroupedOffset             :: Vector
-  , _barPlotStackedOffset             :: Vector
+  , _barPlotWidth                     :: V2 Double
+  , _barPlotUngroupedOffset           :: V2 Double
+  , _barPlotGroupedOffset             :: V2 Double
+  , _barPlotStackedOffset             :: V2 Double
   -- Percentage of horizontal dim taken up by plots, in [0..1] (default 1)
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
   , _barPlotSpaceUsed                 :: Double
@@ -219,7 +229,7 @@ makeLenses ''Styling
 instance Monoid Styling where
   mempty = Styling
     { _dummy                        = mempty
-    , _renderingRectangle           = Vector 300 300
+    , _renderingRectangle           = V2 300 300
 
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
@@ -240,10 +250,10 @@ instance Monoid Styling where
                                       , Colors.orange
                                       , Colors.purple
                                       ]
-    , _barPlotWidth                 = Vector 1   0 -- TODO not actually used as other values are relative this anyway
-    , _barPlotUngroupedOffset       = Vector 0.5 0
-    , _barPlotGroupedOffset         = Vector 0   0
-    , _barPlotStackedOffset         = Vector 0   0.1
+    , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
+    , _barPlotUngroupedOffset       = V2 0.5 0
+    , _barPlotGroupedOffset         = V2 0   0
+    , _barPlotStackedOffset         = V2 0   0.1
     , _barPlotSpaceUsed             = 9/10
 
     , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
@@ -348,7 +358,7 @@ barData ps = do
   return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
   where
-    alignB = translate (Vector 0 0.5)
+    alignB = translate (V2 0 0.5)
     scaleRR = transform . scalingRR
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
@@ -399,7 +409,7 @@ ratioData v = do
   return $ transform (scalingRR style) (fillColorA fg (scaleY v (alignBL square)) <> fillColorA bg (alignBL square))
   where
     -- TODO move
-    alignBL = translate (Vector 0.5 0.5)
+    alignBL = translate (V2 0.5 0.5)
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
 
@@ -415,7 +425,7 @@ ratioDataWithColor (Point v1 v2) = do
   return $ transform (scalingRR style) (fillColorA fg (scaleY v1 (alignBL square)) <> fillColorA bg (alignBL square))
   where
     -- TODO move
-    alignBL = translate (Vector 0.5 0.5)
+    alignBL = translate (V2 0.5 0.5)
     scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
 
 -- TODO consolidate ratioData, ratioDataWithColor
