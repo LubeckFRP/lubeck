@@ -1,6 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
-  NamedFieldPuns, QuasiQuotes, CPP, NoMonomorphismRestriction #-}
+  NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns #-}
 
 {-|
 
@@ -584,18 +584,29 @@ data Drawing
   = Circle
   | Rect
   | Line -- conceptually a line from point a to point b
-  | Lines Bool [V2 Double]  -- sequence of straight lines, closed or not. For closed lines, there is no need to return
-                            -- the original point (i.e. the sum of the vectors does not have to be zeroV).
+  | Lines !Bool [V2 Double]  -- sequence of straight lines, closed or not. For closed lines, there is no need to return
+                             -- the original point (i.e. the sum of the vectors does not have to be zeroV).
 
-  | Text JSString
+  | Text !JSString
 
-  | Transf (Transformation Double) Drawing
-  | Style Style Drawing
+  | Transf !(Transformation Double) !Drawing
+  | Style !Style !Drawing
   -- Embed arbitrary SVG property (typically used for event handlers)
-  | Prop E.Property Drawing
+  | Prop !E.Property !Drawing
 
   | Em
   | Ap Drawing Drawing
+
+-- TODO using seq? instead of list
+-- TODO strict transformations,styles,properties?
+-- TODO replacing Em/Ap with (Conc [Drawing])
+-- TODO merging transf/style/prop
+--
+-- Style  s1 (Style  s2 x) = Style  (s1 <> s2) x
+-- Transf t1 (Transf t2 x) = Transf (s1 <> s2) x
+-- Style  Em = Em
+-- Transf Em = Em
+-- Ap [Ap xs, y, ...] = Ap (xs++[y] ...)
 
 instance Monoid Drawing where
   mempty  = transparent
