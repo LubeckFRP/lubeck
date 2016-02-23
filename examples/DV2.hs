@@ -74,8 +74,9 @@ hcat = foldr (|||) mempty
 main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords)) $
-    [ (translateX 2 redCircle ||| blueCircle)
-    , (redCircle ||| greenCircle ||| blueCircle)
+    [ (translateX 2 blueRect ||| blueCircle)
+    , (redCircle ||| blueRect ||| blueCircle)
+    , (redCircle ||| fill ||| blueRect ||| fill ||| blueCircle)
     , (redCircle === blueCircle)
 
     , (scale 3 redCircle ||| blueCircle)
@@ -89,6 +90,8 @@ main = do
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
+    fill = scale 10 horizontalLine
+
     redCircle   = scale 10 $ fillColorA (Colors.red `withOpacity` 0.4) circle
     blueCircle  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) circle
     greenCircle = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) circle

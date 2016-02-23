@@ -538,9 +538,9 @@ envelope x = case x of
 pointsEnvelope :: [P2 Double] -> Envelope V2 Double
 pointsEnvelope [] = Envelope $ Nothing
 pointsEnvelope ps = Envelope $ Just $ \v ->
-  (\(P (V2 x _)) -> x / norm v) $ rightMost $ rotatePoints (negate $ angleBetween v unitX) ps
+  (\(P (V2 x _)) -> x / norm v) $ rightMost $ rotatePoints (angleBetween unitX v) ps
   where
-    -- Rotate all points and the vector so that the vector aligns with unitX
+    -- Rotate all points so that the input vector aligns with the "conceptual" unitX
     -- Find rightmost point by comparing x coord
     -- Return x of leftmost point / magnitude of vector
     --
@@ -742,7 +742,8 @@ scalingX a      = scaling     a 1
 {-| Scales (stretch) an object. -}
 scalingY b      = scaling     1 b
 
-{-| Rotates an object. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
+{-| Rotates an object. A positive vale will result in a counterclockwise rotation
+    and negative value in a clockwise rotation. -}
 rotation :: Angle Double -> Transformation Double
 rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 
