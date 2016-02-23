@@ -593,11 +593,8 @@ data RenderingOptions = RenderingOptions
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid RenderingOptions where
-  mappend = mempty
+  mempty  = RenderingOptions (Point 800 800) Center
   mappend = const
-
-mempty :: RenderingOptions
-mempty = RenderingOptions (Point 800 800) Center
 
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
