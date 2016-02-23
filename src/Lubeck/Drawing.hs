@@ -46,6 +46,7 @@ Main differences from Diagrams:
 
 -}
 module Lubeck.Drawing (
+    -- * Creating drawings
     -- ** Basics
     Point(..),
     V1(..), V2(..), V3(..), V4(..),
@@ -102,8 +103,15 @@ module Lubeck.Drawing (
     -- ** Events
     addProperty,
 
-    -- ** Envelopes
+    -- ** Envelopes/Alignment/Juxtaposition
     Envelope,
+    envelope,
+    transformEnvelope,
+    unitX,
+    unitY,
+    (|||),
+    (===),
+    juxtapose,
 
 
     -- ** Drawings
@@ -129,7 +137,7 @@ module Lubeck.Drawing (
     xyCoords,
     smokeBackground,
 
-    -- * Render
+    -- * Rendering drawings
     OriginPlacement(..),
     RenderingOptions(..),
     -- mempty,
@@ -390,6 +398,7 @@ envelope x = case x of
   Prop  _ x     -> envelope x
   Em            -> Envelope $ Nothing
   Ap x y        -> mappend (envelope x) (envelope y)
+
 
 
 -- moveOriginTo (origin .^+ v) === translate (negated v)

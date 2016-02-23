@@ -9,7 +9,6 @@ import qualified Prelude
 import Data.Monoid ((<>))
 
 import GHCJS.Types(JSString, jsval)
-import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Html as H
 import qualified Web.VirtualDom.Html.Attributes as H
 import qualified Web.VirtualDom.Html.Events as H
@@ -74,14 +73,15 @@ chooseDrawing ds = do
 
 main :: IO ()
 main = do
-  dS <- chooseDrawing $ [
-    redCircle <> xyCoords
-
-
-  ]
+  dS <- chooseDrawing
+    [ (redCircle ||| blueCircle) <> xyCoords
+    , (redCircle ||| blueCircle ||| redCircle) <> xyCoords
+    , (redCircle === blueCircle) <> xyCoords
+    ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
     redCircle = scale 10 (fillColor Colors.red circle)
+    blueCircle = scale 10 (fillColor Colors.blue circle)
     plotStyle = id
       $ renderingRectangle  .~ V2 500 250
       $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
