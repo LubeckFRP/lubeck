@@ -71,60 +71,12 @@ chooseDrawing ds = do
 main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords))
-    [ showEnvelope (V2 1 0)   $ scale 1 blueCircle
-    , showEnvelope (V2 1 0)   $ scale 2 blueCircle
-    , showEnvelope (V2 1 0)   $ translateX 4 $ scale 1 blueCircle
-
-
-
-    , showEnvelope (V2 1 0)   $ rotate (4*turn/13) $ translateX 5 $ scale 3 blueCircle
-
-    , showEnvelope unitX $ showEnvelope unitY $ segments (take 5 randVectors)
-    , showEnvelope unitX $ showEnvelope unitY $ segments (drop 2 $ take 3 randVectors)
-    , showEnvelope unitX $ showEnvelope unitY $ segments (drop 20 $ take 15 randVectors)
-
-    , showEnvelope (V2 1 0.3)   $ scale 1 blueCircle
-    , showEnvelope (V2 1 0.3)   $ scale 2 blueCircle
-    , showEnvelope (V2 1 0.3)   $ translateX 4 $ scale 1 blueCircle
-
-    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
-    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
-    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
-
-    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
-    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
-    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
-
-    , showDirection (dir $ V2 1    0)
-    , showDirection (dir $ V2 0    1)
-    , showDirection (dir $ V2 (-1) 0)
-    , showDirection (dir $ V2 0    (-1))
-
-    , showDirection2 (dir $ V2 1    0)
-    , showDirection2 (dir $ V2 0    1)
-    , showDirection2 (dir $ V2 (-1) 0)
-    , showDirection2 (dir $ V2 0    (-1))
-
-    , showUnitX
-    , rotate (turn*1/3) $ showUnitX
-    , rotate (turn*3/4) $ showUnitX
+    [
     ]
-    -- [ (translateX 2 redCircle ||| blueCircle)
-    -- , (redCircle ||| greenCircle ||| blueCircle)
-    -- , (redCircle === blueCircle)
-    --
-    -- , (scale 3 redCircle ||| blueCircle)
-    -- , transform (translation 0 3) $
-    --     (scale 3 redCircle ||| blueCircle)
-    -- , transform (negTransformation $ translation 0 3) $
-    --     (scale 3 redCircle ||| blueCircle)
-    --
-    -- , (scale 3 redCircle ||| blueCircle)
-    -- , (redCircle ||| scale 2 greenCircle ||| scale 0.5 blueCircle)
-    -- , (redCircle === scale 2 blueCircle)
-    -- ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
+    rotateVector a = transformVector (rotation a)
+
     redCircle   = scale 10 $ fillColorA (Colors.red `withOpacity` 0.4) circle
     blueCircle  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) circle
     greenCircle = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) circle

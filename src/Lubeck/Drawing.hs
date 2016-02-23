@@ -845,7 +845,9 @@ showEnvelope v drawing = case envelopeVMay v drawing of
   where
     -- A sideways T in the unit square, with the "top" pointing
     -- in the direction of unitX
-    unitX_T = strokeWidth 2 $ strokeColor C.red $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
+    unitX_T = strokeWidth 2 $ strokeColor C.red $ fillColorA tp $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
+    tp = C.black `withOpacity` 0
+
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing

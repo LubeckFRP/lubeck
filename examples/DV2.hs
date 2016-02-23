@@ -88,6 +88,40 @@ main = do
     , showEnvelope unitX $ showEnvelope unitY $ translateX 0.2 $ shear 0.2 1 redCircle
     , showEnvelope unitX $ showEnvelope unitY $ translateX 0.2 $ translateY 1 $ shear 1 0.2 redCircle
 
+    , showEnvelope (V2 1 0)   $ scale 1 blueCircle
+    , showEnvelope (V2 1 0)   $ scale 2 blueCircle
+    , showEnvelope (V2 1 0)   $ translateX 4 $ scale 1 blueCircle
+    , showEnvelope (V2 1 0)   $ rotate (4*turn/13) $ translateX 5 $ scale 3 blueCircle
+
+    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ segments (take 5 randVectors)
+    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ segments (drop 2 $ take 3 randVectors)
+    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ segments (drop 20 $ take 15 randVectors)
+
+    , showEnvelope (V2 1 0.3)   $ scale 1 blueCircle
+    , showEnvelope (V2 1 0.3)   $ scale 2 blueCircle
+    , showEnvelope (V2 1 0.3)   $ translateX 4 $ scale 1 blueCircle
+
+    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
+    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
+    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
+
+    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
+    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
+    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
+
+    , showDirection (dir $ V2 1    0)
+    , showDirection (dir $ V2 0    1)
+    , showDirection (dir $ V2 (-1) 0)
+    , showDirection (dir $ V2 0    (-1))
+
+    , showDirection2 (dir $ V2 1    0)
+    , showDirection2 (dir $ V2 0    1)
+    , showDirection2 (dir $ V2 (-1) 0)
+    , showDirection2 (dir $ V2 0    (-1))
+
+    , showUnitX
+    , rotate (turn*1/3) $ showUnitX
+    , rotate (turn*3/4) $ showUnitX
     , (redCircle ||| blueRect ||| blueCircle)
     , (redCircle ||| fillH ||| blueRect ||| fillH ||| blueCircle)
     , (redCircle ||| fillV ||| blueRect ||| fillV ||| blueCircle)
@@ -129,6 +163,8 @@ main = do
     headOnly xs = if null xs then [] else [head xs]
     lastOnly xs = if null xs then [] else [last xs]
     _p x y = P (V2 x y)
+
+    rotateVector a = transformVector (rotation a)
 
 
 -- Some random series for testing
