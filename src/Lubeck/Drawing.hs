@@ -271,16 +271,8 @@ angleToRadians x = x
 angleToDegrees :: Angle -> Double
 angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
-{-| -}
-newtype Transformation a = TF { getTF ::
-    (a,a,
-     a,a,
-     a,a)
-     }
-instance Num a => Monoid (Transformation a) where
-  mempty  = emptyTransformation
-  mappend = apTransformation
--- TODO change to use M33 (including the 0 0 1 row)
+
+
 
 -- We use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
 --
@@ -292,7 +284,20 @@ instance Num a => Monoid (Transformation a) where
 -- I.e. the identity is (1,0,0,1,0,0) and the translation component is (0,0,0,0,x,y)
 
 
--- TODO
+
+
+
+{-| -}
+newtype Transformation a = TF { getTF ::
+    (a,a,
+     a,a,
+     a,a)
+     }
+instance Num a => Monoid (Transformation a) where
+  mempty  = emptyTransformation
+  mappend = apTransformation
+-- TODO change to use M33 (including the 0 0 1 row)
+
 {-| -}
 -- Eventually use
 --    identity :: (Num a, Traversable t, Applicative t) => t (t a)
@@ -315,13 +320,6 @@ apTransformation
 negTransformation :: Num a => Transformation a -> Transformation a
 negTransformation = undefined
 
--- infixr 6 !<>
-
-transformVector :: Num a => Transformation a -> V2 a -> V2 a
-transformVector (TF (a,b,c,d,e,f)) (V2 x y) = V2 (a*x+c*y) (b*x+d*y)
-
-transformPoint :: Num a => Transformation a -> P2 a -> P2 a
-transformPoint (TF (a,b,c,d,e,f)) (P (V2 x y)) = P $ V2 (a*x+c*y+e) (b*x+d*y+f)
 
 {-| -}
 matrix :: (a, a, a, a, a, a) -> Transformation a
@@ -330,6 +328,20 @@ matrix = TF
 {-| -}
 transformationToMatrix :: Transformation a -> (a, a, a, a, a, a)
 transformationToMatrix = getTF
+
+
+
+
+
+transformVector :: Num a => Transformation a -> V2 a -> V2 a
+transformVector t (V2 x y) =
+  let (a,b,c,d,e,f) = transformationToMatrix t
+  in V2 (a*x+c*y) (b*x+d*y)
+
+transformPoint :: Num a => Transformation a -> P2 a -> P2 a
+transformPoint t (P (V2 x y)) =
+  let (a,b,c,d,e,f) = transformationToMatrix t
+  in P $ V2 (a*x+c*y+e) (b*x+d*y+f)
 
 {-| -}
 newtype Style = S { getS :: Map JSString JSString }
