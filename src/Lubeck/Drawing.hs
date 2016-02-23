@@ -92,6 +92,7 @@ module Lubeck.Drawing (
     scalingY,
     rotation,
     shearing,
+    -- $matrixContructorLayout
     matrix,
     -- ** Applying transformations
     transform,
@@ -153,28 +154,11 @@ module Lubeck.Drawing (
     polygon,
     -- ** Text
     text,
-    textMiddle, -- TODO depracate
-    textEnd,    -- TODO depracate
-
+    textMiddle,         -- TODO depracate
+    textEnd,            -- TODO depracate
     textLeftMiddle,
     textMiddleMiddle,
     textRightMiddle,
-    -- textBB,
-    -- textMB,
-    -- textEB,
-
-    -- textBM,
-    -- textMM,
-    -- textEM,
-
-    -- textBC,
-    -- textMC,
-    -- textEC,
-
-    -- textBH,
-    -- textMH,
-    -- textEH,
-
     TextAnchor(..),
     AlignmentBaseline(..),
     FontStyle(..),
@@ -200,13 +184,10 @@ module Lubeck.Drawing (
   ) where
 
 import Control.Applicative
--- import Data.AffineSpace
--- import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour, AlphaColour, withOpacity)
 import Data.Map(Map)
 import Data.Monoid
 import Data.Semigroup(Max(..))
--- import Data.VectorSpace
 import qualified Data.Colour
 import qualified Data.Colour.Names as Colors
 import qualified Data.Colour.SRGB
@@ -225,7 +206,6 @@ import Linear.V1
 import Linear.V2
 import Linear.V3
 import Linear.V4
-
 import qualified Linear.V1
 import qualified Linear.V2
 import qualified Linear.V3
@@ -243,54 +223,12 @@ type JSString = String
 
 import Lubeck.Util(showJS)
 
-
-{- A point in 2D space. -}
--- type Point =
--- data Point = Point { x :: Double, y :: Double }
-  -- deriving (Eq, Ord, Show)
-
-{- A vector (distance between two points) in 2D space. -}
--- data Vector = Vector { dx :: Double, dy :: Double }
-  -- deriving (Eq, Ord, Show)
-
--- type R = R1
--- type V = V1
-
 -- Ideomatically: (V2 Double), (P2 Double) and so on
--- type V1 a = Linear.V1.V1 a
--- type V2 a = Linear.V2.V2 a
--- type V3 a = Linear.V3.V3 a
--- type V4 a = Linear.V4.V4 a
 
 type P1 a = Point V1 a
 type P2 a = Point V2 a
 type P3 a = Point V3 a
 type P4 a = Point V4 a
-
--- type R = Double
--- type V = Double
--- type R2 = Point
--- type V2 = Vector
--- type R3 = (R,R,R)
--- type V3 = (R,R,R)
--- type R4 = (R,R,R,R)
--- type V4 = (R,R,R,R)
--- type R5 = (R,R,R,R,R)
--- type V5 = (R,R,R,R,R)
-
--- instance AdditiveGroup Vector where
---   zeroV   = Vector 0 0
---   negateV (Vector x y) = Vector (negate x) (negate y)
---   Vector xa ya ^+^ Vector xb yb = Vector (xa + xb) (ya + yb)
---
--- instance VectorSpace Vector where
---   type Scalar Vector = Double
---   a *^ Vector x y = Vector (a*x) (a*y)
---
--- instance AffineSpace Point where
---   type Diff Point = Vector
---   Point xa ya .+^ Vector xb yb = Point  (xa + xb) (ya + yb)
---   Point xa ya .-. Point  xb yb = Vector (xa - xb) (ya - yb)
 
 -- |
 -- @
@@ -310,22 +248,12 @@ betweenPoints xs = case xs of
   []     -> []
   (_:ys) -> zipWith (.-.) ys xs
 
--- distanceVs : Point -> List Point -> List Vector
--- distanceVs p = tail . pointOffsets p
-
-
-
-{-| Name of dimensions in 2 and 3D space. -}
--- data Dimension = X | Y | Z
-
-{-| An angle in 2D space.
-
-The value [turn](#turn) is used to represent a full rotation, so a half-turn
-can be expressed as `turn/2`, three quarters of a turn by `turn*3/4` and so on.
-
-To convert to radians or degrees, use
-
- -}
+-- | An angle in 2D space.
+--
+-- The value [turn](#turn) is used to represent a full rotation, so a half-turn
+-- can be expressed as `turn/2`, three quarters of a turn by `turn*3/4` and so on.
+--
+-- To convert to radians or degrees, use
 newtype Angle n = Radians n
   deriving (Functor, Enum, Eq, Ord, Num, Fractional)
 
@@ -381,8 +309,6 @@ angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
 
 {-| -}
 newtype Transformation a = TF { getTF :: M33 a }
--- newtype Transformation where
-  -- TF2 :: M33 a -> Transformation V2 a
 
 instance Num a => Monoid (Transformation a) where
   mempty                = TF identity
@@ -400,43 +326,42 @@ instance Floating a => Fractional (Transformation a) where
   recip (TF x) = TF (inv33 x)
   fromRational = error "Missing in Fractional (Transformation a)"
 
--- | a.k.a. 1
+-- | a.k.a. @1@
 emptyTransformation :: Num a => Transformation a
 emptyTransformation = TF identity
 
--- | a.k.a *, mappend, <>
+-- | a.k.a '*', 'mappend', '<>'
 apTransformation :: Num a => Transformation a -> Transformation a -> Transformation a
 apTransformation (TF x) (TF y) = TF (x !*! y)
 
--- | a.k.a recip
+-- | a.k.a 'recip'
 negTransformation :: (Num a, Floating a) => Transformation a -> Transformation a
 negTransformation (TF x) = TF (inv33 x)
 
-
-
+-- $matrixContructorLayout
+--
 -- Both of these use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
 --
 -- That is
---   a c e
--- ( b d f )
---   0 0 1
 --
--- I.e. the identity is (1,0,0,1,0,0) and the translation component is (0,0,0,0,x,y)
+-- @
+-- a c e
+-- b d f
+-- 0 0 1
+-- @
+--
+-- I.e. the identity is @(1,0,0,1,0,0)@ and the translation component is @(0,0,0,0,x,y)@.
 --
 -- This is column-major order with an implied extra row (0 0 1)
 
-{-| -}
+{-| Create a transformation from a matrix. -}
 matrix :: Num a => (a, a, a, a, a, a) -> Transformation a
--- matrix = TF
 matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
 
 {-| -}
 transformationToMatrix :: Num a => Transformation a -> (a, a, a, a, a, a)
--- transformationToMatrix = getTF
 transformationToMatrix (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = (a,b,c,d,e,f)
 transformationToMatrix _ = error "transformationToMatrix: Bad transformation"
-
-
 
 transformVector :: Num a => Transformation a -> V2 a -> V2 a
 transformVector t (V2 x y) =
@@ -468,18 +393,15 @@ apStyle (S a) (S b) = S $ Data.Map.union a b
 styleToAttrString :: Style -> JSString
 styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getS
 
-{-| Embed an SVG property on a drawing.
-    Intended to be used with the event handlers in "Web.VirtualDom.Svg.Events".
-    -}
+-- | Embed an arbitrary SVG property on a drawing.
+--
+--   Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
+--   static backends may ignore these properties.
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
 
 
-
 newtype Envelope v n = Envelope (Maybe (v n -> n))
-
--- newtype Envelope v n = Envelope (Maybe (Direction v n -> Point v n))
-
 
 instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) where
   mempty      = Envelope Nothing
@@ -488,6 +410,7 @@ instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) wh
     (f,       Nothing) -> Envelope x
     (Just f,  Just g)  -> Envelope $ Just $ maxEnv f g
     _                  -> Envelope Nothing
+
     -- Invoke max explicitly, as Data.Monoid.Max has a superflous Bounded constraint
     -- Alternatively, we could escape this by using the semigroup version
     where
@@ -509,6 +432,8 @@ transl :: Num a => Transformation a -> V2 a
 transl t = let (a,b,c,d,e,f) = transformationToMatrix t
   in V2 e f
 
+-- TODO cleanup definitions/names here
+
 transformEnvelope :: (Floating n) => Transformation n -> Envelope V2 n -> Envelope V2 n
 transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
     where
@@ -527,11 +452,6 @@ transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
           lapp   = transformVector
           inv    = negTransformation
 
-
--- transformEnvelope :: (Num a, Floating a) => Transformation a -> Envelope V2 a -> Envelope V2 a
--- transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
--- transformEnvelope _  _                  = Envelope Nothing
-
 juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
 juxtapose v a1 a2 =   case (mv1, mv2) of
     (Just v1, Just v2) -> moveOriginBy (v1 ^+^ v2) a2
@@ -540,7 +460,6 @@ juxtapose v a1 a2 =   case (mv1, mv2) of
         mv2 = envelopeVMay (negated v) a2
         moveOriginBy v = translate (negated v)
 
--- TODO cleanup definitions here
 envelopeVMay :: V2 Double -> Drawing -> Maybe (V2 Double)
 envelopeVMay v = envelopeVMay' v . envelope
 
@@ -550,9 +469,10 @@ envelopeVMay' v = fmap ((*^ v) . ($ v)) . appEnvelope
     appEnvelope (Envelope e) = e
 
 -- | Takes a line and a direction (represented as a vector, whose magnitude is ignored).
--- Returns the two lowest and highest point on the line that falls insiode the envelope,
--- ordering by closeness to the infinity the vector points towards. I.e. given unitX,
--- returns the leftMost and rightMost point inside the envelope.
+--
+--  Returns the two lowest and highest point on the line that falls insiode the envelope,
+--  ordering by closeness to the infinity the vector points towards. I.e. given unitX,
+--  returns the leftMost and rightMost point inside the envelope.
 boundaries :: (Functor v, Num n, Num (v n), Additive v) => v n -> Envelope v n -> Maybe (Point v n, Point v n)
 boundaries v e = liftA2 (,) lb ub
   where
@@ -566,6 +486,7 @@ alignE' v n e = g <$> boundaries v e
 
 data OctagonSide = BL | TR | TL | BR | L | R | T | B
 
+alignE :: (Functor v, Num n, Num (v n), Additive v) => OctagonSide -> Envelope v n -> Maybe (Point v n)
 alignE BL  = alignE' posDiagonal 0
 alignE TR  = alignE' posDiagonal 1
 alignE TL  = alignE' negDiagonal 0
@@ -575,31 +496,22 @@ alignE R   = alignE' unitX 1
 alignE T   = alignE' unitY 1
 alignE B   = alignE' unitY 0
 
-
+align' :: V2 Double -> Double -> Drawing -> Drawing
 align' v n dr = case alignE' v n (envelope dr) of
   Nothing -> mempty
   Just p  -> moveOriginTo p dr
 
+align :: OctagonSide -> Drawing -> Drawing
 align t dr = case alignE t (envelope dr) of
   Nothing -> mempty
   Just p  -> moveOriginTo p dr
 
+moveOriginBy :: V2 Double -> Drawing -> Drawing
 moveOriginBy v = translate (-v)
--- FIXME should be the other way around!
+
+moveOriginTo :: P2 Double -> Drawing -> Drawing
 moveOriginTo p = moveOriginBy (origin .-. p)
-
-  -- case (envelope a, envelope b) of
-  -- (Envelope (Just f), Envelope (Just g)) ->
-
--- juxtapose v a b = case (envelope a, envelope b) of
---   -- FIXME negate this translation
---   (Envelope (Just ae), Envelope (Just be))  ->
---     let t = translate
---                                           (negated $ (negated v ^* getMax (be (negated v)))
---                                             ^-^
---                                           (v ^* getMax (ae v)))
---                                           in t b
---   _                                         -> b
+-- FIXME should be the other way around!
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
@@ -615,7 +527,6 @@ envelope x = case x of
   Prop  _ x     -> envelope x
   Em            -> mempty
   Ap x y        -> mappend (envelope x) (envelope y)
-
 
 pointsEnvelope :: [P2 Double] -> Envelope V2 Double
 pointsEnvelope [] = Envelope $ Nothing
@@ -634,34 +545,27 @@ pointsEnvelope ps = Envelope $ Just $ \v ->
     rotatePoints a = fmap (rotatePoint a)
     rotatePoint a  = transformPoint (rotation a)
 
-
 -- | Vector of length one, pointing to the left.
+unitX :: Num a => V2 a
 unitX = V2 1 0
+
 -- | Vector of length one, pointing upwards.
+unitY :: Num a => V2 a
 unitY = V2 0 1
+
 -- | Vector of length one, pointing diagonally upwards and left.
+posDiagonal :: Num a => V2 a
 posDiagonal = V2 (sqrt 2) (sqrt 2)
+
 -- | Vector of length one, pointing diagonally downwards and left.
+negDiagonal :: Num a => V2 a
 negDiagonal = V2 (sqrt 2) (-sqrt 2)
 
+(===), (|||), (\\\), (///) :: Drawing -> Drawing -> Drawing
 a ||| b = a <> juxtapose unitX a b
 a === b = a <> juxtapose (negated unitY) a b
-
-
--- moveOriginTo (origin .^+ v) === translate (negated v)
--- moveOriginTo (origin .^+ v) === translate (negated v)
-
--- transformEnvelope t = moveOriginTo (P . negated . transl $ t) . onEnvelope g
---   where
---     -- XXX add lots of comments explaining this!
---     g f v = f v' / (v' `dot` vi)
---       where
---         v' = signorm $ lapp (transp t) v
---         vi = apply (inv t) v
-
--- Max monoid
--- Transform by inverse-transforming argument and transforming (scaling) result
--- Transformable
+a \\\ b = a <> juxtapose posDiagonal a b
+a /// b = a <> juxtapose negDiagonal a b
 
 -- TODO general path/beziers (cubic spline?) support (generalizes all others! including text?)
 -- TODO masks support
@@ -683,10 +587,11 @@ a === b = a <> juxtapose (negated unitY) a b
 data Drawing
   = Circle
   | Rect
-  | Line -- conceptually a line from point a to point b
-  | Lines !Bool [V2 Double]  -- sequence of straight lines, closed or not. For closed lines, there is no need to return
-                             -- the original point (i.e. the sum of the vectors does not have to be zeroV).
-
+  -- A line along the unit vector
+  | Line
+  -- A sequence of straight lines, closed or not. For closed lines, there is no need
+  -- to return the original point (i.e. the sum of the vectors does not have to be zeroV).
+  | Lines !Bool [V2 Double]
   | Text !JSString
 
   | Transf !(Transformation Double) !Drawing
@@ -713,7 +618,7 @@ data Drawing
 
 instance Monoid Drawing where
   mempty  = transparent
-  mappend = over
+  mappend = flip Ap
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
@@ -747,12 +652,33 @@ polygon = Lines True
 text :: JSString -> Drawing
 text = Text
 
-textStart  = textWithOptions (mempty { textAnchor = TextAnchorStart })
-textMiddle = textWithOptions (mempty { textAnchor = TextAnchorMiddle })
-textEnd    = textWithOptions (mempty { textAnchor = TextAnchorEnd })
-textLeftMiddle   = textWithOptions (mempty { textAnchor = TextAnchorStart,  alignmentBaseline = AlignmentBaselineMiddle })
-textMiddleMiddle = textWithOptions (mempty { textAnchor = TextAnchorMiddle, alignmentBaseline = AlignmentBaselineMiddle })
-textRightMiddle  = textWithOptions (mempty { textAnchor = TextAnchorEnd,    alignmentBaseline = AlignmentBaselineMiddle })
+textStart, textMiddle, textEnd :: JSString -> Drawing
+
+textStart = textWithOptions $ mempty
+  { textAnchor = TextAnchorStart }
+
+textMiddle = textWithOptions $ mempty
+  { textAnchor = TextAnchorMiddle }
+
+textEnd = textWithOptions $ mempty
+  { textAnchor = TextAnchorEnd }
+
+textLeftMiddle, textMiddleMiddle, textRightMiddle :: JSString -> Drawing
+
+textLeftMiddle = textWithOptions $ mempty
+  { textAnchor        = TextAnchorStart
+  , alignmentBaseline = AlignmentBaselineMiddle }
+
+textMiddleMiddle = textWithOptions $ mempty
+  { textAnchor        = TextAnchorMiddle
+  , alignmentBaseline = AlignmentBaselineMiddle }
+
+textRightMiddle = textWithOptions $ mempty
+  { textAnchor        = TextAnchorEnd
+  , alignmentBaseline = AlignmentBaselineMiddle }
+
+-- | Text anchor (horizontal alignment).
+--
 -- https://www.w3.org/TR/SVG/text.html#AlignmentProperties
 data TextAnchor
   = TextAnchorStart
@@ -763,6 +689,9 @@ data TextAnchor
 instance Monoid TextAnchor where
   mappend = const ; mempty = TextAnchorInherit
 
+-- | Text baseline (vertical) alignment.
+--
+-- https://www.w3.org/TR/SVG/text.html#AlignmentProperties
 data AlignmentBaseline
   = AlignmentBaselineAuto
   | AlignmentBaselineBaseline
@@ -772,6 +701,8 @@ data AlignmentBaseline
 instance Monoid AlignmentBaseline where
   mappend = const ; mempty = AlignmentBaselineAuto
 
+-- | Font style.
+--
 -- https://www.w3.org/TR/SVG/text.html#FontPropertiesUsedBySVG
 data FontStyle
   = FontStyleNormal | FontStyleItalic | FontStyleOblique | FontStyleInherit
@@ -779,11 +710,13 @@ data FontStyle
 instance Monoid FontStyle where
   mappend = const ; mempty = FontStyleInherit
 
+-- | Text options. See 'textWithOptions'.
 data TextOptions = TextOptions
   { textAnchor        :: TextAnchor
   , alignmentBaseline :: AlignmentBaseline
   , fontStyle         :: FontStyle
   }
+
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid TextOptions where
   mempty
@@ -794,8 +727,14 @@ instance Monoid TextOptions where
     = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3)
   -- TODO can we derive this?
 
-
-{-| -}
+-- | Text woth options. Idiomatically:
+--
+-- @
+-- textWithOptions $ mempty
+--    { textAnchor        = TextAnchorStart
+--    , alignmentBaseline = AlignmentBaselineMiddle }
+-- @
+--
 textWithOptions :: TextOptions -> JSString -> Drawing
 textWithOptions opts = _fontStyle . _textAnchor . Text
   where
@@ -804,11 +743,13 @@ textWithOptions opts = _fontStyle . _textAnchor . Text
       FontStyleItalic           -> Prop (VD.attribute "font-style" "italic")
       FontStyleOblique          -> Prop (VD.attribute "font-style" "oblique")
       FontStyleInherit          -> id
+
     _textAnchor = case textAnchor opts of
       TextAnchorStart           -> Prop (VD.attribute "text-anchor"  "start")
       TextAnchorMiddle          -> Prop (VD.attribute "text-anchor"  "middle")
       TextAnchorEnd             -> Prop (VD.attribute "text-anchor"  "end")
       TextAnchorInherit         -> id
+
     _alignmentBaseline = case alignmentBaseline opts of
       AlignmentBaselineAuto     -> id
       AlignmentBaselineBaseline -> Prop (VD.attribute "alignment-baseline" "baseline")
@@ -816,19 +757,6 @@ textWithOptions opts = _fontStyle . _textAnchor . Text
       AlignmentBaselineCentral  -> Prop (VD.attribute "alignment-baseline" "central")
 -- TODO use styles not props
 
-{-| Layer the two images so that their origins match precisely. The origin of the given
-    images become the origin of the new image as well.
-
-The order of the arguments matter: the first image is placed closer to the viewer than
-the second, so all areas in the first image that are not transparent will cover the
-corresponding area in the second image.
-    -}
-over :: Drawing -> Drawing -> Drawing
-over = flip Ap
-
-{-| Like [over](#over), but with an arbitrary number of images. -}
-stack :: [Drawing] -> Drawing
-stack = Data.List.foldr over transparent
 
 {-| Apply a [Transformation](#Transformation) to an image.
 
@@ -852,24 +780,30 @@ transform :: Transformation Double -> Drawing -> Drawing
 transform = Transf
 
 {-| Translates (move) an object. -}
+translation :: Num a => a -> a -> Transformation a
 translation a b = matrix (1,0,0,1,a,b)
 
 {-| Translates (move) an object along the horizonal axis.
 A positive argument will move the object to the right. -}
-translationX a  = translation a 0
+translationX :: Num a => a -> Transformation a
+translationX a = translation a 0
 
 {-| Translates (move) an object along the vertical axis.
 A positive argument will move the object upwards (as opposed to standard SVG behavior). -}
-translationY b  = translation 0 b
+translationY :: Num a => a -> Transformation a
+translationY b = translation 0 b
 
 {-| Scales (stretch) an object, preserving its horizontal/vertical proportion. -}
-scaling a b     = matrix (a,0,0,b,0,0)
+scaling :: Num a => a -> a -> Transformation a
+scaling a b = matrix (a,0,0,b,0,0)
 
 {-| Scales(stretch) an object. -}
-scalingX a      = scaling     a 1
+scalingX :: Num a => a -> Transformation a
+scalingX a = scaling a 1
 
 {-| Scales (stretch) an object. -}
-scalingY b      = scaling     1 b
+scalingY :: Num a => a -> Transformation a
+scalingY b = scaling 1 b
 
 {-| Rotates an object. A positive vale will result in a counterclockwise rotation
     and negative value in a clockwise rotation. -}
@@ -877,7 +811,8 @@ rotation :: Angle Double -> Transformation Double
 rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 
 {-| Shears an object. -}
-shearing a b    = matrix (1, b, a, 1, 0, 0)
+shearing :: Num a => a -> a -> Transformation a
+shearing a b = matrix (1, b, a, 1, 0, 0)
 
 
 
@@ -897,30 +832,28 @@ translateY y = translate (V2 0 y)
 
 {-| Scale (stretch) an image. -}
 scaleXY :: Double -> Double -> Drawing -> Drawing
-scaleXY     x y = transform $ matrix (x,0,0,y,0,0)
+scaleXY x y = transform $ matrix (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
 scale :: Double -> Drawing -> Drawing
-scale    x   = scaleXY x x
+scale x = scaleXY x x
 
 {-| Scale (stretch) an image horizontally. -}
 scaleX :: Double -> Drawing -> Drawing
-scaleX    x   = scaleXY x 1
+scaleX x = scaleXY x 1
 
 {-| Scale (stretch) an image vertically. -}
 scaleY :: Double -> Drawing -> Drawing
-scaleY      y = scaleXY 1 y
+scaleY y = scaleXY 1 y
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
 rotate :: Angle Double -> Drawing -> Drawing
 rotate (Radians a) = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
--- The b,c, signs are inverted because of the reverse y polarity.
+-- NOTE The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
 shear :: Double -> Double -> Drawing -> Drawing
-shear   a b = transform $ matrix (1, b, a, 1, 0, 0)
-
-
+shear a b = transform $ matrix (1, b, a, 1, 0, 0)
 
 {-| A "big" smoke-colored background.
 
@@ -932,35 +865,31 @@ Useful to see the boundary of the canvas, as in:
 -}
 smokeBackground :: Drawing
 smokeBackground = fillColor Colors.whitesmoke $ scale 5000 $ square
---
+
 {-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
 xyAxis :: Drawing
 xyAxis = strokeColor Colors.darkgreen $ strokeWidth 0.5 $
-  stack [horizontalLine, verticalLine]
+  mconcat [horizontalLine, verticalLine]
 
 {-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
 xyCoords :: Drawing
 xyCoords = fillColorA (Colors.black `withOpacity` 0) $ strokeColor Colors.darkgreen $
-  strokeWidth 0.5 $ stack [horizontalLine, verticalLine, circle, square]
+  strokeWidth 0.5 $ mconcat [horizontalLine, verticalLine, circle, square]
 
 showUnitX :: Drawing
 showUnitX = strokeColor Colors.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 
--- showDirection :: Direction V2 Double -> Drawing
--- showDirection dir = scale 1000 $ rot showUnitX
---   where
---     rot = rotate (angleBetweenDirections dir (Direction unitX))
-showDirection = showDirection2
-
-showDirection2 :: Direction V2 Double -> Drawing
-showDirection2 dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
+showDirection :: Direction V2 Double -> Drawing
+showDirection dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
   where
     tp = Colors.black `withOpacity` 0
 
+showBoundaries :: V2 Double -> Drawing -> Drawing
 showBoundaries v dr = case boundaries v (envelope dr) of
   Nothing -> dr
   Just (lo, hi) -> strokeColor Colors.blue (showPoint lo) <> scale 2 (showPoint hi) <> dr
 
+showPoint :: Point V2 Double -> Drawing
 showPoint p = translate (p .-. origin) base
   where
     base = strokeColor Colors.red $ fillColorA (Colors.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
@@ -974,7 +903,6 @@ showEnvelope v drawing = case envelopeVMay v drawing of
     -- in the direction of unitX
     unitX_T = strokeWidth 2 $ strokeColor Colors.red $ fillColorA tp $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
     tp = Colors.black `withOpacity` 0
-
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
