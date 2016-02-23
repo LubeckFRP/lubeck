@@ -84,21 +84,6 @@ foldt f z xs     = foldt f z (pairs f xs)
     pairs f (x:y:t)  = f x y : pairs f t
     pairs f t        = t
 
-legend = vcat
-  [ redRect  ||| textLeftMiddle "Red"
-  , blueRect ||| textLeftMiddle "Blue"
-  , textMiddleMiddle "Red"  ||| redRect
-  , textMiddleMiddle "Blue" ||| blueRect
-  , textRightMiddle "Red"  ||| redRect
-  , textRightMiddle "Blue" ||| blueRect
-
-  , redRect  ||| textLeftMiddle "RedRedRedRedRed"
-  , blueRect ||| textLeftMiddle "BlueBlueBlueBlue"
-  , textMiddleMiddle "RedRedRedRedRed"  ||| redRect
-  , textMiddleMiddle "BlueBlueBlueBlue" ||| blueRect
-  , textRightMiddle "RedRedRedRedRed"  ||| redRect
-  , textRightMiddle "BlueBlueBlueBlue" ||| blueRect
-  ]
 
 main :: IO ()
 main = do
@@ -171,6 +156,22 @@ main = do
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
+    legend = vcat
+      [ redRect  ||| scale 0.3 (textLeftMiddle "Red")
+      , blueRect ||| scale 0.3 (textLeftMiddle "Blue")
+      , scale 0.3 (textMiddleMiddle "Red")  ||| redRect
+      , scale 0.3 (textMiddleMiddle "Blue") ||| blueRect
+      , scale 0.3 (textRightMiddle "Red")   ||| redRect
+      , scale 0.3 (textRightMiddle "Blue")  ||| blueRect
+
+      , redRect  ||| scale 0.3 (textLeftMiddle "RedRedRedRedRed")
+      , blueRect ||| scale 0.3 (textLeftMiddle "BlueBlueBlueBlue")
+      , scale 0.3 (textMiddleMiddle "RedRedRedRedRed")  ||| redRect
+      , scale 0.3 (textMiddleMiddle "BlueBlueBlueBlue") ||| blueRect
+      , scale 0.3 (textRightMiddle "RedRedRedRedRed")   ||| redRect
+      , scale 0.3 (textRightMiddle "BlueBlueBlueBlue")  ||| blueRect
+      ]
+
     fillH = scale 10 horizontalLine
     fillV = scale 10 verticalLine
 

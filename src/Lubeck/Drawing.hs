@@ -14,11 +14,16 @@ Similar to diagrams:
 
 * Has monoidal overlay of transparent images, local origins and envelpoes
 
+
+
 Main differences from Diagrams:
 
-* Limited to 2D
+* No 3D
 
-* No Core.Measure
+* No HasOrigin
+  - Instead of @moveOriginBy v@, use @translate (negated v)@
+
+* No measures, names, queries
 
 * No Semigroups (?)
 
@@ -26,16 +31,15 @@ Main differences from Diagrams:
 
 * No names, no queries
 
-* No transformable/special attributes, everything is showable/string
+* No transformable
 
-  ** Consequently (?)
+* No special attributes, everything is showable/string
 
-  ** No local or normalized units (behaves as Diagrams' global units)
+* No local or normalized units (behaves as Diagrams' global units)
 
 * traces?
 
 * No HasOrigin class (just use tranformation)
-
 
 * Supports (tentatively) text envelopes, see http://bl.ocks.org/nitaku/8745933
 
