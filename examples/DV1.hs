@@ -42,8 +42,14 @@ import Lubeck.Forms.Basic
 import Lubeck.Drawing
 import Lubeck.Util(showJS, parseDateAndTimeToUTC)
 
-import Data.VectorSpace
-import Data.AffineSpace
+import Linear.Vector
+import Linear.Affine
+import Linear.V0
+import Linear.V1
+import Linear.V2
+import Linear.V3
+import Linear.V4
+
 import qualified Lubeck.Drawing
 
 import Data.Colour (withOpacity)
