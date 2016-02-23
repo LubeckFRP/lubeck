@@ -42,6 +42,7 @@ module Lubeck.Drawing (
     -- V4,
     -- R5,
     -- V5,
+    Point(..),
     V1, V2, V3, V4,
     P1, P2, P3, P4,
 

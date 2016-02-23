@@ -172,9 +172,9 @@ interactionW _ interaction = div
 
     image = img [src (interaction .: medium .: P.url), width 200] []
 
-    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
+    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.V2 75 105)
     renderOpts = mempty
-      { Drawing.dimensions      = Drawing.Point 600 600
+      { Drawing.dimensions      = Drawing.P (Drawing.V2 600 600)
       , Drawing.originPlacement = Drawing.BottomLeft }
 
 
