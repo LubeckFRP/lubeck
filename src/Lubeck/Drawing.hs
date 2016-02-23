@@ -315,13 +315,12 @@ acosA = pure . acos
 -- Ideomatically: Direction V2 Double
 newtype Direction v a = Direction (v a)
 
--- | Synonym for 'direction'.
 dir :: v n -> Direction v n
-dir = Dir
+dir = Direction
 
 -- | @fromDirection d@ is the unit vector in the direction @d@.
 fromDirection :: (Metric v, Floating n) => Direction v n -> v n
-fromDirection (Dir v) = signorm v
+fromDirection (Direction v) = signorm v
 
 angleBetween :: (Metric v, Floating n) => v n -> v n -> Angle n
 angleBetween v1 v2 = acosA (signorm v1 `dot` signorm v2)
@@ -453,6 +452,7 @@ transformEnvelope :: (Num a, Floating a) => Transformation a -> Envelope V2 a ->
 transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
 transformEnvelope _  _                  = Envelope Nothing
 
+juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
 juxtapose v a b = case (envelope a, envelope b) of
   -- FIXME negate this translation
   (Envelope (Just ae), Envelope (Just be))  ->
@@ -462,12 +462,6 @@ juxtapose v a b = case (envelope a, envelope b) of
                                           (v ^* getMax (ae v)))
                                           in t b
   _                                         -> b
-
-unitX = V2 1 0
-unitY = V2 0 1
-
-a ||| b = a <> juxtapose unitX a b
-a === b = a <> juxtapose (negated unitY) a b
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
@@ -483,6 +477,16 @@ envelope x = case x of
   Em            -> Envelope $ Nothing
   Ap x y        -> mappend (envelope x) (envelope y)
 
+
+
+
+
+
+unitX = V2 1 0
+unitY = V2 0 1
+
+a ||| b = a <> juxtapose unitX a b
+a === b = a <> juxtapose (negated unitY) a b
 
 
 -- moveOriginTo (origin .^+ v) === translate (negated v)
