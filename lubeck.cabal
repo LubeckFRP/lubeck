@@ -91,7 +91,8 @@ executable bd-example-app
                      , lubeck
                      , virtual-dom
                      , colour
-                     , vector-space
+                    --  , vector-space
+                     , linear
                      , time
                      , lens
                      , ghcjs-base ==0.2.0.0
@@ -143,8 +144,9 @@ executable bd-example-plots
                      , lubeck
                      , virtual-dom
                      , time
-                     , vector-space
-                     , vector-space-points
+                     , linear
+                    --  , vector-space
+                    --  , vector-space-points
                      , colour
                      , random
                      , lens
@@ -157,8 +159,9 @@ executable bd-example-plots2
                      , lubeck
                      , virtual-dom
                      , time
-                     , vector-space
-                     , vector-space-points
+                     , linear
+                    --  , vector-space
+                    --  , vector-space-points
                      , colour
                      , random
                      , lens

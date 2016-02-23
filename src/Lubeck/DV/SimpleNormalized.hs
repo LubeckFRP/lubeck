@@ -160,7 +160,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
     tickOffsetsB = fmap normB ticksB
     nAs = fmap normA as
     nBs = fmap normB bs
-    points = zipWith (P . V2) nAs nBs
+    points = zipWith (\x y -> P $ V2 x y) nAs nBs
 
     -- ticksA, ticksB :: [Double]
     ticksA = tickCalc numTicksA (lba,uba)
