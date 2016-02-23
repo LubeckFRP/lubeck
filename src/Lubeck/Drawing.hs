@@ -148,6 +148,8 @@ module Lubeck.Drawing (
     xyCoords,
     showUnitX,
     showDirection,
+    showPoint,
+    showEnvelope,
     smokeBackground,
 
     -- * Rendering drawings
@@ -465,7 +467,12 @@ instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) wh
 -- transformEnvelope _  _                  = Envelope Nothing
 
 juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
-juxtapose = undefined
+juxtapose v a b = b -- TODO
+
+
+  -- case (envelope a, envelope b) of
+  -- (Envelope (Just f), Envelope (Just g)) ->
+
 -- juxtapose v a b = case (envelope a, envelope b) of
 --   -- FIXME negate this translation
 --   (Envelope (Just ae), Envelope (Just be))  ->
@@ -485,6 +492,14 @@ envelope x = case x of
   Lines _ _     -> envelope Circle -- TODO
   Text _        -> envelope Circle -- TODO
   -- Transf t x    -> transformEnvelope t (envelope x)
+  Transf t x    ->
+    case envelope x of
+      Envelope Nothing  -> Envelope $ Nothing
+      Envelope (Just f) -> Envelope $ Just $
+        \r -> let
+          r2 = transformDirection (negTransformation t) r
+          in transformPoint t (f r2)
+
   Style _ x     -> envelope x
   Prop  _ x     -> envelope x
   Em            -> Envelope $ Nothing
@@ -749,6 +764,14 @@ showDirection :: Direction V2 Double -> Drawing
 showDirection dir = scale 1000 $ rot showUnitX
   where
     rot = rotate (angleBetweenDirections dir (Direction unitX))
+
+showPoint p = translate (p .-. origin) base
+  where
+    base = fillColor C.red $ scale 5 $ circle
+
+showEnvelope dir x = case envelope x of
+  Envelope Nothing  -> x
+  Envelope (Just f) -> showPoint (f dir) <> x
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
