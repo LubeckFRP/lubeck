@@ -686,8 +686,9 @@ text = Text
 textStart  = textWithOptions (mempty { textAnchor = TextAnchorStart })
 textMiddle = textWithOptions (mempty { textAnchor = TextAnchorMiddle })
 textEnd    = textWithOptions (mempty { textAnchor = TextAnchorEnd })
-textMiddleMiddle = textWithOptions (mempty { textAnchor = TextAnchorEnd, alignmentBaseline = AlignmentBaselineMiddle })
-
+textLeftMiddle   = textWithOptions (mempty { textAnchor = TextAnchorStart,  alignmentBaseline = AlignmentBaselineMiddle })
+textMiddleMiddle = textWithOptions (mempty { textAnchor = TextAnchorMiddle, alignmentBaseline = AlignmentBaselineMiddle })
+textRightMiddle  = textWithOptions (mempty { textAnchor = TextAnchorEnd,    alignmentBaseline = AlignmentBaselineMiddle })
 -- https://www.w3.org/TR/SVG/text.html#AlignmentProperties
 data TextAnchor
   = TextAnchorStart

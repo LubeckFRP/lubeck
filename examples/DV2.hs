@@ -90,8 +90,20 @@ main = do
     [ (translateX 2 blueRect ||| blueCircle)
 
     , vcat
-      [ redRect  ||| textMiddleMiddle "Red"
-      , blueRect ||| textMiddleMiddle "Blue"
+      [ redRect  ||| textLeftMiddle "Red"
+      , blueRect ||| textLeftMiddle "Blue"
+      , textMiddleMiddle "Red"  ||| redRect
+      , textMiddleMiddle "Blue" ||| blueRect
+      , textRightMiddle "Red"  ||| redRect
+      , textRightMiddle "Blue" ||| blueRect
+
+      , redRect  ||| textLeftMiddle "RedRedRedRedRed"
+      , blueRect ||| textLeftMiddle "BlueBlueBlueBlue"
+      , textMiddleMiddle "RedRedRedRedRed"  ||| redRect
+      , textMiddleMiddle "BlueBlueBlueBlue" ||| blueRect
+      , textRightMiddle "RedRedRedRedRed"  ||| redRect
+      , textRightMiddle "BlueBlueBlueBlue" ||| blueRect
+
       ]
 
     , showEnvelope unitX $ showEnvelope unitY $ redRect
