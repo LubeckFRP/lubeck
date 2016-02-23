@@ -354,11 +354,29 @@ addProperty = Prop
 
 
 newtype Envelope v n = Envelope (Maybe (v n -> Max n))
-  deriving (Monoid)
+  -- deriving (Monoid)
+instance Ord n => Monoid (Envelope v n) where
+  mempty      = Envelope Nothing
+  mappend (Envelope x) (Envelope y) = case (x, y) of
+    (Nothing, y      ) -> Envelope y
+    (x,       Nothing) -> Envelope x
+    (Just x,  Just y ) -> Envelope $ Just $ \a -> x a `max` y a
+    -- Invoke max explicitly, as Data.Monoid.Max has a superflous Bounded constraint
+    -- Alternatively, we could escape this by using the semigroup version
 
 transformEnvelope :: Num a => Transformation a -> Envelope V2 a -> Envelope V2 a
 transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
 transformEnvelope _  _                  = Envelope Nothing
+
+juxtapose v a b = case (envelope a, envelope b) of
+  (Envelope (Just ae), Envelope (Just be))  -> let t = translate ((v ^* getMax (be v)) ^-^ (v ^* getMax (ae v))) in t b
+  _                                       -> b
+
+unitX = V2 1 0
+unitY = V2 0 1
+
+a ||| b = a <> juxtapose unitX a b
+a === b = a <> juxtapose (negated unitY) a b
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
@@ -366,7 +384,7 @@ envelope x = case x of
   Rect          -> envelope Circle -- TODO
   Line          -> envelope Circle -- TODO
   Lines _ _     -> envelope Circle -- TODO
-  Text          -> envelope Circle -- TODO
+  Text _        -> envelope Circle -- TODO
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
   Prop  _ x     -> envelope x

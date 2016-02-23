@@ -74,55 +74,14 @@ chooseDrawing ds = do
 
 main :: IO ()
 main = do
-  dS <- chooseDrawing $ fmap ((`getStyled` plotStyle) . (<> plotRectangle))
-    -- All based on simpleLinePlot (auto-scaling and axis)
-    [ mempty
-    -- , pure testSimple1
-    -- , pure testSimple2
-    -- , pure testSimple3
-
-    -- Line, scatter and combinations
-    , lineData     ordRandPoints
-    , scatterData  ordRandPoints
-    , scatterDataX ordRandPoints
-    , scatterDataY ordRandPoints
-
-    , combine [scatterDataX, scatterData]  ordRandPoints
-    , combine [scatterDataY, scatterData]  ordRandPoints
-    , combine [scatterDataX, scatterDataY] ordRandPoints
-
-    -- TODO overlay multiple line graphs etc w local style
-    , combine [lineData, scatterData]      ordRandPoints
-    , mconcat [lineData ordRandPoints, scatterData (lastOnly ordRandPoints)]
-    , mconcat [lineData ordRandPoints, scatterData (headOnly ordRandPoints)]
+  dS <- chooseDrawing $ [
+    redCircle <> xyCoords
 
 
-    , mconcat [linearData 1 0, scatterData ordRandPoints]
-    , mconcat [linearData (-1) 0.5, scatterData ordRandPoints]
-    , mconcat [linearData (-1) 1, scatterData ordRandPoints]
-
-    , lineData [_p 0 0, _p 1 1]
-    , lineData [_p 0 0, _p 0 0, _p 1 1]
-    , lineData [_p 0.5 0.5, _p 1 1]
-    , stepData (_p 0 0.5)
-      [ V2 0 0, V2 0.2 0, V2 0 0.3
-      , V2 0.5 0, V2 0 (-0.2), V2 0.3 0, V2 0 0.2]
-
-    , barData (fmap realToFrac $ take 10 rand1)
-    , barData (fmap realToFrac $ take 3 rand2)
-    , barData $ fmap realToFrac [1,1.1..1]
-
-    , ratioData (realToFrac $ rand1 !! 0)
-    , ratioData (realToFrac $ rand1 !! 1)
-    , ratioData (realToFrac $ rand1 !! 2)
-
-    , ratioDataWithColor $ _p (rand1 !! 0) 0
-    , ratioDataWithColor $ _p (rand1 !! 1) 0.2
-    , ratioDataWithColor $ _p (rand1 !! 2) 0.7
-
-    ]
+  ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
+    redCircle = scale 10 (fillColor Colors.red circle)
     plotStyle = id
       $ renderingRectangle  .~ V2 500 250
       $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
