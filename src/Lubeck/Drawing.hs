@@ -584,7 +584,8 @@ align t dr = case alignE t (envelope dr) of
   Just p  -> moveOriginTo p dr
 
 moveOriginBy v = translate (-v)
-moveOriginTo p = moveOriginBy (p .-. origin)
+-- FIXME should be the other way around!
+moveOriginTo p = moveOriginBy (origin .-. p)
 
   -- case (envelope a, envelope b) of
   -- (Envelope (Just f), Envelope (Just g)) ->
@@ -953,7 +954,7 @@ showDirection2 dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillCo
 
 showBoundaries v dr = case boundaries v (envelope dr) of
   Nothing -> dr
-  Just (lo, hi) -> showPoint lo <> scale 2 (showPoint hi) <> dr
+  Just (lo, hi) -> strokeColor Colors.blue (showPoint lo) <> scale 2 (showPoint hi) <> dr
 
 showPoint p = translate (p .-. origin) base
   where

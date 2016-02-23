@@ -113,7 +113,7 @@ main = do
     , scale 0.5 legend
     , scale 0.1 legend
     , translateX 3 $ rotate (turn/3) $ scale 0.2 legend
-
+    
     , showBoundaries unitX blueRect
     , showBoundaries unitY blueRect
     , showBoundaries posDiagonal blueRect
