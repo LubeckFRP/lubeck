@@ -349,14 +349,14 @@ linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
 -- TODO bar graphs can be transposed (x/y) (how?)
 
 -- | Draw a bar graph.
-barData :: [R] -> Styled Drawing
+barData :: [P1 Double] -> Styled Drawing
 barData ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
   let base = alignB $ fillColorA ((style^.barPlotBarColors) !! 0) $ square
   return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
-    fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
+    fmap (\(P v) -> scaleX barWidth $ scaleY v $ base) ps
   where
     alignB = translate (V2 0 0.5)
     scaleRR = transform . scalingRR
@@ -381,7 +381,7 @@ barDataWithColor2 :: [P3 Double] -> Styled Drawing
 barDataWithColor3 :: [P4 Double] -> Styled Drawing
 -- | Draw
 -- barDataWithColor4 :: [R5] -> Styled Drawing
--- [barDataWithColor, barDataWithColor2, barDataWithColor3, barDataWithColor4] = undefined
+[barDataWithColor, barDataWithColor2, barDataWithColor3, barDataWithColor4] = undefined
 
 -- | Visualizes a count
 -- See "Visualize this" pXXII (Godfather example)
