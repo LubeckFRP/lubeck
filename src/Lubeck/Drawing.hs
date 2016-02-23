@@ -274,15 +274,8 @@ angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 
 
--- We use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
---
--- That is
---   a c e
--- ( b d f )
---   0 0 1
---
--- I.e. the identity is (1,0,0,1,0,0) and the translation component is (0,0,0,0,x,y)
-
+--- Eventually use
+--    identity :: (Num a, Traversable t, Applicative t) => t (t a)
 
 
 
@@ -298,9 +291,6 @@ instance Num a => Monoid (Transformation a) where
   mappend = apTransformation
 -- TODO change to use M33 (including the 0 0 1 row)
 
-{-| -}
--- Eventually use
---    identity :: (Num a, Traversable t, Applicative t) => t (t a)
 emptyTransformation :: Num a => Transformation a
 emptyTransformation = TF (1,0,0,1,0,0)
 
@@ -320,6 +310,18 @@ apTransformation
 negTransformation :: Num a => Transformation a -> Transformation a
 negTransformation = undefined
 
+
+
+-- Both of these use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+--
+-- That is
+--   a c e
+-- ( b d f )
+--   0 0 1
+--
+-- I.e. the identity is (1,0,0,1,0,0) and the translation component is (0,0,0,0,x,y)
+--
+-- This is column-major order with an implied extra row (0 0 1)
 
 {-| -}
 matrix :: (a, a, a, a, a, a) -> Transformation a
