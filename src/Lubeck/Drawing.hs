@@ -504,8 +504,14 @@ juxtapose v a1 a2 =   case (mv1, mv2) of
         mv2 = envelopeVMay (negated v) a2
         moveOriginBy v = translate (negated v)
 
-        envelopeVMay v = fmap ((*^ v) . ($ v)) . appEnvelope . envelope
-        appEnvelope (Envelope e) = e
+-- TODO cleanup definitions here
+envelopeVMay :: V2 Double -> Drawing -> Maybe (V2 Double)
+envelopeVMay v = envelopeVMay' v . envelope
+
+envelopeVMay' :: (Functor v, Num n) => v n -> Envelope v n -> Maybe (v n)
+envelopeVMay' v = fmap ((*^ v) . ($ v)) . appEnvelope
+  where
+    appEnvelope (Envelope e) = e
 
 
   -- case (envelope a, envelope b) of
@@ -830,10 +836,14 @@ showPoint p = translate (p .-. origin) base
   where
     base = strokeColor C.red $ fillColorA (C.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
 
-showEnvelope _ = mempty
--- showEnvelope dir x = case envelope x of
-  -- Envelope Nothing  -> x
-  -- Envelope (Just f) -> showDirection dir <> showPoint (f dir) <> x
+showEnvelope :: V2 Double -> Drawing -> Drawing
+showEnvelope v drawing = case envelopeVMay v drawing of
+  Nothing -> drawing
+  Just v2 -> (rotate (angleBetween v2 unitX) $ scale (norm v2) $ unitX_T) <> drawing
+  where
+    -- A sideways T in the unit square, with the "top" pointing
+    -- in the direction of unitX
+    unitX_T = strokeWidth 2 $ strokeColor C.red $ segments [V2 0 0, V2 1 0, V2 1 0.5, V2 1 (-0.5)]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing

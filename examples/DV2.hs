@@ -75,8 +75,10 @@ main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords)) $
     [ (translateX 2 blueRect ||| blueCircle)
+    , showEnvelope unitX $ showEnvelope unitY $ redCircle
     , (redCircle ||| blueRect ||| blueCircle)
-    , (redCircle ||| fill ||| blueRect ||| fill ||| blueCircle)
+    , (redCircle ||| fillH ||| blueRect ||| fillH ||| blueCircle)
+    , (redCircle ||| fillV ||| blueRect ||| fillV ||| blueCircle)
     , (redCircle === blueCircle)
 
     , (scale 3 redCircle ||| blueCircle)
@@ -90,7 +92,8 @@ main = do
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
-    fill = scale 10 horizontalLine
+    fillH = scale 10 horizontalLine
+    fillV = scale 10 verticalLine
 
     redCircle   = scale 10 $ fillColorA (Colors.red `withOpacity` 0.4) circle
     blueCircle  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) circle
