@@ -304,6 +304,9 @@ apTransformation
        a1*e2 + c1*f2 + e1,
        b1*e2 + d1*f2 + f1)
 
+negTransformation :: Num a => Transformation a -> Transformation a
+negTransformation = undefined
+
 -- infixr 6 !<>
 
 transformVector :: Num a => Transformation a -> V2 a -> V2 a
@@ -350,18 +353,38 @@ addProperty = Prop
 
 
 
--- | Defines how far an object extends in any direction.
---   @Nothing@ means the object has no extent (i.e. the empty image).
-newtype Extent = Extent { getExtent  :: (Maybe Double) }
--- TODO generalize to use a, not DOuble
-  deriving (Eq, Ord)
-instance Bounded Extent where
-  minBound = Extent $ Nothing
-  maxBound = Extent $ Just (1/0)
-
-newtype Envelope = Envelope (V2 Double -> Max Extent)
--- TODO generalize to use a, not DOuble
+newtype Envelope v n = Envelope (Maybe (v n -> Max n))
   deriving (Monoid)
+
+transformEnvelope :: Num a => Transformation a -> Envelope V2 a -> Envelope V2 a
+transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
+transformEnvelope _  _                  = Envelope Nothing
+
+envelope :: Drawing -> Envelope V2 Double
+envelope x = case x of
+  Circle        -> Envelope $ Just $ const 1 -- TODO scale vector to have magnitude 1
+  Rect          -> envelope Circle -- TODO
+  Line          -> envelope Circle -- TODO
+  Lines _ _     -> envelope Circle -- TODO
+  Text          -> envelope Circle -- TODO
+  Transf t x    -> transformEnvelope t (envelope x)
+  Style _ x     -> envelope x
+  Prop  _ x     -> envelope x
+  Em            -> Envelope $ Nothing
+  Ap x y        -> mappend (envelope x) (envelope y)
+
+
+-- moveOriginTo (origin .^+ v) === translate (negated v)
+-- moveOriginTo (origin .^+ v) === translate (negated v)
+
+-- transformEnvelope t = moveOriginTo (P . negated . transl $ t) . onEnvelope g
+--   where
+--     -- XXX add lots of comments explaining this!
+--     g f v = f v' / (v' `dot` vi)
+--       where
+--         v' = signorm $ lapp (transp t) v
+--         vi = apply (inv t) v
+
 -- Max monoid
 -- Transform by inverse-transforming argument and transforming (scaling) result
 -- Transformable
@@ -391,9 +414,9 @@ data Drawing
                             -- the original point (i.e. the sum of the vectors does not have to be zeroV).
 
   | Text JSString
+
   | Transf (Transformation Double) Drawing
   | Style Style Drawing
-
   -- Embed arbitrary SVG property (typically used for event handlers)
   | Prop E.Property Drawing
 
