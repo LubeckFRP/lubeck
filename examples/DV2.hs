@@ -84,6 +84,19 @@ foldt f z xs     = foldt f z (pairs f xs)
     pairs f (x:y:t)  = f x y : pairs f t
     pairs f t        = t
 
+-- TODO align (V2 a -> a -> enveloped -> enveloped)
+{-
+Then derive:
+
+align BL  = posDiagonal 0
+align TR  = posDiagonal 1
+align TL  = negDiagonal 0
+align BR  = negDiagonal 0
+align L   = unitX 0
+align R   = unitX 1
+align T   = unitY 1
+align B   = unitY 0
+-}
 
 main :: IO ()
 main = do

@@ -128,6 +128,8 @@ module Lubeck.Drawing (
     -- transformEnvelope,
     unitX,
     unitY,
+    posDiagonal,
+    negDiagonal,
     (|||),
     (===),
     juxtapose,
@@ -588,6 +590,8 @@ pointsEnvelope ps = Envelope $ Just $ \v ->
 
 unitX = V2 1 0
 unitY = V2 0 1
+posDiagonal = V2 (sqrt 2) (sqrt 2)
+negDiagonal = V2 (-sqrt 2) (-sqrt 2)
 
 a ||| b = a <> juxtapose unitX a b
 a === b = a <> juxtapose (negated unitY) a b
