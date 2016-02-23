@@ -114,6 +114,17 @@ main = do
     , scale 0.1 legend
     , translateX 3 $ rotate (turn/3) $ scale 0.2 legend
 
+    , align L blueRect
+    , align T blueRect
+    , align R blueRect
+    , align B blueRect
+
+    , align BR blueRect
+    , align TR blueRect
+    , align TL blueRect
+    , align BL blueRect
+
+
     , showEnvelope unitX $ showEnvelope unitY $ redRect
     , showEnvelope unitX $ showEnvelope unitY $ blueRect
     , showEnvelope unitX $ showEnvelope unitY $ scale 1.2 blueRect

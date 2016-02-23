@@ -138,7 +138,7 @@ module Lubeck.Drawing (
     align',
     align,
     OctagonSide(..),
-    
+
 
 
     -- ** Drawings
@@ -558,9 +558,9 @@ boundaries v e = liftA2 (,) lb ub
     ub = (origin .+^) <$> envelopeVMay' v e
 
 align' :: (Functor v, Num n, Num (v n), Additive v) => v n -> n -> Envelope v n -> Maybe (Point v n)
-align v n e = g <$> boundaries v e
+align' v n e = g <$> boundaries v e
   where
-    g (lb, ub) = lerp n
+    g (lb, ub) = lerp n lb ub
 
 data OctagonSide = BL | TR | TL | BR | L | R | T | B
 
