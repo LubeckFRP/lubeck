@@ -281,34 +281,37 @@ angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 
 {-| -}
-newtype Transformation a = TF { getTF ::
-    (a,a,
-     a,a,
-     a,a)
-     }
+newtype Transformation a = TF { getTF :: M33 a }
+-- newtype Transformation a = TF { getTF ::
+--     (a,a,
+--      a,a,
+--      a,a)
+--      }
 instance Num a => Monoid (Transformation a) where
   mempty  = emptyTransformation
   mappend = apTransformation
 -- TODO change to use M33 (including the 0 0 1 row)
 
 emptyTransformation :: Num a => Transformation a
-emptyTransformation = TF (1,0,0,1,0,0)
+emptyTransformation = TF identity
+-- emptyTransformation = TF (1,0,0,1,0,0)
 
 {-| -}
 apTransformation :: Num a => Transformation a -> Transformation a -> Transformation a
-apTransformation
-  (TF (a1,b1,c1,d1,e1,f1))
-  (TF (a2,b2,c2,d2,e2,f2)) =
-    TF
-      (a1*a2 + c1*b2,
-       b1*a2 + d1*b2,
-       a1*c2 + c1*d2,
-       b1*c2 + d1*d2,
-       a1*e2 + c1*f2 + e1,
-       b1*e2 + d1*f2 + f1)
+apTransformation (TF x) (TF y) = TF (x !*! y)
+-- apTransformation
+--   (TF (a1,b1,c1,d1,e1,f1))
+--   (TF (a2,b2,c2,d2,e2,f2)) =
+--     TF
+--       (a1*a2 + c1*b2,
+--        b1*a2 + d1*b2,
+--        a1*c2 + c1*d2,
+--        b1*c2 + d1*d2,
+--        a1*e2 + c1*f2 + e1,
+--        b1*e2 + d1*f2 + f1)
 
-negTransformation :: Num a => Transformation a -> Transformation a
-negTransformation = undefined
+negTransformation :: (Num a, Floating a) => Transformation a -> Transformation a
+negTransformation (TF x) = TF (inv33 x)
 
 
 
@@ -324,14 +327,15 @@ negTransformation = undefined
 -- This is column-major order with an implied extra row (0 0 1)
 
 {-| -}
-matrix :: (a, a, a, a, a, a) -> Transformation a
-matrix = TF
+matrix :: Num a => (a, a, a, a, a, a) -> Transformation a
+-- matrix = TF
+matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
 
 {-| -}
-transformationToMatrix :: Transformation a -> (a, a, a, a, a, a)
-transformationToMatrix = getTF
-
-
+transformationToMatrix :: Num a => Transformation a -> (a, a, a, a, a, a)
+-- transformationToMatrix = getTF
+transformationToMatrix (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = (a,b,c,d,e,f)
+transformationToMatrix _ = error "transformationToMatrix: Bad transformation"
 
 
 
@@ -386,7 +390,7 @@ instance Ord n => Monoid (Envelope v n) where
     -- Invoke max explicitly, as Data.Monoid.Max has a superflous Bounded constraint
     -- Alternatively, we could escape this by using the semigroup version
 
-transformEnvelope :: Num a => Transformation a -> Envelope V2 a -> Envelope V2 a
+transformEnvelope :: (Num a, Floating a) => Transformation a -> Envelope V2 a -> Envelope V2 a
 transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
 transformEnvelope _  _                  = Envelope Nothing
 
