@@ -69,6 +69,7 @@ library
                      , lens
                      , semigroups
                      , data-interval
+                     , linear
                      , vector-space
                      , vector-space-points
                      , colour

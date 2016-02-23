@@ -23,6 +23,7 @@ Main differences from Diagrams:
 - traces?
 - No HasOrigin class (just use tranformation)
 
+- Supports (tentatively) text envelopes, see http://bl.ocks.org/nitaku/8745933
 - Potential animation supports
 - Event handler support (VDOM only)
 
