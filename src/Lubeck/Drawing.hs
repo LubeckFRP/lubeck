@@ -404,8 +404,14 @@ transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (
 transformEnvelope _  _                  = Envelope Nothing
 
 juxtapose v a b = case (envelope a, envelope b) of
-  (Envelope (Just ae), Envelope (Just be))  -> let t = translate ((v ^* getMax (be v)) ^-^ (v ^* getMax (ae v))) in t b
-  _                                       -> b
+  -- FIXME negate this translation
+  (Envelope (Just ae), Envelope (Just be))  ->
+    let t = translate
+                                          (negated $ (negated v ^* getMax (be (negated v)))
+                                            ^-^
+                                          (v ^* getMax (ae v)))
+                                          in t b
+  _                                         -> b
 
 unitX = V2 1 0
 unitY = V2 0 1
@@ -415,7 +421,8 @@ a === b = a <> juxtapose (negated unitY) a b
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
-  Circle        -> Envelope $ Just $ \v -> pure (recip $ norm v) -- Scale vector to have magnitude 1
+  -- FIXME use (0.5/norm v), not (1/norm v)
+  Circle        -> Envelope $ Just $ \v -> pure (0.5/norm v) -- Scale vector to have magnitude 0.5
   Rect          -> envelope Circle -- TODO
   Line          -> envelope Circle -- TODO
   Lines _ _     -> envelope Circle -- TODO

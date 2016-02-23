@@ -70,19 +70,20 @@ chooseDrawing ds = do
 
 main :: IO ()
 main = do
-  dS <- chooseDrawing
-    [ (redCircle ||| blueCircle) <> xyCoords
-    , (redCircle ||| blueCircle ||| redCircle) <> xyCoords
-    , (redCircle === blueCircle) <> xyCoords
+  dS <- chooseDrawing $ fmap (scale 10) $
+    [ (translateX 2 redCircle ||| blueCircle) <> scale 10 xyCoords
+    , (redCircle ||| greenCircle ||| blueCircle) <> scale 10 xyCoords
+    , (redCircle === blueCircle) <> scale 10 xyCoords
 
-    , (scale 3 redCircle ||| blueCircle) <> xyCoords
-    , (redCircle ||| scale 10 blueCircle ||| scale 2 redCircle) <> xyCoords
-    , (redCircle === scale 2 blueCircle) <> xyCoords
+    , (scale 3 redCircle ||| blueCircle) <> scale 10 xyCoords
+    , (redCircle ||| scale 2 greenCircle ||| scale 0.5 blueCircle) <> scale 10 xyCoords
+    , (redCircle === scale 2 blueCircle) <> scale 10 xyCoords
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
-    redCircle = scale 10 (fillColor Colors.red circle)
-    blueCircle = scale 10 (fillColor Colors.blue circle)
+    redCircle   = scale 10 $ fillColorA (Colors.red `withOpacity` 0.4) circle
+    blueCircle  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) circle
+    greenCircle = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) circle
     plotStyle = id
       $ renderingRectangle  .~ V2 500 250
       $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
