@@ -71,21 +71,29 @@ chooseDrawing ds = do
 main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords))
-    [ showEnvelope (dir $ V2 1 0)   $ scale 1 blueCircle
-    , showEnvelope (dir $ V2 1 0)   $ scale 2 blueCircle
-    , showEnvelope (dir $ V2 1 0)   $ translateX 4 $ scale 1 blueCircle
+    [ showEnvelope (V2 1 0)   $ scale 1 blueCircle
+    , showEnvelope (V2 1 0)   $ scale 2 blueCircle
+    , showEnvelope (V2 1 0)   $ translateX 4 $ scale 1 blueCircle
 
-    , showEnvelope (dir $ V2 1 0.3)   $ scale 1 blueCircle
-    , showEnvelope (dir $ V2 1 0.3)   $ scale 2 blueCircle
-    , showEnvelope (dir $ V2 1 0.3)   $ translateX 4 $ scale 1 blueCircle
 
-    , showEnvelope (dir $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
-    , showEnvelope (dir $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
-    , showEnvelope (dir $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
 
-    , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
-    , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
-    , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
+    , showEnvelope (V2 1 0)   $ rotate (4*turn/13) $ translateX 5 $ scale 3 blueCircle
+
+    , showEnvelope unitX $ showEnvelope unitY $ segments (take 5 randVectors)
+    , showEnvelope unitX $ showEnvelope unitY $ segments (drop 2 $ take 3 randVectors)
+    , showEnvelope unitX $ showEnvelope unitY $ segments (drop 20 $ take 15 randVectors)
+
+    , showEnvelope (V2 1 0.3)   $ scale 1 blueCircle
+    , showEnvelope (V2 1 0.3)   $ scale 2 blueCircle
+    , showEnvelope (V2 1 0.3)   $ translateX 4 $ scale 1 blueCircle
+
+    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
+    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
+    , showEnvelope (V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
+
+    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
+    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
+    , showEnvelope (negated $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
 
     , showDirection (dir $ V2 1    0)
     , showDirection (dir $ V2 0    1)
@@ -141,6 +149,7 @@ main = do
 randPoints, ordRandPoints :: [P2 Double]
 ordRandPoints = (Data.List.sortBy (Data.Ord.comparing (view _x)) $ take 10 randPoints)
 randPoints    = zipWith (\x y -> P (V2 x y)) rand1 rand2
+randVectors   = zipWith (\x y -> (V2 x y)) rand1 rand2
 
 rand1, rand2 :: [Double]
 rand1 = randoms $ fst $ split randG

@@ -530,7 +530,7 @@ envelopeVMay' v = fmap ((*^ v) . ($ v)) . appEnvelope
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
   Circle        -> Envelope $ Just $ \v -> (0.5/norm v)
-  Rect          -> pointsEnvelope $ fmap P [V2 (1/2) 0, V2 0 (1/2), V2 (-1/2) 0, V2 0 (-1/2)]
+  Rect          -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
   Line          -> pointsEnvelope $ fmap P [V2 0 0, V2 1 0]
   Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
   Text _        -> envelope Rect -- TODO
@@ -544,7 +544,7 @@ envelope x = case x of
 pointsEnvelope :: [P2 Double] -> Envelope V2 Double
 pointsEnvelope [] = Envelope $ Nothing
 pointsEnvelope ps = Envelope $ Just $ \v ->
-  (\(P (V2 x _)) -> x / norm v) $ rightMost $ rotatePoints (angleBetween unitX v) ps
+  (\(P (V2 x _)) -> x / norm v) $ rightMost $ rotatePoints (angleBetween v unitX) ps
   where
     -- Rotate all points so that the input vector aligns with the "conceptual" unitX
     -- Find rightmost point by comparing x coord
@@ -830,7 +830,9 @@ showUnitX = strokeColor C.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 showDirection = showDirection2
 
 showDirection2 :: Direction V2 Double -> Drawing
-showDirection2 dir = scale 100 $ strokeColor C.red $ strokeWidth 3 $ segments [fromDirection dir]
+showDirection2 dir = scale 100 $ strokeColor C.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
+  where
+    tp = C.black `withOpacity` 0
 
 showPoint p = translate (p .-. origin) base
   where
@@ -843,7 +845,7 @@ showEnvelope v drawing = case envelopeVMay v drawing of
   where
     -- A sideways T in the unit square, with the "top" pointing
     -- in the direction of unitX
-    unitX_T = strokeWidth 2 $ strokeColor C.red $ segments [V2 0 0, V2 1 0, V2 1 0.5, V2 1 (-0.5)]
+    unitX_T = strokeWidth 2 $ strokeColor C.red $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing

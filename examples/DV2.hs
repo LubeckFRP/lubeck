@@ -75,7 +75,19 @@ main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords)) $
     [ (translateX 2 blueRect ||| blueCircle)
-    , showEnvelope unitX $ showEnvelope unitY $ redCircle
+
+
+    , showEnvelope unitX $ showEnvelope unitY $ redRect
+    , showEnvelope unitX $ showEnvelope unitY $ blueRect
+    , showEnvelope unitX $ showEnvelope unitY $ scale 1.2 blueRect
+    , showEnvelope unitX $ showEnvelope unitY $ shear 0.8 1 blueRect
+    , showEnvelope unitX $ showEnvelope unitY $ shear 1 0.8 blueRect
+
+    , showEnvelope unitX $ showEnvelope unitY $ shear 0.2 1 redCircle
+    , showEnvelope unitX $ showEnvelope unitY $ shear 1 0.2 redCircle
+    , showEnvelope unitX $ showEnvelope unitY $ translateX 0.2 $ shear 0.2 1 redCircle
+    , showEnvelope unitX $ showEnvelope unitY $ translateX 0.2 $ translateY 1 $ shear 1 0.2 redCircle
+
     , (redCircle ||| blueRect ||| blueCircle)
     , (redCircle ||| fillH ||| blueRect ||| fillH ||| blueCircle)
     , (redCircle ||| fillV ||| blueRect ||| fillV ||| blueCircle)
