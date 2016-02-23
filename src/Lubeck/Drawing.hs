@@ -141,8 +141,26 @@ module Lubeck.Drawing (
     polygon,
     -- ** Text
     text,
-    textMiddle,
-    textEnd,
+    textMiddle, -- TODO depracate
+    textEnd,    -- TODO depracate
+
+    textMiddleMiddle,
+    -- textBB,
+    -- textMB,
+    -- textEB,
+
+    -- textBM,
+    -- textMM,
+    -- textEM,
+
+    -- textBC,
+    -- textMC,
+    -- textEC,
+
+    -- textBH,
+    -- textMH,
+    -- textEH,
+
     TextAnchor(..),
     AlignmentBaseline(..),
     FontStyle(..),
@@ -668,6 +686,7 @@ text = Text
 textStart  = textWithOptions (mempty { textAnchor = TextAnchorStart })
 textMiddle = textWithOptions (mempty { textAnchor = TextAnchorMiddle })
 textEnd    = textWithOptions (mempty { textAnchor = TextAnchorEnd })
+textMiddleMiddle = textWithOptions (mempty { textAnchor = TextAnchorEnd, alignmentBaseline = AlignmentBaselineMiddle })
 
 -- https://www.w3.org/TR/SVG/text.html#AlignmentProperties
 data TextAnchor

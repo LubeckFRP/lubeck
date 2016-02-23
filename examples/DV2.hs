@@ -69,16 +69,29 @@ chooseDrawing ds = do
     -- backgroundGrid = scale 600 xyCoords
 
 hcat :: [Drawing] -> Drawing
-hcat = foldr (|||) mempty
+hcat = foldt (|||) mempty
+
+vcat :: [Drawing] -> Drawing
+vcat = foldt (===) mempty
+
+-- TODO does this make it faster?
+foldt            :: (a -> a -> a) -> a -> [a] -> a
+foldt f z []     = z
+foldt f z [x]    = x
+foldt f z xs     = foldt f z (pairs f xs)
+  where
+    pairs f (x:y:t)  = f x y : pairs f t
+    pairs f t        = t
+
 
 main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords)) $
     [ (translateX 2 blueRect ||| blueCircle)
 
-    , mconcat
-      [ redRect ||| text "Red"
-      , blueRect ||| text "Blue"
+    , vcat
+      [ redRect  ||| textMiddleMiddle "Red"
+      , blueRect ||| textMiddleMiddle "Blue"
       ]
 
     , showEnvelope unitX $ showEnvelope unitY $ redRect
@@ -151,9 +164,9 @@ main = do
     blueCircle  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) circle
     greenCircle = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) circle
 
-    redRect   = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) square
-    blueRect  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) square
+    redRect   = scale 10 $ fillColorA (Colors.red `withOpacity` 0.4) square
     greenRect = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) square
+    blueRect  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) square
     redRectX  = scale 10 $ scaleX 1.2 $ rotate (turn/13) $ redRect
 
     plotStyle = id
