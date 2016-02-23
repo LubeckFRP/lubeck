@@ -172,6 +172,7 @@ main = do
 randPoints, ordRandPoints :: [P2 Double]
 ordRandPoints = (Data.List.sortBy (Data.Ord.comparing (view _x)) $ take 10 randPoints)
 randPoints    = zipWith (\x y -> P (V2 x y)) rand1 rand2
+randVectors   = zipWith (\x y -> (V2 x y)) rand1 rand2
 
 rand1, rand2 :: [Double]
 rand1 = randoms $ fst $ split randG
