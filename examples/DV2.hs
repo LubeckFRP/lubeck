@@ -80,7 +80,7 @@ main = do
     , (redCircle === scale 2 blueCircle)
 
     , (redCircle === (scale 2 blueCircle ||| greenCircle))
-    , (juxtapose (V 0.5 0.7) redCircle blueCircle) === greenCircle
+    , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === greenCircle
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
