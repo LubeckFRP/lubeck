@@ -170,7 +170,6 @@ module Lubeck.Drawing (
     xyCoords,
     showUnitX,
     showDirection,
-    showDirection2,
     showPoint,
     showBoundaries,
     showEnvelope,
@@ -485,8 +484,9 @@ alignE' v n e = g <$> boundaries v e
     g (lb, ub) = lerp n lb ub
 
 data OctagonSide = BL | TR | TL | BR | L | R | T | B
+  deriving (Eq, Ord, Show)
 
-alignE :: (Functor v, Num n, Floating (v n), Additive v, v ~ V2) => OctagonSide -> Envelope v n -> Maybe (Point v n)
+alignE :: (Floating n, v ~ V2) => OctagonSide -> Envelope v n -> Maybe (Point v n)
 alignE BL  = alignE' posDiagonal 0
 alignE TR  = alignE' posDiagonal 1
 alignE TL  = alignE' negDiagonal 0

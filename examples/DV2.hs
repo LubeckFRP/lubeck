@@ -113,7 +113,7 @@ main = do
     , scale 0.5 legend
     , scale 0.1 legend
     , translateX 3 $ rotate (turn/3) $ scale 0.2 legend
-    
+
     , showBoundaries unitX blueRect
     , showBoundaries unitY blueRect
     , showBoundaries posDiagonal blueRect
@@ -178,10 +178,10 @@ main = do
     , showDirection (dir $ V2 (-1) 0)
     , showDirection (dir $ V2 0    (-1))
 
-    , showDirection2 (dir $ V2 1    0)
-    , showDirection2 (dir $ V2 0    1)
-    , showDirection2 (dir $ V2 (-1) 0)
-    , showDirection2 (dir $ V2 0    (-1))
+    , showDirection (dir $ V2 1    0)
+    , showDirection (dir $ V2 0    1)
+    , showDirection (dir $ V2 (-1) 0)
+    , showDirection (dir $ V2 0    (-1))
 
     , showUnitX
     , rotate (turn*1/3) $ showUnitX
