@@ -292,14 +292,20 @@ type P4 a = Point V4 a
 --   Point xa ya .+^ Vector xb yb = Point  (xa + xb) (ya + yb)
 --   Point xa ya .-. Point  xb yb = Vector (xa - xb) (ya - yb)
 
--- TODO generalize types for offsetVectors and betweenPoints
-
-offsetVectors :: Num a => P2 a -> [V2 a] -> [P2 a]
+-- |
+-- @
+-- offsetVectors :: Num a => P2 a -> [V2 a] -> [P2 a]
+-- @
+offsetVectors :: (Num a, Affine p) => p a -> [Diff p a] -> [p a]
 offsetVectors p = tail . offsetVectors' p
   where
     offsetVectors' = Data.List.scanl (.+^)
 
-betweenPoints :: Num a => [P2 a] -> [V2 a]
+-- |
+-- @
+-- betweenPoints :: Num a => [P2 a] -> [V2 a]
+-- @
+betweenPoints :: (Num a, Affine p) => [p a] -> [Diff p a]
 betweenPoints xs = case xs of
   []     -> []
   (_:ys) -> zipWith (.-.) ys xs
@@ -337,8 +343,6 @@ instance Num n => Monoid (Angle n) where
   mappend = (^+^)
   mempty  = Radians 0
 
--- TODO wrap
-
 {-| The value representing a full turn.
 This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
 turn :: Floating a => Angle a
@@ -371,7 +375,6 @@ angleBetween v1 v2 = acosA (signorm v1 `dot` signorm v2)
 transformDirection :: Num n => Transformation n -> Direction V2 n -> Direction V2 n
 transformDirection t (Direction v) = Direction (transformVector t v)
 
--- TODO do we really need angleBetween?
 angleBetweenDirections :: (Metric v, Floating n) => Direction v n -> Direction v n -> Angle n
 angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
 
@@ -389,13 +392,13 @@ instance Num a => Num (Transformation a) where
   TF x + TF y = TF (x !+! y)
   TF x - TF y = TF (x !-! y)
   TF x * TF y = TF (x !*! y)
-  abs    = error "TODO missing in Num (Transformation a)"
-  signum = error "TODO missing in Num (Transformation a)"
+  abs    = error "Missing in Num (Transformation a)"
+  signum = error "Missing in Num (Transformation a)"
   fromInteger n = TF $ identity !!* fromInteger n
 
 instance Floating a => Fractional (Transformation a) where
   recip (TF x) = TF (inv33 x)
-  fromRational = error "TODO missing in Fractional (Transformation a)"
+  fromRational = error "Missing in Fractional (Transformation a)"
 
 -- | a.k.a. 1
 emptyTransformation :: Num a => Transformation a
@@ -448,8 +451,6 @@ transformPoint t (P (V2 x y)) =
 {-| -}
 newtype Style = S { getS :: Map JSString JSString }
   deriving (Monoid)
--- TODO newtype wrapper
--- Monoid
 
 {-| -}
 emptyStyle :: Style
@@ -606,7 +607,9 @@ envelope x = case x of
   Rect          -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
   Line          -> pointsEnvelope $ fmap P [V2 0 0, V2 1 0]
   Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
-  Text _        -> envelope Rect -- TODO
+  -- No proper text envelopes, fake by using a single rectangles
+  -- https://github.com/BeautifulDestinations/lubeck/issues/73
+  Text _        -> envelope Rect
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
   Prop  _ x     -> envelope x
@@ -625,7 +628,6 @@ pointsEnvelope ps = Envelope $ Just $ \v ->
     --
     -- This could probably be expressed more concisely with basis, but the result is
     -- the same.
-
     rightMost = Data.List.maximumBy (Data.Ord.comparing (\(P (V2 x _)) -> x))
 
     rotatePoints :: Angle Double -> [P2 Double] -> [P2 Double]
@@ -695,16 +697,19 @@ data Drawing
   | Em
   | Ap Drawing Drawing
 
--- TODO using seq? instead of list
--- TODO strict transformations,styles,properties?
--- TODO replacing Em/Ap with (Conc [Drawing])
--- TODO merging transf/style/prop
+-- TODO possible optimizations:
 --
--- Style  s1 (Style  s2 x) = Style  (s1 <> s2) x
--- Transf t1 (Transf t2 x) = Transf (s1 <> s2) x
--- Style  Em = Em
--- Transf Em = Em
--- Ap [Ap xs, y, ...] = Ap (xs++[y] ...)
+--   * using seq? instead of list
+--   * TODO strict transformations,styles,properties?
+--   * TODO replacing Em/Ap with (Conc [Drawing])
+--   * TODO merging transf/style/prop
+--
+-- Rewriting laws:
+--       Style  s1 (Style  s2 x) = Style  (s1 <> s2) x
+--       Transf t1 (Transf t2 x) = Transf (s1 <> s2) x
+--       Style  Em = Em
+--       Transf Em = Em
+--       Ap [Ap xs, y, ...] = Ap (xs++[y] ...)
 
 instance Monoid Drawing where
   mempty  = transparent
@@ -781,13 +786,13 @@ data TextOptions = TextOptions
   }
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid TextOptions where
-  -- TODO derive this
   mempty
     = TextOptions mempty mempty mempty
   mappend
     (TextOptions x1 x2 x3)
     (TextOptions y1 y2 y3)
     = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3)
+  -- TODO can we derive this?
 
 
 {-| -}
@@ -1002,11 +1007,10 @@ strokeColorA x = strokeColor c . alpha a
     a = Data.Colour.alphaChannel x
 
 {-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
-
-    TODO this can be overriden by setting the non-scaling-stroke attribute. Wrap in nice API?
 -}
 strokeWidth :: Double -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
+-- TODO this can be overriden by setting the non-scaling-stroke attribute. Wrap in nice API?
 
 
 {-| Where to place origo in the generated SVG. -}
@@ -1018,7 +1022,6 @@ data OriginPlacement
 
 {-| Specifies how to generate an SVG from a Drawing. -}
 data RenderingOptions = RenderingOptions
-  -- TODO dimensions here should really be some kind of rectangle type
   { dimensions      :: P2 Double                -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
   , originPlacement :: OriginPlacement          -- ^ Where to place origo in the generated image.
   }
