@@ -74,6 +74,11 @@ hcat = foldt (|||) mempty
 vcat :: [Drawing] -> Drawing
 vcat = foldt (===) mempty
 
+vsep :: Double -> [Drawing] -> Drawing
+vsep s ds = vcat (Data.List.intersperse (vspace s) ds)
+  where
+    vspace s = scale s verticalLine
+
 -- TODO does this make it faster?
 -- Not really...
 foldt            :: (a -> a -> a) -> a -> [a] -> a
@@ -97,6 +102,8 @@ align R   = unitX 1
 align T   = unitY 1
 align B   = unitY 0
 -}
+-- TODO encloseInSquare strokeColor fillColor (enveloped -> enveloped)
+
 
 main :: IO ()
 main = do
@@ -105,6 +112,7 @@ main = do
 
     , scale 0.5 legend
     , scale 0.1 legend
+    , translateX 3 $ rotate (turn/3) $ scale 0.2 legend
 
     , showEnvelope unitX $ showEnvelope unitY $ redRect
     , showEnvelope unitX $ showEnvelope unitY $ blueRect
@@ -171,7 +179,7 @@ main = do
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
-    legend = vcat
+    legend = vsep 0.5
       [ redRect  ||| scale 0.3 (textLeftMiddle "Red")
       , blueRect ||| scale 0.3 (textLeftMiddle "Blue")
       , scale 0.3 (textMiddleMiddle "Red")  ||| redRect
