@@ -486,7 +486,7 @@ alignE' v n e = g <$> boundaries v e
 
 data OctagonSide = BL | TR | TL | BR | L | R | T | B
 
-alignE :: (Functor v, Num n, Num (v n), Additive v) => OctagonSide -> Envelope v n -> Maybe (Point v n)
+alignE :: (Functor v, Num n, Floating (v n), Additive v, v ~ V2) => OctagonSide -> Envelope v n -> Maybe (Point v n)
 alignE BL  = alignE' posDiagonal 0
 alignE TR  = alignE' posDiagonal 1
 alignE TL  = alignE' negDiagonal 0
@@ -554,11 +554,11 @@ unitY :: Num a => V2 a
 unitY = V2 0 1
 
 -- | Vector of length one, pointing diagonally upwards and left.
-posDiagonal :: Num a => V2 a
+posDiagonal :: Floating a => V2 a
 posDiagonal = V2 (sqrt 2) (sqrt 2)
 
 -- | Vector of length one, pointing diagonally downwards and left.
-negDiagonal :: Num a => V2 a
+negDiagonal :: Floating a => V2 a
 negDiagonal = V2 (sqrt 2) (-sqrt 2)
 
 (===), (|||), (\\\), (///) :: Drawing -> Drawing -> Drawing
