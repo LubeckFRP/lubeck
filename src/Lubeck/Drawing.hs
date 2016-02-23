@@ -54,11 +54,20 @@ module Lubeck.Drawing (
     P1, P2, P3, P4,
 
     Angle,
+    acosA,
+    angleBetween,
     turn,
     angleToRadians,
     angleToDegrees,
     -- TODO move/rename these?
     offsetVectors, betweenPoints,
+
+    Direction,
+    dir,
+    fromDirection,
+    angleBetween,
+    transformDirection,
+    angleBetweenDirections,
 
     -- ** Transformations
     Transformation,
@@ -137,6 +146,8 @@ module Lubeck.Drawing (
     -- ** Utility
     xyAxis,
     xyCoords,
+    showUnitX,
+    showDirection,
     smokeBackground,
 
     -- * Rendering drawings
@@ -303,6 +314,14 @@ acosA = pure . acos
 
 -- Ideomatically: Direction V2 Double
 newtype Direction v a = Direction (v a)
+
+-- | Synonym for 'direction'.
+dir :: v n -> Direction v n
+dir = Dir
+
+-- | @fromDirection d@ is the unit vector in the direction @d@.
+fromDirection :: (Metric v, Floating n) => Direction v n -> v n
+fromDirection (Dir v) = signorm v
 
 angleBetween :: (Metric v, Floating n) => v n -> v n -> Angle n
 angleBetween v1 v2 = acosA (signorm v1 `dot` signorm v2)
@@ -705,6 +724,14 @@ xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $
 xyCoords :: Drawing
 xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $
   strokeWidth 0.5 $ stack [horizontalLine, verticalLine, circle, square]
+
+showUnitX :: Drawing
+showUnitX = strokeColor C.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
+
+showDirection :: Direction V2 Double -> Drawing
+showDirection dir = scale 1000 $ rot showUnitX
+  where
+    rot = rotate (angleBetweenDirections dir (Direction unitX))
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
