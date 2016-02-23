@@ -272,7 +272,7 @@ angleToDegrees :: Angle -> Double
 angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 {-| -}
-newtype Transformation a = Transformation { getTransformation ::
+newtype Transformation a = TF { getTF ::
     (a,a,
      a,a,
      a,a)
@@ -297,14 +297,14 @@ instance Num a => Monoid (Transformation a) where
 -- Eventually use
 --    identity :: (Num a, Traversable t, Applicative t) => t (t a)
 emptyTransformation :: Num a => Transformation a
-emptyTransformation = Transformation (1,0,0,1,0,0)
+emptyTransformation = TF (1,0,0,1,0,0)
 
 {-| -}
 apTransformation :: Num a => Transformation a -> Transformation a -> Transformation a
 apTransformation
-  (Transformation (a1,b1,c1,d1,e1,f1))
-  (Transformation (a2,b2,c2,d2,e2,f2)) =
-    Transformation
+  (TF (a1,b1,c1,d1,e1,f1))
+  (TF (a2,b2,c2,d2,e2,f2)) =
+    TF
       (a1*a2 + c1*b2,
        b1*a2 + d1*b2,
        a1*c2 + c1*d2,
@@ -318,18 +318,18 @@ negTransformation = undefined
 -- infixr 6 !<>
 
 transformVector :: Num a => Transformation a -> V2 a -> V2 a
-transformVector (Transformation (a,b,c,d,e,f)) (V2 x y) = V2 (a*x+c*y) (b*x+d*y)
+transformVector (TF (a,b,c,d,e,f)) (V2 x y) = V2 (a*x+c*y) (b*x+d*y)
 
 transformPoint :: Num a => Transformation a -> P2 a -> P2 a
-transformPoint (Transformation (a,b,c,d,e,f)) (P (V2 x y)) = P $ V2 (a*x+c*y+e) (b*x+d*y+f)
+transformPoint (TF (a,b,c,d,e,f)) (P (V2 x y)) = P $ V2 (a*x+c*y+e) (b*x+d*y+f)
 
--- {-| Compose two transformations. -}
--- (!<>) :: Transformation -> Transformation -> Transformation
--- (!<>) = apTransformation
+{-| -}
+matrix :: (a, a, a, a, a, a) -> Transformation a
+matrix = TF
 
 {-| -}
 transformationToMatrix :: Transformation a -> (a, a, a, a, a, a)
-transformationToMatrix = getTransformation
+transformationToMatrix = getTF
 
 {-| -}
 newtype Style = S { getS :: Map JSString JSString }
@@ -577,7 +577,6 @@ rotation a      = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 {-| Shears an object. -}
 shearing a b    = matrix (1, b, a, 1, 0, 0)
 
-matrix = Transformation
 
 
 {-| Translate (move) an image. -}
@@ -755,8 +754,8 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
-          Transf (Transformation t) x -> single $ E.g
-            [A.transform $ "matrix" <> showJS (negY t) <> ""]
+          Transf t x -> single $ E.g
+            [A.transform $ "matrix" <> showJS (negY $ transformationToMatrix t) <> ""]
             (toSvg1 ps x)
           Style s x  -> single $ E.g
             [A.style $ styleToAttrString s]
