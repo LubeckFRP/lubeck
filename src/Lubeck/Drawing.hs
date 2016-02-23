@@ -122,7 +122,7 @@ module Lubeck.Drawing (
     -- ** Events
     addProperty,
 
-    -- ** Envelopes/Alignment/Juxtaposition
+    -- ** Envelopes, Alignment, Juxtaposition
     Envelope,
     envelope,
     -- transformEnvelope,
@@ -557,21 +557,33 @@ boundaries v e = liftA2 (,) lb ub
     lb = (origin .+^) <$> envelopeVMay' (-v) e
     ub = (origin .+^) <$> envelopeVMay' v e
 
-align' :: (Functor v, Num n, Num (v n), Additive v) => v n -> n -> Envelope v n -> Maybe (Point v n)
-align' v n e = g <$> boundaries v e
+alignE' :: (Functor v, Num n, Num (v n), Additive v) => v n -> n -> Envelope v n -> Maybe (Point v n)
+alignE' v n e = g <$> boundaries v e
   where
     g (lb, ub) = lerp n lb ub
 
 data OctagonSide = BL | TR | TL | BR | L | R | T | B
 
-align BL  = align' posDiagonal 0
-align TR  = align' posDiagonal 1
-align TL  = align' negDiagonal 0
-align BR  = align' negDiagonal 0
-align L   = align' unitX 0
-align R   = align' unitX 1
-align T   = align' unitY 1
-align B   = align' unitY 0
+alignE BL  = alignE' posDiagonal 0
+alignE TR  = alignE' posDiagonal 1
+alignE TL  = alignE' negDiagonal 0
+alignE BR  = alignE' negDiagonal 1
+alignE L   = alignE' unitX 0
+alignE R   = alignE' unitX 1
+alignE T   = alignE' unitY 1
+alignE B   = alignE' unitY 0
+
+
+align' v n dr = case alignE' v n (envelope dr) of
+  Nothing -> mempty
+  Just p  -> moveOriginTo p dr
+
+align t dr = case alignE t (envelope dr) of
+  Nothing -> mempty
+  Just p  -> moveOriginTo p dr
+
+moveOriginBy v = translate (-v)
+moveOriginTo p = moveOriginBy (p .-. origin)
 
   -- case (envelope a, envelope b) of
   -- (Envelope (Just f), Envelope (Just g)) ->
@@ -619,10 +631,14 @@ pointsEnvelope ps = Envelope $ Just $ \v ->
     rotatePoint a  = transformPoint (rotation a)
 
 
+-- | Vector of length one, pointing to the left.
 unitX = V2 1 0
+-- | Vector of length one, pointing upwards.
 unitY = V2 0 1
+-- | Vector of length one, pointing diagonally upwards and left.
 posDiagonal = V2 (sqrt 2) (sqrt 2)
-negDiagonal = V2 (-sqrt 2) (-sqrt 2)
+-- | Vector of length one, pointing diagonally downwards and left.
+negDiagonal = V2 (sqrt 2) (-sqrt 2)
 
 a ||| b = a <> juxtapose unitX a b
 a === b = a <> juxtapose (negated unitY) a b

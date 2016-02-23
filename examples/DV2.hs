@@ -122,7 +122,7 @@ main = do
     , align BR blueRect
     , align TR blueRect
     , align TL blueRect
-    , align BL blueRect
+    , align BL  blueRect
 
 
     , showEnvelope unitX $ showEnvelope unitY $ redRect
