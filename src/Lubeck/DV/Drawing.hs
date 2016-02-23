@@ -475,7 +475,8 @@ circleDataWithColor = undefined
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 -- | Draw a tree map.
-treeMapGraph :: [R] -> Styled Drawing
+-- TODO use a ratio/percantage type wrapper
+treeMapGraph :: [Double] -> Styled Drawing
 treeMapGraph = undefined
 {-
 Tree map like bottom one here:
@@ -495,7 +496,8 @@ treeMapGraphWithColor :: [P2 Double] -> Styled Drawing
 treeMapGraphWithColor = undefined
 
 -- | Draw a discrete heat map.
-discreteHeatMap :: (Int -> Int -> R) -> Styled Drawing
+-- TODO use a ratio/percantage type wrapper
+discreteHeatMap :: (Int -> Int -> Double) -> Styled Drawing
 discreteHeatMap = undefined
 
 
