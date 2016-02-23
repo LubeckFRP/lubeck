@@ -188,6 +188,7 @@ module Lubeck.Drawing (
     showDirection,
     showDirection2,
     showPoint,
+    showBoundaries,
     showEnvelope,
     smokeBackground,
 
@@ -949,6 +950,10 @@ showDirection2 :: Direction V2 Double -> Drawing
 showDirection2 dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
   where
     tp = Colors.black `withOpacity` 0
+
+showBoundaries v dr = case boundaries v (envelope dr) of
+  Nothing -> dr
+  Just (lo, hi) -> showPoint lo <> scale 2 (showPoint hi) <> dr
 
 showPoint p = translate (p .-. origin) base
   where

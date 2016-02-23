@@ -114,11 +114,18 @@ main = do
     , scale 0.1 legend
     , translateX 3 $ rotate (turn/3) $ scale 0.2 legend
 
+    , showBoundaries unitX blueRect
+    , showBoundaries unitY blueRect
+    , showBoundaries posDiagonal blueRect
+    , showBoundaries negDiagonal blueRect
+
+    -- Displays as R B L T
     , align L blueRect
     , align T blueRect
     , align R blueRect
     , align B blueRect
 
+    -- Displays as TL BL BR TR
     , align BR blueRect
     , align TR blueRect
     , align TL blueRect
