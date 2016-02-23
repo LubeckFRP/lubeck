@@ -32,20 +32,22 @@ Main differences from Diagrams:
 -}
 module Lubeck.Drawing (
     -- ** Basics
-    R,
-    V,
-    R2,
-    V2,
-    R3,
-    V3,
-    R4,
-    V4,
-    R5,
-    V5,
+    -- R,
+    -- V,
+    -- R2,
+    -- V2,
+    -- R3,
+    -- V3,
+    -- R4,
+    -- V4,
+    -- R5,
+    -- V5,
+    V1, V2, V3, V4,
+    P1, P2, P3, P4,
 
-    Point(..),
-    Vector(..),
-    Dimension(..),
+    -- Point(..),
+    -- Vector(..),
+    -- Dimension(..),
     Angle,
     offsetVectors,
     betweenPoints,
@@ -135,13 +137,13 @@ module Lubeck.Drawing (
   ) where
 
 import Control.Applicative
-import Data.AffineSpace
-import Data.AffineSpace.Point hiding (Point)
+-- import Data.AffineSpace
+-- import Data.AffineSpace.Point hiding (Point)
 import Data.Colour (Colour, AlphaColour, withOpacity)
 import Data.Map(Map)
 import Data.Monoid
 import Data.Semigroup(Max(..))
-import Data.VectorSpace
+-- import Data.VectorSpace
 import qualified Data.Colour
 import qualified Data.Colour.Names as C
 import qualified Data.Colour.SRGB
@@ -149,6 +151,17 @@ import qualified Data.JSString
 import qualified Data.List
 import qualified Data.Map
 import qualified Data.String
+
+import Linear.Vector
+import Linear.Affine
+import Linear.Matrix hiding (translation)
+import Linear.Metric -- Needed?
+import Linear.V0
+import Linear.V1
+import Linear.V2
+import Linear.V3
+import Linear.V4
+
 
 #ifdef __GHCJS__
 import GHCJS.Types(JSString)
@@ -164,44 +177,56 @@ import Lubeck.Util(showJS)
 
 
 {-| A point in 2D space. -}
-data Point = Point { x :: Double, y :: Double }
-  deriving (Eq, Ord, Show)
+-- type Point =
+-- data Point = Point { x :: Double, y :: Double }
+  -- deriving (Eq, Ord, Show)
 
 {-| A vector (distance between two points) in 2D space. -}
-data Vector = Vector { dx :: Double, dy :: Double }
-  deriving (Eq, Ord, Show)
+-- data Vector = Vector { dx :: Double, dy :: Double }
+  -- deriving (Eq, Ord, Show)
 
-type R = Double
-type V = Double
-type R2 = Point
-type V2 = Vector
-type R3 = (R,R,R)
-type V3 = (R,R,R)
-type R4 = (R,R,R,R)
-type V4 = (R,R,R,R)
-type R5 = (R,R,R,R,R)
-type V5 = (R,R,R,R,R)
+-- type R = R1
+-- type V = V1
 
-instance AdditiveGroup Vector where
-  zeroV   = Vector 0 0
-  negateV (Vector x y) = Vector (negate x) (negate y)
-  Vector xa ya ^+^ Vector xb yb = Vector (xa + xb) (ya + yb)
+-- Ideomatically: (V2 Double), (P2 Double) and so on
+type P1 a = Point V1 a
+type P2 a = Point V2 a
+type P3 a = Point V3 a
+type P4 a = Point V4 a
 
-instance VectorSpace Vector where
-  type Scalar Vector = Double
-  a *^ Vector x y = Vector (a*x) (a*y)
+-- type R = Double
+-- type V = Double
+-- type R2 = Point
+-- type V2 = Vector
+-- type R3 = (R,R,R)
+-- type V3 = (R,R,R)
+-- type R4 = (R,R,R,R)
+-- type V4 = (R,R,R,R)
+-- type R5 = (R,R,R,R,R)
+-- type V5 = (R,R,R,R,R)
 
-instance AffineSpace Point where
-  type Diff Point = Vector
-  Point xa ya .+^ Vector xb yb = Point  (xa + xb) (ya + yb)
-  Point xa ya .-. Point  xb yb = Vector (xa - xb) (ya - yb)
+-- instance AdditiveGroup Vector where
+--   zeroV   = Vector 0 0
+--   negateV (Vector x y) = Vector (negate x) (negate y)
+--   Vector xa ya ^+^ Vector xb yb = Vector (xa + xb) (ya + yb)
+--
+-- instance VectorSpace Vector where
+--   type Scalar Vector = Double
+--   a *^ Vector x y = Vector (a*x) (a*y)
+--
+-- instance AffineSpace Point where
+--   type Diff Point = Vector
+--   Point xa ya .+^ Vector xb yb = Point  (xa + xb) (ya + yb)
+--   Point xa ya .-. Point  xb yb = Vector (xa - xb) (ya - yb)
 
-offsetVectors :: Point -> [Vector] -> [Point]
+-- TODO generalize types for offsetVectors and betweenPoints
+
+offsetVectors :: Num a => P2 a -> [V2 a] -> [P2 a]
 offsetVectors p = tail . offsetVectors' p
   where
     offsetVectors' = Data.List.scanl (.+^)
 
-betweenPoints :: [Point] -> [Vector]
+betweenPoints :: Num a => [P2 a] -> [V2 a]
 betweenPoints xs = case xs of
   []     -> []
   (_:ys) -> zipWith (.-.) ys xs
@@ -212,7 +237,7 @@ betweenPoints xs = case xs of
 
 
 {-| Name of dimensions in 2 and 3D space. -}
-data Dimension = X | Y | Z
+-- data Dimension = X | Y | Z
 
 {-| An angle in 2D space.
 
@@ -223,6 +248,7 @@ To convert to radians or degrees, use
 
  -}
 type Angle = Double
+-- TODO wrap
 
 {-| The value representing a full turn.
 This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
@@ -238,14 +264,15 @@ angleToDegrees :: Angle -> Double
 angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
 
 {-| -}
-newtype Transformation = Transformation { getTransformation ::
-    (Double,Double,
-     Double,Double,
-     Double,Double)
+newtype Transformation a = Transformation { getTransformation ::
+    (a,a,
+     a,a,
+     a,a)
      }
-instance Monoid Transformation where
+instance Num a => Monoid (Transformation a) where
   mempty  = emptyTransformation
   mappend = apTransformation
+-- TODO change to use M33 (including the 0 0 1 row)
 
 -- We use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
 --
@@ -259,11 +286,13 @@ instance Monoid Transformation where
 
 -- TODO
 {-| -}
-emptyTransformation :: Transformation
+-- Eventually use
+--    identity :: (Num a, Traversable t, Applicative t) => t (t a)
+emptyTransformation :: Num a => Transformation a
 emptyTransformation = Transformation (1,0,0,1,0,0)
 
 {-| -}
-apTransformation :: Transformation -> Transformation -> Transformation
+apTransformation :: Num a => Transformation a -> Transformation a -> Transformation a
 apTransformation
   (Transformation (a1,b1,c1,d1,e1,f1))
   (Transformation (a2,b2,c2,d2,e2,f2)) =
@@ -277,18 +306,18 @@ apTransformation
 
 -- infixr 6 !<>
 
-transformVector :: Transformation -> Vector -> Vector
-transformVector (Transformation (a,b,c,d,e,f)) (Vector x y) = Vector (a*x+c*y) (b*x+d*y)
+transformVector :: Num a => Transformation a -> V2 a -> V2 a
+transformVector (Transformation (a,b,c,d,e,f)) (V2 x y) = V2 (a*x+c*y) (b*x+d*y)
 
-transformPoint :: Transformation -> Point -> Point
-transformPoint (Transformation (a,b,c,d,e,f)) (Point x y) = Point (a*x+c*y+e) (b*x+d*y+f)
+transformPoint :: Num a => Transformation a -> P2 a -> P2 a
+transformPoint (Transformation (a,b,c,d,e,f)) (P (V2 x y)) = P $ V2 (a*x+c*y+e) (b*x+d*y+f)
 
 -- {-| Compose two transformations. -}
 -- (!<>) :: Transformation -> Transformation -> Transformation
 -- (!<>) = apTransformation
 
 {-| -}
-transformationToMatrix :: Transformation -> (Double, Double, Double, Double, Double, Double)
+transformationToMatrix :: Transformation a -> (a, a, a, a, a, a)
 transformationToMatrix = getTransformation
 
 {-| -}
@@ -319,15 +348,19 @@ styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <>
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
 
+
+
 -- | Defines how far an object extends in any direction.
 --   @Nothing@ means the object has no extent (i.e. the empty image).
 newtype Extent = Extent { getExtent  :: (Maybe Double) }
+-- TODO generalize to use a, not DOuble
   deriving (Eq, Ord)
 instance Bounded Extent where
   minBound = Extent $ Nothing
   maxBound = Extent $ Just (1/0)
 
-newtype Envelope = Envelope (Vector -> Max Extent)
+newtype Envelope = Envelope (V2 Double -> Max Extent)
+-- TODO generalize to use a, not DOuble
   deriving (Monoid)
 -- Max monoid
 -- Transform by inverse-transforming argument and transforming (scaling) result
@@ -354,11 +387,11 @@ data Drawing
   = Circle
   | Rect
   | Line -- conceptually a line from point a to point b
-  | Lines Bool [Vector] -- sequence of straight lines, closed or not. For closed lines, there is no need to return
-                        -- the original point (i.e. the sum of the vector does not have to be zeroV).
+  | Lines Bool [V2 Double]  -- sequence of straight lines, closed or not. For closed lines, there is no need to return
+                            -- the original point (i.e. the sum of the vectors does not have to be zeroV).
 
   | Text JSString
-  | Transf Transformation Drawing
+  | Transf (Transformation Double) Drawing
   | Style Style Drawing
 
   -- Embed arbitrary SVG property (typically used for event handlers)
@@ -392,11 +425,11 @@ verticalLine :: Drawing
 verticalLine = rotate (turn/4) horizontalLine
 
 {-| Draw a sequence of line segments. -}
-segments :: [Vector] -> Drawing
+segments :: [V2 Double] -> Drawing
 segments = Lines False
 
 {-| Draw a polygon. -}
-polygon :: [Vector] -> Drawing
+polygon :: [V2 Double] -> Drawing
 polygon = Lines True
 
 {-| Draw text. See also 'textWithOptions'. -}
@@ -465,7 +498,7 @@ transformation one at a time:
 transform s (transform t image) = transform (s <> t) image
 @
  -}
-transform :: Transformation -> Drawing -> Drawing
+transform :: Transformation Double -> Drawing -> Drawing
 transform = Transf
 
 {-| Translates (move) an object. -}
@@ -498,18 +531,18 @@ matrix = Transformation
 
 
 {-| Translate (move) an image. -}
-translate :: Vector -> Drawing -> Drawing
-translate (Vector { dx, dy }) = transform $ matrix (1,0,0,1,dx,dy)
+translate :: V2 Double -> Drawing -> Drawing
+translate (V2 dx dy) = transform $ matrix (1,0,0,1,dx,dy)
 
 {-| Translate (move) an image along the horizonal axis.
 A positive argument will move the image to the right. -}
 translateX :: Double -> Drawing -> Drawing
-translateX x = translate (Vector x 0)
+translateX x = translate (V2 x 0)
 
 {-| Translate (move) an image along the vertical axis.
 A positive argument will move the image upwards (as opposed to standard SVG behavior). -}
 translateY :: Double -> Drawing -> Drawing
-translateY y = translate (Vector 0 y)
+translateY y = translate (V2 0 y)
 
 {-| Scale (stretch) an image. -}
 scaleXY :: Double -> Double -> Drawing -> Drawing
@@ -606,14 +639,15 @@ data OriginPlacement
 
 {-| Specifies how to generate an SVG from a Drawing. -}
 data RenderingOptions = RenderingOptions
-  { dimensions      :: Point                   -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
+  -- TODO dimensions here should really be some kind of rectangle type
+  { dimensions      :: P2 Double                -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
   , originPlacement :: OriginPlacement          -- ^ Where to place origo in the generated image.
   }
   deriving (Eq, Ord, Show)
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid RenderingOptions where
-  mempty  = RenderingOptions (Point 800 800) Center
+  mempty  = RenderingOptions (P $ V2 800 800) Center
   mappend = const
 
 {-| Generate an SVG from a drawing. -}
@@ -625,7 +659,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
     ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
     (toSvg1 [] $ placeOrigo $ drawing)
   where
-    Point {x,y} = dimensions
+    P (V2 x y) = dimensions
 
     svgTopNode :: JSString -> JSString -> JSString -> [Svg] -> Svg
     svgTopNode w h vb = E.svg
@@ -639,11 +673,11 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
       Center      -> translateX (x/2) . translateY (y/(-2))
       BottomLeft  -> translateY (y*(-1))
 
-    pointsToSvgString :: [Point] -> JSString
+    pointsToSvgString :: [P2 Double] -> JSString
     pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
       where
         toJSString = Data.JSString.pack
-        pointToSvgString (Point {x,y}) = show x ++ "," ++ show y
+        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
 
     toSvg1 :: [E.Property] -> Drawing -> [Svg]
     toSvg1 ps x = let
@@ -651,7 +685,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
         noScale = VD.attribute "vector-effect" "non-scaling-stroke"
         negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
         offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-        reflY (Vector adx ady) = Vector { dx = adx, dy = negate ady }
+        reflY (V2 adx ady) = V2 adx (negate ady)
       in case x of
           Circle     -> single $ E.circle
             ([A.r "0.5", noScale]++ps)
@@ -663,7 +697,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
             ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
             []
           (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-            ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (Point 0 0) (fmap reflY vs)), noScale]++ps)
+            ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
             []
           Text s -> single $ E.text'
             ([A.x "0", A.y "0"]++ps)
