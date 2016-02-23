@@ -161,8 +161,8 @@ module Lubeck.Drawing (
     , polygon
     -- ** Text
     , text
-    , textMiddle,         -- TODO depracate
-    , textEnd,            -- TODO depracate
+    , textMiddle          -- TODO depracate
+    , textEnd             -- TODO depracate
     , textLeftMiddle
     , textMiddleMiddle
     , textRightMiddle
