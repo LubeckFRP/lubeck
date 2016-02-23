@@ -7,6 +7,25 @@ High-level vector graphics library. Renders to as SVG using "Web.VirtualDom.Svg"
 
 The API is a rather stripped-down version of Diagrams.
 
+Similar to diagrams:
+- Based on "linear", points, vectors and transformations
+- Has monoidal overlay of transparent images, local origins and envelpoes
+
+Main differences from Diagrams:
+- Limited to 2D
+- No Core.Measure
+- No Semigroups (?)
+- No Default (use a left-biased monoid, i.e. mappend = const)
+- No names, no queries
+- No transformable/special attributes, everything is showable/string
+  - Consequently (?)
+  - No local or normalized units (behaves as Diagrams' global units)
+- traces?
+- No HasOrigin class (just use tranformation)
+
+- Potential animation supports
+- Event handler support (VDOM only)
+
 [diagrams]: http://projects.haskell.org/diagrams
 
 -}
