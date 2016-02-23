@@ -771,7 +771,7 @@ showPoint p = translate (p .-. origin) base
 
 showEnvelope dir x = case envelope x of
   Envelope Nothing  -> x
-  Envelope (Just f) -> showPoint (f dir) <> x
+  Envelope (Just f) -> showDirection dir <> showPoint (f dir) <> x
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing

@@ -71,9 +71,22 @@ chooseDrawing ds = do
 main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords))
-    [ scale 1 blueCircle
-    , scale 2 blueCircle
-    , translateX 4 $ scale 3 blueCircle
+    [ showEnvelope (dir $ V2 1 0)   $ scale 1 blueCircle
+    , showEnvelope (dir $ V2 1 0)   $ scale 2 blueCircle
+    , showEnvelope (dir $ V2 1 0)   $ translateX 4 $ scale 1 blueCircle
+
+    , showEnvelope (dir $ V2 1 0.3)   $ scale 1 blueCircle
+    , showEnvelope (dir $ V2 1 0.3)   $ scale 2 blueCircle
+    , showEnvelope (dir $ V2 1 0.3)   $ translateX 4 $ scale 1 blueCircle
+
+    , showEnvelope (dir $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
+    , showEnvelope (dir $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
+    , showEnvelope (dir $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
+
+    , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 1 blueCircle
+    , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
+    , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
+
     ]
     -- [ (translateX 2 redCircle ||| blueCircle)
     -- , (redCircle ||| greenCircle ||| blueCircle)
