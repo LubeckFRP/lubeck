@@ -388,7 +388,7 @@ a === b = a <> juxtapose (negated unitY) a b
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
-  Circle        -> Envelope $ Just $ \v -> recip (norm v) -- TODO scale vector to have magnitude 1
+  Circle        -> Envelope $ Just $ \v -> pure (recip $ norm v) -- Scale vector to have magnitude 1
   Rect          -> envelope Circle -- TODO
   Line          -> envelope Circle -- TODO
   Lines _ _     -> envelope Circle -- TODO
