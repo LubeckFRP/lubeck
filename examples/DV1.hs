@@ -59,7 +59,7 @@ chooseDrawing ds = do
   drawingS <- stepperS mempty (fmap (ds !!) intE)
   return $ mconcat [view, (fmap (toSvg rendOpts) drawingS)]
   where
-    rendOpts  = defaultRenderingOptions
+    rendOpts  = mempty
                 { originPlacement = Center
                 , dimensions      = Point 1000 500
                 }

@@ -110,7 +110,7 @@ module Lubeck.Drawing (
     -- * Render
     OriginPlacement(..),
     RenderingOptions(..),
-    defaultRenderingOptions,
+    -- mempty,
     toSvg,
   ) where
 
@@ -399,6 +399,11 @@ data TextOptions = TextOptions
 defaultTextOptions = TextOptions
   TextStart
 
+-- | Left-biased. Mainly here for the 'mempty'.
+instance Monoid TextOptions where
+  mempty  = defaultTextOptions
+  mappend = const
+
 {-| -}
 textWithOptions :: TextOptions -> JSString -> Drawing
 textWithOptions opts = ta . Text
@@ -586,8 +591,13 @@ data RenderingOptions = RenderingOptions
   }
   deriving (Eq, Ord, Show)
 
-defaultRenderingOptions :: RenderingOptions
-defaultRenderingOptions = RenderingOptions (Point 800 800) Center
+-- | Left-biased. Mainly here for the 'mempty'.
+instance Monoid RenderingOptions where
+  mappend = mempty
+  mappend = const
+
+mempty :: RenderingOptions
+mempty = RenderingOptions (Point 800 800) Center
 
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
