@@ -24,8 +24,8 @@ import qualified Web.VirtualDom.Html.Attributes as H
 import qualified Web.VirtualDom.Html.Events as H
 import qualified Web.VirtualDom.Svg.Events as SvgEv
 import qualified Data.JSString
-import Data.VectorSpace
-import Data.AffineSpace
+-- import Data.VectorSpace
+-- import Data.AffineSpace
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 
@@ -36,6 +36,16 @@ import qualified Data.Time.Format
 -- TODO Debug
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
+
+import Linear.Vector
+import Linear.Affine
+-- import Linear.Matrix hiding (translation)
+-- import Linear.Metric -- Needed?
+import Linear.V0
+import Linear.V1
+import Linear.V2
+import Linear.V3
+import Linear.V4
 
 import Lubeck.FRP
 import Lubeck.App (Html, runAppReactive)
@@ -150,7 +160,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
     tickOffsetsB = fmap normB ticksB
     nAs = fmap normA as
     nBs = fmap normB bs
-    points = zipWith Point nAs nBs
+    points = zipWith (P . V2) nAs nBs
 
     -- ticksA, ticksB :: [Double]
     ticksA = tickCalc numTicksA (lba,uba)
@@ -184,7 +194,7 @@ simpleTimeSeries s f g = snd . simpleLinePlot
 simpleTimeSeriesWithOverlay :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
 simpleTimeSeriesWithOverlay s f g times dat = plot2 <> plot1
   where
-    plot2 = withDefaultStyle $ scatterDataX $ fmap ((\t -> Point t 0.5) . normT . utcTimeToApproxReal) times
+    plot2 = withDefaultStyle $ scatterDataX $ fmap ((\t -> P $ V2 t 0.5) . normT . utcTimeToApproxReal) times
     ((normT, _), plot1) = simpleLinePlot
       (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
       utcTimeToApproxReal realToApproxUTCTime
