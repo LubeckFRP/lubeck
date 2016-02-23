@@ -70,14 +70,20 @@ chooseDrawing ds = do
 
 main :: IO ()
 main = do
-  dS <- chooseDrawing $ fmap (scale 10) $
-    [ (translateX 2 redCircle ||| blueCircle) <> scale 10 xyCoords
-    , (redCircle ||| greenCircle ||| blueCircle) <> scale 10 xyCoords
-    , (redCircle === blueCircle) <> scale 10 xyCoords
+  dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords))
+    [ (translateX 2 redCircle ||| blueCircle)
+    , (redCircle ||| greenCircle ||| blueCircle)
+    , (redCircle === blueCircle)
 
-    , (scale 3 redCircle ||| blueCircle) <> scale 10 xyCoords
-    , (redCircle ||| scale 2 greenCircle ||| scale 0.5 blueCircle) <> scale 10 xyCoords
-    , (redCircle === scale 2 blueCircle) <> scale 10 xyCoords
+    , (scale 3 redCircle ||| blueCircle)
+    , transform (translation 0 3) $
+        (scale 3 redCircle ||| blueCircle)
+    , transform (negTransformation $ translation 0 3) $
+        (scale 3 redCircle ||| blueCircle)
+
+    , (scale 3 redCircle ||| blueCircle)
+    , (redCircle ||| scale 2 greenCircle ||| scale 0.5 blueCircle)
+    , (redCircle === scale 2 blueCircle)
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where

@@ -1,5 +1,6 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, NamedFieldPuns, QuasiQuotes, CPP, NoMonomorphismRestriction #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
+  NamedFieldPuns, QuasiQuotes, CPP, NoMonomorphismRestriction #-}
 
 {-|
 
@@ -61,6 +62,7 @@ module Lubeck.Drawing (
 
     -- ** Transformations
     Transformation,
+    negTransformation,
     transformVector,
     transformPoint,
     transformationToMatrix,
@@ -264,23 +266,52 @@ can be expressed as `turn/2`, three quarters of a turn by `turn*3/4` and so on.
 To convert to radians or degrees, use
 
  -}
-type Angle = Double
+newtype Angle n = Radians n
+  deriving (Functor, Enum, Eq, Ord, Num, Fractional)
+
+instance Applicative Angle where
+  pure = Radians
+  {-# INLINE pure #-}
+  Radians f <*> Radians x = Radians (f x)
+  {-# INLINE (<*>) #-}
+
+instance Additive Angle where
+  zero = pure 0
+  {-# INLINE zero #-}
+
+instance Num n => Monoid (Angle n) where
+  mappend = (^+^)
+  mempty  = Radians 0
+
 -- TODO wrap
 
 {-| The value representing a full turn.
 This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
-turn :: Angle
-turn = pi * 2
+turn :: Floating a => Angle a
+turn = pure $ pi * 2
 
 {-| Convert an angle to radians. -}
-angleToRadians :: Angle -> Double
-angleToRadians x = x
+angleToRadians :: Floating a => Angle a -> a
+angleToRadians (Radians x) = x
 
 {-| Convert an angle to degrees. -}
-angleToDegrees :: Angle -> Double
-angleToDegrees x = let tau = pi * 2 in (x / tau * 360)
+angleToDegrees :: Floating a => Angle a -> a
+angleToDegrees (Radians x) = let tau = pi * 2 in (x / tau * 360)
 
+acosA :: Floating n => n -> Angle n
+acosA = pure . acos
 
+-- Ideomatically: Direction V2 Double
+newtype Direction v a = Direction (v a)
+
+angleBetween :: (Metric v, Floating n) => v n -> v n -> Angle n
+angleBetween v1 v2 = acosA (signorm v1 `dot` signorm v2)
+
+transformDirection :: Num n => Transformation n -> Direction V2 n -> Direction V2 n
+transformDirection t (Direction v) = Direction (transformVector t v)
+
+angleBetweenDirections :: (Metric v, Floating n) => Direction v n -> Direction v n -> Angle n
+angleBetweenDirections (Direction x) (Direction y) = angleBetween x y
 
 
 --- Eventually use
@@ -644,8 +675,8 @@ scaleY :: Double -> Drawing -> Drawing
 scaleY      y = scaleXY 1 y
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
-rotate :: Angle -> Drawing -> Drawing
-rotate    a   = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+rotate :: Angle Double -> Drawing -> Drawing
+rotate (Radians a) = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 -- The b,c, signs are inverted because of the reverse y polarity.
 
 {-| Shear an image. -}
