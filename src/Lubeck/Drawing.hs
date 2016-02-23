@@ -177,6 +177,7 @@ import qualified Data.Colour.Names as C
 import qualified Data.Colour.SRGB
 import qualified Data.JSString
 import qualified Data.List
+import qualified Data.Ord
 import qualified Data.Map
 import qualified Data.String
 
@@ -522,14 +523,11 @@ juxtapose v a1 a2 =   case (mv1, mv2) of
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
-  -- FIXME use (0.5/norm v), not (1/norm v)
-  -- Circle        -> Envelope $ Just $ \dir -> (P $ fromDirection dir ^* 0.5)
   Circle        -> Envelope $ Just $ \v -> (0.5/norm v)
-  Rect          -> envelope Circle -- TODO
-  Line          -> envelope Circle -- TODO
-  Lines _ _     -> envelope Circle -- TODO
-  Text _        -> envelope Circle -- TODO
-  -- Transf t x    -> transformEnvelope t (envelope x)
+  Rect          -> pointsEnvelope $ fmap P [V2 (1/2) 0, V2 0 (1/2), V2 (-1/2) 0, V2 0 (-1/2)]
+  Line          -> pointsEnvelope $ fmap P [V2 0 0, V2 1 0]
+  Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
+  Text _        -> envelope Rect -- TODO
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
   Prop  _ x     -> envelope x
@@ -537,8 +535,23 @@ envelope x = case x of
   Ap x y        -> mappend (envelope x) (envelope y)
 
 
+pointsEnvelope :: [P2 Double] -> Envelope V2 Double
+pointsEnvelope [] = Envelope $ Nothing
+pointsEnvelope ps = Envelope $ Just $ \v ->
+  (\(P (V2 x _)) -> x / norm v) $ rightMost $ rotatePoints (negate $ angleBetween v unitX) ps
+  where
+    -- Rotate all points and the vector so that the vector aligns with unitX
+    -- Find rightmost point by comparing x coord
+    -- Return x of leftmost point / magnitude of vector
+    --
+    -- This could probably be expressed more concisely with basis, but the result is
+    -- the same.
 
+    rightMost = Data.List.maximumBy (Data.Ord.comparing (\(P (V2 x _)) -> x))
 
+    rotatePoints :: Angle Double -> [P2 Double] -> [P2 Double]
+    rotatePoints a = fmap (rotatePoint a)
+    rotatePoint a  = transformPoint (rotation a)
 
 
 unitX = V2 1 0
@@ -730,7 +743,8 @@ scalingX a      = scaling     a 1
 scalingY b      = scaling     1 b
 
 {-| Rotates an object. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
-rotation a      = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+rotation :: Angle Double -> Transformation Double
+rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 
 {-| Shears an object. -}
 shearing a b    = matrix (1, b, a, 1, 0, 0)
