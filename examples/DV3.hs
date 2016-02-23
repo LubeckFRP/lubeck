@@ -87,6 +87,19 @@ main = do
     , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ scale 2 blueCircle
     , showEnvelope (dir $ negated $ V2 1 0.3)   $ shear 0.2 0.1 $ translateX 4 $ scale 1 blueCircle
 
+    , showDirection (dir $ V2 1    0)
+    , showDirection (dir $ V2 0    1)
+    , showDirection (dir $ V2 (-1) 0)
+    , showDirection (dir $ V2 0    (-1))
+
+    , showDirection2 (dir $ V2 1    0)
+    , showDirection2 (dir $ V2 0    1)
+    , showDirection2 (dir $ V2 (-1) 0)
+    , showDirection2 (dir $ V2 0    (-1))
+
+    , showUnitX
+    , rotate (turn*1/3) $ showUnitX
+    , rotate (turn*3/4) $ showUnitX
     ]
     -- [ (translateX 2 redCircle ||| blueCircle)
     -- , (redCircle ||| greenCircle ||| blueCircle)

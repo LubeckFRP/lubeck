@@ -148,6 +148,7 @@ module Lubeck.Drawing (
     xyCoords,
     showUnitX,
     showDirection,
+    showDirection2,
     showPoint,
     showEnvelope,
     smokeBackground,
@@ -330,8 +331,9 @@ angleBetween v1 v2 = acosA (signorm v1 `dot` signorm v2)
 transformDirection :: Num n => Transformation n -> Direction V2 n -> Direction V2 n
 transformDirection t (Direction v) = Direction (transformVector t v)
 
+-- TODO do we really need angleBetween?
 angleBetweenDirections :: (Metric v, Floating n) => Direction v n -> Direction v n -> Angle n
-angleBetweenDirections (Direction x) (Direction y) = angleBetween x y
+angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
 
 
 --- Eventually use
@@ -760,14 +762,18 @@ xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $
 showUnitX :: Drawing
 showUnitX = strokeColor C.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 
-showDirection :: Direction V2 Double -> Drawing
-showDirection dir = scale 1000 $ rot showUnitX
-  where
-    rot = rotate (angleBetweenDirections dir (Direction unitX))
+-- showDirection :: Direction V2 Double -> Drawing
+-- showDirection dir = scale 1000 $ rot showUnitX
+--   where
+--     rot = rotate (angleBetweenDirections dir (Direction unitX))
+showDirection = showDirection2
+
+showDirection2 :: Direction V2 Double -> Drawing
+showDirection2 dir = scale 100 $ strokeColor C.red $ strokeWidth 3 $ segments [fromDirection dir]
 
 showPoint p = translate (p .-. origin) base
   where
-    base = fillColor C.red $ scale 5 $ circle
+    base = strokeColor C.red $ fillColorA (C.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
 
 showEnvelope dir x = case envelope x of
   Envelope Nothing  -> x
