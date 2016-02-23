@@ -290,37 +290,37 @@ withDefaultStyleT x = getStyledT x mempty
 -- TODO consolidate origin, intoRect
 
 -- | Draw data for a scatter plot.
-scatterData :: Monad m => [R2] -> StyledT m Drawing
+scatterData :: Monad m => [P2 Double] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
   let base  = id
             $ fillColorA (style^.scatterPlotFillColor)
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
-  let origin = Point 0 0
-  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring Y values.
-scatterDataX :: Monad m => [R2] -> StyledT m Drawing
+scatterDataX :: Monad m => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
-  let origin = Point 0 0
-  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
-  return $ mconcat $ fmap (\p -> scaleY (dy $ style^.renderingRectangle) $ translateX (x p) base) (fmap intoRect ps)
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring X values.
-scatterDataY :: Monad m => [R2] ->  StyledT m Drawing
+scatterDataY :: Monad m => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
-  let origin = Point 0 0
-  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
-  return $ mconcat $ fmap (\p -> scaleX (dx $ style^.renderingRectangle) $ translateY (y p) base) (fmap intoRect ps)
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) (fmap intoRect ps)
 
 -- | Draw data for a line plot.
-lineData :: [R2] -> Styled Drawing
+lineData :: [P2 Double] -> Styled Drawing
 lineData []     = mempty
 lineData [_]    = mempty
 lineData (p:ps) = do
@@ -329,20 +329,20 @@ lineData (p:ps) = do
                 . strokeColorA  (style^.linePlotStrokeColor)
                 . fillColorA    (style^.linePlotFillColor)
                 . strokeWidth   (style^.linePlotStrokeWidth)
-  let origin = Point 0 0
-  let intoRect = transformPoint (scalingX (dx $ style^.renderingRectangle) <> scalingY (dy $ style^.renderingRectangle))
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 -- | Step chart
 --
 -- See Visualize this p 124
-stepData :: R2 -> [V2] -> Styled Drawing
+stepData :: P2 Double -> [V2 Double] -> Styled Drawing
 stepData z vs = lineData (offsetVectors z vs)
 
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
-linearData :: R -> R -> Styled Drawing
-linearData a b = lineData $ fmap (\x -> x `Point` f x) [0,1]
+linearData :: Double -> Double -> Styled Drawing
+linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
   where
     f x = a*x + b
 
@@ -353,35 +353,35 @@ barData :: [R] -> Styled Drawing
 barData ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
-  let barFullOffset = barWidth + barWidth * (dx $ style^.barPlotUngroupedOffset)
+  let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
   let base = alignB $ fillColorA ((style^.barPlotBarColors) !! 0) $ square
   return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\p -> scaleX barWidth $ scaleY p $ base) ps
   where
     alignB = translate (V2 0 0.5)
     scaleRR = transform . scalingRR
-    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
+    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- | Draw
-barData2 :: [R2] -> Styled Drawing
+barData2 :: [P2 Double] -> Styled Drawing
 -- | Draw
-barData3 :: [R3] -> Styled Drawing
+barData3 :: [P3 Double] -> Styled Drawing
 -- | Draw
-barData4 :: [R4] -> Styled Drawing
+barData4 :: [P4 Double] -> Styled Drawing
 [barData2, barData3, barData4] = undefined
 
 -- rawBarData4 :: [[R]] -> Styled Drawing
 
 
 -- | Draw
-barDataWithColor  :: [R2] -> Styled Drawing
+barDataWithColor  :: [P2 Double] -> Styled Drawing
 -- | Draw
-barDataWithColor2 :: [R3] -> Styled Drawing
+barDataWithColor2 :: [P3 Double] -> Styled Drawing
 -- | Draw
-barDataWithColor3 :: [R4] -> Styled Drawing
+barDataWithColor3 :: [P4 Double] -> Styled Drawing
 -- | Draw
-barDataWithColor4 :: [R5] -> Styled Drawing
-[barDataWithColor, barDataWithColor2, barDataWithColor3, barDataWithColor4] = undefined
+-- barDataWithColor4 :: [R5] -> Styled Drawing
+-- [barDataWithColor, barDataWithColor2, barDataWithColor3, barDataWithColor4] = undefined
 
 -- | Visualizes a count
 -- See "Visualize this" pXXII (Godfather example)
@@ -401,8 +401,8 @@ intData = undefined
 
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioData :: R -> Styled Drawing
-ratioData v = do
+ratioData :: P1 Double -> Styled Drawing
+ratioData (P (V1 v)) = do
   style <- ask
   let fg = style^.ratioPlotForegroundColor
   let bg = style^.ratioPlotBackgroundColor
@@ -410,13 +410,13 @@ ratioData v = do
   where
     -- TODO move
     alignBL = translate (V2 0.5 0.5)
-    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
+    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 
 -- | Visualizes ration with colour.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioDataWithColor :: R2 -> Styled Drawing
-ratioDataWithColor (Point v1 v2) = do
+ratioDataWithColor :: P2 Double -> Styled Drawing
+ratioDataWithColor (P (V2 v1 v2)) = do
   style <- ask
   let bg  = style^.ratioPlotBackgroundColor
   let fg1 = style^.heatMapColour1
@@ -426,7 +426,7 @@ ratioDataWithColor (Point v1 v2) = do
   where
     -- TODO move
     alignBL = translate (V2 0.5 0.5)
-    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
+    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- TODO consolidate ratioData, ratioDataWithColor
 
@@ -437,7 +437,7 @@ plotRectangle = do
   style <- ask
   return $ transform (scalingRR style) (scale 2 xyCoords)
   where
-    scalingRR style = let r = style^.renderingRectangle in scaling (dx r) (dy r)
+    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- | Draw
 -- TODO use area not radius
@@ -451,7 +451,7 @@ pieChartData = undefined
 
 
 -- | Draw
-circleDataWithColor :: [R2] -> Styled Drawing
+circleDataWithColor :: [P2 Double] -> Styled Drawing
 circleDataWithColor = undefined
 
 -- circleDataWithColor = do
@@ -466,9 +466,9 @@ circleDataWithColor = undefined
 --   stacking, grouping, alternating (same as grouping with no spacing), above/below (2 dimensions only)
 
 -- | Draw a bar graph.
--- barData2 :: [R2] -> Styled Drawing
--- barData2 :: [R3] -> Styled Drawing
--- barData2 :: [R4] -> Styled Drawing
+-- barData2 :: [P2 Double] -> Styled Drawing
+-- barData2 :: [P3 Double] -> Styled Drawing
+-- barData2 :: [P4 Double] -> Styled Drawing
 
 -- | A size graph: scales the given objets and places them side by side.
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
@@ -490,7 +490,7 @@ See also "Visualize this, p 157"
 
 
 -- | Like 'treeMapGraph', mapping the last dimension to colour.
-treeMapGraphWithColor :: [R2] -> Styled Drawing
+treeMapGraphWithColor :: [P2 Double] -> Styled Drawing
 treeMapGraphWithColor = undefined
 
 -- | Draw a discrete heat map.
