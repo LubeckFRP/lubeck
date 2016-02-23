@@ -612,7 +612,7 @@ a === b = a <> juxtapose (negated unitY) a b
 -- Transform by inverse-transforming argument and transforming (scaling) result
 -- Transformable
 
--- TODO general path/cubic spline support (generalizes all others! including text?)
+-- TODO general path/beziers (cubic spline?) support (generalizes all others! including text?)
 -- TODO masks support
 -- TODO better text API
 
