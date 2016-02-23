@@ -53,133 +53,140 @@ Main differences from Diagrams:
 module Lubeck.Drawing (
     -- * Creating drawings
     -- ** Geometry
-    Point(..),
-    V1(..), V2(..), V3(..), V4(..),
-    P1, P2, P3, P4,
+      Point(..)
+    , V1(..)
+    , V2(..)
+    , V3(..)
+    , V4(..)
+    , P1
+    , P2
+    , P3
+    , P4
 
-    Angle,
-    acosA,
-    angleBetween,
-    turn,
-    angleToRadians,
-    angleToDegrees,
+    , Angle
+    , acosA
+    , angleBetween
+    , turn
+    , angleToRadians
+    , angleToDegrees
     -- TODO move/rename these?
-    offsetVectors, betweenPoints,
+    , offsetVectors
+    , betweenPoints
 
-    Direction,
-    dir,
-    fromDirection,
-    angleBetween,
-    angleBetweenDirections,
+    , Direction
+    , dir
+    , fromDirection
+    , angleBetween
+    , angleBetweenDirections
 
     -- ** Transformations
-    Transformation,
-    negTransformation,
-    lin,
-    transp,
-    transl,
-    transformVector,
-    transformPoint,
-    transformDirection,
-    transformEnvelope,
-    transformationToMatrix,
+    , Transformation
+    , negTransformation
+    , lin
+    , transp
+    , transl
+    , transformVector
+    , transformPoint
+    , transformDirection
+    , transformEnvelope
+    , transformationToMatrix
     -- ** Raw transformations
-    translation,
-    translationX,
-    translationY,
-    scaling,
-    scalingX,
-    scalingY,
-    rotation,
-    shearing,
+    , translation
+    , translationX
+    , translationY
+    , scaling
+    , scalingX
+    , scalingY
+    , rotation
+    , shearing
     -- $matrixContructorLayout
-    matrix,
+    , matrix
     -- ** Applying transformations
-    transform,
-    translate,
-    translateX,
-    translateY,
-    scaleXY,
-    scale,
-    scaleX,
-    scaleY,
-    rotate,
-    shear,
+    , transform
+    , translate
+    , translateX
+    , translateY
+    , scaleXY
+    , scale
+    , scaleX
+    , scaleY
+    , rotate
+    , shear
 
     -- ** Styling
-    Style,
-    styleNamed,
-    fillColor,
-    fillColorA,
-    strokeColor,
-    strokeColorA,
-    strokeWidth,
+    , Style
+    , styleNamed
+    , fillColor
+    , fillColorA
+    , strokeColor
+    , strokeColorA
+    , strokeWidth
     -- *** Rendering styles
-    styleToAttrString,
+    , styleToAttrString
     -- *** Applying styles
-    style,
+    , style
 
 
     -- ** Events
-    addProperty,
+    , addProperty
 
     -- ** Envelopes, Alignment, Juxtaposition
-    Envelope,
-    envelope,
-    -- transformEnvelope,
-    unitX,
-    unitY,
-    posDiagonal,
-    negDiagonal,
-    (|||),
-    (===),
-    juxtapose,
+    , Envelope
+    , envelope
+    -- transformEnvelope
+    , unitX
+    , unitY
+    , posDiagonal
+    , negDiagonal
+    , (|||)
+    , (===)
+    , juxtapose
 
-    boundaries,
-    align',
-    align,
-    OctagonSide(..),
+    , boundaries
+    , align'
+    , align
+    , OctagonSide(..)
 
 
 
     -- ** Drawings
-    Drawing,
+    , Drawing
     -- ** Basic drawings
-    transparent,
-    circle,
-    square,
-    horizontalLine,
-    verticalLine,
-    segments,
-    polygon,
+    , transparent
+    , circle
+    , square
+    , horizontalLine
+    , verticalLine
+    , segments
+    , polygon
     -- ** Text
-    text,
-    textMiddle,         -- TODO depracate
-    textEnd,            -- TODO depracate
-    textLeftMiddle,
-    textMiddleMiddle,
-    textRightMiddle,
-    TextAnchor(..),
-    AlignmentBaseline(..),
-    FontStyle(..),
-    TextOptions(..),
-    textWithOptions,
+    , text
+    , textMiddle,         -- TODO depracate
+    , textEnd,            -- TODO depracate
+    , textLeftMiddle
+    , textMiddleMiddle
+    , textRightMiddle
+    , TextAnchor(..)
+    , AlignmentBaseline(..)
+    , FontStyle(..)
+    , TextOptions(..)
+    , textWithOptions
 
     -- ** Utility
-    xyAxis,
-    xyCoords,
-    showUnitX,
-    showDirection,
-    showPoint,
-    showBoundaries,
-    showEnvelope,
-    smokeBackground,
+    , xyAxis
+    , xyCoords
+    , showUnitX
+    , showDirection
+    , showPoint
+    , showBoundaries
+    , showEnvelope
+    , smokeBackground
 
     -- * Rendering drawings
-    OriginPlacement(..),
-    RenderingOptions(..),
-    -- mempty,
-    toSvg,
+    , OriginPlacement(..)
+    , RenderingOptions(..)
+    -- mempty
+    , toSvg
   ) where
 
 import Control.Applicative
