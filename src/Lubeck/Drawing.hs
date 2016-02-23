@@ -47,7 +47,7 @@ Main differences from Diagrams:
 -}
 module Lubeck.Drawing (
     -- * Creating drawings
-    -- ** Basics
+    -- ** Geometry
     Point(..),
     V1(..), V2(..), V3(..), V4(..),
     P1, P2, P3, P4,
@@ -170,6 +170,10 @@ import Linear.V2
 import Linear.V3
 import Linear.V4
 
+import qualified Linear.V1
+import qualified Linear.V2
+import qualified Linear.V3
+import qualified Linear.V4
 
 #ifdef __GHCJS__
 import GHCJS.Types(JSString)
@@ -184,12 +188,12 @@ type JSString = String
 import Lubeck.Util(showJS)
 
 
-{-| A point in 2D space. -}
+{- A point in 2D space. -}
 -- type Point =
 -- data Point = Point { x :: Double, y :: Double }
   -- deriving (Eq, Ord, Show)
 
-{-| A vector (distance between two points) in 2D space. -}
+{- A vector (distance between two points) in 2D space. -}
 -- data Vector = Vector { dx :: Double, dy :: Double }
   -- deriving (Eq, Ord, Show)
 
@@ -197,6 +201,11 @@ import Lubeck.Util(showJS)
 -- type V = V1
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
+-- type V1 a = Linear.V1.V1 a
+-- type V2 a = Linear.V2.V2 a
+-- type V3 a = Linear.V3.V3 a
+-- type V4 a = Linear.V4.V4 a
+
 type P1 a = Point V1 a
 type P2 a = Point V2 a
 type P3 a = Point V3 a
