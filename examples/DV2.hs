@@ -76,6 +76,10 @@ main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords)) $
     [ (translateX 2 blueRect ||| blueCircle)
 
+    , mconcat
+      [ redRect ||| text "Red"
+      , blueRect ||| text "Blue"
+      ]
 
     , showEnvelope unitX $ showEnvelope unitY $ redRect
     , showEnvelope unitX $ showEnvelope unitY $ blueRect
@@ -92,6 +96,7 @@ main = do
     , showEnvelope unitX   $ scale 2 blueCircle
     , showEnvelope unitX   $ translateX 4 $ scale 1 blueCircle
     , showEnvelope unitX   $ translateX (-5) $ scale 1 blueCircle
+    , showEnvelope unitX   $ translateX (-4.5) $ scale 1 blueCircle
     , showEnvelope unitX   $ rotate (4*turn/13) $ translateX 5 $ scale 3 blueCircle
 
     , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ strokeWidth 1 $ strokeColor Colors.blue $ segments (take 5 randVectors)
@@ -146,9 +151,10 @@ main = do
     blueCircle  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) circle
     greenCircle = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) circle
 
-    redRect   = scale 10 $ scaleX 1.2 $ rotate (turn/13) $ fillColorA (Colors.red `withOpacity` 0.4) square
+    redRect   = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) square
     blueRect  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) square
     greenRect = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) square
+    redRectX  = scale 10 $ scaleX 1.2 $ rotate (turn/13) $ redRect
 
     plotStyle = id
       $ renderingRectangle  .~ V2 500 250
