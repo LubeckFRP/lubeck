@@ -110,7 +110,7 @@ main = do
 
     , barData (fmap realToFrac $ take 10 rand1)
     , barData (fmap realToFrac $ take 3 rand2)
-    , barData [1,1.1..1]
+    , barData $ fmap realToFrac [1,1.1..1]
 
     , ratioData (realToFrac $ rand1 !! 0)
     , ratioData (realToFrac $ rand1 !! 1)
