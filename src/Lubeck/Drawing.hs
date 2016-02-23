@@ -701,22 +701,30 @@ data TextOptions = TextOptions
   , fontStyle         :: FontStyle
   }
 -- | Left-biased. Mainly here for the 'mempty'.
-deriving instance Monoid TextOptions
+instance Monoid TextOptions where
+  -- TODO derive this
+  mempty
+    = TextOptions mempty mempty mempty
+  mappend
+    (TextOptions x1 x2 x3)
+    (TextOptions y1 y2 y3)
+    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3)
+
 
 {-| -}
 textWithOptions :: TextOptions -> JSString -> Drawing
 textWithOptions opts = _fontStyle . _textAnchor . Text
   where
     _fontStyle  = case fontStyle opts of
-      TextNormal   -> Prop (VD.attribute "font-style" "normal")
-      TextItalic   -> Prop (VD.attribute "font-style" "italic")
-      TextOblique  -> Prop (VD.attribute "font-style" "oblique")
-      TextInherit  -> id
+      FontStyleNormal           -> Prop (VD.attribute "font-style" "normal")
+      FontStyleItalic           -> Prop (VD.attribute "font-style" "italic")
+      FontStyleOblique          -> Prop (VD.attribute "font-style" "oblique")
+      FontStyleInherit          -> id
     _textAnchor = case textAnchor opts of
-      TextAnchorStart   -> Prop (VD.attribute "text-anchor"  "start")
-      TextAnchorMiddle  -> Prop (VD.attribute "text-anchor"  "middle")
-      TextAnchorEnd     -> Prop (VD.attribute "text-anchor"  "end")
-      TextAnchorInherit -> id
+      TextAnchorStart           -> Prop (VD.attribute "text-anchor"  "start")
+      TextAnchorMiddle          -> Prop (VD.attribute "text-anchor"  "middle")
+      TextAnchorEnd             -> Prop (VD.attribute "text-anchor"  "end")
+      TextAnchorInherit         -> id
     _alignmentBaseline = case alignmentBaseline opts of
       AlignmentBaselineAuto     -> id
       AlignmentBaselineBaseline -> Prop (VD.attribute "alignment-baseline" "baseline")
