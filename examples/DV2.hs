@@ -75,6 +75,7 @@ vcat :: [Drawing] -> Drawing
 vcat = foldt (===) mempty
 
 -- TODO does this make it faster?
+-- Not really...
 foldt            :: (a -> a -> a) -> a -> [a] -> a
 foldt f z []     = z
 foldt f z [x]    = x
@@ -83,28 +84,29 @@ foldt f z xs     = foldt f z (pairs f xs)
     pairs f (x:y:t)  = f x y : pairs f t
     pairs f t        = t
 
+legend = vcat
+  [ redRect  ||| textLeftMiddle "Red"
+  , blueRect ||| textLeftMiddle "Blue"
+  , textMiddleMiddle "Red"  ||| redRect
+  , textMiddleMiddle "Blue" ||| blueRect
+  , textRightMiddle "Red"  ||| redRect
+  , textRightMiddle "Blue" ||| blueRect
+
+  , redRect  ||| textLeftMiddle "RedRedRedRedRed"
+  , blueRect ||| textLeftMiddle "BlueBlueBlueBlue"
+  , textMiddleMiddle "RedRedRedRedRed"  ||| redRect
+  , textMiddleMiddle "BlueBlueBlueBlue" ||| blueRect
+  , textRightMiddle "RedRedRedRedRed"  ||| redRect
+  , textRightMiddle "BlueBlueBlueBlue" ||| blueRect
+  ]
 
 main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords)) $
     [ (translateX 2 blueRect ||| blueCircle)
 
-    , vcat
-      [ redRect  ||| textLeftMiddle "Red"
-      , blueRect ||| textLeftMiddle "Blue"
-      , textMiddleMiddle "Red"  ||| redRect
-      , textMiddleMiddle "Blue" ||| blueRect
-      , textRightMiddle "Red"  ||| redRect
-      , textRightMiddle "Blue" ||| blueRect
-
-      , redRect  ||| textLeftMiddle "RedRedRedRedRed"
-      , blueRect ||| textLeftMiddle "BlueBlueBlueBlue"
-      , textMiddleMiddle "RedRedRedRedRed"  ||| redRect
-      , textMiddleMiddle "BlueBlueBlueBlue" ||| blueRect
-      , textRightMiddle "RedRedRedRedRed"  ||| redRect
-      , textRightMiddle "BlueBlueBlueBlue" ||| blueRect
-
-      ]
+    , scale 0.5 legend
+    , scale 0.1 legend
 
     , showEnvelope unitX $ showEnvelope unitY $ redRect
     , showEnvelope unitX $ showEnvelope unitY $ blueRect
@@ -182,7 +184,7 @@ main = do
     redRectX  = scale 10 $ scaleX 1.2 $ rotate (turn/13) $ redRect
 
     plotStyle = id
-      $ renderingRectangle  .~ V2 500 250
+      $ renderingRectangle  .~ V2 500 550
       $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
       $ barPlotBarColors    .~ cycle [Colors.purple `withOpacity` 0.5]
       $ mempty
