@@ -68,6 +68,9 @@ chooseDrawing ds = do
                 }
     -- backgroundGrid = scale 600 xyCoords
 
+hcat :: [Drawing] -> Drawing
+hcat = foldr (|||) mempty
+
 main :: IO ()
 main = do
   dS <- chooseDrawing $ fmap (scale 10 . (<> scale 10 xyCoords)) $
@@ -80,7 +83,9 @@ main = do
     , (redCircle === scale 2 blueCircle)
 
     , (redCircle === (scale 2 blueCircle ||| greenCircle))
-    , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === greenCircle
+    , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === hcat (replicate 300 $ rotate (turn/12) $ scaleX 0.1 $ scale 0.1 greenCircle)
+    , (redCircle === (scale 2 blueCircle ||| greenCircle))
+    , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === mconcat (replicate 300 $ rotate (turn/12) $ scaleX 0.1 $ scale 0.1 greenCircle)
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where

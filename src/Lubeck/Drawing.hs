@@ -66,14 +66,18 @@ module Lubeck.Drawing (
     dir,
     fromDirection,
     angleBetween,
-    transformDirection,
     angleBetweenDirections,
 
     -- ** Transformations
     Transformation,
     negTransformation,
+    lin,
+    transp,
+    transl,
     transformVector,
     transformPoint,
+    transformDirection,
+    transformEnvelope,
     transformationToMatrix,
     -- ** Raw transformations
     translation,
@@ -336,42 +340,36 @@ angleBetweenDirections :: (Metric v, Floating n) => Direction v n -> Direction v
 angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
 
 
---- Eventually use
---    identity :: (Num a, Traversable t, Applicative t) => t (t a)
-
-
-
-
 {-| -}
 newtype Transformation a = TF { getTF :: M33 a }
--- newtype Transformation a = TF { getTF ::
---     (a,a,
---      a,a,
---      a,a)
---      }
-instance Num a => Monoid (Transformation a) where
-  mempty  = emptyTransformation
-  mappend = apTransformation
--- TODO change to use M33 (including the 0 0 1 row)
+-- newtype Transformation where
+  -- TF2 :: M33 a -> Transformation V2 a
 
+instance Num a => Monoid (Transformation a) where
+  mempty                = TF identity
+  mappend (TF x) (TF y) = TF (x !*! y)
+
+instance Num a => Num (Transformation a) where
+  TF x + TF y = TF (x !+! y)
+  TF x - TF y = TF (x !-! y)
+  TF x * TF y = TF (x !*! y)
+  abs    = error "TODO missing in Num (Transformation a)"
+  signum = error "TODO missing in Num (Transformation a)"
+  fromInteger n = TF $ identity !!* fromInteger n
+
+instance Floating a => Fractional (Transformation a) where
+  recip (TF x) = TF (inv33 x)
+  fromRational = error "TODO missing in Fractional (Transformation a)"
+
+-- | a.k.a. 1
 emptyTransformation :: Num a => Transformation a
 emptyTransformation = TF identity
--- emptyTransformation = TF (1,0,0,1,0,0)
 
-{-| -}
+-- | a.k.a *, mappend, <>
 apTransformation :: Num a => Transformation a -> Transformation a -> Transformation a
 apTransformation (TF x) (TF y) = TF (x !*! y)
--- apTransformation
---   (TF (a1,b1,c1,d1,e1,f1))
---   (TF (a2,b2,c2,d2,e2,f2)) =
---     TF
---       (a1*a2 + c1*b2,
---        b1*a2 + d1*b2,
---        a1*c2 + c1*d2,
---        b1*c2 + d1*d2,
---        a1*e2 + c1*f2 + e1,
---        b1*e2 + d1*f2 + f1)
 
+-- | a.k.a recip
 negTransformation :: (Num a, Floating a) => Transformation a -> Transformation a
 negTransformation (TF x) = TF (inv33 x)
 
@@ -459,15 +457,18 @@ instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) wh
       -- maxEnv :: Floating n => (v n -> n) -> (v n -> n) -> v n -> n
       maxEnv f g v = max (f v) (g v)
 
--- Linear component of a transformation.
+-- | Linear component of a transformation.
+lin :: Num a => Transformation a -> Transformation a
 lin t = let (a,b,c,d,e,f) = transformationToMatrix t
   in matrix (a,b,c,d,0,0)
 
--- Linear component of a transformation (transposed).
+-- | Linear component of a transformation (transposed).
+transp :: Num a => Transformation a -> Transformation a
 transp t = let (a,b,c,d,e,f) = transformationToMatrix t
   in matrix    (a,c,b,d,0,0)
 
--- Translation component of a transformation.
+-- | Translation component of a transformation.
+transl :: Num a => Transformation a -> V2 a
 transl t = let (a,b,c,d,e,f) = transformationToMatrix t
   in V2 e f
 
