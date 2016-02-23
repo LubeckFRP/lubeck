@@ -168,6 +168,21 @@ executable bd-example-plots2
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
+executable bd-example-plots3
+  main-is:             examples/DV3.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                    --  , vector-space
+                    --  , vector-space-points
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
 executable bd-interactions
   main-is:             src/Interactions.hs
   build-depends:       base >=4.8 && <4.9

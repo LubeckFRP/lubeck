@@ -41,6 +41,8 @@ type Layout =
     :<|>
   "example-plots2" :> Raw
     :<|>
+  "example-plots3" :> Raw
+    :<|>
   "example-history" :> Raw
     :<|>
   "doc" :> Raw
@@ -92,6 +94,7 @@ main = do
       exampleApiReq            <- serveApp rnd jsExeDir "bd-example-api-req"
       examplePlots             <- serveApp rnd jsExeDir "bd-example-plots"
       examplePlots2            <- serveApp rnd jsExeDir "bd-example-plots2"
+      examplePlots3            <- serveApp rnd jsExeDir "bd-example-plots3"
       exampleHistoryServer     <- serveApp rnd jsExeDir "bd-example-history"
       indexServer              <- serveApp rnd jsExeDir "bd-index"
       docServer <- case docDir of
@@ -109,6 +112,7 @@ main = do
           :<|> exampleApiReq
           :<|> examplePlots
           :<|> examplePlots2
+          :<|> examplePlots3
           :<|> exampleHistoryServer
           :<|> docServer
           :<|> indexServer
