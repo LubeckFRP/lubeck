@@ -1,6 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
-  NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns #-}
+  NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving #-}
 
 {-|
 
@@ -144,6 +144,8 @@ module Lubeck.Drawing (
     textMiddle,
     textEnd,
     TextAnchor(..),
+    AlignmentBaseline(..),
+    FontStyle(..),
     TextOptions(..),
     textWithOptions,
 
@@ -663,35 +665,64 @@ polygon = Lines True
 text :: JSString -> Drawing
 text = Text
 
-textMiddle = textWithOptions (defaultTextOptions { textAnchor = TextMiddle })
+textStart  = textWithOptions (mempty { textAnchor = TextAnchorStart })
+textMiddle = textWithOptions (mempty { textAnchor = TextAnchorMiddle })
+textEnd    = textWithOptions (mempty { textAnchor = TextAnchorEnd })
 
-textEnd = textWithOptions (defaultTextOptions { textAnchor = TextEnd })
-
+-- https://www.w3.org/TR/SVG/text.html#AlignmentProperties
 data TextAnchor
-  = TextStart
-  | TextMiddle
-  | TextEnd
+  = TextAnchorStart
+  | TextAnchorMiddle
+  | TextAnchorEnd
+  | TextAnchorInherit
   deriving (Eq, Ord, Read, Show)
+instance Monoid TextAnchor where
+  mappend = const ; mempty = TextAnchorInherit
+
+data AlignmentBaseline
+  = AlignmentBaselineAuto
+  | AlignmentBaselineBaseline
+  | AlignmentBaselineMiddle
+  | AlignmentBaselineCentral
+  deriving (Eq, Ord, Read, Show)
+instance Monoid AlignmentBaseline where
+  mappend = const ; mempty = AlignmentBaselineAuto
+
+-- https://www.w3.org/TR/SVG/text.html#FontPropertiesUsedBySVG
+data FontStyle
+  = FontStyleNormal | FontStyleItalic | FontStyleOblique | FontStyleInherit
+  deriving (Eq, Ord, Read, Show)
+instance Monoid FontStyle where
+  mappend = const ; mempty = FontStyleInherit
 
 data TextOptions = TextOptions
-  { textAnchor :: TextAnchor
+  { textAnchor        :: TextAnchor
+  , alignmentBaseline :: AlignmentBaseline
+  , fontStyle         :: FontStyle
   }
-defaultTextOptions = TextOptions
-  TextStart
-
 -- | Left-biased. Mainly here for the 'mempty'.
-instance Monoid TextOptions where
-  mempty  = defaultTextOptions
-  mappend = const
+deriving instance Monoid TextOptions
 
 {-| -}
 textWithOptions :: TextOptions -> JSString -> Drawing
-textWithOptions opts = ta . Text
+textWithOptions opts = _fontStyle . _textAnchor . Text
   where
-    ta = case textAnchor opts of
-      TextStart   -> Prop (VD.attribute "text-anchor" "start")
-      TextMiddle  -> Prop (VD.attribute "text-anchor" "middle")
-      TextEnd     -> Prop (VD.attribute "text-anchor" "end")
+    _fontStyle  = case fontStyle opts of
+      TextNormal   -> Prop (VD.attribute "font-style" "normal")
+      TextItalic   -> Prop (VD.attribute "font-style" "italic")
+      TextOblique  -> Prop (VD.attribute "font-style" "oblique")
+      TextInherit  -> id
+    _textAnchor = case textAnchor opts of
+      TextAnchorStart   -> Prop (VD.attribute "text-anchor"  "start")
+      TextAnchorMiddle  -> Prop (VD.attribute "text-anchor"  "middle")
+      TextAnchorEnd     -> Prop (VD.attribute "text-anchor"  "end")
+      TextAnchorInherit -> id
+    _alignmentBaseline = case alignmentBaseline opts of
+      AlignmentBaselineAuto     -> id
+      AlignmentBaselineBaseline -> Prop (VD.attribute "alignment-baseline" "baseline")
+      AlignmentBaselineMiddle   -> Prop (VD.attribute "alignment-baseline" "middle")
+      AlignmentBaselineCentral  -> Prop (VD.attribute "alignment-baseline" "central")
+-- TODO use styles not props
 
 {-| Layer the two images so that their origins match precisely. The origin of the given
     images become the origin of the new image as well.
