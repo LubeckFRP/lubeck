@@ -441,10 +441,9 @@ addProperty = Prop
 
 
 
--- newtype Envelope v n = Envelope (Maybe (v n -> Max n))
-  -- deriving (Monoid)
+newtype Envelope v n = Envelope (Maybe (v n -> n))
 
-newtype Envelope v n = Envelope (Maybe (Direction v n -> Point v n))
+-- newtype Envelope v n = Envelope (Maybe (Direction v n -> Point v n))
 
 
 instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) where
@@ -457,19 +456,54 @@ instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) wh
     -- Invoke max explicitly, as Data.Monoid.Max has a superflous Bounded constraint
     -- Alternatively, we could escape this by using the semigroup version
     where
-      -- maxEnv :: Floating n => (Direction v n -> Point v n) -> (Direction v n -> Point v n) -> Direction v n -> Point v n
-      maxEnv f g = \r -> let
-        p1 = f r
-        p2 = g r
-        in if (distanceA p1 origin) > (distanceA p2 origin)
-          then p1 else p2
+      -- maxEnv :: Floating n => (v n -> n) -> (v n -> n) -> v n -> n
+      maxEnv f g v = max (f v) (g v)
+
+-- Linear component of a transformation.
+lin t = let (a,b,c,d,e,f) = transformationToMatrix t
+  in matrix (a,b,c,d,0,0)
+
+-- Linear component of a transformation (transposed).
+transp t = let (a,b,c,d,e,f) = transformationToMatrix t
+  in matrix    (a,c,b,d,0,0)
+
+-- Translation component of a transformation.
+transl t = let (a,b,c,d,e,f) = transformationToMatrix t
+  in V2 e f
+
+transformEnvelope :: (Floating n) => Transformation n -> Envelope V2 n -> Envelope V2 n
+transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
+    where
+      onEnvelope f (Envelope Nothing)  = Envelope Nothing
+      onEnvelope f (Envelope (Just e)) = Envelope (Just $ f e)
+      moveOrigin u = onEnvelope $ \f v -> f v - ((u ^/ (v `dot` v)) `dot` v)
+
+      -- funtion -> vector -> scalar
+      g f v = f v' / (v' `dot` vi)
+        where
+          v'     = signorm $ lapp (transp t) v
+          vi     = apply (inv t) v
+
+          -- correct?
+          apply  = transformVector
+          lapp   = transformVector
+          inv    = negTransformation
+
 
 -- transformEnvelope :: (Num a, Floating a) => Transformation a -> Envelope V2 a -> Envelope V2 a
 -- transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
 -- transformEnvelope _  _                  = Envelope Nothing
 
 juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
-juxtapose v a b = b -- TODO
+juxtapose v a1 a2 =   case (mv1, mv2) of
+    (Just v1, Just v2) -> moveOriginBy (v1 ^+^ v2) a2
+    _                  -> a2
+  where mv1 = negated <$> envelopeVMay v a1
+        mv2 = envelopeVMay (negated v) a2
+        moveOriginBy v = translate (negated v)
+
+        envelopeVMay v = fmap ((*^ v) . ($ v)) . appEnvelope . envelope
+        appEnvelope (Envelope e) = e
 
 
   -- case (envelope a, envelope b) of
@@ -488,23 +522,17 @@ juxtapose v a b = b -- TODO
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
   -- FIXME use (0.5/norm v), not (1/norm v)
-  Circle        -> Envelope $ Just $ \dir -> (P $ fromDirection dir ^* 0.5)
+  -- Circle        -> Envelope $ Just $ \dir -> (P $ fromDirection dir ^* 0.5)
+  Circle        -> Envelope $ Just $ \v -> (0.5/norm v)
   Rect          -> envelope Circle -- TODO
   Line          -> envelope Circle -- TODO
   Lines _ _     -> envelope Circle -- TODO
   Text _        -> envelope Circle -- TODO
   -- Transf t x    -> transformEnvelope t (envelope x)
-  Transf t x    ->
-    case envelope x of
-      Envelope Nothing  -> Envelope $ Nothing
-      Envelope (Just f) -> Envelope $ Just $
-        \r -> let
-          r2 = transformDirection (negTransformation t) r
-          in transformPoint t (f r2)
-
+  Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
   Prop  _ x     -> envelope x
-  Em            -> Envelope $ Nothing
+  Em            -> mempty
   Ap x y        -> mappend (envelope x) (envelope y)
 
 
@@ -775,9 +803,10 @@ showPoint p = translate (p .-. origin) base
   where
     base = strokeColor C.red $ fillColorA (C.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
 
-showEnvelope dir x = case envelope x of
-  Envelope Nothing  -> x
-  Envelope (Just f) -> showDirection dir <> showPoint (f dir) <> x
+showEnvelope _ = mempty
+-- showEnvelope dir x = case envelope x of
+  -- Envelope Nothing  -> x
+  -- Envelope (Just f) -> showDirection dir <> showPoint (f dir) <> x
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
