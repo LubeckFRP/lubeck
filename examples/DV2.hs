@@ -79,7 +79,7 @@ main = do
     , (redCircle === blueCircle)
 
     , (scale 3 redCircle ||| blueCircle)
-    , (redCircle ||| scale 2 greenCircle ||| scale 0.5 blueCircle)
+    , (redCircle ||| scale 2 redRect ||| scale 0.5 blueCircle)
     , (redCircle === scale 2 blueCircle)
 
     , (redCircle === (scale 2 blueCircle ||| greenCircle))
@@ -92,6 +92,11 @@ main = do
     redCircle   = scale 10 $ fillColorA (Colors.red `withOpacity` 0.4) circle
     blueCircle  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) circle
     greenCircle = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) circle
+
+    redRect   = scale 10 $ scaleX 1.2 $ rotate (turn/13) $ fillColorA (Colors.red `withOpacity` 0.4) square
+    blueRect  = scale 10 $ fillColorA (Colors.blue `withOpacity` 0.4) square
+    greenRect = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) square
+
     plotStyle = id
       $ renderingRectangle  .~ V2 500 250
       $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
