@@ -163,6 +163,8 @@ main = do
     , (redCircle === scale 2 blueCircle)
 
     , (redCircle === (scale 2 blueCircle ||| greenCircle))
+    , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === hcat (replicate 100 $ rotate (turn/12) $ scaleX 0.1 $ scale 0.1 greenCircle)
+    , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === hcat (replicate 200 $ rotate (turn/12) $ scaleX 0.1 $ scale 0.1 greenCircle)
     , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === hcat (replicate 300 $ rotate (turn/12) $ scaleX 0.1 $ scale 0.1 greenCircle)
     , (redCircle === (scale 2 blueCircle ||| greenCircle))
     , (redCircle <> juxtapose (V2 0.5 0.7) redCircle blueCircle) === mconcat (replicate 300 $ rotate (turn/12) $ scaleX 0.1 $ scale 0.1 greenCircle)
