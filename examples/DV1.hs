@@ -108,13 +108,13 @@ main = do
       [ V2 0 0, V2 0.2 0, V2 0 0.3
       , V2 0.5 0, V2 0 (-0.2), V2 0.3 0, V2 0 0.2]
 
-    , barData (take 10 rand1)
-    , barData (take 3 rand2)
+    , barData (fmap realToFrac $ take 10 rand1)
+    , barData (fmap realToFrac $ take 3 rand2)
     , barData [1,1.1..1]
 
-    , ratioData (rand1 !! 0)
-    , ratioData (rand1 !! 1)
-    , ratioData (rand1 !! 2)
+    , ratioData (realToFrac $ rand1 !! 0)
+    , ratioData (realToFrac $ rand1 !! 1)
+    , ratioData (realToFrac $ rand1 !! 2)
 
     , ratioDataWithColor $ _p (rand1 !! 0) 0
     , ratioDataWithColor $ _p (rand1 !! 1) 0.2
