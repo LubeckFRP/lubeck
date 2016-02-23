@@ -117,7 +117,7 @@ module Lubeck.Drawing (
     -- ** Envelopes/Alignment/Juxtaposition
     Envelope,
     envelope,
-    transformEnvelope,
+    -- transformEnvelope,
     unitX,
     unitY,
     (|||),
@@ -437,41 +437,54 @@ addProperty = Prop
 
 
 
-newtype Envelope v n = Envelope (Maybe (v n -> Max n))
+-- newtype Envelope v n = Envelope (Maybe (v n -> Max n))
   -- deriving (Monoid)
-instance Ord n => Monoid (Envelope v n) where
+
+newtype Envelope v n = Envelope (Maybe (Direction v n -> Point v n))
+
+
+instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) where
   mempty      = Envelope Nothing
   mappend (Envelope x) (Envelope y) = case (x, y) of
-    (Nothing, y      ) -> Envelope y
-    (x,       Nothing) -> Envelope x
-    (Just x,  Just y ) -> Envelope $ Just $ \a -> x a `max` y a
+    (Nothing, g)       -> Envelope y
+    (f,       Nothing) -> Envelope x
+    (Just f,  Just g)  -> Envelope $ Just $ maxEnv f g
+    _                  -> Envelope Nothing
     -- Invoke max explicitly, as Data.Monoid.Max has a superflous Bounded constraint
     -- Alternatively, we could escape this by using the semigroup version
+    where
+      -- maxEnv :: Floating n => (Direction v n -> Point v n) -> (Direction v n -> Point v n) -> Direction v n -> Point v n
+      maxEnv f g = \r -> let
+        p1 = f r
+        p2 = g r
+        in if (distanceA p1 origin) > (distanceA p2 origin)
+          then p1 else p2
 
-transformEnvelope :: (Num a, Floating a) => Transformation a -> Envelope V2 a -> Envelope V2 a
-transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
-transformEnvelope _  _                  = Envelope Nothing
+-- transformEnvelope :: (Num a, Floating a) => Transformation a -> Envelope V2 a -> Envelope V2 a
+-- transformEnvelope t (Envelope (Just f)) = Envelope $ Just (f . transformVector (negTransformation t))
+-- transformEnvelope _  _                  = Envelope Nothing
 
 juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
-juxtapose v a b = case (envelope a, envelope b) of
-  -- FIXME negate this translation
-  (Envelope (Just ae), Envelope (Just be))  ->
-    let t = translate
-                                          (negated $ (negated v ^* getMax (be (negated v)))
-                                            ^-^
-                                          (v ^* getMax (ae v)))
-                                          in t b
-  _                                         -> b
+juxtapose = undefined
+-- juxtapose v a b = case (envelope a, envelope b) of
+--   -- FIXME negate this translation
+--   (Envelope (Just ae), Envelope (Just be))  ->
+--     let t = translate
+--                                           (negated $ (negated v ^* getMax (be (negated v)))
+--                                             ^-^
+--                                           (v ^* getMax (ae v)))
+--                                           in t b
+--   _                                         -> b
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
   -- FIXME use (0.5/norm v), not (1/norm v)
-  Circle        -> Envelope $ Just $ \v -> pure (0.5/norm v) -- Scale vector to have magnitude 0.5
+  Circle        -> Envelope $ Just $ \dir -> (P $ fromDirection dir ^* 0.5)
   Rect          -> envelope Circle -- TODO
   Line          -> envelope Circle -- TODO
   Lines _ _     -> envelope Circle -- TODO
   Text _        -> envelope Circle -- TODO
-  Transf t x    -> transformEnvelope t (envelope x)
+  -- Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
   Prop  _ x     -> envelope x
   Em            -> Envelope $ Nothing
