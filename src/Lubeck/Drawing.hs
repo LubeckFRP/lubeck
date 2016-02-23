@@ -173,7 +173,7 @@ import Data.Monoid
 import Data.Semigroup(Max(..))
 -- import Data.VectorSpace
 import qualified Data.Colour
-import qualified Data.Colour.Names as C
+import qualified Data.Colour.Names as Colors
 import qualified Data.Colour.SRGB
 import qualified Data.JSString
 import qualified Data.List
@@ -808,20 +808,20 @@ Useful to see the boundary of the canvas, as in:
 @
 -}
 smokeBackground :: Drawing
-smokeBackground = fillColor C.whitesmoke $ scale 5000 $ square
+smokeBackground = fillColor Colors.whitesmoke $ scale 5000 $ square
 --
 {-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
 xyAxis :: Drawing
-xyAxis = strokeColor C.darkgreen $ strokeWidth 0.5 $
+xyAxis = strokeColor Colors.darkgreen $ strokeWidth 0.5 $
   stack [horizontalLine, verticalLine]
 
 {-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
 xyCoords :: Drawing
-xyCoords = fillColorA (C.black `withOpacity` 0) $ strokeColor C.darkgreen $
+xyCoords = fillColorA (Colors.black `withOpacity` 0) $ strokeColor Colors.darkgreen $
   strokeWidth 0.5 $ stack [horizontalLine, verticalLine, circle, square]
 
 showUnitX :: Drawing
-showUnitX = strokeColor C.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
+showUnitX = strokeColor Colors.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 
 -- showDirection :: Direction V2 Double -> Drawing
 -- showDirection dir = scale 1000 $ rot showUnitX
@@ -830,13 +830,13 @@ showUnitX = strokeColor C.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 showDirection = showDirection2
 
 showDirection2 :: Direction V2 Double -> Drawing
-showDirection2 dir = scale 100 $ strokeColor C.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
+showDirection2 dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
   where
-    tp = C.black `withOpacity` 0
+    tp = Colors.black `withOpacity` 0
 
 showPoint p = translate (p .-. origin) base
   where
-    base = strokeColor C.red $ fillColorA (C.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
+    base = strokeColor Colors.red $ fillColorA (Colors.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
 
 showEnvelope :: V2 Double -> Drawing -> Drawing
 showEnvelope v drawing = case envelopeVMay v drawing of
@@ -845,8 +845,8 @@ showEnvelope v drawing = case envelopeVMay v drawing of
   where
     -- A sideways T in the unit square, with the "top" pointing
     -- in the direction of unitX
-    unitX_T = strokeWidth 2 $ strokeColor C.red $ fillColorA tp $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
-    tp = C.black `withOpacity` 0
+    unitX_T = strokeWidth 2 $ strokeColor Colors.red $ fillColorA tp $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
+    tp = Colors.black `withOpacity` 0
 
 
 {-| Apply a style to a drawing. -}
@@ -868,7 +868,7 @@ fillColorA :: AlphaColour Double -> Drawing -> Drawing
 fillColorA x = fillColor c . alpha a
   where
     alpha a = style (styleNamed "fill-opacity" $ showJS a)
-    c = Data.Colour.over x C.black
+    c = Data.Colour.over x Colors.black
     a = Data.Colour.alphaChannel x
 
 -- {-| -}
@@ -876,7 +876,7 @@ strokeColorA :: AlphaColour Double -> Drawing -> Drawing
 strokeColorA x = strokeColor c . alpha a
   where
     alpha a = style (styleNamed "stroke-opacity" $ showJS a)
-    c = Data.Colour.over x C.black
+    c = Data.Colour.over x Colors.black
     a = Data.Colour.alphaChannel x
 
 {-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.

@@ -88,14 +88,15 @@ main = do
     , showEnvelope unitX $ showEnvelope unitY $ translateX 0.2 $ shear 0.2 1 redCircle
     , showEnvelope unitX $ showEnvelope unitY $ translateX 0.2 $ translateY 1 $ shear 1 0.2 redCircle
 
-    , showEnvelope (V2 1 0)   $ scale 1 blueCircle
-    , showEnvelope (V2 1 0)   $ scale 2 blueCircle
-    , showEnvelope (V2 1 0)   $ translateX 4 $ scale 1 blueCircle
-    , showEnvelope (V2 1 0)   $ rotate (4*turn/13) $ translateX 5 $ scale 3 blueCircle
+    , showEnvelope unitX   $ scale 1 blueCircle
+    , showEnvelope unitX   $ scale 2 blueCircle
+    , showEnvelope unitX   $ translateX 4 $ scale 1 blueCircle
+    , showEnvelope unitX   $ translateX (-5) $ scale 1 blueCircle
+    , showEnvelope unitX   $ rotate (4*turn/13) $ translateX 5 $ scale 3 blueCircle
 
-    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ segments (take 5 randVectors)
-    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ segments (drop 2 $ take 3 randVectors)
-    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ segments (drop 20 $ take 15 randVectors)
+    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ strokeWidth 1 $ strokeColor Colors.blue $ segments (take 5 randVectors)
+    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ strokeWidth 1 $ strokeColor Colors.blue $ segments (drop 2 $ take 3 randVectors)
+    , showEnvelope unitX $ showEnvelope unitY $ scale 10 $ strokeWidth 1 $ strokeColor Colors.blue $ segments (drop 20 $ take 15 randVectors)
 
     , showEnvelope (V2 1 0.3)   $ scale 1 blueCircle
     , showEnvelope (V2 1 0.3)   $ scale 2 blueCircle
