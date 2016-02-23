@@ -440,12 +440,13 @@ plotRectangle = do
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- | Draw
+-- TODO use a ratio/percantage type wrapper
 -- TODO use area not radius
-circleData :: [R] -> Styled Drawing
+circleData :: [Double] -> Styled Drawing
 circleData = undefined
 
 -- | Draw
-pieChartData :: [R] -> Styled Drawing
+pieChartData :: [Double] -> Styled Drawing
 pieChartData = undefined
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
 
