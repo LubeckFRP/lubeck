@@ -312,3 +312,9 @@ div, h1, h2, img, p, span {
   opacity       : 0.9;
   box-shadow    : 0px 1px 3px 0px rgba(0,0,0,0.1);
 }
+
+.map-container {
+  width: 100%;
+  height: 400px;
+  background-color: grey;
+}

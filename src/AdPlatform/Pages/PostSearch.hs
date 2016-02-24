@@ -23,7 +23,7 @@ import           Data.Monoid
 import           Data.Time.Calendar             (Day (..))
 import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
-import           Control.Concurrent             (forkIO)
+import           Control.Concurrent             (forkIO, threadDelay)
 import qualified Data.JSString
 import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
@@ -62,14 +62,15 @@ import           BD.Types
 
 
 import           AdPlatform.Types
+import           Components.Map
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent,
                                                  withBusy, withBusy2)
 
 
 -- TODO finish
-searchForm :: Day -> Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm dayNow output query =
+searchForm :: Sink ResultsViewMode -> Day -> Widget SimplePostQuery (Submit SimplePostQuery)
+searchForm viewModeSink dayNow output query =
   contentPanel $
     div [ class_ "form-horizontal"
         , keyup $ \e -> if which e == 13 then output (Submit query) else return ()
@@ -103,8 +104,12 @@ searchForm dayNow output query =
               [ button [A.class_ "btn btn-success", click $ \e -> output $ Submit query]
                   [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
                   , text "Search!"
-                  ] ] ]
-
+                  ] ]
+          ]
+      , div [class_ "btn-group"]
+          [ button [class_ "btn", click $ \e -> viewModeSink ResultsGrid] [text "Grid"]
+          , button [class_ "btn", click $ \e -> viewModeSink ResultsMap] [text "Map"]
+          ]
       ]
 
 type Post = SearchPost
@@ -113,8 +118,8 @@ data PostAction
   = UploadImage Post
 
 -- | Non-interactive post table (for search results).
-postSearchResult :: Widget [Post] PostAction
-postSearchResult output posts =
+postSearchResultW :: Widget [Post] PostAction
+postSearchResultW output posts =
   contentPanel $
     div []
       [ div [class_ "page-header"]
@@ -166,6 +171,11 @@ postSearchResult output posts =
 
     imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
+data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
+
+resultsLayout :: Html -> Html -> ResultsViewMode -> Html
+resultsLayout gridH _ ResultsGrid = gridH
+resultsLayout _ mapH ResultsMap   = mapH
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
@@ -173,28 +183,31 @@ searchPage :: Sink BusyCmd
            -> Behavior (Maybe JSString)
            -> IO (Signal Html)
 searchPage busySink notifSink ipcSink mUserNameB = do
-  let initPostQuery = defSimplePostQuery
+  let initPostQuery                = defSimplePostQuery
 
+  (viewModeSink, viewModeEvents)   <- newEventOf (undefined                                        :: ResultsViewMode)
+  resultsViewModeS                 <- stepperS ResultsGrid viewModeEvents
 
-  now <- getCurrentTime
+  now                              <- getCurrentTime
 
-  -- Search event (from user)
-  (searchView, searchRequested) <- formComponent initPostQuery (searchForm $ utctDay now)
+  (searchView, searchRequested)    <- formComponent initPostQuery (searchForm viewModeSink (utctDay now))
+  (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)
+  (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Post])
 
-  -- Create ad event (from user)
-  (uploadImage, uploadedImage) <- newEventOf (undefined :: PostAction)
+  (mapView, lifeSink, dataSink, _) <- mapComponent []
 
-  -- Search result event (from API)
-  (receiveSearchResult, searchResultReceived) <- newEventOf (undefined :: Maybe [Post])
+  results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
+  let resultView                   = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
+  let resultsViewS                 = resultsLayout <$> resultView <*> mapView <*> resultsViewModeS :: Signal Html
+  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS         :: Signal Html
 
-  -- Signal holding the results of the lastest search, or Nothing if no
-  -- search has been performed yet
-  results <- stepperS Nothing searchResultReceived                              :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((altW (text "") postSearchResult) uploadImage) results :: Signal Html
+  subscribeEvent viewModeEvents $ \mode -> void $ forkIO $ case mode of
+    ResultsMap -> do
+      threadDelay 50
+      synchronously . lifeSink $ Init
 
-  let view = liftA2 (\x y -> div [] [x,y]) searchView resultView                :: Signal Html
-
-  -- API calls
+    ResultsGrid -> do
+      synchronously . lifeSink $ Destroy
 
   -- Create ad
   subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
@@ -210,7 +223,9 @@ searchPage busySink notifSink ipcSink mUserNameB = do
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> void $ forkIO $ do
-    receiveSearchResult Nothing -- reset previous search results
+    srchResSink Nothing -- reset previous search results
+
+    dataSink []
 
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
@@ -220,7 +235,7 @@ searchPage busySink notifSink ipcSink mUserNameB = do
         eitherPosts <- (withBusy (synchronously . busySink) (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
           Left e   -> synchronously . notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-          Right ps -> synchronously . receiveSearchResult $ Just ps
+          Right ps -> synchronously . srchResSink $ Just ps
     return ()
 
   return view

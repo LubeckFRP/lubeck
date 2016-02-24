@@ -18,7 +18,7 @@ library
                      , Lubeck.Util
                      , Lubeck.Forms
                      , Lubeck.Forms.Basic
-                     , Lubeck.Forms.Button                     
+                     , Lubeck.Forms.Button
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
@@ -52,6 +52,7 @@ library
                      , Components.Notifications
                      , Components.BusyIndicator
                      , Components.MainMenu
+                     , Components.Map
   build-depends:       base >=4.8 && <4.9
                      , virtual-dom
                      , ghcjs-ffiqq == 0.1.0.0
@@ -79,6 +80,7 @@ library
                      , aeson
                      , bytestring
                      , monad-parallel
+                     , random
   hs-source-dirs:      src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
