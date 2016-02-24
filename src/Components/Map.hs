@@ -9,7 +9,7 @@ module Components.Map
   , Point(..)
   , Marker(..)
   , MapAction(..)
-  , Lifecycle(..)
+  , MapLifecycle(..)
   ) where
 
 import           Prelude                        hiding (div)
@@ -94,14 +94,14 @@ addTileLayerToMap ltl lm = addTileLayerToMap_ (lTileLayer ltl) (lMap lm)
 mapW :: JSString -> Html
 mapW i = div [A.id i, class_ "map-container"] [text "Map here"]
 
-data Lifecycle = Init | Destroy
+data MapLifecycle = MapInit | MapDestroy
 
 
-mapComponent :: [Marker] -> IO (Signal Html, Sink Lifecycle, Sink [Marker], Events MapAction)
+mapComponent :: [Marker] -> IO (Signal Html, Sink MapLifecycle, Sink [Marker], Events MapAction)
 mapComponent z = do
   (dataSink, dataEvents)           <- newEventOf (undefined :: [Marker])
   (actionsSink, actionsEvents)     <- newEventOf (undefined :: MapAction)
-  (lifecycleSink, lifecycleEvents) <- newEventOf (undefined :: Lifecycle)
+  (lifecycleSink, lifecycleEvents) <- newEventOf (undefined :: MapLifecycle)
 
   g <- getStdGen
   let mapId = fromString . take 10 $ (randomRs ('a', 'z') g)
@@ -111,8 +111,8 @@ mapComponent z = do
   mapRef <- TVar.newTVarIO Nothing :: IO (TVar.TVar (Maybe LMap))
 
   subscribeEvent lifecycleEvents $ \x -> case x of
-    Destroy -> do
-      print "Destroy map requested"
+    MapDestroy -> do
+      print "MapDestroy map requested"
       m <- atomically $ TVar.readTVar mapRef
       case m of
         Nothing -> print "Can't destroy map : no map"
@@ -121,8 +121,8 @@ mapComponent z = do
           atomically $ TVar.writeTVar mapRef Nothing
           print "Map destroyed"
 
-    Init -> do
-      print "Init map"
+    MapInit -> do
+      print "MapInit map"
       m <- makeMap mapId
       atomically $ TVar.writeTVar mapRef (Just m)
 

@@ -69,8 +69,8 @@ import           Components.BusyIndicator       (BusyCmd (..),
 
 
 -- TODO finish
-searchForm :: Sink ResultsViewMode -> Day -> Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm viewModeSink dayNow output query =
+searchForm :: Day -> Widget SimplePostQuery (Submit SimplePostQuery)
+searchForm dayNow output query =
   contentPanel $
     div [ class_ "form-horizontal"
         , keyup $ \e -> if which e == 13 then output (Submit query) else return ()
@@ -105,10 +105,6 @@ searchForm viewModeSink dayNow output query =
                   [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
                   , text "Search!"
                   ] ]
-          ]
-      , div [class_ "btn-group"]
-          [ button [class_ "btn", click $ \e -> viewModeSink ResultsGrid] [text "Grid"]
-          , button [class_ "btn", click $ \e -> viewModeSink ResultsMap] [text "Map"]
           ]
       ]
 
@@ -173,16 +169,32 @@ postSearchResultW output posts =
 
 data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
 
-resultsLayout :: Html -> Html -> ResultsViewMode -> Html
-resultsLayout gridH _ ResultsGrid = gridH
-resultsLayout _ mapH ResultsMap   = mapH
+resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Html
+resultsLayout sink gridH mapH mode = case mode of
+  ResultsGrid -> wrapper sink gridH True  False
+  ResultsMap  -> wrapper sink mapH  False True
+  where
+    wrapper sink x asel bsel =
+      div []
+        [ div [class_ "btn-group"]
+            [ button [ class_ ("btn " <> if asel then "btn-primary" else "btn-default")
+                     , click $ \e -> sink ResultsGrid] [text "Grid"]
+            , button [ class_ ("btn " <> if bsel then "btn-primary" else "btn-default")
+                     , click $ \e -> sink ResultsMap]  [text "Map"] ]
+        , x
+        ]
+
+mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapLifecycle
+mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
+mapLifecycle (_, _)                   = Just MapDestroy
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
            -> Sink IPCMessage
            -> Behavior (Maybe JSString)
+           -> Signal Nav
            -> IO (Signal Html)
-searchPage busySink notifSink ipcSink mUserNameB = do
+searchPage busySink notifSink ipcSink mUserNameB navS = do
   let initPostQuery                = defSimplePostQuery
 
   (viewModeSink, viewModeEvents)   <- newEventOf (undefined                                        :: ResultsViewMode)
@@ -190,7 +202,7 @@ searchPage busySink notifSink ipcSink mUserNameB = do
 
   now                              <- getCurrentTime
 
-  (searchView, searchRequested)    <- formComponent initPostQuery (searchForm viewModeSink (utctDay now))
+  (searchView, searchRequested)    <- formComponent initPostQuery (searchForm (utctDay now))
   (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)
   (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Post])
 
@@ -198,16 +210,20 @@ searchPage busySink notifSink ipcSink mUserNameB = do
 
   results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
   let resultView                   = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
-  let resultsViewS                 = resultsLayout <$> resultView <*> mapView <*> resultsViewModeS :: Signal Html
+  let resultsViewS                 = (resultsLayout viewModeSink) <$> resultView <*> mapView <*> resultsViewModeS :: Signal Html
   let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS         :: Signal Html
 
-  subscribeEvent viewModeEvents $ \mode -> void $ forkIO $ case mode of
-    ResultsMap -> do
-      threadDelay 50
-      synchronously . lifeSink $ Init
+  -- This will try to destroy the map on any navigation
+  -- What we need is to destroy the map just the first time a user navigates out of the search page
+  -- TODO history-aware signal needed for this
+  let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
+  let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapLifecycle)
 
-    ResultsGrid -> do
-      synchronously . lifeSink $ Destroy
+  subscribeEvent (updates resetMapS) $ \x -> void $ forkIO $ case x of
+    Nothing -> return ()
+    Just x  -> do
+      threadDelay 50 -- give DOM a litle time
+      synchronously . lifeSink $ x
 
   -- Create ad
   subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
@@ -217,9 +233,9 @@ searchPage busySink notifSink ipcSink mUserNameB = do
       Just userName -> do
         res <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
-          Left e        -> synchronously . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
+          Left e        -> synchronously  . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
           Right (Ok s)  -> (synchronously . notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (synchronously . ipcSink $ ImageLibraryUpdated)
-          Right (Nok s) -> synchronously . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
+          Right (Nok s) -> synchronously  . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> void $ forkIO $ do
