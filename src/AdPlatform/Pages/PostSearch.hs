@@ -206,7 +206,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)
   (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Post])
 
-  (mapView, lifeSink, dataSink, _) <- mapComponent []
+  (mapView, lifeSink, _)           <- mapComponent []
 
   results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
   let resultView                   = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
@@ -224,6 +224,8 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
     Just x  -> do
       threadDelay 50 -- give DOM a litle time
       synchronously . lifeSink $ x
+      threadDelay 1000 -- give map a little time
+      synchronously . lifeSink $ ShowMarker [(Marker (Point 12.45 123.45)  (Just "Hello world"))]
 
   -- Create ad
   subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
@@ -241,7 +243,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   subscribeEvent searchRequested $ \query -> void $ forkIO $ do
     srchResSink Nothing -- reset previous search results
 
-    dataSink []
+    lifeSink $ ShowMarker [(Marker (Point 23.45 123.45)  (Just "Hello world 2"))]
 
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery

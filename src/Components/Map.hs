@@ -17,6 +17,7 @@ import qualified Prelude
 
 import           Control.Applicative
 import qualified Data.List
+import           Data.Maybe      (fromMaybe)
 import           Data.Monoid
 import           Data.String      (fromString)
 
@@ -71,6 +72,9 @@ foreign import javascript unsafe "L['tileLayer']($1, { maxZoom: $2, attribution:
 foreign import javascript unsafe "$1['addTo']($2)"
   addTileLayerToMap_ :: JSVal {-LTileLayer-} -> JSVal {-LMap-} -> IO ()
 
+foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
+  addMarker_ :: JSVal {-LMap-} -> Double -> Double -> JSString -> IO ()
+
 makeMap :: JSString -> IO LMap
 makeMap mapId = do
   lm <- makeMap_ mapId
@@ -81,6 +85,9 @@ destroyMap lm = destroyMap_ (lMap lm)
 
 setView :: LMap -> (Double, Double) -> Int -> IO ()
 setView lm (lat, lng) zoom = setView_ (lMap lm) lat lng zoom
+
+addMarker :: LMap -> Marker -> IO ()
+addMarker lm (Marker (Point lat lon) popupText) = addMarker_ (lMap lm) lat lon (fromMaybe "" popupText)
 
 makeTileLayer :: JSString -> Int -> String -> IO LTileLayer
 makeTileLayer src maxZoom attribution = do
@@ -94,12 +101,11 @@ addTileLayerToMap ltl lm = addTileLayerToMap_ (lTileLayer ltl) (lMap lm)
 mapW :: JSString -> Html
 mapW i = div [A.id i, class_ "map-container"] [text "Map here"]
 
-data MapLifecycle = MapInit | MapDestroy
+data MapLifecycle = MapInit | MapDestroy | ShowMarker [Marker]
 
 
-mapComponent :: [Marker] -> IO (Signal Html, Sink MapLifecycle, Sink [Marker], Events MapAction)
+mapComponent :: [Marker] -> IO (Signal Html, Sink MapLifecycle, Events MapAction)
 mapComponent z = do
-  (dataSink, dataEvents)           <- newEventOf (undefined :: [Marker])
   (actionsSink, actionsEvents)     <- newEventOf (undefined :: MapAction)
   (lifecycleSink, lifecycleEvents) <- newEventOf (undefined :: MapLifecycle)
 
@@ -111,6 +117,13 @@ mapComponent z = do
   mapRef <- TVar.newTVarIO Nothing :: IO (TVar.TVar (Maybe LMap))
 
   subscribeEvent lifecycleEvents $ \x -> case x of
+    ShowMarker ms -> do
+      m <- atomically $ TVar.readTVar mapRef
+      case m of
+        Nothing -> return ()
+        Just x  -> do
+          mapM_ (addMarker x) ms
+
     MapDestroy -> do
       print "MapDestroy map requested"
       m <- atomically $ TVar.readTVar mapRef
@@ -132,4 +145,4 @@ mapComponent z = do
                           "&copy; <a href='http://osm.org/copyright'>OpenStreetMap</a> contributors, Points &copy 2012 LINZ"
       addTileLayerToMap tl m
 
-  return (htmlS, lifecycleSink, dataSink, actionsEvents)
+  return (htmlS, lifecycleSink, actionsEvents)
