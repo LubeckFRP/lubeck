@@ -172,7 +172,7 @@ resultsLayout sink gridH mapH mode posts = case mode of
                       , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (Data.Maybe.fromMaybe 0 (length <$> posts)) ++ " posts"]
                       ] ]
           , div [A.style "text-align: center;"]
-              [ div [class_ "btn-group", A.style "margin-bottom: 15px;"]
+              [ div [class_ "btn-group", A.style "margin-bottom: 20px;"]
                   [ button [ class_ ("btn " <> if asel then "btn-primary" else "btn-default")
                            , click $ \e -> sink ResultsGrid]
                               [ E.i [class_ "fa fa-th", A.style "margin-right: 5px;"] []
@@ -247,7 +247,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
 
   -- This will try to destroy the map on any navigation
   -- What we need is to destroy the map just the first time a user navigates out of the search page
-  -- TODO history-aware signal needed for this
+  -- TODO history-aware signal
   let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
   let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapLifecycle)
 
@@ -279,8 +279,6 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> void $ forkIO $ do
     srchResSink Nothing -- reset previous search results
-
-    -- mapSink $ ShowMarker [(Marker (Point 0 (-0.09))  (Just "<b>Hello</b> <i>world</i> 2"))]
 
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
