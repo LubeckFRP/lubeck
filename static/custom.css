@@ -315,6 +315,6 @@ div, h1, h2, img, p, span {
 
 .map-container {
   width: 100%;
-  height: 400px;
-  background-color: grey;
+  height: 800px;
+  background-color: white;
 }

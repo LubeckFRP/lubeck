@@ -20,6 +20,8 @@ import           Data.Map                       (Map)
 import qualified Data.Map                       as Map
 import qualified Data.Maybe
 import           Data.Monoid
+import           Data.String                    (fromString)
+import qualified Data.Text                      as T
 import           Data.Time.Calendar             (Day (..))
 import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
@@ -113,20 +115,8 @@ type Post = SearchPost
 data PostAction
   = UploadImage Post
 
--- | Non-interactive post table (for search results).
 postSearchResultW :: Widget [Post] PostAction
-postSearchResultW output posts =
-  contentPanel $
-    div []
-      [ div [class_ "page-header"]
-          [ h1 [] [ text "Search Results "
-                  , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
-                  ] ]
-      , postTable output posts
-      ]
-
-
-
+postSearchResultW output posts = postTable output posts
   where
     postTable :: Widget [Post] PostAction
     postTable output posts =
@@ -169,24 +159,66 @@ postSearchResultW output posts =
 
 data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
 
-resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Html
-resultsLayout sink gridH mapH mode = case mode of
-  ResultsGrid -> wrapper sink gridH True  False
-  ResultsMap  -> wrapper sink mapH  False True
+resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
+resultsLayout sink gridH mapH mode posts = case mode of
+  ResultsGrid -> wrapper sink gridH True  False posts
+  ResultsMap  -> wrapper sink mapH  False True  posts
   where
-    wrapper sink x asel bsel =
-      div []
-        [ div [class_ "btn-group"]
-            [ button [ class_ ("btn " <> if asel then "btn-primary" else "btn-default")
-                     , click $ \e -> sink ResultsGrid] [text "Grid"]
-            , button [ class_ ("btn " <> if bsel then "btn-primary" else "btn-default")
-                     , click $ \e -> sink ResultsMap]  [text "Map"] ]
-        , x
-        ]
+    wrapper sink x asel bsel posts =
+      contentPanel $
+        div []
+          [ div [class_ "page-header"]
+              [ h1 [] [ text "Search Results "
+                      , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (Data.Maybe.fromMaybe 0 (length <$> posts)) ++ " posts"]
+                      ] ]
+          , div [A.style "text-align: center;"]
+              [ div [class_ "btn-group", A.style "margin-bottom: 15px;"]
+                  [ button [ class_ ("btn " <> if asel then "btn-primary" else "btn-default")
+                           , click $ \e -> sink ResultsGrid]
+                              [ E.i [class_ "fa fa-th", A.style "margin-right: 5px;"] []
+                              , text "Grid"]
+                  , button [ class_ ("btn " <> if bsel then "btn-primary" else "btn-default")
+                           , click $ \e -> sink ResultsMap]
+                              [ E.i [class_ "fa fa-map-o", A.style "margin-right: 5px;"] []
+                              , text "Map"] ]
+              , x ]
+          ]
+
+
 
 mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapLifecycle
 mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
 mapLifecycle (_, _)                   = Just MapDestroy
+
+postToMarker :: Post -> Maybe Marker
+postToMarker p = Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ markerInfo p)
+
+markerInfo :: Post -> JSString
+markerInfo post =
+    -- TODO virtual-dom string renderer
+     "<div class='thumbnail custom-thumbnail-1 fit-text' style='padding: 0px;'>"
+  <>   "<a target='_blank' href='" <> Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)  <> "'>"
+  <>     "<img class='img-thumbnail' src='" <> P.thumbnail_url post <> "'>"
+  <>   "</a>"
+  <>   "<p style='margin: 0px;'>"
+  <>     "<a target='_blank' href='https://www.instagram.com/" <> P.username post <> "'>@" <> P.username post <> "</a>"
+  <>   "</p>"
+  <>   "<p class='text-center'>"
+  <>     "<div class='fa fa-heart badge badge-info' style='margin: 0 3px;' title='Likes count'>"
+  <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.like_count post) <> "</span>"
+  <>     "</div>"
+  <>     "<div class='fa fa-comments-o badge badge-info' title='Comments count' style='margin: 0 3px;'>"
+  <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.comment_count post) <> "</span>"
+  <>     "</div>"
+  <>   "</p>"
+  <>   "<p>"
+  <>     "<button class='btn btn-link btn-sm btn-block'> <i class='fa fa-cloud-upload' style='margin-right: 5px;'></i>Upload</button>"
+  <>   "</p>"
+  <> "</div>"
+
+
+showResultsOnMap mapSink mbPosts =
+  mapSink $ ShowMarker $ Data.Maybe.fromMaybe [] $ fmap (Data.Maybe.catMaybes . fmap postToMarker) mbPosts
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
@@ -206,11 +238,11 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)
   (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Post])
 
-  (mapView, lifeSink, _)           <- mapComponent []
+  (mapView, mapSink, _)            <- mapComponent []
 
   results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
-  let resultView                   = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
-  let resultsViewS                 = (resultsLayout viewModeSink) <$> resultView <*> mapView <*> resultsViewModeS :: Signal Html
+  let gridView                     = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
+  let resultsViewS                 = (resultsLayout viewModeSink) <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
   let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS         :: Signal Html
 
   -- This will try to destroy the map on any navigation
@@ -219,13 +251,18 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
   let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapLifecycle)
 
+  subscribeEvent (updates results) (showResultsOnMap mapSink)
+
   subscribeEvent (updates resetMapS) $ \x -> void $ forkIO $ case x of
     Nothing -> return ()
     Just x  -> do
       threadDelay 50 -- give DOM a litle time
-      synchronously . lifeSink $ x
+      synchronously . mapSink $ x
+
       threadDelay 1000 -- give map a little time
-      synchronously . lifeSink $ ShowMarker [(Marker (Point 12.45 123.45)  (Just "Hello world"))]
+
+      curRes <- pollBehavior (current results)
+      (synchronously . showResultsOnMap mapSink)  curRes
 
   -- Create ad
   subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
@@ -243,7 +280,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   subscribeEvent searchRequested $ \query -> void $ forkIO $ do
     srchResSink Nothing -- reset previous search results
 
-    lifeSink $ ShowMarker [(Marker (Point 23.45 123.45)  (Just "Hello world 2"))]
+    -- mapSink $ ShowMarker [(Marker (Point 0 (-0.09))  (Just "<b>Hello</b> <i>world</i> 2"))]
 
     let complexQuery = PostQuery $ complexifyPostQuery query
     eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery

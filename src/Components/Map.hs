@@ -57,8 +57,19 @@ newtype LMap = LMap { lMap :: JSVal {-LMap-} }
 
 newtype LTileLayer = LTileLayer { lTileLayer :: JSVal {-LTileLayer-} }
 
-foreign import javascript unsafe "L['map']($1)"
+data MapLifecycle = MapInit | MapDestroy | ShowMarker [Marker]
+
+data Bounds = Bounds { sw :: Point, ne :: Point } deriving Show
+
+
+foreign import javascript unsafe "(function() {var z = L['map']($1); window.z = z; return z; }())"
   makeMap_ :: JSString -> IO (JSVal {-LMap-})
+
+foreign import javascript unsafe "$1.fitWorld()"
+  fitWorld_ :: JSVal -> IO ()
+
+foreign import javascript unsafe "$1.fitBounds([[$2, $3], [$4, $5]])"
+  fitBounds_ :: JSVal -> Double -> Double -> Double -> Double -> IO ()
 
 foreign import javascript unsafe "$1.remove()"
   destroyMap_ :: JSVal -> IO ()
@@ -86,6 +97,12 @@ destroyMap lm = destroyMap_ (lMap lm)
 setView :: LMap -> (Double, Double) -> Int -> IO ()
 setView lm (lat, lng) zoom = setView_ (lMap lm) lat lng zoom
 
+fitWorld :: LMap -> IO ()
+fitWorld lm = fitWorld_ (lMap lm)
+
+fitBounds :: LMap -> Bounds -> IO ()
+fitBounds lm b = fitBounds_ (lMap lm) (lat . sw $ b) (lon . sw $ b) (lat . ne $ b) (lon . ne $ b)
+
 addMarker :: LMap -> Marker -> IO ()
 addMarker lm (Marker (Point lat lon) popupText) = addMarker_ (lMap lm) lat lon (fromMaybe "" popupText)
 
@@ -99,10 +116,32 @@ addTileLayerToMap ltl lm = addTileLayerToMap_ (lTileLayer ltl) (lMap lm)
 
 
 mapW :: JSString -> Html
-mapW i = div [A.id i, class_ "map-container"] [text "Map here"]
+mapW i = div [A.id i, class_ "map-container"] []
 
-data MapLifecycle = MapInit | MapDestroy | ShowMarker [Marker]
 
+minLat = (-90)
+minLon = (-180)
+maxLat = 90
+maxLon = 180
+
+maxSW = Point maxLat maxLon
+minNE = Point minLat minLon
+
+defaultBounds = Bounds (Point (-45) (-80)) (Point 50 80)
+
+latM :: Marker -> Double
+latM = lat . point
+
+lonM :: Marker -> Double
+lonM = lon . point
+
+calcBounds :: [Marker] -> Bounds
+calcBounds ms = Bounds x y
+  where
+    (x, y) = foldl f acc ms
+    acc = (maxSW, minNE)
+    f (sw, ne) m = ( Point (if latM m < lat sw then latM m else lat sw) (if lonM m < lon sw then lonM m else lon sw)
+                   , Point (if latM m > lat ne then latM m else lat ne) (if lonM m > lon ne then lonM m else lon ne) )
 
 mapComponent :: [Marker] -> IO (Signal Html, Sink MapLifecycle, Events MapAction)
 mapComponent z = do
@@ -122,10 +161,14 @@ mapComponent z = do
       case m of
         Nothing -> return ()
         Just x  -> do
+          let b = case ms of
+                    [] -> defaultBounds
+                    xs -> calcBounds xs
+          fitBounds x b
           mapM_ (addMarker x) ms
 
     MapDestroy -> do
-      print "MapDestroy map requested"
+      print "Destroy map requested"
       m <- atomically $ TVar.readTVar mapRef
       case m of
         Nothing -> print "Can't destroy map : no map"
@@ -135,11 +178,13 @@ mapComponent z = do
           print "Map destroyed"
 
     MapInit -> do
-      print "MapInit map"
+      print "Init map"
       m <- makeMap mapId
       atomically $ TVar.writeTVar mapRef (Just m)
 
-      setView m (0, 0) 3
+      -- setView m ((-20), 30) 5
+      fitBounds m defaultBounds
+      -- fitWorld m
       tl <- makeTileLayer "http://{s}.tile.osm.org/{z}/{x}/{y}.png"
                           18
                           "&copy; <a href='http://osm.org/copyright'>OpenStreetMap</a> contributors, Points &copy 2012 LINZ"
