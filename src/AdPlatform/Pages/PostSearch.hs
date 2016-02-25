@@ -220,6 +220,7 @@ markerInfo post =
 showResultsOnMap mapSink mbPosts =
   mapSink $ ShowMarker $ Data.Maybe.fromMaybe [] $ fmap (Data.Maybe.catMaybes . fmap postToMarker) mbPosts
 
+
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
            -> Sink IPCMessage

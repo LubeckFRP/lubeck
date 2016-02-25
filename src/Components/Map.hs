@@ -17,14 +17,14 @@ import qualified Prelude
 
 import           Control.Applicative
 import qualified Data.List
-import           Data.Maybe      (fromMaybe)
+import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid
-import           Data.String      (fromString)
+import           Data.String                    (fromString)
 
 import qualified Control.Concurrent.STM.TVar as TVar
-import Control.Monad.STM (atomically)
+import           Control.Monad.STM              (atomically)
 
-import GHCJS.Types(JSVal, JSString, jsval)
+import           GHCJS.Types                    (JSVal, JSString, jsval)
 
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -35,7 +35,7 @@ import           Web.VirtualDom.Html.Attributes (class_)
 import qualified Web.VirtualDom.Html.Attributes as A
 import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
                                                  stopPropagation, submit, value)
-import Web.VirtualDom (vdomWidget)
+import           Web.VirtualDom                 (staticNode)
 import           System.Random
 
 import           Lubeck.App                     (Html)
@@ -116,7 +116,7 @@ addTileLayerToMap ltl lm = addTileLayerToMap_ (lTileLayer ltl) (lMap lm)
 
 
 mapW :: JSString -> Html
-mapW i = div [A.id i, class_ "map-container"] []
+mapW containerId = staticNode "div" [A.id containerId, class_ "map-container"] []
 
 
 minLat = (-90)
@@ -145,15 +145,15 @@ calcBounds ms = Bounds x y
 
 mapComponent :: [Marker] -> IO (Signal Html, Sink MapLifecycle, Events MapAction)
 mapComponent z = do
-  (actionsSink, actionsEvents)     <- newEventOf (undefined :: MapAction)
-  (lifecycleSink, lifecycleEvents) <- newEventOf (undefined :: MapLifecycle)
+  (actionsSink, actionsEvents)     <- newEventOf (undefined                     :: MapAction)
+  (lifecycleSink, lifecycleEvents) <- newEventOf (undefined                     :: MapLifecycle)
 
-  g <- getStdGen
-  let mapId = fromString . take 10 $ (randomRs ('a', 'z') g)
+  g                                <- getStdGen
+  let mapId                        = fromString . take 10 $ (randomRs ('a', 'z') g)
 
-  let htmlS = pure (mapW mapId) :: Signal Html
+  let htmlS                        = pure (mapW mapId)                          :: Signal Html
 
-  mapRef <- TVar.newTVarIO Nothing :: IO (TVar.TVar (Maybe LMap))
+  mapRef                           <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
 
   subscribeEvent lifecycleEvents $ \x -> case x of
     ShowMarker ms -> do
