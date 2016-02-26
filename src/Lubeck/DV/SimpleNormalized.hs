@@ -4,12 +4,12 @@
 -- |
 -- Basic normalized visualization.
 module Lubeck.DV.SimpleNormalized
-    ( simpleLinePlot
-    , simpleTimeSeries
-    , simpleTimeSeriesWithOverlay
-    , utcTimeToApproxReal
-    , realToApproxUTCTime
-    ) where
+  ( simpleLinePlot
+  , simpleTimeSeries
+  , simpleTimeSeriesWithOverlay
+  , utcTimeToApproxReal
+  , realToApproxUTCTime
+  ) where
 
 import Prelude hiding (div)
 import qualified Prelude

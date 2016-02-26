@@ -24,7 +24,6 @@ library
                      , Lubeck.Forms.File
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
-                    --  , Lubeck.DV.Test
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI

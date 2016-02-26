@@ -28,96 +28,96 @@
 --
 --    ** Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
 module Lubeck.DV.Drawing
-    (
-    -- * Drawing data
+  (
+  -- * Drawing data
 
-    -- $normalizeInputPoint
-    -- $normalizeInputScalar
+  -- $normalizeInputPoint
+  -- $normalizeInputScalar
 
-    -- ** Scatter
-      scatterData
-    , scatterDataX
-    , scatterDataY
+  -- ** Scatter
+    scatterData
+  , scatterDataX
+  , scatterDataY
 
-    -- ** Lines
-    , lineData
-    , stepData
-    , linearData
+  -- ** Lines
+  , lineData
+  , stepData
+  , linearData
 
-    -- ** Bars and sizes
-    , barData
-    , barData2
-    , barData3
-    , barData4
+  -- ** Bars and sizes
+  , barData
+  , barData2
+  , barData3
+  , barData4
 
-    , barDataWithColor
-    , barDataWithColor2
-    , barDataWithColor3
-    , barDataWithColor4
+  , barDataWithColor
+  , barDataWithColor2
+  , barDataWithColor3
+  , barDataWithColor4
 
-    , circleData
-    , circleDataWithColor
-    , pieChartData
+  , circleData
+  , circleDataWithColor
+  , pieChartData
 
-    -- | Ratios
-    , ratioData
-    , ratioDataWithColor
+  -- | Ratios
+  , ratioData
+  , ratioDataWithColor
 
-    -- ** Discrete data and counts
-    , discreteData
-    , intData
-    , discreteHeatMap
+  -- ** Discrete data and counts
+  , discreteData
+  , intData
+  , discreteHeatMap
 
-    , treeMapGraph
-    , treeMapGraphWithColor
-
-
-    -- * Drawing axes
-    , ticks
-    , ticksNoFilter
-    , labeledAxis
-    -- , crossLineX
-    -- , crossLineY
-    , plotRectangle
+  , treeMapGraph
+  , treeMapGraphWithColor
 
 
+  -- * Drawing axes
+  , ticks
+  , ticksNoFilter
+  , labeledAxis
+  -- , crossLineX
+  -- , crossLineY
+  , plotRectangle
 
-    -- * Drawing legends
 
-    -- * Drawing titles
 
-    -- * Drawing overlays/explanatories
+  -- * Drawing legends
 
-    -- * Styling
+  -- * Drawing titles
 
-    -- ** Building a style
-    , Styling
-    -- TODO exort all lenses here
-    , renderingRectangle
-    , linePlotStrokeColor
-    , linePlotStrokeWidth
-    , linePlotStrokeType
-    , linePlotFillColor
+  -- * Drawing overlays/explanatories
 
-    , scatterPlotStrokeColor
-    , scatterPlotFillColor
-    , scatterPlotShape
+  -- * Styling
 
-    , barPlotBarColors
-    , barPlotWidth
-    , barPlotUngroupedOffset
-    , barPlotGroupedOffset
-    , barPlotSpaceUsed
+  -- ** Building a style
+  , Styling
+  -- TODO exort all lenses here
+  , renderingRectangle
+  , linePlotStrokeColor
+  , linePlotStrokeWidth
+  , linePlotStrokeType
+  , linePlotFillColor
 
-    -- ** Running a style
-    , Styled
-    , getStyled
-    , withDefaultStyle
+  , scatterPlotStrokeColor
+  , scatterPlotFillColor
+  , scatterPlotShape
 
-    , StyledT
-    , getStyledT
-    , withDefaultStyleT
-    ) where
+  , barPlotBarColors
+  , barPlotWidth
+  , barPlotUngroupedOffset
+  , barPlotGroupedOffset
+  , barPlotSpaceUsed
+
+  -- ** Running a style
+  , Styled
+  , getStyled
+  , withDefaultStyle
+
+  , StyledT
+  , getStyledT
+  , withDefaultStyleT
+  ) where
 
 import Prelude hiding (div)
 import qualified Prelude
