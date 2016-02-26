@@ -34,7 +34,7 @@ import Lubeck.FRP
 import Lubeck.App (Html, runApp, runAppReactive)
 import Lubeck.Forms
 import Lubeck.Forms.Button (buttonWidget, multiButtonWidget)
-import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
+import Lubeck.DV.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
 import qualified Lubeck.Drawing as Drawing
 
@@ -176,10 +176,10 @@ interactionW _ interaction = div
             then Nothing
             else Just $ img [src (sPost .: P.url), width 200] []
 
-    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
-    renderOpts = Drawing.defaultRenderingOptions
-      { Drawing.dimensions     = Drawing.Point 600 600
-      , Drawing.origoPlacement = Drawing.BottomLeft }
+    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.V2 75 105)
+    renderOpts = mempty
+      { Drawing.dimensions      = Drawing.P (Drawing.V2 600 600)
+      , Drawing.originPlacement = Drawing.BottomLeft }
 
 
 getShoutouts :: TwoAccounts -> IO (InteractionSet SearchPost)

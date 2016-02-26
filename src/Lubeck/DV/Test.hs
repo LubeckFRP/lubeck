@@ -4,7 +4,7 @@
 -- | Basic plotting.
 --
 -- /DEPRECATED/
-module Lubeck.Plots.Test
+module Lubeck.DV.Test
     ( DataPlot(..)
     , Fit(..)
     , Plot(..)
@@ -34,7 +34,7 @@ import qualified Data.Map
 import qualified Data.List
 -- import qualified Data.Colour.Names as C
 
--- TODO use type class methods where appropriate, i.e. mconcat instead of D.stack
+-- TODO use type class methods where appropriate, i.e. mconcat instead of D.mconcat
 
 {-|
   A way to draw normalized data.
@@ -65,7 +65,7 @@ zeroP = D.Point 0 0
 plotPoints :: Maybe Color -> Plot ([D.Point])
 plotPoints mColor xs = let
     circleColor = fromMaybe Colors.red mColor
-  in D.stack $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. zeroP)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
+  in mconcat $ fmap (\p -> D.translate (scaleVector (600%%300) (p .-. zeroP)) $ (D.scale 5 $ D.fillColor circleColor D.circle)) $ xs
 
 plotGrowth :: Maybe Color -> Plot ([D.Point])
 plotGrowth mColor xs = let
@@ -108,7 +108,7 @@ fitSq ps p = let
 drawDataPlot :: DataPlot a b c -> Drawing
 drawDataPlot dp = let
   (dat,axis) = dp_fit dp (dp_data dp)
-  in (dp_plot dp dat `D.over` dp_axisPlot dp axis)
+  in (dp_plot dp dat <> dp_axisPlot dp axis)
 
 -- {-| -}
 basicDataGrowth :: (a -> D.Point) -> [a] -> DataPlot [a] [D.Point] ()
@@ -125,7 +125,7 @@ basicDataGrowth f x = let
 
 -- {-| -}
 plotDrawingToSvg :: Drawing -> Svg
-plotDrawingToSvg x = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $ D.translate (20%%20) x
+plotDrawingToSvg x = D.toSvg (D.RenderingOptions { D.originPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $ D.translate (20%%20) x
 
 
 {-| -}
@@ -155,7 +155,7 @@ examplePlot =
 
 {-| -}
 plotTest :: a -> Svg
-plotTest _ = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $
+plotTest _ = D.toSvg (D.RenderingOptions { D.originPlacement = D.BottomLeft, D.dimensions = (640~~340) }) $
   D.translate (20%%20) $ D.scale 1 $
       D.transparent
       -- (plotPoints {color=Just "red"}
@@ -192,7 +192,7 @@ plotTest _ = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.di
         -- {dx=3   , dy=-5},
         -- {dx=3   , dy=-7}
         -- ]
-        `D.over`
+        <>
       -- let plot = (translateX (-200) $ scale 4 $ style (styleNamed "fill-opacity" (toString 0.5)) $ fillColor "lightblue" $
         -- strokeColor "blue" $ strokeWidth 1.5 $ Lines False
       --       [
@@ -210,7 +210,7 @@ plotTest _ = D.toSvg (D.RenderingOptions { D.origoPlacement = D.BottomLeft, D.di
       --       ])
       --   in (stack [plot, scale 1.1 plot, scale 1.3 plot])
       --   `over`
-      D.xyAxis
-        `D.over`
+      (D.scale 600 D.xyAxis)
+        <>
       D.smokeBackground
         -- (translateX 1 $ Style "fill: red" Circle)

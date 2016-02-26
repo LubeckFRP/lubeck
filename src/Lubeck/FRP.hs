@@ -66,12 +66,10 @@ module Lubeck.FRP (
     scatter,
 
     -- ** Past-dependent events
-    foldpE,
     accumE,
+    foldpE,
     gather,
     buffer,
-    -- withPrevious,
-    -- withPreviousWith,
 
     -- ** Building behaviors
     counter,
@@ -88,6 +86,7 @@ module Lubeck.FRP (
     -- ** Building signals
     stepperS,
     accumS,
+    foldpS,
     snapshotS,
     snapshotWithS,
 
@@ -458,11 +457,15 @@ snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
 -- | Create a past-dependent behavior.
 foldpR :: (a -> b -> b) -> b -> Events a -> IO (Behavior b)
-foldpR f z e = accumB z (mapE f e)
+foldpR f z e = accumB z (fmap f e)
 
 -- | Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> Events a -> IO (Events b)
 foldpE f a e = a `accumE` (f <$> e)
+
+-- | Create a past-dependent signal.
+foldpS :: (a -> b -> b) -> b -> Signal a -> IO (Signal b)
+foldpS f z s = accumS z (fmap f $ updates s)
 
 
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
@@ -470,6 +473,8 @@ foldpE f a e = a `accumE` (f <$> e)
 
 -- filter :: (a -> Bool) -> E a -> E a
 -- filter p = scatter . mapE (\x -> if p x then [x] else [])
+
+{-# DEPRECATED sample "Use 'snapshotWith const'" #-}
 
 -- | Get the current value of the behavior whenever an event occurs.
 sample :: Behavior a -> Events b -> Events a
@@ -556,9 +561,11 @@ accumS z e = do
   r <- accumB z e
   return $ S (fmap (const ()) e, r)
 
+-- | Sample the current value of a behavior whenever a signal is updated.
 snapshotS :: Behavior a -> Signal b -> Signal (a, b)
 snapshotS b1 (S (e,b2)) = S (e, liftA2 (,) b1 b2)
 
+-- | Similar to 'snapshotS', but uses the given function go combine the values.
 snapshotWithS :: (a -> b -> c) -> Behavior a -> Signal b -> Signal c
 snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
 
@@ -572,6 +579,9 @@ current :: Signal a -> Behavior a
 current (S (e,r)) = r
 
 
+{-# DEPRECATED runFRP   "Use newEvent/subscribeEvent/pollBehavior" #-}
+{-# DEPRECATED runFRP'  "Use newEvent/subscribeEvent/pollBehavior" #-}
+{-# DEPRECATED runFRP'' "Use newEvent/subscribeEvent/pollBehavior" #-}
 
 -- | Run an FRP system, producing a behavior.
 -- You can poll the sstem for the current state, or subscribe to changes in its output.

@@ -12,6 +12,7 @@ import Web.VirtualDom.Html.Attributes (href)
 
 import Lubeck.App (Html, runAppStatic)
 
+
 page :: Html
 page = div [] [h1 [] [text "Index"]
   , h2 [] [text "Applications"]
@@ -28,6 +29,8 @@ page = div [] [h1 [] [text "Index"]
     , li [] [a [href "example-history/"] [text "Example: History"]]
     , li [] [a [href "example/"]         [text "Example: Reactive page"]]
     , li [] [a [href "example-plots/"]   [text "Example: DV 1"]]
+    , li [] [a [href "example-plots2/"]  [text "Example: DV 2"]]
+    , li [] [a [href "example-plots3/"]  [text "Example: DV 3"]]
     ]
   , h2 [] [text "Documentation"]
   , ul []
