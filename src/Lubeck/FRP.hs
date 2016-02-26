@@ -52,80 +52,77 @@ no sequencing with respect to other threads (much like reading a 'TVar').
 [1]: https://hackage.haskell.org/package/reactive-banana
 
 -}
-module Lubeck.FRP (
-    -- * Combinators
-    Events,
-    Behavior,
-    Signal,
+module Lubeck.FRP
+  (
+  -- * Combinators
+    Events
+  , Behavior
+  , Signal
 
-    -- ** Combining and filtering events
-    never,
-    merge,
-    filter,
-    filterJust,
-    scatter,
+  -- ** Combining and filtering events
+  , never
+  , merge
+  , filter
+  , filterJust
+  , scatter
 
-    -- ** Past-dependent events
-    foldpE,
-    accumE,
-    gather,
-    buffer,
-    -- withPrevious,
-    -- withPreviousWith,
+  -- ** Past-dependent events
+  , accumE
+  , foldpE
+  , gather
+  , buffer
 
-    -- ** Building behaviors
-    counter,
-    stepper,
-    switcher,
-    accumB,
-    foldpR,
+  -- ** Building behaviors
+  , counter
+  , stepper
+  , switcher
+  , accumB
+  , foldpR
 
-    -- ** Sampling behaviors
-    sample,
-    snapshot,
-    snapshotWith,
+  -- ** Sampling behaviors
+  , sample
+  , snapshot
+  , snapshotWith
 
-    -- ** Building signals
-    stepperS,
-    accumS,
-    snapshotS,
-    snapshotWithS,
+  -- ** Building signals
+  , stepperS
+  , accumS
+  , foldpS
+  , snapshotS
+  , snapshotWithS
 
-    -- ** Sampling signals
-    updates,
-    current,
+  -- ** Sampling signals
+  , updates
+  , current
 
 
-    -- * Run FRP
-    -- ** Standard
-    newEvent,
-    subscribeEvent,
-    pollBehavior,
-    -- reactimate,
-    reactimateIO,
+  -- * Run FRP
+  -- ** Standard
+  , newEvent
+  , subscribeEvent
+  , pollBehavior
+  -- reactimate
+  , reactimateIO
 
-    -- ** FRP system
-    FRPSystem(..),
-    runFRP,
-    runFRP',
-    runFRP'',
+  -- ** FRP system
+  , FRPSystem(..)
+  , runFRP
+  , runFRP'
+  , runFRP''
 
-    -- ** Utility
-    -- testFRP,
+  -- ** Utility
+  -- testFRP
 
-    -- * Sink
-    Sink,
-    emptySink,
-    appendSinks,
-    contramapSink,
+  -- * Sink
+  , Sink
+  , emptySink
+  , appendSinks
+  , contramapSink
 
-    -- * Dispatcher
-    Dispatcher(..),
-    newDispatcher,
-    UnsubscribeAction,
-
-    -- * Misc
-    -- frpInternalLog,
+  -- * Dispatcher
+  , Dispatcher(..)
+  , newDispatcher
+  , UnsubscribeAction
   ) where
 
 import Prelude hiding (filter)
@@ -458,11 +455,15 @@ snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
 -- | Create a past-dependent behavior.
 foldpR :: (a -> b -> b) -> b -> Events a -> IO (Behavior b)
-foldpR f z e = accumB z (mapE f e)
+foldpR f z e = accumB z (fmap f e)
 
 -- | Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> Events a -> IO (Events b)
 foldpE f a e = a `accumE` (f <$> e)
+
+-- | Create a past-dependent signal.
+foldpS :: (a -> b -> b) -> b -> Signal a -> IO (Signal b)
+foldpS f z s = accumS z (fmap f $ updates s)
 
 
 -- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
@@ -470,6 +471,8 @@ foldpE f a e = a `accumE` (f <$> e)
 
 -- filter :: (a -> Bool) -> E a -> E a
 -- filter p = scatter . mapE (\x -> if p x then [x] else [])
+
+{-# DEPRECATED sample "Use 'snapshotWith const'" #-}
 
 -- | Get the current value of the behavior whenever an event occurs.
 sample :: Behavior a -> Events b -> Events a
@@ -556,9 +559,11 @@ accumS z e = do
   r <- accumB z e
   return $ S (fmap (const ()) e, r)
 
+-- | Sample the current value of a behavior whenever a signal is updated.
 snapshotS :: Behavior a -> Signal b -> Signal (a, b)
 snapshotS b1 (S (e,b2)) = S (e, liftA2 (,) b1 b2)
 
+-- | Similar to 'snapshotS', but uses the given function go combine the values.
 snapshotWithS :: (a -> b -> c) -> Behavior a -> Signal b -> Signal c
 snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
 
@@ -572,6 +577,9 @@ current :: Signal a -> Behavior a
 current (S (e,r)) = r
 
 
+{-# DEPRECATED runFRP   "Use newEvent/subscribeEvent/pollBehavior" #-}
+{-# DEPRECATED runFRP'  "Use newEvent/subscribeEvent/pollBehavior" #-}
+{-# DEPRECATED runFRP'' "Use newEvent/subscribeEvent/pollBehavior" #-}
 
 -- | Run an FRP system, producing a behavior.
 -- You can poll the sstem for the current state, or subscribe to changes in its output.

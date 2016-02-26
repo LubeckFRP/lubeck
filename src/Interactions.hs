@@ -31,10 +31,10 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
-import Lubeck.App (Html, runApp, runAppReactive)
+import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms
 import Lubeck.Forms.Button (buttonWidget, multiButtonWidget)
-import Lubeck.Plots.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
+import Lubeck.DV.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
 import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
 import qualified Lubeck.Drawing as Drawing
 
@@ -47,10 +47,10 @@ import BD.Data.Interaction hiding (interactions)
 
 import Components.BusyIndicator (withBusy, BusyCmd(..), busyIndicatorComponent)
 
-type TwoAccounts = (Maybe JSString, Maybe JSString) 
+type TwoAccounts = (Maybe JSString, Maybe JSString)
 type Shoutouts = Zipper (Interaction SearchPost)
 
-render :: Html -> Html -> Html -> Html 
+render :: Html -> Html -> Html -> Html
 render loadInteractsForm displayAccs interaction = div
   -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
   [ style "width: 900px; margin-left: auto; margin-right: auto" ]
@@ -101,16 +101,16 @@ displayAccsW _ interactionSet = div [class_ "panel-body"]
          , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: to_account .:? A.username) ]
   ]
 
-prevBtnAction :: Shoutouts -> () -> Shoutouts 
-prevBtnAction shoutoutZ _  
-  | beginp shoutoutZ = left $ end shoutoutZ 
-  | otherwise = left shoutoutZ  
+prevBtnAction :: Shoutouts -> () -> Shoutouts
+prevBtnAction shoutoutZ _
+  | beginp shoutoutZ = left $ end shoutoutZ
+  | otherwise = left shoutoutZ
 
 nextBtnAction :: Shoutouts -> () -> Shoutouts
-nextBtnAction shoutoutZ _  
+nextBtnAction shoutoutZ _
   | endp next = start shoutoutZ
-  | otherwise = next 
-  where next = right shoutoutZ   
+  | otherwise = next
+  where next = right shoutoutZ
 
 displayIndex :: Widget (Int,Int) ()
 displayIndex _ (nOutOf,m) = div
@@ -121,27 +121,27 @@ interactionBrowserW :: Widget Shoutouts Shoutouts
 interactionBrowserW shoutoutSink shoutoutZ =
   if emptyp shoutoutZ then div [] []
   else div []
-    [ interactionW emptySink $ cursor shoutoutZ  
-    , div [ A.class_ "row" ] 
+    [ interactionW emptySink $ cursor shoutoutZ
+    , div [ A.class_ "row" ]
       [ div [ A.class_ "col-xs-4 col-lg-4" ]
             [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
       , div [ A.class_ "col-xs-3 col-lg-3" ]
-            [ displayIndex emptySink $ nOutOfM shoutoutZ ]   
-      , div [ A.class_ "col-xs-1 col-lg-1" ] 
+            [ displayIndex emptySink $ nOutOfM shoutoutZ ]
+      , div [ A.class_ "col-xs-1 col-lg-1" ]
             [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
-      ]  
-    ] 
+      ]
+    ]
   where nOutOfM (Zip xs ys) = let lenXs = length xs in (lenXs, lenXs + length ys)
 
-interactionW :: Widget (Interaction SearchPost) () 
-interactionW _ interaction = div 
+interactionW :: Widget (Interaction SearchPost) ()
+interactionW _ interaction = div
   []
   [ p [ A.class_ "text-center" ] [text (showJS $ interaction .: interaction_time)]
   , div [class_ "row"]
         [ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
               [ interactionPlotOrNot ]
         , div [ class_ "col-xs-4 col-lg-4" ]
-              [ displayImage image 
+              [ displayImage image
               , div [] [ caption ]
               ]
         ]
@@ -172,35 +172,35 @@ interactionW _ interaction = div
 
     sPost = I.medium interaction
 
-    image = if P.deleted sPost  
-            then Nothing  
+    image = if P.deleted sPost
+            then Nothing
             else Just $ img [src (sPost .: P.url), width 200] []
 
-    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.Vector 75 105)
-    renderOpts = Drawing.defaultRenderingOptions
-      { Drawing.dimensions     = Drawing.Point 600 600
-      , Drawing.origoPlacement = Drawing.BottomLeft }
+    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.V2 75 105)
+    renderOpts = mempty
+      { Drawing.dimensions      = Drawing.P (Drawing.V2 600 600)
+      , Drawing.originPlacement = Drawing.BottomLeft }
 
 
 getShoutouts :: TwoAccounts -> IO (InteractionSet SearchPost)
-getShoutouts accs = do 
+getShoutouts accs = do
   result <- runExceptT $ uncurry loadShoutouts accs
   case result of
     Left err -> return $ InteractionSet Nothing Nothing []
-    Right interactionSet -> return interactionSet 
- 
+    Right interactionSet -> return interactionSet
+
 main :: IO ()
 main = do
   (busyView, busySink) <- busyIndicatorComponent []
 
-  let initInteractions = InteractionSet Nothing Nothing [] 
-      initFormContent = (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide") 
-  
-  (loadInteractionsS, loadInterBtnE) <- formComponent initFormContent loadInteractionsW 
-  loadInteractionsE <- reactimateIOAsync $ fmap (withBusy busySink getShoutouts) loadInterBtnE 
-  displayAccsS <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE 
-  (interactionBrowserS, _) <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE  
-  runAppReactive $ busyView <> (render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS) 
+  let initInteractions = InteractionSet Nothing Nothing []
+      initFormContent = (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide")
+
+  (loadInteractionsS, loadInterBtnE) <- formComponent initFormContent loadInteractionsW
+  loadInteractionsE <- reactimateIOAsync $ fmap (withBusy busySink getShoutouts) loadInterBtnE
+  displayAccsS <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE
+  (interactionBrowserS, _) <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE
+  runAppReactive $ busyView <> (render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS)
 
 -- UTILITY
 
@@ -209,4 +209,3 @@ main = do
 
 (.:?) :: Maybe a -> (a -> b) -> Maybe b
 (.:?) x f = fmap f x
-

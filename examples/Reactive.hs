@@ -39,8 +39,18 @@ import Lubeck.Drawing
 import Lubeck.Util(showJS, unselectable, parseDateAndTimeToUTC, newEventOf, reactimateIOAsync)
 import qualified Lubeck.Drawing
 
-import Data.VectorSpace
-import Data.AffineSpace
+-- import Data.VectorSpace
+-- import Data.AffineSpace
+import Linear.Vector
+import Linear.Affine
+-- import Linear.Matrix hiding (translation)
+-- import Linear.Metric -- Needed?
+import Linear.V0
+import Linear.V1
+import Linear.V2
+import Linear.V3
+import Linear.V4
+
 
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
@@ -61,7 +71,7 @@ rangeW :: Widget' Int
 rangeW = rangeWidget 0 200 1
 
 svgW :: Widget' Int
-svgW output model = toSvg (RenderingOptions (Point (1400) (1200)) Center) $ drawing output model
+svgW output model = toSvg (RenderingOptions (P $ V2 (1400) (1200)) Center) $ drawing output model
 
 drawing :: WidgetT' Drawing Int
 drawing output n = mempty
@@ -69,8 +79,8 @@ drawing output n = mempty
   <> addProperty (SvgEv.onClick $ \_ -> output (succ n)) (scale 0.8 $ redCircle $ negate n)
   <> blueRect
   <> addProperty (SvgEv.onClick $ \_ -> output (pred n)) (redCircle n)
-  <> shearXY (fromIntegral n/200) 0 (scale 40 (Lubeck.Drawing.text "Hans"))
-  <> scale 10 xyAxis
+  <> shear (fromIntegral n/200) 0 (scale 40 (Lubeck.Drawing.text "Hans"))
+  <> scale (10*600) xyAxis
   <> scale 10 smokeBackground
   where
     nCircles = 40

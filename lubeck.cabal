@@ -22,9 +22,8 @@ library
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
-                     , Lubeck.Plots.Drawing
-                     , Lubeck.Plots.SimpleNormalized
-                     , Lubeck.Plots.Test
+                     , Lubeck.DV.Drawing
+                     , Lubeck.DV.SimpleNormalized
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
@@ -70,6 +69,7 @@ library
                      , lens
                      , semigroups
                      , data-interval
+                     , linear
                      , vector-space
                      , vector-space-points
                      , colour
@@ -92,7 +92,8 @@ executable bd-example-app
                      , lubeck
                      , virtual-dom
                      , colour
-                     , vector-space
+                    --  , vector-space
+                     , linear
                      , time
                      , lens
                      , ghcjs-base ==0.2.0.0
@@ -139,15 +140,84 @@ executable bd-example-history
   default-language:    Haskell2010
 
 executable bd-example-plots
-  main-is:             examples/Plots.hs
+  main-is:             examples/DV1.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom
                      , time
-                     , vector-space
-                     , vector-space-points
+                     , linear
+                    --  , vector-space
+                    --  , vector-space-points
                      , colour
                      , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots2
+  main-is:             examples/DV2.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                    --  , vector-space
+                    --  , vector-space-points
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots3
+  main-is:             examples/DV3.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots4
+  main-is:             examples/DV4.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots5
+  main-is:             examples/DV5.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots6
+  main-is:             examples/DV6.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                     , colour
+                     , random
+                     , lens
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
