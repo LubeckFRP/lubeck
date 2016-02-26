@@ -4,7 +4,20 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Lubeck.Types where
+module Lubeck.Types
+  (
+  -- * Notifications
+    Notification(..)
+  , apiError
+  , blError
+  , notImplError
+  -- * Forms
+  , FormValid
+  , Validator
+  - ** IO
+  , FormValidIO
+  , ValidatorIO
+  ) where
 
 import           Control.Monad
 import qualified Data.Aeson.Types
