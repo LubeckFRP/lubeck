@@ -351,6 +351,7 @@ reactimateIO (E ioAProvider) = do
     ioAProvider $ \_ -> do
       a <- TVar.readTVarIO v
       aSink a
+-- TODO can actually be implemented in terms of newEvent/subscribeEvent
 
 
 
