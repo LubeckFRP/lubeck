@@ -12,10 +12,10 @@ module Lubeck.Types
   , blError
   , notImplError
   -- * Forms
-  , FormValid
+  , FormValid(..)
   , Validator
   -- ** IO
-  , FormValidIO
+  , FormValidIO(..)
   , ValidatorIO
   ) where
 
