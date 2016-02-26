@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module AdPlatform.Config where
 
@@ -9,7 +9,8 @@ useAuth            = True
 -- Pass credentials (eg. cookies) with CORS XHR requests.
 -- Currently disabled because of bad `Access-Control-Allow-Origin: *` header set by the server.
 -- Once server will be fixed and the API will require authentication set this to True.
-xhrWithCredentials = False
+xhrWithCredentials = True
 
-defaultUsername = "forbestravelguide"
-defaultPassword = "secret123"
+
+defaultUsername    = "forbestravelguide"
+defaultPassword    = "secret123"
