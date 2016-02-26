@@ -104,11 +104,10 @@ module Lubeck.FRP
   -- reactimate
   , reactimateIO
 
-  -- ** FRP system
-  , FRPSystem(..)
-  , runFRP
-  , runFRP'
-  , runFRP''
+  -- , FRPSystem(..)
+  -- , runFRP
+  -- , runFRP'
+  -- , runFRP''
 
   -- ** Utility
   -- testFRP
