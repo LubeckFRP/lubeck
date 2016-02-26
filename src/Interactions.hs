@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
-
 module Main where
 
 import Prelude hiding (div)
@@ -8,13 +7,14 @@ import qualified Prelude
 import Control.Applicative
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (forM_, forever, unless)
+import Control.Monad.Except (runExceptT)
 import Data.String (fromString)
 import qualified Data.Map as Map
 import Data.Map(Map)
 import qualified Data.List
 import Data.List.Zipper (fromList, beginp, empty, emptyp, endp, cursor, start, end, left, right, Zipper(..))
 import Data.Monoid
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, maybe)
 import Data.Default (def)
 import Control.Lens (over, set)
 import Control.Lens.TH(makeLenses)
@@ -124,11 +124,11 @@ interactionBrowserW shoutoutSink shoutoutZ =
     [ interactionW emptySink $ cursor shoutoutZ
     , div [ A.class_ "row" ]
       [ div [ A.class_ "col-xs-4 col-lg-4" ]
-	    [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
+            [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
       , div [ A.class_ "col-xs-3 col-lg-3" ]
-	    [ displayIndex emptySink $ nOutOfM shoutoutZ ]
+            [ displayIndex emptySink $ nOutOfM shoutoutZ ]
       , div [ A.class_ "col-xs-1 col-lg-1" ]
-	    [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
+            [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
       ]
     ]
   where nOutOfM (Zip xs ys) = let lenXs = length xs in (lenXs, lenXs + length ys)
@@ -138,13 +138,13 @@ interactionW _ interaction = div
   []
   [ p [ A.class_ "text-center" ] [text (showJS $ interaction .: interaction_time)]
   , div [class_ "row"]
-	[ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
-	      [ interactionPlotOrNot ]
-	, div [ class_ "col-xs-4 col-lg-4" ]
-	      [ linkedImage
-	      , div [] [ caption ]
-	      ]
-	]
+        [ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
+              [ interactionPlotOrNot ]
+        , div [ class_ "col-xs-4 col-lg-4" ]
+              [ displayImage image
+              , div [] [ caption ]
+              ]
+        ]
   ]
   where
     interactionPlotOrNot =
@@ -164,13 +164,17 @@ interactionW _ interaction = div
       Nothing   -> text ""
       Just desc -> text desc
 
-    linkedImage = case P.ig_web_url sPost of
-      Nothing  -> a []         [ image ]
-      Just url -> a [href url] [ image ]
+    displayImage :: Maybe Html -> Html
+    displayImage Nothing = p [A.class_ "text-center"] [E.text "Post Deleted"]
+    displayImage (Just img) = case P.ig_web_url sPost of
+      Nothing  -> a [] [ img ]
+      Just url -> a [href url] [ img ]
 
-    sPost      = I.medium interaction
+    sPost = I.medium interaction
 
-    image = img [src (interaction .: medium .: P.url), width 200] []
+    image = if P.deleted sPost
+            then Nothing
+            else Just $ img [src (sPost .: P.url), width 200] []
 
     render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.V2 75 105)
     renderOpts = mempty
@@ -179,7 +183,11 @@ interactionW _ interaction = div
 
 
 getShoutouts :: TwoAccounts -> IO (InteractionSet SearchPost)
-getShoutouts = uncurry loadShoutouts
+getShoutouts accs = do
+  result <- runExceptT $ uncurry loadShoutouts accs
+  case result of
+    Left err -> return $ InteractionSet Nothing Nothing []
+    Right interactionSet -> return interactionSet
 
 main :: IO ()
 main = do

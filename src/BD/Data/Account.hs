@@ -63,10 +63,10 @@ instance ToJSON Account where
 instance FromJSON Account
 
 getUser :: JSString -> IO Account
-getUser unm = fmap payload $ unsafeGetAPI $ unm <> "/account"
+getUser unm = fmap payload $ unsafeGetAPI BD.Api.defaultAPI $ unm <> "/account"
 
 getUserOrError :: JSString -> IO (Either AppError Account)
-getUserOrError unm = getAPIEither (unm <> "/account") >>= return . bimap ApiError payload
+getUserOrError unm = getAPIEither (BD.Api.defaultAPI) (unm <> "/account") >>= return . bimap ApiError payload
 
 data AuthToken = AuthToken JSString | NoAuthToken JSString deriving (GHC.Generic, Show, Eq, Data, Typeable)
 
@@ -84,14 +84,14 @@ instance FromJSON AuthToken where
 -- FIXME this probably deserves distinct module
 authenticateOrError :: (JSString, JSString) -> IO (Either AppError AuthToken)
 authenticateOrError (unm, psw) = do
-  res <- getAPIEither' "get-auth-token" headers :: IO (Either JSString AuthToken)
+  res <- getAPIEither' api "get-auth-token" :: IO (Either JSString AuthToken)
   return $ case res of
     Left a                -> Left . ApiError $ "Sorry, access denied."
     Right (NoAuthToken s) -> Left . ApiError $ s
     Right (AuthToken t)   -> Right . AuthToken $ t
 
   where
-    headers = [authHeader]
+    api = BD.Api.defaultAPI { headers = [authHeader] }  
     authHeader = ("Authorization", "Basic " <> (base64encode (unm <> ":" <> psw)))
     base64encode s = btoa s
 

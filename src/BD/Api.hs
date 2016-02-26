@@ -2,6 +2,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable, QuasiQuotes #-}
 
 module BD.Api (
+  API(..),
+  defaultAPI,  
+
   getAPI',
   getAPIEither',
 
@@ -49,14 +52,22 @@ import Data.String (fromString)
 import BD.Types
 import AdPlatform.Config (xhrWithCredentials)
 
-baseURL :: JSString
---baseURL = "http://localhost:3567/api/v1/"
-baseURL = "https://data.beautifuldestinations.com/api/v1/"
+type Header = (JSString, JSString) -- JavaScript.Web.XMLHttpRequest uses it internally, but not exports
+
+data API = API {
+    baseURL :: JSString
+  , headers :: [Header]
+}
+
+apiBaseURL :: JSString
+--apiBaseURL = "http://localhost:3567/api/v1/"
+apiBaseURL = "https://data.beautifuldestinations.com/api/v1/"
+
+defaultAPI :: API
+defaultAPI = API apiBaseURL []
 
 showJS :: Show a => a -> JSString
 showJS = fromString . show
-
-type Header = (JSString, JSString) -- JavaScript.Web.XMLHttpRequest uses it internally, but not exports
 
 {-|
 Make a GET request into the BD API.
@@ -80,8 +91,8 @@ getAccount :: JSString -> Api (Envelope Account)
 getAccount name = getAPI "\/" <> name <> "\/account"
 @
 -}
-getAPI' :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> [Header] -> m a
-getAPI' path headers = do
+getAPI' :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => API -> JSString -> m a
+getAPI' api path = do
   eitherResult <- liftIO $ (try $ xhrByteString request :: IO (Either XHRError (Response ByteString)) )
   case eitherResult of
     Left s -> throwError ("getAPI': " <> showJS s)
@@ -92,9 +103,9 @@ getAPI' path headers = do
         Just x  -> return x
   where
     request = Request { reqMethod          = GET
-                      , reqURI             = baseURL <> path
+                      , reqURI             = baseURL api <> path
                       , reqLogin           = Nothing
-                      , reqHeaders         = headers
+                      , reqHeaders         = headers api
                       , reqWithCredentials = xhrWithCredentials
                       , reqData            = NoData
                       }
@@ -102,14 +113,14 @@ getAPI' path headers = do
 {-|
 Same as `getAPI'`, but without the ability to set headers.
 -}
-getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> m a
-getAPI = \path -> getAPI' path []
+getAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => API -> JSString -> m a
+getAPI api = \path -> getAPI' (api { headers = [] }) path 
 
 {-|
 Same as `getAPI'`, with the `MonadError` specialized to `Either`.
 -}
-getAPIEither' :: FromJSON a => JSString -> [Header] -> IO (Either JSString a)
-getAPIEither' = \p h -> runExceptT $ getAPI' p h
+getAPIEither' :: FromJSON a => API -> JSString -> IO (Either JSString a)
+getAPIEither' = \api path -> runExceptT $ getAPI' api path 
 
 
 {-|
@@ -128,8 +139,8 @@ postQuery :: Query -> Api (Envelope QueryId)
 postQuery = postAPI "\/internal\/queries\/"
 @
 -}
-postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => JSString -> a -> m b
-postAPI path value = do
+postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => API -> JSString -> a -> m b
+postAPI api path value = do
   -- liftIO $ putStrLn "DEBUG encoding body"
   body <- liftIO $ encodeJSString value
   -- liftIO $ putStrLn "DEBUG making request"
@@ -145,16 +156,16 @@ postAPI path value = do
   where
     request body = Request {
             reqMethod          = POST
-          , reqURI             = baseURL <> path
+          , reqURI             = baseURL api <> path
           , reqLogin           = Nothing
-          , reqHeaders         = []
+          , reqHeaders         = [] 
           , reqWithCredentials = xhrWithCredentials
           , reqData            = (StringData $ body)
           }
 
 postFileAPI :: (FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m)
-            => JSString -> [(JSString, FormDataVal)] -> m b
-postFileAPI path files = do
+            => API -> JSString -> [(JSString, FormDataVal)] -> m b
+postFileAPI api path files = do
   eitherResult <- liftIO $ (try $ xhrByteString (request files) :: IO (Either XHRError (Response ByteString)))
   case eitherResult of
     Left s -> throwError ("postFileAPI: " <> showJS s)
@@ -166,16 +177,16 @@ postFileAPI path files = do
   where
     request files = Request {
             reqMethod          = POST
-          , reqURI             = baseURL <> path
+          , reqURI             = baseURL api <> path
           , reqLogin           = Nothing
-          , reqHeaders         = []
+          , reqHeaders         = [] 
           , reqWithCredentials = xhrWithCredentials
           , reqData            = (FormData files)
           }
 
 
-postFileAPIEither :: FromJSON a => JSString -> [(JSString, FormDataVal)] -> IO (Either JSString a)
-postFileAPIEither = \p f -> runExceptT $ postFileAPI p f
+postFileAPIEither :: FromJSON a => API -> JSString -> [(JSString, FormDataVal)] -> IO (Either JSString a)
+postFileAPIEither api path = runExceptT . postFileAPI api path 
 
 
 {-|
@@ -202,7 +213,7 @@ deleteAPI path = do
   where
     request = Request {
             reqMethod          = DELETE
-          , reqURI             = baseURL <> path
+          , reqURI             = apiBaseURL <> path
           , reqLogin           = Nothing
           , reqHeaders         = []
           , reqWithCredentials = xhrWithCredentials
@@ -219,27 +230,26 @@ deleteAPIEither = runExceptT . deleteAPI
 {-|
 Same as 'getAPI', with the 'MonadError' specialized to 'Either'.
 -}
-getAPIEither :: FromJSON a => JSString -> IO (Either JSString a)
-getAPIEither = runExceptT . getAPI
+getAPIEither :: FromJSON a => API -> JSString -> IO (Either JSString a)
+getAPIEither = \api path -> runExceptT $ getAPI api path 
 
 {-|
 Same as 'getAPI' but throws an IO exception upon failure.
 -}
-unsafeGetAPI :: FromJSON a => JSString -> IO a
-unsafeGetAPI = fmap unsafeGetRight . getAPIEither
-
+unsafeGetAPI :: FromJSON a => API -> JSString -> IO a
+unsafeGetAPI = \api path -> fmap unsafeGetRight $ getAPIEither api path 
 
 {-|
 Same as 'postAPI', with the 'MonadError' specialized to 'Either'.
 -}
-postAPIEither :: (ToJSON a, FromJSON b) => JSString -> a -> IO (Either JSString b)
-postAPIEither p = runExceptT . postAPI p
+postAPIEither :: (ToJSON a, FromJSON b) => API -> JSString -> a -> IO (Either JSString b)
+postAPIEither api path = runExceptT . postAPI api path
 
 {-|
 Same as 'postAPI' but throws an IO exception upon failure.
 -}
-unsafePostAPI :: (ToJSON a, FromJSON b) => JSString -> a -> IO b
-unsafePostAPI p = fmap unsafeGetRight . postAPIEither p
+unsafePostAPI :: (ToJSON a, FromJSON b) => API -> JSString -> a -> IO b
+unsafePostAPI api path = fmap unsafeGetRight . postAPIEither api path
 
 unsafeGetRight :: Either JSString b -> b
 unsafeGetRight (Left  e) = error (Data.JSString.unpack e)

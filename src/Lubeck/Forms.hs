@@ -62,6 +62,7 @@ module Lubeck.Forms
 
 import           Lubeck.FRP
 import           Lubeck.Html                    (Html)
+import           Lubeck.Types
 import           Prelude                        hiding (div)
 import qualified Prelude
 

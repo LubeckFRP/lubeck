@@ -48,13 +48,15 @@ import           AdPlatform.Pages.User          (userPage)
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
 import           Components.Notifications       (notificationsComponent)
-import           Components.MainMenu            (mainMenuComponent)
+import           Components.MainMenu            (mainMenuComponent, MenuItems())
 
 import           Lubeck.Util
+import           Lubeck.Types
 import           AdPlatform.Types
 import           AdPlatform.Config
 
 
+menuItems :: MenuItems Nav
 menuItems =
   [ (NavUser,     "User")
   , (NavSearch,   "Search")
@@ -119,7 +121,7 @@ adPlatform = do
   (userView, loadAdsE)                  <- userPage         busySink notifSink                   userB campaignsS
   adsView                               <- campaignPage     busySink notifSink loadAdsE          userB
   (imageLibView, imsB, imlibKbdSink)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
-  searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB
+  -- searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB
   createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
   let firstPage                         = NavUser
@@ -130,6 +132,8 @@ adPlatform = do
   let postLoginNavE                     = fmap (const firstPage) validUserLoginE --(updates userS)
   let campaignNavE                      = fmap (const NavCampaign) (updates adsView)
   navS                                  <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
+
+  searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB navS
 
   -- composition of keyboard listeners, looks like an inverse to Html signal distribution & flow
   subscribeEvent kbdEvents $ \e -> do

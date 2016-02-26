@@ -9,3 +9,6 @@ dist/
 cabal.sandbox.config
 *.PID
 Vagrantfile
+*.swp
+*.swo
+doc

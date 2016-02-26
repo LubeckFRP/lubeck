@@ -33,9 +33,9 @@ import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
 import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.FRP
+import           Lubeck.Util
 
 import           BD.Types
-import           Lubeck.Util
 
 
 data BusyCmd = PushBusy | PopBusy deriving (Show)

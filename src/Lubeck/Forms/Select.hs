@@ -13,12 +13,15 @@ module Lubeck.Forms.Select
   ( selectWidget
   , selectEnumWidget
   , selectEnumBoundedWidget
+  , selectWithPromptWidget
   ) where
 
 import Lubeck.Forms
 import qualified Data.List
+import Control.Lens
 import Lubeck.Util()
 import qualified Data.Map
+import Data.Monoid
 import Data.JSString (JSString, pack, unpack)
 
 import qualified Web.VirtualDom as VD
@@ -74,22 +77,49 @@ selectWidget xs = dimapWidget (pack . show . toInt) (fromInt . read . unpack) $ 
     indexed xs = (fromJust . (`Data.List.elemIndex` xs), (xs !!))
       where
         fromJust (Just x) = x
-        -- fromJust Nothing  = 0 -- XXX looks like it crashes here with failed pattern match
-                                 -- when input value not present in options (eg, inital value)
-                                 -- could defaulting to index 0 be an option?
+        fromJust Nothing  = 0    -- XXX it crashes here with failed pattern match
+                                 -- when input (current) value not present in options.
+                                 -- (eg, inital value, or random value from the network)
+                                 -- defaulting to index 0 means we do not select the current
+                                 -- value, but first item instead. Reasonably safe choice IMO.
     (toInt, fromInt) = indexed vals
 
+selectWithPromptWidget :: Eq a => [(a, JSString)] -> Widget a (Maybe a)
+selectWithPromptWidget xs = dimapWidget f g (selectWidget' (prompt <> rawOpts))
+  where
+    f                 = pack . show . toIdx
+    g                 = fromIdx . read . unpack
+
+    promptIdx         = 0
+    prompt            = [((pack . show) promptIdx, "Choose one")]
+    rawOpts           = zip count names
+
+    (vals, names)     = unzip xs
+    count             = fmap (pack . show) [1..] -- take prompt into account
+
+    toIdx             = fromJust . (`Data.List.elemIndex` vals)
+    fromIdx           = byIdx vals
+
+    byIdx xs x        = xs ^? element (x - 1) -- compensate offset for prompt
+    fromJust (Just x) = x + 1                 -- compensate offset for prompt
+    fromJust Nothing  = promptIdx             -- XXX it crashes here with failed pattern match
+                                              -- when input (current) value not present in options.
+                                              -- (eg, inital value, or random value from the network)
+                                              -- defaulting to index 0 means we do not select the current
+                                              -- value, but first item instead. Reasonably safe choice IMO.
+
+
 selectWidget' :: [(JSString, JSString)] -> Widget' JSString
-selectWidget' valuesLabels s x =
+selectWidget' valuesAndLabels sink curVal =
   E.select
     [ A.class_ "form-control"
-    , A.value x
-    , Ev.change (\e -> s $ Ev.value e)
+    , A.value curVal -- ?
+    , Ev.change (\e -> sink $ Ev.value e)
     ]
     (fmap (\(v,l) -> E.option
-      (optAttrs v x)
+      (optAttrs v curVal)
       [E.text l])
-        valuesLabels)
+        valuesAndLabels)
   where
     optAttrs v x = [A.value v] ++ if v == x then [selected "true"]  else []
     selected = VD.attribute "selected"

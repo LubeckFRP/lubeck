@@ -56,6 +56,7 @@ import           Web.VirtualDom.Html.Events     (change, click, preventDefault, 
 
 import           Lubeck.Html                    (Html)
 import           Lubeck.FRP
+import           Lubeck.Types
 import           Prelude                        hiding (div)
 import qualified Prelude
 

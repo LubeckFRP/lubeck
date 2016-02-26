@@ -7,6 +7,8 @@
 
 module Components.MainMenu
   ( mainMenuComponent
+  , MenuItems(..)
+  , MenuItem(..)
   ) where
 
 import           Prelude                        hiding (div)
@@ -39,15 +41,15 @@ menuPanel content = row12H $ E.nav [class_ "navbar navbar-inverse navbar-fixed-t
                                [ E.div [class_ "container col-xs-12"] [content] ]
 
 -- (navigate to, title)
-type MenuItem = (Nav, JSString)
-type MenuItems = [MenuItem]
+type MenuItem a = (a, JSString)
+type MenuItems a = [MenuItem a]
 
-mainMenuComponent :: MenuItems -> JSString -> Nav -> IO (Signal Html, Events Nav)
+mainMenuComponent :: Eq a => MenuItems a -> JSString -> a -> IO (Signal Html, Events a)
 mainMenuComponent items brand z = do
   (menuView, menuNavE) <- component z (menuW items brand)
   return (menuView, menuNavE)
 
-menuW :: MenuItems -> JSString -> Widget' Nav
+menuW :: Eq a => MenuItems a -> JSString -> Widget' a
 menuW [] _ _ _ = mempty
 menuW menuItems brand sink value =
   menuPanel $

@@ -29,6 +29,8 @@ type Layout =
     :<|>
   "interactions" :> Raw
     :<|>
+  "labelrefiner" :> Raw
+    :<|>
   "example-static" :> Raw
     :<|>
   "example-dynamic" :> Raw
@@ -48,8 +50,6 @@ type Layout =
   "doc" :> Raw
     :<|>
   Raw
-
-
 
 resources =
   [ ("static/bootstrap.css",             "bootstrap.css")
@@ -88,6 +88,7 @@ main = do
       exampleServer            <- serveApp rnd jsExeDir "bd-example-app"
       adplatformServer         <- serveApp rnd jsExeDir "bd-adplatform"
       interactionsServer       <- serveApp rnd jsExeDir "bd-interactions"
+      labelRefinerServer       <- serveApp rnd jsExeDir "bd-label-refiner" 
       exampleStaticServer      <- serveApp rnd jsExeDir "bd-example-static-page"
       exampleDynamicServer     <- serveApp rnd jsExeDir "bd-example-dynamic-page"
       exampleWidgetComposition <- serveApp rnd jsExeDir "bd-example-widget-composition"
@@ -106,6 +107,7 @@ main = do
         exampleServer
           :<|> adplatformServer
           :<|> interactionsServer
+          :<|> labelRefinerServer 
           :<|> exampleStaticServer
           :<|> exampleDynamicServer
           :<|> exampleWidgetComposition

@@ -48,5 +48,6 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.network :forwarded_port, guest: 8090, host: 8090
+  config.vm.network :forwarded_port, guest: 3001, host: 3001
   config.vm.provision "shell", inline: $script
 end

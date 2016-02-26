@@ -20,10 +20,12 @@ import           Data.Map                       (Map)
 import qualified Data.Map                       as Map
 import qualified Data.Maybe
 import           Data.Monoid
+import           Data.String                    (fromString)
+import qualified Data.Text                      as T
 import           Data.Time.Calendar             (Day (..))
 import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
-import           Control.Concurrent             (forkIO)
+import           Control.Concurrent             (forkIO, threadDelay)
 import qualified Data.JSString
 import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
@@ -42,6 +44,7 @@ import qualified Web.VirtualDom.Html.Events     as Ev
 
 import           Lubeck.App                     (Html, runAppReactive)
 import           Lubeck.Forms
+import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
@@ -61,6 +64,7 @@ import           BD.Types
 
 
 import           AdPlatform.Types
+import           Components.Map
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent,
                                                  withBusy, withBusy2)
@@ -91,8 +95,8 @@ searchForm dayNow output query =
                 , (PostByCreated,   "Posting time") ]
                 (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
             , selectWidget
-                [ (Asc,   "from lowest to highest")
-                , (Desc,  "from highest to lowest") ]
+                [ (Desc,  "from highest to lowest")
+                , (Asc,   "from lowest to highest") ]
                 (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
             ]
         ]
@@ -102,8 +106,8 @@ searchForm dayNow output query =
               [ button [A.class_ "btn btn-success", click $ \e -> output $ Submit query]
                   [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
                   , text "Search!"
-                  ] ] ]
-
+                  ] ]
+          ]
       ]
 
 type Post = SearchPost
@@ -111,20 +115,8 @@ type Post = SearchPost
 data PostAction
   = UploadImage Post
 
--- | Non-interactive post table (for search results).
-postSearchResult :: Widget [Post] PostAction
-postSearchResult output posts =
-  contentPanel $
-    div []
-      [ div [class_ "page-header"]
-          [ h1 [] [ text "Search Results "
-                  , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (length posts) ++ " posts"]
-                  ] ]
-      , postTable output posts
-      ]
-
-
-
+postSearchResultW :: Widget [Post] PostAction
+postSearchResultW output posts = postTable output posts
   where
     postTable :: Widget [Post] PostAction
     postTable output posts =
@@ -165,35 +157,113 @@ postSearchResult output posts =
 
     imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
+data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
+
+resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
+resultsLayout sink gridH mapH mode posts = case mode of
+  ResultsGrid -> wrapper sink gridH True  False posts
+  ResultsMap  -> wrapper sink mapH  False True  posts
+  where
+    wrapper sink x asel bsel posts =
+      contentPanel $
+        div []
+          [ div [class_ "page-header"]
+              [ h1 [] [ text "Search Results "
+                      , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (Data.Maybe.fromMaybe 0 (length <$> posts)) ++ " posts"]
+                      ] ]
+          , div [A.style "text-align: center;"]
+              [ div [class_ "btn-group", A.style "margin-bottom: 20px;"]
+                  [ button [ class_ ("btn " <> if asel then "btn-primary" else "btn-default")
+                           , click $ \e -> sink ResultsGrid]
+                              [ E.i [class_ "fa fa-th", A.style "margin-right: 5px;"] []
+                              , text "Grid"]
+                  , button [ class_ ("btn " <> if bsel then "btn-primary" else "btn-default")
+                           , click $ \e -> sink ResultsMap]
+                              [ E.i [class_ "fa fa-map-o", A.style "margin-right: 5px;"] []
+                              , text "Map"] ]
+              , x ]
+          ]
+
+
+
+mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapLifecycle
+mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
+mapLifecycle (_, _)                   = Just MapDestroy
+
+postToMarker :: Post -> Maybe Marker
+postToMarker p = Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ markerInfo p)
+
+markerInfo :: Post -> JSString
+markerInfo post =
+    -- TODO virtual-dom string renderer
+     "<div class='thumbnail custom-thumbnail-1 fit-text' style='padding: 0px;'>"
+  <>   "<a target='_blank' href='" <> Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)  <> "'>"
+  <>     "<img class='img-thumbnail' src='" <> P.thumbnail_url post <> "'>"
+  <>   "</a>"
+  <>   "<p style='margin: 0px;'>"
+  <>     "<a target='_blank' href='https://www.instagram.com/" <> P.username post <> "'>@" <> P.username post <> "</a>"
+  <>   "</p>"
+  <>   "<p class='text-center'>"
+  <>     "<div class='fa fa-heart badge badge-info' style='margin: 0 3px;' title='Likes count'>"
+  <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.like_count post) <> "</span>"
+  <>     "</div>"
+  <>     "<div class='fa fa-comments-o badge badge-info' title='Comments count' style='margin: 0 3px;'>"
+  <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.comment_count post) <> "</span>"
+  <>     "</div>"
+  <>   "</p>"
+  <>   "<p>"
+  <>     "<button class='btn btn-link btn-sm btn-block'> <i class='fa fa-cloud-upload' style='margin-right: 5px;'></i>Upload</button>"
+  <>   "</p>"
+  <> "</div>"
+
+
+showResultsOnMap mapSink mbPosts =
+  mapSink $ ShowMarker $ Data.Maybe.fromMaybe [] $ fmap (Data.Maybe.catMaybes . fmap postToMarker) mbPosts
+
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
            -> Sink IPCMessage
            -> Behavior (Maybe JSString)
+           -> Signal Nav
            -> IO (Signal Html)
-searchPage busySink notifSink ipcSink mUserNameB = do
-  let initPostQuery = defSimplePostQuery
+searchPage busySink notifSink ipcSink mUserNameB navS = do
+  let initPostQuery                = defSimplePostQuery
 
+  (viewModeSink, viewModeEvents)   <- newEventOf (undefined                                        :: ResultsViewMode)
+  resultsViewModeS                 <- stepperS ResultsGrid viewModeEvents
 
-  now <- getCurrentTime
+  now                              <- getCurrentTime
 
-  -- Search event (from user)
-  (searchView, searchRequested) <- formComponent initPostQuery (searchForm $ utctDay now)
+  (searchView, searchRequested)    <- formComponent initPostQuery (searchForm (utctDay now))
+  (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)
+  (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Post])
 
-  -- Create ad event (from user)
-  (uploadImage, uploadedImage) <- newEventOf (undefined :: PostAction)
+  (mapView, mapSink, _)            <- mapComponent []
 
-  -- Search result event (from API)
-  (receiveSearchResult, searchResultReceived) <- newEventOf (undefined :: Maybe [Post])
+  results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
+  let gridView                     = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
+  let resultsViewS                 = (resultsLayout viewModeSink) <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
+  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS         :: Signal Html
 
-  -- Signal holding the results of the lastest search, or Nothing if no
-  -- search has been performed yet
-  results <- stepperS Nothing searchResultReceived                              :: IO (Signal (Maybe [Post]))
-  let resultView = fmap ((altW (text "") postSearchResult) uploadImage) results :: Signal Html
+  -- This will try to destroy the map on any navigation
+  -- What we need is to destroy the map just the first time a user navigates out of the search page
+  -- TODO history-aware signal
+  let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
+  let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapLifecycle)
 
-  let view = liftA2 (\x y -> div [] [x,y]) searchView resultView                :: Signal Html
+  subscribeEvent (updates results) (showResultsOnMap mapSink)
 
-  -- API calls
+  subscribeEvent (updates resetMapS) $ \x -> void $ forkIO $ case x of
+    Nothing -> return ()
+    Just x  -> do
+      threadDelay 50 -- give DOM a litle time
+      synchronously . mapSink $ x
+
+      threadDelay 1000 -- give map a little time
+
+      curRes <- pollBehavior (current results)
+      (synchronously . showResultsOnMap mapSink)  curRes
 
   -- Create ad
   subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
@@ -201,25 +271,25 @@ searchPage busySink notifSink ipcSink mUserNameB = do
     case mUserName of
       Nothing -> synchronously . notifSink . Just . blError $ "No account to upload post to"
       Just userName -> do
-        res <- (withBusy2 (synchronously . busySink) postAPIEither) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+        res <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
-          Left e        -> synchronously . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
+          Left e        -> synchronously  . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
           Right (Ok s)  -> (synchronously . notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (synchronously . ipcSink $ ImageLibraryUpdated)
-          Right (Nok s) -> synchronously . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
+          Right (Nok s) -> synchronously  . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
 
   -- Fetch Posts
   subscribeEvent searchRequested $ \query -> void $ forkIO $ do
-    receiveSearchResult Nothing -- reset previous search results
+    srchResSink Nothing -- reset previous search results
 
     let complexQuery = PostQuery $ complexifyPostQuery query
-    eQueryId <- (withBusy2 (synchronously . busySink) postAPIEither) "internal/queries" $ complexQuery
+    eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
     case eQueryId of
       Left e        -> synchronously . notifSink . Just . apiError $ "Failed posting query: " <> showJS e
       Right queryId -> void $ forkIO $ do
-        eitherPosts <- (withBusy (synchronously . busySink) getAPIEither) $ "internal/queries/" <> queryId <> "/results"
+        eitherPosts <- (withBusy (synchronously . busySink) (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
           Left e   -> synchronously . notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-          Right ps -> synchronously . receiveSearchResult $ Just ps
+          Right ps -> synchronously . srchResSink $ Just ps
     return ()
 
   return view

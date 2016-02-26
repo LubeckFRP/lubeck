@@ -48,6 +48,7 @@ import           BD.Api
 import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
+import           Lubeck.Types
 
 
 data Action          = Noop | UpdateBudget Ad.Ad AdT.USDcents | UpdateStatus Ad.Ad AdT.AdStatus
@@ -128,8 +129,7 @@ campaignPageW sink (camp, insMap, ads) =
 
       , td [ A.style "width: 200px;", A.class_ "no-border-input" ]
               [ selectWidget
-                  [ (AdT.Unknown,  "Unknown")
-                  , (AdT.Paused,   "Paused")
+                  [ (AdT.Paused,   "Paused")
                   , (AdT.Running,  "Running")
                   , (AdT.Archived, "Archived") ]
                   (contramapSink (\newAdStatus -> UpdateStatus ad newAdStatus) sink)
@@ -156,7 +156,6 @@ update busySink notifSink accB (UpdateBudget ad newBudget) = do
         Right (Ok _)  -> (notifSink . Just . NSuccess $ "Budget updated")     >> return (Just ReloadAds)
         Right (Nok s) -> (notifSink . Just . apiError $ s)                    >> return Nothing
 
-update busySink notifSink accB (UpdateStatus ad AdT.Unknown) = print "Ignore" >> return Nothing
 update busySink notifSink accB (UpdateStatus ad newStatus) = case newStatus of
   AdT.Running -> jsConfirm "Are you sure?" >>= \rly -> if rly == 1 then doUpdate else return Nothing
   _           -> doUpdate
