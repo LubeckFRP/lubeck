@@ -30,6 +30,7 @@ import qualified Data.JSString
 import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
+import           Web.VirtualDom                 (renderToString)
 import           Web.VirtualDom.Html            (Property, a, button, div, form,
                                                  h1, hr, img, input, label, p,
                                                  table, tbody, td, text, th, tr)
@@ -115,6 +116,41 @@ type Post = SearchPost
 data PostAction
   = UploadImage Post
 
+itemMarkup :: Sink PostAction -> Post -> Html
+itemMarkup output post =
+  div [ class_ "thumbnail custom-thumbnail-1 fit-text" ]
+    [ a [ target "_blank"
+        , href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post) ]
+        [ imgFromWidthAndUrl (P.thumbnail_url post) [{-fixMissingImage-}] ]
+
+    , p [] [ a [ target "_blank"
+               , href $ "https://www.instagram.com/" <> P.username post]
+               [text $ "@" <> P.username post] ]
+
+    , p [class_ "text-center"]
+           [ E.div [ class_ "fa fa-heart badge badge-info"
+                   , A.style "margin: 0 3px;"
+                   , A.title "Likes count" ]
+                   [ E.span [class_ "xbadge"
+                            , A.style "margin-left: 5px;"]
+                            [text $ showIntegerWithThousandSeparators (P.like_count post)] ]
+
+           , E.div [ class_ "fa fa-comments-o badge badge-info"
+                   , A.title "Comments count"
+                   , A.style "margin: 0 3px;" ]
+                   [ E.span [class_ "xbadge"
+                            , A.style "margin-left: 5px;"]
+                            [text $ showIntegerWithThousandSeparators (P.comment_count post)] ]
+           ]
+
+    , p [] [ button [ A.class_ "btn btn-link btn-sm btn-block"
+                    , click $ \_ -> output (UploadImage post) ]
+                    [ E.i [class_ "fa fa-cloud-upload", A.style "margin-right: 5px;"] []
+                    , text "Upload" ] ]
+    ]
+  where
+    imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
+
 postSearchResultW :: Widget [Post] PostAction
 postSearchResultW output posts = postTable output posts
   where
@@ -123,39 +159,8 @@ postSearchResultW output posts = postTable output posts
       div [] (map (postTableCell output) posts)
 
     postTableCell :: Widget Post PostAction
-    postTableCell output post =
-      div [ class_ "thumbnail custom-thumbnail-1 fit-text" ]
-        [ a [ target "_blank"
-            , href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post) ]
-            [ imgFromWidthAndUrl (P.thumbnail_url post) [{-fixMissingImage-}] ]
+    postTableCell output post = itemMarkup output post
 
-        , p [] [ a [ target "_blank"
-                   , href $ "https://www.instagram.com/" <> P.username post]
-                   [text $ "@" <> P.username post] ]
-
-        , p [class_ "text-center"]
-               [ E.div [ class_ "fa fa-heart badge badge-info"
-                       , A.style "margin: 0 3px;"
-                       , A.title "Likes count" ]
-                       [ E.span [class_ "xbadge"
-                                , A.style "margin-left: 5px;"]
-                                [text $ showIntegerWithThousandSeparators (P.like_count post)] ]
-
-               , E.div [ class_ "fa fa-comments-o badge badge-info"
-                       , A.title "Comments count"
-                       , A.style "margin: 0 3px;" ]
-                       [ E.span [class_ "xbadge"
-                                , A.style "margin-left: 5px;"]
-                                [text $ showIntegerWithThousandSeparators (P.comment_count post)] ]
-               ]
-
-        , p [] [ button [ A.class_ "btn btn-link btn-sm btn-block"
-                        , click $ \_ -> output (UploadImage post) ]
-                        [ E.i [class_ "fa fa-cloud-upload", A.style "margin-right: 5px;"] []
-                        , text "Upload" ] ]
-        ]
-
-    imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
 data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
 
@@ -185,41 +190,48 @@ resultsLayout sink gridH mapH mode posts = case mode of
           ]
 
 
+renderToString' n = renderToString (div [] [n])
 
 mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapLifecycle
 mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
 mapLifecycle (_, _)                   = Just MapDestroy
 
-postToMarker :: Post -> Maybe Marker
-postToMarker p = Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ markerInfo p)
+-- postToMarker :: Post -> Maybe Marker
+-- postToMarker p = Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ markerInfo p)
 
-markerInfo :: Post -> JSString
-markerInfo post =
-    -- TODO virtual-dom string renderer
-     "<div class='thumbnail custom-thumbnail-1 fit-text' style='padding: 0px;'>"
-  <>   "<a target='_blank' href='" <> Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)  <> "'>"
-  <>     "<img class='img-thumbnail' src='" <> P.thumbnail_url post <> "'>"
-  <>   "</a>"
-  <>   "<p style='margin: 0px;'>"
-  <>     "<a target='_blank' href='https://www.instagram.com/" <> P.username post <> "'>@" <> P.username post <> "</a>"
-  <>   "</p>"
-  <>   "<p class='text-center'>"
-  <>     "<div class='fa fa-heart badge badge-info' style='margin: 0 3px;' title='Likes count'>"
-  <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.like_count post) <> "</span>"
-  <>     "</div>"
-  <>     "<div class='fa fa-comments-o badge badge-info' title='Comments count' style='margin: 0 3px;'>"
-  <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.comment_count post) <> "</span>"
-  <>     "</div>"
-  <>   "</p>"
-  <>   "<p>"
-  <>     "<button class='btn btn-link btn-sm btn-block'> <i class='fa fa-cloud-upload' style='margin-right: 5px;'></i>Upload</button>"
-  <>   "</p>"
-  <> "</div>"
+postToMarkerIO :: Post -> IO (Maybe Marker)
+postToMarkerIO p = do
+  minfo <- renderToString' $ itemMarkup emptySink p
+  return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ minfo)
+
+-- markerInfo :: Post -> JSString
+-- markerInfo post = itemMarkup post
+--     -- TODO virtual-dom string renderer
+--      "<div class='thumbnail custom-thumbnail-1 fit-text' style='padding: 0px;'>"
+--   <>   "<a target='_blank' href='" <> Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)  <> "'>"
+--   <>     "<img class='img-thumbnail' src='" <> P.thumbnail_url post <> "'>"
+--   <>   "</a>"
+--   <>   "<p style='margin: 0px;'>"
+--   <>     "<a target='_blank' href='https://www.instagram.com/" <> P.username post <> "'>@" <> P.username post <> "</a>"
+--   <>   "</p>"
+--   <>   "<p class='text-center'>"
+--   <>     "<div class='fa fa-heart badge badge-info' style='margin: 0 3px;' title='Likes count'>"
+--   <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.like_count post) <> "</span>"
+--   <>     "</div>"
+--   <>     "<div class='fa fa-comments-o badge badge-info' title='Comments count' style='margin: 0 3px;'>"
+--   <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.comment_count post) <> "</span>"
+--   <>     "</div>"
+--   <>   "</p>"
+--   <>   "<p>"
+--   <>     "<button class='btn btn-link btn-sm btn-block'> <i class='fa fa-cloud-upload' style='margin-right: 5px;'></i>Upload</button>"
+--   <>   "</p>"
+--   <> "</div>"
 
 
-showResultsOnMap mapSink mbPosts =
-  mapSink $ ShowMarker $ Data.Maybe.fromMaybe [] $ fmap (Data.Maybe.catMaybes . fmap postToMarker) mbPosts
-
+showResultsOnMap mapSink mbPosts = do
+  mbms <- mapM (postToMarkerIO) (Data.Maybe.fromMaybe [] mbPosts)
+  mapSink $ ShowMarker $ Data.Maybe.catMaybes mbms
+  -- mapSink $ ShowMarker $ Data.Maybe.fromMaybe [] $ fmap (Data.Maybe.catMaybes . fmap postToMarker) mbPosts
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
@@ -263,7 +275,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
       threadDelay 1000 -- give map a little time
 
       curRes <- pollBehavior (current results)
-      (synchronously . showResultsOnMap mapSink)  curRes
+      (synchronously . showResultsOnMap mapSink) curRes
 
   -- Create ad
   subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do

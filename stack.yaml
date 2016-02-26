@@ -10,7 +10,7 @@ packages:
 #     commit: b725daeac3edb6d0afdd290661b73a28897b1f78
 - location:
     git: git@github.com:EugeneN/virtual-dom.git
-    commit: b6d45a8e6112328b15fb70b32660161d4c0143bd
+    commit: 5ee32acc8ca702fc16c7800a834030f8f940f583
 - location:
     git: git@github.com:msakai/data-interval.git
     commit: f57e950e53e5499f1cbc2609382521bf52105b5e
