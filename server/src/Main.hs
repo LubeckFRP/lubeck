@@ -34,6 +34,9 @@ type Layout =
     :<|> "example-plots"              :> Raw
     :<|> "example-plots2"             :> Raw
     :<|> "example-plots3"             :> Raw
+    :<|> "example-plots4"             :> Raw
+    :<|> "example-plots5"             :> Raw
+    :<|> "example-plots6"             :> Raw
     :<|> "example-history"            :> Raw
     :<|> "doc"                        :> Raw
     :<|> Raw
@@ -83,6 +86,9 @@ main = do
       examplePlots             <- serveApp rnd jsExeDir "bd-example-plots"
       examplePlots2            <- serveApp rnd jsExeDir "bd-example-plots2"
       examplePlots3            <- serveApp rnd jsExeDir "bd-example-plots3"
+      examplePlots4            <- serveApp rnd jsExeDir "bd-example-plots4"
+      examplePlots5            <- serveApp rnd jsExeDir "bd-example-plots5"
+      examplePlots6            <- serveApp rnd jsExeDir "bd-example-plots6"
       exampleHistoryServer     <- serveApp rnd jsExeDir "bd-example-history"
       indexServer              <- serveApp rnd jsExeDir "bd-index"
       docServer <- case docDir of
@@ -102,6 +108,9 @@ main = do
           :<|> examplePlots
           :<|> examplePlots2
           :<|> examplePlots3
+          :<|> examplePlots4
+          :<|> examplePlots5
+          :<|> examplePlots6
           :<|> exampleHistoryServer
           :<|> docServer
           :<|> indexServer

@@ -176,8 +176,45 @@ executable bd-example-plots3
                      , virtual-dom
                      , time
                      , linear
-                    --  , vector-space
-                    --  , vector-space-points
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots4
+  main-is:             examples/DV4.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots5
+  main-is:             examples/DV5.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
+                     , colour
+                     , random
+                     , lens
+                     , ghcjs-base ==0.2.0.0
+  default-language:    Haskell2010
+
+executable bd-example-plots6
+  main-is:             examples/DV6.hs
+  build-depends:       base >=4.8 && <4.9
+                     , lubeck
+                     , virtual-dom
+                     , time
+                     , linear
                      , colour
                      , random
                      , lens
