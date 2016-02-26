@@ -23,33 +23,20 @@ import           Util.ParseEnv             (getJsExeBinPathFromEnv, getApiDocPat
 import           Util.StackEnv             (getStackEnv)
 
 type Layout =
-  "example" :> Raw
-    :<|>
-  "adplatform" :> Raw
-    :<|>
-  "interactions" :> Raw
-    :<|>
-  "labelrefiner" :> Raw
-    :<|>
-  "example-static" :> Raw
-    :<|>
-  "example-dynamic" :> Raw
-    :<|>
-  "example-widget-composition" :> Raw
-    :<|>
-  "example-api-req" :> Raw
-    :<|>
-  "example-plots" :> Raw
-    :<|>
-  "example-plots2" :> Raw
-    :<|>
-  "example-plots3" :> Raw
-    :<|>
-  "example-history" :> Raw
-    :<|>
-  "doc" :> Raw
-    :<|>
-  Raw
+         "example"                    :> Raw
+    :<|> "adplatform"                 :> Raw
+    :<|> "interactions"               :> Raw
+    :<|> "labelrefiner"               :> Raw
+    :<|> "example-static"             :> Raw
+    :<|> "example-dynamic"            :> Raw
+    :<|> "example-widget-composition" :> Raw
+    :<|> "example-api-req"            :> Raw
+    :<|> "example-plots"              :> Raw
+    :<|> "example-plots2"             :> Raw
+    :<|> "example-plots3"             :> Raw
+    :<|> "example-history"            :> Raw
+    :<|> "doc"                        :> Raw
+    :<|> Raw
 
 resources =
   [ ("static/bootstrap.css",             "bootstrap.css")
@@ -88,7 +75,7 @@ main = do
       exampleServer            <- serveApp rnd jsExeDir "bd-example-app"
       adplatformServer         <- serveApp rnd jsExeDir "bd-adplatform"
       interactionsServer       <- serveApp rnd jsExeDir "bd-interactions"
-      labelRefinerServer       <- serveApp rnd jsExeDir "bd-label-refiner" 
+      labelRefinerServer       <- serveApp rnd jsExeDir "bd-label-refiner"
       exampleStaticServer      <- serveApp rnd jsExeDir "bd-example-static-page"
       exampleDynamicServer     <- serveApp rnd jsExeDir "bd-example-dynamic-page"
       exampleWidgetComposition <- serveApp rnd jsExeDir "bd-example-widget-composition"
@@ -107,7 +94,7 @@ main = do
         exampleServer
           :<|> adplatformServer
           :<|> interactionsServer
-          :<|> labelRefinerServer 
+          :<|> labelRefinerServer
           :<|> exampleStaticServer
           :<|> exampleDynamicServer
           :<|> exampleWidgetComposition
