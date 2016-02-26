@@ -20,8 +20,8 @@ module Lubeck.App
     , KbdEvents(..)
 
     -- * Elm-style
-    , runApp
-    , runAppPure
+    -- , runApp
+    -- , runAppPure
     ) where
 import Prelude hiding (div)
 import qualified Prelude

@@ -14,7 +14,7 @@ module Lubeck.Types
   -- * Forms
   , FormValid
   , Validator
-  - ** IO
+  -- ** IO
   , FormValidIO
   , ValidatorIO
   ) where
