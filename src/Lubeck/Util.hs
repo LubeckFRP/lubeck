@@ -3,33 +3,32 @@
 {-# LANGUAGE JavaScriptFFI       #-}
 
 module Lubeck.Util
-  ( eitherToError
-  -- , withError
-  , withErrorIO
-
-  , reactimateIOAsync
+  (
+  -- * Text conversion
+    showJS
+  , showIntegerWithThousandSeparators
+  , parseDateToUTC
+  , parseDateAndTimeToUTC
+  , formatDateFromUTC
+  , formatDateAndTimeFromUTC
+  -- * Lists
+  , divide
+  , divideFromEnd
+  -- * FRP/Async
+  , newEventOf
   , newSyncEvent
-
-  , showJS
+  , reactimateIOAsync
+  -- * Errors
+  , eitherToError
+  , withErrorIO
+  -- * HTML/CSS/Bootstrap
   , row6H
   , row12H
   , panel12H
   , contentPanel
   , tableHeaders
-
   , unselectable
-
-  , divide
-  , divideFromEnd
-
-  , parseDateToUTC
-  , parseDateAndTimeToUTC
-  , formatDateFromUTC
-  , formatDateAndTimeFromUTC
-
-  , showIntegerWithThousandSeparators
-
-  , newEventOf
+  -- * Misc
   , jsConfirm
   , which
   ) where
