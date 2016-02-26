@@ -53,7 +53,6 @@ module Lubeck.DV.Drawing
   , barDataWithColor
   , barDataWithColor2
   , barDataWithColor3
-  , barDataWithColor4
 
   , circleData
   , circleDataWithColor
@@ -362,28 +361,29 @@ barData ps = do
     scaleRR = transform . scalingRR
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
--- | Draw
+-- | Draw a bar graph.
 barData2 :: Monad m => [P2 Double] -> StyledT m Drawing
--- | Draw
+-- | Draw a bar graph.
 barData3 :: Monad m => [P3 Double] -> StyledT m Drawing
--- | Draw
+-- | Draw a bar graph.
 barData4 :: Monad m => [P4 Double] -> StyledT m Drawing
 [barData2, barData3, barData4] = undefined
 
 -- rawBarData4 :: [[R]] -> StyledT m Drawing
 
 
--- | Draw
+-- | Draw a bar graph.
 barDataWithColor  :: Monad m => [P2 Double] -> StyledT m Drawing
--- | Draw
+-- | Draw a bar graph.
 barDataWithColor2 :: Monad m => [P3 Double] -> StyledT m Drawing
--- | Draw
+-- | Draw a bar graph.
 barDataWithColor3 :: Monad m => [P4 Double] -> StyledT m Drawing
 -- | Draw
 -- barDataWithColor4 :: [R5] -> StyledT m Drawing
-[barDataWithColor, barDataWithColor2, barDataWithColor3, barDataWithColor4] = undefined
+[barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
 
--- | Visualizes a count
+-- | Visualizes a count.
+--
 -- See "Visualize this" pXXII (Godfather example)
 discreteData :: (Enum a, Monad m) => [(a, Int)] -> StyledT m Drawing
 discreteData = undefined
@@ -439,13 +439,13 @@ plotRectangle = do
   where
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
--- | Draw
--- TODO use a ratio/percantage type wrapper
--- TODO use area not radius
+-- | Draw a circle size plot.
 circleData :: Monad m => [Double] -> StyledT m Drawing
 circleData = undefined
+-- TODO use a ratio/percantage type wrapper
+-- TODO use area not radius
 
--- | Draw
+-- | Draw a pie chart.
 pieChartData :: Monad m => [Double] -> StyledT m Drawing
 pieChartData = undefined
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
@@ -466,18 +466,20 @@ circleDataWithColor = undefined
 -- color mapping + one of
 --   stacking, grouping, alternating (same as grouping with no spacing), above/below (2 dimensions only)
 
--- | Draw a bar graph.
+--  Draw a bar graph.
 -- barData2 :: [P2 Double] -> Styled Drawing
 -- barData2 :: [P3 Double] -> Styled Drawing
 -- barData2 :: [P4 Double] -> Styled Drawing
 
--- | A size graph: scales the given objets and places them side by side.
+--  A size graph: scales the given objets and places them side by side.
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 -- | Draw a tree map.
--- TODO use a ratio/percantage type wrapper
 treeMapGraph :: Monad m => [Double] -> StyledT m Drawing
 treeMapGraph = undefined
+-- TODO use a ratio/percantage type wrapper
+
+
 {-
 Tree map like bottom one here:
 https://infogr.am/link-building-strategies-from-the-experts
@@ -496,9 +498,9 @@ treeMapGraphWithColor :: Monad m => [P2 Double] -> StyledT m Drawing
 treeMapGraphWithColor = undefined
 
 -- | Draw a discrete heat map.
--- TODO use a ratio/percantage type wrapper
 discreteHeatMap :: Monad m => (Int -> Int -> Double) -> StyledT m Drawing
 discreteHeatMap = undefined
+-- TODO use a ratio/percantage type wrapper
 
 
 
