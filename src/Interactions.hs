@@ -31,7 +31,7 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events as Ev
 
 import Lubeck.FRP
-import Lubeck.App (Html, runApp, runAppReactive)
+import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms
 import Lubeck.Forms.Button (buttonWidget, multiButtonWidget)
 import Lubeck.DV.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)

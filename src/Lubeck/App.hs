@@ -18,10 +18,6 @@ module Lubeck.App
     -- ** With keyboard-events
     , runAppReactiveX
     , KbdEvents(..)
-
-    -- * Elm-style
-    -- , runApp
-    -- , runAppPure
     ) where
 import Prelude hiding (div)
 import qualified Prelude
