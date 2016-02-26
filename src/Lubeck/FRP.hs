@@ -52,79 +52,77 @@ no sequencing with respect to other threads (much like reading a 'TVar').
 [1]: https://hackage.haskell.org/package/reactive-banana
 
 -}
-module Lubeck.FRP (
-    -- * Combinators
-    Events,
-    Behavior,
-    Signal,
+module Lubeck.FRP
+  (
+  -- * Combinators
+    Events
+  , Behavior
+  , Signal
 
-    -- ** Combining and filtering events
-    never,
-    merge,
-    filter,
-    filterJust,
-    scatter,
+  -- ** Combining and filtering events
+  , never
+  , merge
+  , filter
+  , filterJust
+  , scatter
 
-    -- ** Past-dependent events
-    accumE,
-    foldpE,
-    gather,
-    buffer,
+  -- ** Past-dependent events
+  , accumE
+  , foldpE
+  , gather
+  , buffer
 
-    -- ** Building behaviors
-    counter,
-    stepper,
-    switcher,
-    accumB,
-    foldpR,
+  -- ** Building behaviors
+  , counter
+  , stepper
+  , switcher
+  , accumB
+  , foldpR
 
-    -- ** Sampling behaviors
-    sample,
-    snapshot,
-    snapshotWith,
+  -- ** Sampling behaviors
+  , sample
+  , snapshot
+  , snapshotWith
 
-    -- ** Building signals
-    stepperS,
-    accumS,
-    foldpS,
-    snapshotS,
-    snapshotWithS,
+  -- ** Building signals
+  , stepperS
+  , accumS
+  , foldpS
+  , snapshotS
+  , snapshotWithS
 
-    -- ** Sampling signals
-    updates,
-    current,
+  -- ** Sampling signals
+  , updates
+  , current
 
 
-    -- * Run FRP
-    -- ** Standard
-    newEvent,
-    subscribeEvent,
-    pollBehavior,
-    -- reactimate,
-    reactimateIO,
+  -- * Run FRP
+  -- ** Standard
+  , newEvent
+  , subscribeEvent
+  , pollBehavior
+  -- reactimate
+  , reactimateIO
 
-    -- ** FRP system
-    FRPSystem(..),
-    runFRP,
-    runFRP',
-    runFRP'',
+  -- ** FRP system
+  , FRPSystem(..)
+  , runFRP
+  , runFRP'
+  , runFRP''
 
-    -- ** Utility
-    -- testFRP,
+  -- ** Utility
+  -- testFRP
 
-    -- * Sink
-    Sink,
-    emptySink,
-    appendSinks,
-    contramapSink,
+  -- * Sink
+  , Sink
+  , emptySink
+  , appendSinks
+  , contramapSink
 
-    -- * Dispatcher
-    Dispatcher(..),
-    newDispatcher,
-    UnsubscribeAction,
-
-    -- * Misc
-    -- frpInternalLog,
+  -- * Dispatcher
+  , Dispatcher(..)
+  , newDispatcher
+  , UnsubscribeAction
   ) where
 
 import Prelude hiding (filter)

@@ -50,143 +50,144 @@ Main differences from Diagrams:
 [diagrams]: http://projects.haskell.org/diagrams
 
 -}
-module Lubeck.Drawing (
-    -- * Creating drawings
-    -- ** Geometry
-      Point(..)
-    , V1(..)
-    , V2(..)
-    , V3(..)
-    , V4(..)
-    , P1
-    , P2
-    , P3
-    , P4
+module Lubeck.Drawing
+  (
+  -- * Creating drawings
+  -- ** Geometry
+    Point(..)
+  , V1(..)
+  , V2(..)
+  , V3(..)
+  , V4(..)
+  , P1
+  , P2
+  , P3
+  , P4
 
-    , Angle
-    , acosA
-    , angleBetween
-    , turn
-    , angleToRadians
-    , angleToDegrees
-    -- TODO move/rename these?
-    , offsetVectors
-    , betweenPoints
+  , Angle
+  , acosA
+  , angleBetween
+  , turn
+  , angleToRadians
+  , angleToDegrees
+  -- TODO move/rename these?
+  , offsetVectors
+  , betweenPoints
 
-    , Direction
-    , dir
-    , fromDirection
-    , angleBetween
-    , angleBetweenDirections
+  , Direction
+  , dir
+  , fromDirection
+  , angleBetween
+  , angleBetweenDirections
 
-    -- ** Transformations
-    , Transformation
-    , negTransformation
-    , lin
-    , transp
-    , transl
-    , transformVector
-    , transformPoint
-    , transformDirection
-    , transformEnvelope
-    , transformationToMatrix
-    -- ** Raw transformations
-    , translation
-    , translationX
-    , translationY
-    , scaling
-    , scalingX
-    , scalingY
-    , rotation
-    , shearing
-    -- $matrixContructorLayout
-    , matrix
-    -- ** Applying transformations
-    , transform
-    , translate
-    , translateX
-    , translateY
-    , scaleXY
-    , scale
-    , scaleX
-    , scaleY
-    , rotate
-    , shear
+  -- ** Transformations
+  , Transformation
+  , negTransformation
+  , lin
+  , transp
+  , transl
+  , transformVector
+  , transformPoint
+  , transformDirection
+  , transformEnvelope
+  , transformationToMatrix
+  -- ** Raw transformations
+  , translation
+  , translationX
+  , translationY
+  , scaling
+  , scalingX
+  , scalingY
+  , rotation
+  , shearing
+  -- $matrixContructorLayout
+  , matrix
+  -- ** Applying transformations
+  , transform
+  , translate
+  , translateX
+  , translateY
+  , scaleXY
+  , scale
+  , scaleX
+  , scaleY
+  , rotate
+  , shear
 
-    -- ** Styling
-    , Style
-    , styleNamed
-    , fillColor
-    , fillColorA
-    , strokeColor
-    , strokeColorA
-    , strokeWidth
-    -- *** Rendering styles
-    , styleToAttrString
-    -- *** Applying styles
-    , style
-
-
-    -- ** Events
-    , addProperty
-
-    -- ** Envelopes, Alignment, Juxtaposition
-    , Envelope
-    , envelope
-    -- transformEnvelope
-    , unitX
-    , unitY
-    , posDiagonal
-    , negDiagonal
-    , (|||)
-    , (===)
-    , juxtapose
-
-    , boundaries
-    , align'
-    , align
-    , OctagonSide(..)
+  -- ** Styling
+  , Style
+  , styleNamed
+  , fillColor
+  , fillColorA
+  , strokeColor
+  , strokeColorA
+  , strokeWidth
+  -- *** Rendering styles
+  , styleToAttrString
+  -- *** Applying styles
+  , style
 
 
+  -- ** Events
+  , addProperty
 
-    -- ** Drawings
-    , Drawing
-    -- ** Basic drawings
-    , transparent
-    , circle
-    , square
-    , horizontalLine
-    , verticalLine
-    , segments
-    , polygon
-    -- ** Text
-    , text
-    , textMiddle          -- TODO depracate
-    , textEnd             -- TODO depracate
-    , textLeftMiddle
-    , textMiddleMiddle
-    , textRightMiddle
-    , TextAnchor(..)
-    , AlignmentBaseline(..)
-    , FontStyle(..)
-    , TextOptions(..)
-    , textWithOptions
+  -- ** Envelopes, Alignment, Juxtaposition
+  , Envelope
+  , envelope
+  -- transformEnvelope
+  , unitX
+  , unitY
+  , posDiagonal
+  , negDiagonal
+  , (|||)
+  , (===)
+  , juxtapose
 
-    -- ** Utility
-    , xyAxis
-    , xyCoords
-    , showUnitX
-    , showDirection
-    , showPoint
-    , showBoundaries
-    , showEnvelope
-    , smokeBackground
+  , boundaries
+  , align'
+  , align
+  , OctagonSide(..)
 
-    -- * Rendering drawings
-    , OriginPlacement(..)
-    , RenderingOptions(..)
-    -- mempty
-    , toSvg
+
+
+  -- ** Drawings
+  , Drawing
+  -- ** Basic drawings
+  , transparent
+  , circle
+  , square
+  , horizontalLine
+  , verticalLine
+  , segments
+  , polygon
+  -- ** Text
+  , text
+  , textMiddle          -- TODO depracate
+  , textEnd             -- TODO depracate
+  , textLeftMiddle
+  , textMiddleMiddle
+  , textRightMiddle
+  , TextAnchor(..)
+  , AlignmentBaseline(..)
+  , FontStyle(..)
+  , TextOptions(..)
+  , textWithOptions
+
+  -- ** Utility
+  , xyAxis
+  , xyCoords
+  , showUnitX
+  , showDirection
+  , showPoint
+  , showBoundaries
+  , showEnvelope
+  , smokeBackground
+
+  -- * Rendering drawings
+  , OriginPlacement(..)
+  , RenderingOptions(..)
+  -- mempty
+  , toSvg
   ) where
 
 import Control.Applicative
