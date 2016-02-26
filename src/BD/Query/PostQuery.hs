@@ -128,7 +128,7 @@ defSimplePostQuery = SimplePostQuery {
     date      = whole,
     location  = Nothing,
     orderBy   = PostByLikes,
-    direction = Asc
+    direction = Desc
   }
 
 -- | Convert a 'SimplePostQuery' to a 'PostQuery'.

@@ -33,6 +33,7 @@ import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.FRP
 import           Lubeck.Util
+import           Lubeck.Types
 
 import           BD.Types
 import           BD.Utils

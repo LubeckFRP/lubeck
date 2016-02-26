@@ -38,6 +38,7 @@ import qualified BD.Data.AdTypes                as AdT
 import           BD.Types
 import           BD.Utils
 import           Lubeck.Util
+import           Lubeck.Types
 
 import           Components.BusyIndicator       (BusyCmd(..), withBusy)
 

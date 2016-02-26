@@ -45,6 +45,7 @@ import           BD.Utils
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  withBusy2)
 import           Lubeck.Util
+import           Lubeck.Types
 
 
 type UploadFiles = [(JSString, FormDataVal)]
