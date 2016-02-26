@@ -55,6 +55,41 @@ import qualified Data.Colour.Names as Colors
 
 -- MAIN
 
+-- | Invariant behavior/signal.
+--
+-- Acts exactly like a behavior, except that all state changes are guarded by the given predicate.
+-- If an update would cause the behavior to invalidate the invariant, this is ignored.
+--
+-- Consequently : ib === invariant p b ==> fmap p (behavior ib) === pure True
+
+-- data Invariant f a = IB (a -> Bool) (f a)
+--
+-- invariant :: (a -> Bool) -> f a -> Invariant f a
+-- invariant = IB
+--
+-- invariant :: Invariant f a -> f a
+-- behavior (IB _ b) = b
+
+class HasInvariant a where
+  inv :: a -> Bool
+
+accumInvariantB :: HasInvariant a => a -> Events (a -> a) -> IO (Behavior a)
+accumInvariantB z e = accumB z $ fmap (\f -> toId (predToMaybe inv . f)) e
+  where
+    toId :: (a -> Maybe a) -> a -> a
+    toId f x = case f x of
+      Nothing -> x
+      Just x2 -> x2
+    predToMaybe :: (a -> Bool) -> a -> Maybe a
+    predToMaybe p x = if p x then Just x else Nothing
+
+newtype Pos = Pos (Double,Double)
+instance HasInvariant Pos where
+  inv (Pos (x,y)) = ins (0,1) x && ins (0,1) y
+    where
+      ins (a,b) c = a <= b && b <= c
+
+
 
 chooseDrawing :: [Drawing] -> IO (Signal Html)
 chooseDrawing ds = do
