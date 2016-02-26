@@ -20,7 +20,7 @@ import Lubeck.Forms
 import Lubeck.Forms.Basic
 import Lubeck.FRP
 import Lubeck.Forms.Select
-import BD.Data.Account
+import BD.Data.Account (getUser, numposts)
 
 type Username = JSString
 

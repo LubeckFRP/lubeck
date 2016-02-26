@@ -44,13 +44,13 @@ instance FromJSON Image
 instance ToJSON Image
 
 getAllImages :: Text -> IO [Image]
-getAllImages unm = unsafeGetAPI (BD.Api.defaultAPI) $ unm <> "/ad-images"
+getAllImages unm = unsafeGetAPI BD.Api.defaultAPI $ unm <> "/ad-images"
 
 getAllImagesOrError :: Text -> IO (Either AppError [Image])
-getAllImagesOrError unm = getAPIEither (BD.Api.defaultAPI) (unm <> "/ad-images") >>= return . first ApiError
+getAllImagesOrError unm = getAPIEither BD.Api.defaultAPI (unm <> "/ad-images") >>= return . first ApiError
 
 deleteImageOrError :: Text -> Int -> IO (Either AppError Ok)
-deleteImageOrError unm imageId = deleteAPIEither (unm <> "/ad-image/" <> showJS imageId) >>= return . first ApiError
+deleteImageOrError unm imageId = deleteAPIEither BD.Api.defaultAPI (unm <> "/ad-image/" <> showJS imageId) >>= return . first ApiError
 
 uploadImagesOrError :: Text -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
 uploadImagesOrError unm files = postFileAPIEither BD.Api.defaultAPI (unm <> "/ad-image") files >>= return . first ApiError
