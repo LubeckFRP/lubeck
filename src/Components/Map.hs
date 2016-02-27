@@ -10,6 +10,7 @@ module Components.Map
   , Marker(..)
   , MapAction(..)
   , MapLifecycle(..)
+  , BalloonContent(..)
   ) where
 
 import           Prelude                        hiding (div)
@@ -35,7 +36,7 @@ import           Web.VirtualDom.Html.Attributes (class_)
 import qualified Web.VirtualDom.Html.Attributes as A
 import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
                                                  stopPropagation, submit, value)
-import           Web.VirtualDom                 (staticNode)
+import           Web.VirtualDom                 (staticNode, DOMNode)
 import           System.Random
 
 import           Lubeck.App                     (Html)
@@ -48,8 +49,15 @@ import           BD.Types
 data Point = Point { lat :: Double, lon :: Double } deriving Show
 type Line = (Point, Point)
 
+-- TODO a newtype to abstract a bit over DOMNode?
+data BalloonContent = BalloonString JSString | BalloonDOMNode DOMNode
+
+instance Show BalloonContent where
+  show (BalloonString s)  = show s
+  show (BalloonDOMNode n) = "<dom node>"
+
 data Marker = Marker { point :: Point
-                     , info  :: Maybe JSString } deriving Show
+                     , info  :: Maybe BalloonContent } deriving Show
 
 data MapAction = MapClicked Point
 
@@ -86,6 +94,9 @@ foreign import javascript unsafe "$1['addTo']($2)"
 foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
   addMarker_ :: JSVal {-LMap-} -> Double -> Double -> JSString -> IO ()
 
+foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
+  addMarkerDom_ :: JSVal {-LMap-} -> Double -> Double -> DOMNode -> IO ()
+
 makeMap :: JSString -> IO LMap
 makeMap mapId = do
   lm <- makeMap_ mapId
@@ -104,7 +115,10 @@ fitBounds :: LMap -> Bounds -> IO ()
 fitBounds lm b = fitBounds_ (lMap lm) (lat . sw $ b) (lon . sw $ b) (lat . ne $ b) (lon . ne $ b)
 
 addMarker :: LMap -> Marker -> IO ()
-addMarker lm (Marker (Point lat lon) popupText) = addMarker_ (lMap lm) lat lon (fromMaybe "" popupText)
+addMarker lm (Marker (Point lat lon) popupContent) = case popupContent of
+  Nothing                 -> addMarker_    (lMap lm) lat lon ""
+  Just (BalloonString s)  -> addMarker_    (lMap lm) lat lon s
+  Just (BalloonDOMNode d) -> addMarkerDom_ (lMap lm) lat lon d
 
 makeTileLayer :: JSString -> Int -> String -> IO LTileLayer
 makeTileLayer src maxZoom attribution = do

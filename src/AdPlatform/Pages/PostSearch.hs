@@ -30,7 +30,7 @@ import qualified Data.JSString
 import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
-import           Web.VirtualDom                 (renderToString)
+import           Web.VirtualDom                 (renderToString, createElement)
 import           Web.VirtualDom.Html            (Property, a, button, div, form,
                                                  h1, hr, img, input, label, p,
                                                  table, tbody, td, text, th, tr)
@@ -191,45 +191,21 @@ resultsLayout sink gridH mapH mode posts = case mode of
 
 
 renderToString' n = renderToString (div [] [n])
+renderToDOMNode n = createElement n -- TODO move to virtual-dom
 
 mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapLifecycle
 mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
 mapLifecycle (_, _)                   = Just MapDestroy
 
--- postToMarker :: Post -> Maybe Marker
--- postToMarker p = Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ markerInfo p)
+postToMarkerIO :: Sink PostAction -> Post -> IO (Maybe Marker)
+postToMarkerIO uploadImage p = do
+  -- minfo <- renderToString' $ itemMarkup uploadImage p
+  -- return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonString minfo)
+  minfo <- renderToDOMNode $ itemMarkup uploadImage p
+  return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
 
-postToMarkerIO :: Post -> IO (Maybe Marker)
-postToMarkerIO p = do
-  minfo <- renderToString' $ itemMarkup emptySink p
-  return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ minfo)
-
--- markerInfo :: Post -> JSString
--- markerInfo post = itemMarkup post
---     -- TODO virtual-dom string renderer
---      "<div class='thumbnail custom-thumbnail-1 fit-text' style='padding: 0px;'>"
---   <>   "<a target='_blank' href='" <> Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post)  <> "'>"
---   <>     "<img class='img-thumbnail' src='" <> P.thumbnail_url post <> "'>"
---   <>   "</a>"
---   <>   "<p style='margin: 0px;'>"
---   <>     "<a target='_blank' href='https://www.instagram.com/" <> P.username post <> "'>@" <> P.username post <> "</a>"
---   <>   "</p>"
---   <>   "<p class='text-center'>"
---   <>     "<div class='fa fa-heart badge badge-info' style='margin: 0 3px;' title='Likes count'>"
---   <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.like_count post) <> "</span>"
---   <>     "</div>"
---   <>     "<div class='fa fa-comments-o badge badge-info' title='Comments count' style='margin: 0 3px;'>"
---   <>       "<span class='xbadge' style='margin-left: 5px;'>" <> showIntegerWithThousandSeparators (P.comment_count post) <> "</span>"
---   <>     "</div>"
---   <>   "</p>"
---   <>   "<p>"
---   <>     "<button class='btn btn-link btn-sm btn-block'> <i class='fa fa-cloud-upload' style='margin-right: 5px;'></i>Upload</button>"
---   <>   "</p>"
---   <> "</div>"
-
-
-showResultsOnMap mapSink mbPosts = do
-  mbms <- mapM (postToMarkerIO) (Data.Maybe.fromMaybe [] mbPosts)
+showResultsOnMap mapSink uploadImage mbPosts = do
+  mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
   mapSink $ ShowMarker $ Data.Maybe.catMaybes mbms
   -- mapSink $ ShowMarker $ Data.Maybe.fromMaybe [] $ fmap (Data.Maybe.catMaybes . fmap postToMarker) mbPosts
 
@@ -264,7 +240,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
   let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapLifecycle)
 
-  subscribeEvent (updates results) (showResultsOnMap mapSink)
+  subscribeEvent (updates results) (showResultsOnMap mapSink uploadImage)
 
   subscribeEvent (updates resetMapS) $ \x -> void $ forkIO $ case x of
     Nothing -> return ()
@@ -275,7 +251,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
       threadDelay 1000 -- give map a little time
 
       curRes <- pollBehavior (current results)
-      (synchronously . showResultsOnMap mapSink) curRes
+      (synchronously . showResultsOnMap mapSink uploadImage) curRes
 
   -- Create ad
   subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
