@@ -65,7 +65,9 @@ newtype LMap = LMap { lMap :: JSVal {-LMap-} }
 
 newtype LTileLayer = LTileLayer { lTileLayer :: JSVal {-LTileLayer-} }
 
-data MapLifecycle = MapInit | MapDestroy | ShowMarker [Marker]
+newtype LMarkerClusterGroup = LMarkerClusterGroup { lMarkerClusterGroup :: JSVal }
+
+data MapLifecycle = MapInit | MapDestroy | AddMarkersToMap [Marker] | AddMarkersToCluster [Marker]
 
 data Bounds = Bounds { sw :: Point, ne :: Point } deriving Show
 
@@ -88,8 +90,11 @@ foreign import javascript unsafe "$1['setView']([$2, $3], $4)"
 foreign import javascript unsafe "L['tileLayer']($1, { maxZoom: $2, attribution: $3})"
   makeTileLayer_ :: JSString -> Int -> JSString -> IO (JSVal {-LTileLayer-})
 
-foreign import javascript unsafe "$1['addTo']($2)"
-  addTileLayerToMap_ :: JSVal {-LTileLayer-} -> JSVal {-LMap-} -> IO ()
+foreign import javascript unsafe "L.markerClusterGroup()"
+  makeMarkerClusterGroup_ :: IO (JSVal {-LMarkerClusterGroup-})
+
+foreign import javascript unsafe "$2.addLayer($1)"
+  addLayerToMap_ :: JSVal {-LTileLayer-} -> JSVal {-LMap-} -> IO ()
 
 foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
   addMarker_ :: JSVal {-LMap-} -> Double -> Double -> JSString -> IO ()
@@ -120,13 +125,27 @@ addMarker lm (Marker (Point lat lon) popupContent) = case popupContent of
   Just (BalloonString s)  -> addMarker_    (lMap lm) lat lon s
   Just (BalloonDOMNode d) -> addMarkerDom_ (lMap lm) lat lon d
 
+addMarkerToCluster :: LMarkerClusterGroup -> Marker -> IO ()
+addMarkerToCluster lmcg (Marker (Point lat lon) popupContent) = case popupContent of
+  Nothing                 -> addMarker_    (lMarkerClusterGroup lmcg) lat lon ""
+  Just (BalloonString s)  -> addMarker_    (lMarkerClusterGroup lmcg) lat lon s
+  Just (BalloonDOMNode d) -> addMarkerDom_ (lMarkerClusterGroup lmcg) lat lon d
+
 makeTileLayer :: JSString -> Int -> String -> IO LTileLayer
 makeTileLayer src maxZoom attribution = do
   ltl <- makeTileLayer_ src maxZoom (showJS attribution)
   return $ LTileLayer ltl
 
-addTileLayerToMap :: LTileLayer -> LMap -> IO ()
-addTileLayerToMap ltl lm = addTileLayerToMap_ (lTileLayer ltl) (lMap lm)
+makeMarkerClusterGroup :: IO LMarkerClusterGroup
+makeMarkerClusterGroup = do
+  mcg <- makeMarkerClusterGroup_
+  return $ LMarkerClusterGroup mcg
+
+addLayerToMap :: LTileLayer -> LMap -> IO ()
+addLayerToMap ltl lm = addLayerToMap_ (lTileLayer ltl) (lMap lm)
+
+addMarkerClusterGroupToMap :: LMarkerClusterGroup -> LMap -> IO ()
+addMarkerClusterGroupToMap x lm = addLayerToMap_ (lMarkerClusterGroup x) (lMap lm)
 
 
 mapW :: JSString -> Html
@@ -170,7 +189,20 @@ mapComponent z = do
   mapRef                           <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
 
   subscribeEvent lifecycleEvents $ \x -> case x of
-    ShowMarker ms -> do
+    AddMarkersToCluster ms -> do
+      m <- atomically $ TVar.readTVar mapRef
+      case m of
+        Nothing -> return ()
+        Just x  -> do
+          let b = case ms of
+                    [] -> defaultBounds
+                    xs -> calcBounds xs
+          fitBounds x b
+          clusterGroup <- makeMarkerClusterGroup
+          mapM_ (addMarkerToCluster clusterGroup) ms
+          addMarkerClusterGroupToMap clusterGroup x
+
+    AddMarkersToMap ms -> do
       m <- atomically $ TVar.readTVar mapRef
       case m of
         Nothing -> return ()
@@ -202,6 +234,6 @@ mapComponent z = do
       tl <- makeTileLayer "http://{s}.tile.osm.org/{z}/{x}/{y}.png"
                           18
                           "&copy; <a href='http://osm.org/copyright'>OpenStreetMap</a> contributors, Points &copy 2012 LINZ"
-      addTileLayerToMap tl m
+      addLayerToMap tl m
 
   return (htmlS, lifecycleSink, actionsEvents)

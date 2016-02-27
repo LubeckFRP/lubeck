@@ -205,7 +205,7 @@ postToMarkerIO uploadImage p = do
 
 showResultsOnMap mapSink uploadImage mbPosts = do
   mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
-  mapSink $ ShowMarker $ Data.Maybe.catMaybes mbms
+  mapSink $ AddMarkersToCluster $ Data.Maybe.catMaybes mbms
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
