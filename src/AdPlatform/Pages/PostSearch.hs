@@ -30,7 +30,7 @@ import qualified Data.JSString
 import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
-import           Web.VirtualDom                 (renderToString, createElement)
+import           Web.VirtualDom                 (renderToString, createElement, DOMNode)
 import           Web.VirtualDom.Html            (Property, a, button, div, form,
                                                  h1, hr, img, input, label, p,
                                                  table, tbody, td, text, th, tr)
@@ -116,7 +116,7 @@ type Post = SearchPost
 data PostAction
   = UploadImage Post
 
-itemMarkup :: Sink PostAction -> Post -> Html
+itemMarkup :: Widget Post PostAction
 itemMarkup output post =
   div [ class_ "thumbnail custom-thumbnail-1 fit-text" ]
     [ a [ target "_blank"
@@ -156,11 +156,7 @@ postSearchResultW output posts = postTable output posts
   where
     postTable :: Widget [Post] PostAction
     postTable output posts =
-      div [] (map (postTableCell output) posts)
-
-    postTableCell :: Widget Post PostAction
-    postTableCell output post = itemMarkup output post
-
+      div [] (map (itemMarkup output) posts)
 
 data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
 
@@ -190,7 +186,10 @@ resultsLayout sink gridH mapH mode posts = case mode of
           ]
 
 
+renderToString' :: Html -> IO JSString
 renderToString' n = renderToString (div [] [n])
+
+renderToDOMNode :: Html -> IO DOMNode
 renderToDOMNode n = createElement n -- TODO move to virtual-dom
 
 mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapLifecycle
@@ -207,7 +206,6 @@ postToMarkerIO uploadImage p = do
 showResultsOnMap mapSink uploadImage mbPosts = do
   mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
   mapSink $ ShowMarker $ Data.Maybe.catMaybes mbms
-  -- mapSink $ ShowMarker $ Data.Maybe.fromMaybe [] $ fmap (Data.Maybe.catMaybes . fmap postToMarker) mbPosts
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
