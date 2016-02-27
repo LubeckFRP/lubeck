@@ -320,7 +320,8 @@ div, h1, h2, img, p, span {
 }
 
 .leaflet-popup-content .custom-thumbnail-1 p {
-  margin: 2px 0px;
+  margin: 3px 0px;
+  text-align: center;
 }
 .leaflet-popup-content .custom-thumbnail-1 {
   padding: 0px;
