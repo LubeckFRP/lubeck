@@ -318,3 +318,10 @@ div, h1, h2, img, p, span {
   height: 800px;
   background-color: white;
 }
+
+.leaflet-popup-content .custom-thumbnail-1 p {
+  margin: 2px 0px;
+}
+.leaflet-popup-content .custom-thumbnail-1 {
+  padding: 0px;
+}
