@@ -42,14 +42,26 @@ type Layout =
     :<|> Raw
 
 resources =
-  [ ("static/bootstrap.css",             "bootstrap.css")
-  , ("static/bootstrap-theme.css",       "bootstrap-theme.css")
-  , ("static/custom.css",                "custom.css")
-  , ("static/font-awesome.min.css",      "font-awesome.min.css") -- modified font paths: s#../fonts/##g
-  , ("static/fontawesome-webfont.ttf",   "fontawesome-webfont.ttf")
-  , ("static/fontawesome-webfont.woff",  "fontawesome-webfont.woff")
-  , ("static/fontawesome-webfont.woff2", "fontawesome-webfont.woff2")
-  , ("static/favicon.png",               "favicon.png")
+  [ ("static/bootstrapcss/bootstrap.css",        "bootstrap.css")
+  , ("static/bootstrapcss/bootstrap-theme.css",  "bootstrap-theme.css")
+  , ("static/customcss/custom.css",              "custom.css")
+  , ("static/fonts/font-awesome.min.css",        "font-awesome.min.css") -- modified font paths: s#../fonts/##g
+  , ("static/fonts/fontawesome-webfont.ttf",     "fontawesome-webfont.ttf")
+  , ("static/fonts/fontawesome-webfont.woff",    "fontawesome-webfont.woff")
+  , ("static/fonts/fontawesome-webfont.woff2",   "fontawesome-webfont.woff2")
+  , ("static/images/favicon.png",                "favicon.png")
+
+  , ("static/leaflet/leaflet.css",               "leaflet.css")
+  , ("static/leaflet/leaflet.js",                "leaflet.js")
+  , ("static/leaflet/leaflet.markercluster.js",  "leaflet.markercluster.js")
+  , ("static/leaflet/MarkerCluster.css",         "MarkerCluster.css")
+  , ("static/leaflet/MarkerCluster.Default.css", "MarkerCluster.Default.css")
+
+  , ("static/leaflet/images/layers-2x.png",      "layers-2x.png")
+  , ("static/leaflet/images/layers.png",         "layers.png")
+  , ("static/leaflet/images/marker-icon-2x.png", "marker-icon-2x.png")
+  , ("static/leaflet/images/marker-icon.png",    "marker-icon.png")
+  , ("static/leaflet/images/marker-shadow.png",  "marker-shadow.png")
   ]
 
 -- pattern to look for in `resources'` and replace with git commit hash
