@@ -192,7 +192,7 @@ renderToString' n = renderToString (div [] [n])
 renderToDOMNode :: Html -> IO DOMNode
 renderToDOMNode n = createElement n -- TODO move to virtual-dom
 
-mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapLifecycle
+mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapCommand
 mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
 mapLifecycle (_, _)                   = Just MapDestroy
 
@@ -205,7 +205,7 @@ postToMarkerIO uploadImage p = do
 
 showResultsOnMap mapSink uploadImage mbPosts = do
   mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
-  mapSink $ AddMarkersToCluster $ Data.Maybe.catMaybes mbms
+  mapSink $ AddClusterLayer $ Data.Maybe.catMaybes mbms
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
@@ -236,7 +236,7 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
   -- What we need is to destroy the map just the first time a user navigates out of the search page
   -- TODO history-aware signal
   let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
-  let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapLifecycle)
+  let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapCommand)
 
   subscribeEvent (updates results) (showResultsOnMap mapSink uploadImage)
 

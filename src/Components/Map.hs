@@ -9,7 +9,7 @@ module Components.Map
   , Point(..)
   , Marker(..)
   , MapAction(..)
-  , MapLifecycle(..)
+  , MapCommand(..)
   , BalloonContent(..)
   ) where
 
@@ -59,65 +59,78 @@ instance Show BalloonContent where
 data Marker = Marker { point :: Point
                      , info  :: Maybe BalloonContent } deriving Show
 
-data MapAction = MapClicked Point
-
 newtype LMap = LMap { lMap :: JSVal {-LMap-} }
 
 newtype LTileLayer = LTileLayer { lTileLayer :: JSVal {-LTileLayer-} }
 
 newtype LMarkerClusterGroup = LMarkerClusterGroup { lMarkerClusterGroup :: JSVal }
 
-data MapLifecycle = MapInit | MapDestroy | AddMarkersToMap [Marker] | AddMarkersToCluster [Marker]
+data MapCommand = MapInit | MapDestroy | AddMarkers [Marker] | AddClusterLayer [Marker]
+
+data MapAction = MapClicked Point
 
 data Bounds = Bounds { sw :: Point, ne :: Point } deriving Show
 
+-- | Leaflet API
 
 foreign import javascript unsafe "(function() {var z = L['map']($1); window.z = z; return z; }())"
-  makeMap_ :: JSString -> IO (JSVal {-LMap-})
+  makeMap_ :: JSString -> IO JSVal
+
+makeMap :: JSString -> IO LMap
+makeMap mapId = makeMap_ mapId >>= return . LMap
 
 foreign import javascript unsafe "$1.fitWorld()"
   fitWorld_ :: JSVal -> IO ()
 
+fitWorld :: LMap -> IO ()
+fitWorld lm = fitWorld_ (lMap lm)
+
 foreign import javascript unsafe "$1.fitBounds([[$2, $3], [$4, $5]])"
   fitBounds_ :: JSVal -> Double -> Double -> Double -> Double -> IO ()
+
+fitBounds :: LMap -> Bounds -> IO ()
+fitBounds lm b = fitBounds_ (lMap lm) (lat . sw $ b) (lon . sw $ b) (lat . ne $ b) (lon . ne $ b)
 
 foreign import javascript unsafe "$1.remove()"
   destroyMap_ :: JSVal -> IO ()
 
-foreign import javascript unsafe "$1['setView']([$2, $3], $4)"
-  setView_ :: JSVal {-LMap-} -> Double -> Double -> Int -> IO ()
-
-foreign import javascript unsafe "L['tileLayer']($1, { maxZoom: $2, attribution: $3})"
-  makeTileLayer_ :: JSString -> Int -> JSString -> IO (JSVal {-LTileLayer-})
-
-foreign import javascript unsafe "L.markerClusterGroup()"
-  makeMarkerClusterGroup_ :: IO (JSVal {-LMarkerClusterGroup-})
-
-foreign import javascript unsafe "$2.addLayer($1)"
-  addLayerToMap_ :: JSVal {-LTileLayer-} -> JSVal {-LMap-} -> IO ()
-
-foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
-  addMarker_ :: JSVal {-LMap-} -> Double -> Double -> JSString -> IO ()
-
-foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
-  addMarkerDom_ :: JSVal {-LMap-} -> Double -> Double -> DOMNode -> IO ()
-
-makeMap :: JSString -> IO LMap
-makeMap mapId = do
-  lm <- makeMap_ mapId
-  return $ LMap lm
-
 destroyMap :: LMap -> IO ()
 destroyMap lm = destroyMap_ (lMap lm)
 
-setView :: LMap -> (Double, Double) -> Int -> IO ()
-setView lm (lat, lng) zoom = setView_ (lMap lm) lat lng zoom
+foreign import javascript unsafe "$1['setView']([$2, $3], $4)"
+  setView_ :: JSVal -> Double -> Double -> Int -> IO ()
 
-fitWorld :: LMap -> IO ()
-fitWorld lm = fitWorld_ (lMap lm)
+setView :: LMap -> Point -> Int -> IO ()
+setView lm (Point lat lng) zoom = setView_ (lMap lm) lat lng zoom
 
-fitBounds :: LMap -> Bounds -> IO ()
-fitBounds lm b = fitBounds_ (lMap lm) (lat . sw $ b) (lon . sw $ b) (lat . ne $ b) (lon . ne $ b)
+foreign import javascript unsafe "L['tileLayer']($1, { maxZoom: $2, attribution: $3})"
+  makeTileLayer_ :: JSString -> Int -> JSString -> IO JSVal
+
+makeTileLayer :: JSString -> Int -> String -> IO LTileLayer
+makeTileLayer src maxZoom attribution =
+  makeTileLayer_ src maxZoom (showJS attribution) >>= return . LTileLayer
+
+foreign import javascript unsafe "L.markerClusterGroup()"
+  makeMarkerClusterGroup_ :: IO JSVal
+
+makeMarkerClusterGroup :: IO LMarkerClusterGroup
+makeMarkerClusterGroup = makeMarkerClusterGroup_ >>= return . LMarkerClusterGroup
+
+foreign import javascript unsafe "$2.addLayer($1)"
+  addLayerToMap_ :: JSVal -> JSVal -> IO ()
+
+addLayerToMap :: LTileLayer -> LMap -> IO ()
+addLayerToMap ltl lm = addLayerToMap_ (lTileLayer ltl) (lMap lm)
+
+-- TODO `Layer` datatype and a generic `addLayer?
+addMarkerClusterGroupToMap :: LMarkerClusterGroup -> LMap -> IO ()
+addMarkerClusterGroupToMap x lm = addLayerToMap_ (lMarkerClusterGroup x) (lMap lm)
+
+foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
+  addMarker_ :: JSVal -> Double -> Double -> JSString -> IO ()
+
+foreign import javascript unsafe "L['marker']([$2, $3]).addTo($1).bindPopup($4)"
+  addMarkerDom_ :: JSVal -> Double -> Double -> DOMNode -> IO ()
 
 addMarker :: LMap -> Marker -> IO ()
 addMarker lm (Marker (Point lat lon) popupContent) = case popupContent of
@@ -131,26 +144,10 @@ addMarkerToCluster lmcg (Marker (Point lat lon) popupContent) = case popupConten
   Just (BalloonString s)  -> addMarker_    (lMarkerClusterGroup lmcg) lat lon s
   Just (BalloonDOMNode d) -> addMarkerDom_ (lMarkerClusterGroup lmcg) lat lon d
 
-makeTileLayer :: JSString -> Int -> String -> IO LTileLayer
-makeTileLayer src maxZoom attribution = do
-  ltl <- makeTileLayer_ src maxZoom (showJS attribution)
-  return $ LTileLayer ltl
-
-makeMarkerClusterGroup :: IO LMarkerClusterGroup
-makeMarkerClusterGroup = do
-  mcg <- makeMarkerClusterGroup_
-  return $ LMarkerClusterGroup mcg
-
-addLayerToMap :: LTileLayer -> LMap -> IO ()
-addLayerToMap ltl lm = addLayerToMap_ (lTileLayer ltl) (lMap lm)
-
-addMarkerClusterGroupToMap :: LMarkerClusterGroup -> LMap -> IO ()
-addMarkerClusterGroupToMap x lm = addLayerToMap_ (lMarkerClusterGroup x) (lMap lm)
-
+-- | End Leaflet API
 
 mapW :: JSString -> Html
 mapW containerId = staticNode "div" [A.id containerId, class_ "map-container"] []
-
 
 minLat = (-90)
 minLon = (-180)
@@ -176,64 +173,53 @@ calcBounds ms = Bounds x y
     f (sw, ne) m = ( Point (if latM m < lat sw then latM m else lat sw) (if lonM m < lon sw then lonM m else lon sw)
                    , Point (if latM m > lat ne then latM m else lat ne) (if lonM m > lon ne then lonM m else lon ne) )
 
-mapComponent :: [Marker] -> IO (Signal Html, Sink MapLifecycle, Events MapAction)
+withMap  mapRef   f = withMap' mapRef (return ()) f
+withMap' mapRef e f = do
+  m <- atomically $ TVar.readTVar mapRef
+  case m of
+    Nothing -> e
+    Just x  -> f x
+
+mapComponent :: [Marker] -> IO (Signal Html, Sink MapCommand, Events MapAction)
 mapComponent z = do
   (actionsSink, actionsEvents)     <- newEventOf (undefined                     :: MapAction)
-  (lifecycleSink, lifecycleEvents) <- newEventOf (undefined                     :: MapLifecycle)
+  (lifecycleSink, lifecycleEvents) <- newEventOf (undefined                     :: MapCommand)
 
   g                                <- getStdGen
   let mapId                        = fromString . take 10 $ (randomRs ('a', 'z') g)
-
   let htmlS                        = pure (mapW mapId)                          :: Signal Html
-
   mapRef                           <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
 
-  subscribeEvent lifecycleEvents $ \x -> case x of
-    AddMarkersToCluster ms -> do
-      m <- atomically $ TVar.readTVar mapRef
-      case m of
-        Nothing -> return ()
-        Just x  -> do
-          let b = case ms of
-                    [] -> defaultBounds
-                    xs -> calcBounds xs
-          fitBounds x b
-          clusterGroup <- makeMarkerClusterGroup
-          mapM_ (addMarkerToCluster clusterGroup) ms
-          addMarkerClusterGroupToMap clusterGroup x
+  subscribeEvent lifecycleEvents $ \mapCommand -> case mapCommand of
+    AddClusterLayer ms -> withMap mapRef $ \gmap -> do
+      fitMapToLayers gmap ms
+      clusterGroup <- makeMarkerClusterGroup
+      mapM_ (addMarkerToCluster clusterGroup) ms
+      addMarkerClusterGroupToMap clusterGroup gmap
 
-    AddMarkersToMap ms -> do
-      m <- atomically $ TVar.readTVar mapRef
-      case m of
-        Nothing -> return ()
-        Just x  -> do
-          let b = case ms of
-                    [] -> defaultBounds
-                    xs -> calcBounds xs
-          fitBounds x b
-          mapM_ (addMarker x) ms
+    AddMarkers ms -> withMap mapRef $ \gmap -> do
+      fitMapToLayers gmap ms
+      mapM_ (addMarker gmap) ms
 
-    MapDestroy -> do
-      print "Destroy map requested"
-      m <- atomically $ TVar.readTVar mapRef
-      case m of
-        Nothing -> print "Can't destroy map : no map"
-        Just x  -> do
-          destroyMap x
-          atomically $ TVar.writeTVar mapRef Nothing
-          print "Map destroyed"
+    MapDestroy -> withMap' mapRef (print "Can't destroy map : no map") $ \gmap -> do
+      destroyMap gmap
+      atomically $ TVar.writeTVar mapRef Nothing
+      print "Map destroyed"
 
     MapInit -> do
       print "Init map"
-      m <- makeMap mapId
-      atomically $ TVar.writeTVar mapRef (Just m)
+      gmap <- makeMap mapId
+      atomically $ TVar.writeTVar mapRef (Just gmap)
 
-      -- setView m ((-20), 30) 5
-      fitBounds m defaultBounds
-      -- fitWorld m
+      fitBounds gmap defaultBounds
       tl <- makeTileLayer "http://{s}.tile.osm.org/{z}/{x}/{y}.png"
                           18
                           "&copy; <a href='http://osm.org/copyright'>OpenStreetMap</a> contributors, Points &copy 2012 LINZ"
-      addLayerToMap tl m
+      addLayerToMap tl gmap
 
   return (htmlS, lifecycleSink, actionsEvents)
+
+  where
+    fitMapToLayers :: LMap -> [Marker] -> IO ()
+    fitMapToLayers gmap [] = fitBounds gmap defaultBounds
+    fitMapToLayers gmap ms = fitBounds gmap (calcBounds ms)
