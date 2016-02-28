@@ -59,9 +59,9 @@ instance Show BalloonContent where
 data Marker = Marker { point :: Point
                      , info  :: Maybe BalloonContent } deriving Show
 
-newtype LMap = LMap { lMap :: JSVal {-LMap-} }
+newtype LMap = LMap { lMap :: JSVal }
 
-newtype LTileLayer = LTileLayer { lTileLayer :: JSVal {-LTileLayer-} }
+newtype LTileLayer = LTileLayer { lTileLayer :: JSVal }
 
 newtype LMarkerClusterGroup = LMarkerClusterGroup { lMarkerClusterGroup :: JSVal }
 
@@ -207,7 +207,6 @@ mapComponent z = do
       print "Map destroyed"
 
     MapInit -> do
-      print "Init map"
       gmap <- makeMap mapId
       atomically $ TVar.writeTVar mapRef (Just gmap)
 
@@ -216,6 +215,7 @@ mapComponent z = do
                           18
                           "&copy; <a href='http://osm.org/copyright'>OpenStreetMap</a> contributors, Points &copy 2012 LINZ"
       addLayerToMap tl gmap
+      print "Map initialised"
 
   return (htmlS, lifecycleSink, actionsEvents)
 
