@@ -81,7 +81,7 @@ library
                      , bytestring
                      , monad-parallel
                      , random
-  hs-source-dirs:      src
+  hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
   ghc-options:         -fno-warn-typed-holes

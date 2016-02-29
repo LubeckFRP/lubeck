@@ -146,6 +146,11 @@ import Data.IntMap (IntMap)
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
 
+-- For GHC 7.8.4
+-- To retain 7.8.4 compability, use Data.Traversable.mapM etc
+import Data.Traversable(Traversable(..))
+import qualified Data.Traversable
+
 
 -- UNDERLYING
 
@@ -174,7 +179,8 @@ newDispatcher = do
   let dispatch value = do {
       sinksNow <- atomically $ TVar.readTVar sinks
       ; frpInternalLog ("Dispatcher propagating to " ++ show (Map.size sinksNow) ++ " subscribers")
-      ; mapM_ ($ value) sinksNow }
+      ; Data.Traversable.mapM ($ value) sinksNow
+      ; return () }
   frpInternalLog "Dispatcher created"
   return $ Dispatcher insert dispatch
 
@@ -287,6 +293,8 @@ scatter :: Traversable t => Events (t a) -> Events a
 scatter (E taProvider) = E $ \aSink -> do
   frpInternalLog "Setting up scatter"
   taProvider $ mapM_ aSink
+  where
+    mapM_ f = fmap (const ()) . Data.Traversable.mapM f
 
 mapE :: (a -> b) -> Events a -> Events b
 mapE f (E aProvider) = E $ \aSink ->
