@@ -188,6 +188,7 @@ module Lubeck.Drawing
   , RenderingOptions(..)
   -- mempty
   , toSvg
+  , toSvgAny
   ) where
 
 import Control.Applicative
@@ -1061,7 +1062,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
             ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
             []
           Line -> single $ E.line
-            ([A.x1 "0", A.x1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
+            ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
             []
           (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
             ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
@@ -1087,3 +1088,83 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
 #endif
+
+
+
+
+{-| Generate an SVG from a drawing. -}
+toSvgAny
+  :: RenderingOptions
+  -> Drawing
+  -> (Str -> n)
+  -> (Str -> [(Str,Str)] -> [n] -> n)
+  -> n
+toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
+  svgTopNode
+    (toStr $ floor x)
+    (toStr $ floor y)
+    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+    (toSvg1 [] $ placeOrigo $ drawing)
+  where
+    P (V2 x y) = dimensions
+
+    -- svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+    svgTopNode w h vb = mkN "svg"
+      [ mkA "width" w
+      , mkA "height" h
+      , mkA "viewBox" vb ]
+
+    placeOrigo :: Drawing -> Drawing
+    placeOrigo = case originPlacement of
+      TopLeft     -> id
+      Center      -> translateX (x/2) . translateY (y/(-2))
+      BottomLeft  -> translateY (y*(-1))
+
+    pointsToSvgString :: [P2 Double] -> Str
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = packStr
+        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+
+    mkA k v = (k, v)
+
+    -- toSvg1 :: [(Str, Str)] -> Drawing -> [Svg]
+    toSvg1 ps x = let
+        single x = [x]
+        noScale = mkA "vector-effect" "non-scaling-stroke"
+        negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+        offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+        reflY (V2 adx ady) = V2 adx (negate ady)
+      in case x of
+          Circle     -> single $ mkN "circle"
+            ([mkA "r" "0.5", noScale]++ps)
+            []
+          Rect       -> single $ mkN "rect"
+            ([mkA "x" "-0.5", mkA "y" "-0.5", mkA "width" "1", mkA "height" "1", noScale]++ps)
+            []
+          Line -> single $ mkN "line"
+            ([mkA "x1" "0", mkA "y1" "0", mkA "x2" "1", mkA "y2" "0", noScale]++ps)
+            []
+          (Lines closed vs) -> single $ (if closed then mkN "polygon" else mkN "polyline")
+            ([mkA "points" (pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
+            []
+          Text s -> single $ mkN "text"
+            ([mkA "x" "0", mkA "y" "0"]++ps)
+            [mkT s]
+
+          -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
+          -- As long as it is just event handlers, it doesn't matter
+          Transf t x -> single $ mkN "g"
+            [mkA "transform" $ "matrix" <> toStr (negY $ transformationToMatrix t) <> ""]
+            (toSvg1 ps x)
+          Style s x  -> single $ mkN "g"
+            [mkA "style" $ styleToAttrString s]
+            (toSvg1 ps x)
+
+          -- Ignore event handlers
+          -- Prop p x   -> toSvg1 (p:ps) x
+
+          -- No point in embedding handlers to empty groups, but render anyway
+          Em         -> single $ mkN "g" ps []
+          -- Event handlers applied to a group go on the g node
+          Ap x y     -> single $ mkN "g" ps (toSvg1 [] x ++ toSvg1 [] y)
