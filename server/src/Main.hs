@@ -25,7 +25,6 @@ import           Util.StackEnv             (getStackEnv)
 type Layout =
          "example"                    :> Raw
     :<|> "bdplatform"                 :> Raw
-    :<|> "interactions"               :> Raw
     :<|> "labelrefiner"               :> Raw
     :<|> "example-static"             :> Raw
     :<|> "example-dynamic"            :> Raw
@@ -89,7 +88,6 @@ main = do
 
       exampleServer            <- serveApp rnd jsExeDir "bd-example-app"
       bdplatformServer         <- serveApp rnd jsExeDir "bd-bdplatform"
-      interactionsServer       <- serveApp rnd jsExeDir "bd-interactions"
       labelRefinerServer       <- serveApp rnd jsExeDir "bd-label-refiner"
       exampleStaticServer      <- serveApp rnd jsExeDir "bd-example-static-page"
       exampleDynamicServer     <- serveApp rnd jsExeDir "bd-example-dynamic-page"
@@ -111,7 +109,6 @@ main = do
       Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) $
         exampleServer
           :<|> bdplatformServer
-          :<|> interactionsServer
           :<|> labelRefinerServer
           :<|> exampleStaticServer
           :<|> exampleDynamicServer
