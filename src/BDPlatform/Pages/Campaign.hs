@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections       #-}
 
 
-module AdPlatform.Pages.Campaign
+module BDPlatform.Pages.Campaign
   ( campaignPage
   , getCampaigns
   ) where

@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
-module AdPlatform.Pages.PostSearch
+module BDPlatform.Pages.PostSearch
   ( searchPage
   ) where
 
@@ -64,7 +64,7 @@ import qualified BD.Query.PostQuery             as PQ
 import           BD.Types
 
 
-import           AdPlatform.Types
+import           BDPlatform.Types
 import           Components.Map
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent,

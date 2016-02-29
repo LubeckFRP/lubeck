@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module AdPlatform.Pages.Login
+module BDPlatform.Pages.Login
   ( Username
   , Password
   , Credentials
@@ -54,8 +54,8 @@ loginPageW sink (canSubmit, (name, passw)) =
   in div [] [
     div [ class_ "row" ]
       [ div [ class_ "jumbotron col-xs-12 center-block login-jumbo"]
-        [ h1 [] [ text "Ad Platform" ]
-        , p  [A.style "margin-top: 40px"] [ text "Welcome to Beautiful Destination's Ad Platform!" ] ]
+        [ h1 [] [ text "BD Platform" ]
+        , p  [A.style "margin-top: 40px"] [ text "Welcome to Beautiful Destination's BD Platform!" ] ]
       ]
     , div [class_ "row"]
       [ div [ A.style "max-width: 395px", class_ "col-xs-12 center-block" ]

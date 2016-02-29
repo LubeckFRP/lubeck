@@ -24,7 +24,7 @@ import           Util.StackEnv             (getStackEnv)
 
 type Layout =
          "example"                    :> Raw
-    :<|> "adplatform"                 :> Raw
+    :<|> "bdplatform"                 :> Raw
     :<|> "interactions"               :> Raw
     :<|> "labelrefiner"               :> Raw
     :<|> "example-static"             :> Raw
@@ -88,7 +88,7 @@ main = do
       rnd <- getGitCommitHashOrRandom
 
       exampleServer            <- serveApp rnd jsExeDir "bd-example-app"
-      adplatformServer         <- serveApp rnd jsExeDir "bd-adplatform"
+      bdplatformServer         <- serveApp rnd jsExeDir "bd-bdplatform"
       interactionsServer       <- serveApp rnd jsExeDir "bd-interactions"
       labelRefinerServer       <- serveApp rnd jsExeDir "bd-label-refiner"
       exampleStaticServer      <- serveApp rnd jsExeDir "bd-example-static-page"
@@ -110,7 +110,7 @@ main = do
       putStrLn $ "Listening on " ++ show port
       Network.Wai.Handler.Warp.run port $ serve (Proxy::Proxy Layout) $
         exampleServer
-          :<|> adplatformServer
+          :<|> bdplatformServer
           :<|> interactionsServer
           :<|> labelRefinerServer
           :<|> exampleStaticServer

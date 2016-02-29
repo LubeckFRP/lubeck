@@ -3,7 +3,7 @@
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
-module AdPlatform.Pages.Interactions (interactionsMain) where
+module BDPlatform.Pages.Interactions (interactionsMain) where
 
 import           Prelude                        hiding (div)
 import qualified Prelude

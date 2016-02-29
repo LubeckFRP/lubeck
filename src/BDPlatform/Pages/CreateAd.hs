@@ -6,7 +6,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
-module AdPlatform.Pages.CreateAd
+module BDPlatform.Pages.CreateAd
   ( createAdPage
   ) where
 

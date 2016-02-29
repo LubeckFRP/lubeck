@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module AdPlatform.Pages.User
+module BDPlatform.Pages.User
   (userPage
   ) where
 

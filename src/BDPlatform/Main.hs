@@ -2,7 +2,7 @@
 {-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE JavaScriptFFI       #-}
 
-module AdPlatform.Main (main) where
+module BDPlatform.Main (main) where
 
 import           Prelude                        hiding (div)
 import qualified Prelude
@@ -38,13 +38,13 @@ import           BD.Types
 import           BD.Utils
 import           BD.Api
 
-import           AdPlatform.Pages.Campaign      (campaignPage, getCampaigns)
-import           AdPlatform.Pages.CreateAd      (createAdPage)
-import           AdPlatform.Pages.ImageLibrary  (imageLibraryPage)
-import           AdPlatform.Pages.Login         (loginPage, Username)
-import           AdPlatform.Pages.PostSearch    (searchPage)
-import           AdPlatform.Pages.User          (userPage)
-import           AdPlatform.Pages.Interactions  (interactionsMain)
+import           BDPlatform.Pages.Campaign      (campaignPage, getCampaigns)
+import           BDPlatform.Pages.CreateAd      (createAdPage)
+import           BDPlatform.Pages.ImageLibrary  (imageLibraryPage)
+import           BDPlatform.Pages.Login         (loginPage, Username)
+import           BDPlatform.Pages.PostSearch    (searchPage)
+import           BDPlatform.Pages.User          (userPage)
+import           BDPlatform.Pages.Interactions  (interactionsMain)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
@@ -53,8 +53,8 @@ import           Components.MainMenu            (mainMenuComponent, MenuItems())
 
 import           Lubeck.Util
 import           Lubeck.Types
-import           AdPlatform.Types
-import           AdPlatform.Config
+import           BDPlatform.Types
+import           BDPlatform.Config
 
 
 menuItems :: MenuItems Nav
@@ -132,7 +132,7 @@ adPlatform = do
   let firstPage                         = NavUser
 
   -- first time menu gets rendered with initial state argument
-  (menuView, menuNavE)                  <- mainMenuComponent menuItems "Ad Platform" firstPage
+  (menuView, menuNavE)                  <- mainMenuComponent menuItems "BD Platform" firstPage
 
   let postLoginNavE                     = fmap (const firstPage) validUserLoginE --(updates userS)
   let campaignNavE                      = fmap (const NavCampaign) (updates adsView)

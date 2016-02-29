@@ -17,7 +17,7 @@ page :: Html
 page = div [] [h1 [] [text "Index"]
   , h2 [] [text "Applications"]
   , ul []
-    [ li [] [a [href "adplatform/"]      [text "Ad platform"]]
+    [ li [] [a [href "bdplatform/"]      [text "BD Platform"]]
     , li [] [a [href "interactions/"]    [text "Interaction browser"]]
     , li [] [a [href "labelrefiner/"]    [text "Image Label Refiner"]]
     ]

@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
-module AdPlatform.Types where
+module BDPlatform.Types where
 
 
 
@@ -10,6 +10,6 @@ module AdPlatform.Types where
 data IPCMessage = ImageLibraryUpdated | Noop deriving (Show, Eq)
 
 
--- FIXME should be in Ad Platform types probably
+-- FIXME should be in BD Platform types probably
 data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages | NavInteractions
   deriving (Show, Eq)

@@ -50,7 +50,7 @@ import GHCJS.Foreign.QQ (js, jsu, jsu')
 import Data.String (fromString)
 
 import BD.Types
-import AdPlatform.Config (xhrWithCredentials)
+import BDPlatform.Config (xhrWithCredentials)
 
 type Header = (JSString, JSString) -- JavaScript.Web.XMLHttpRequest uses it internally, but not exports
 

@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module AdPlatform.Pages.ImageLibrary
+module BDPlatform.Pages.ImageLibrary
   ( imageLibraryPage
   ) where
 
@@ -38,7 +38,7 @@ import qualified Lubeck.FRP                     as FRP
 import qualified BD.Data.Account                as Account
 import qualified BD.Data.Image                  as Im
 
-import           AdPlatform.Types
+import           BDPlatform.Types
 import           BD.Api
 import           BD.Types
 import           BD.Utils

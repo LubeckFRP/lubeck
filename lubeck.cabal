@@ -40,15 +40,15 @@ library
                      , BD.Data.SearchPost
                      , BD.Query.PostQuery
                      , BD.Utils
-                     , AdPlatform.Types
-                     , AdPlatform.Pages.CreateAd
-                     , AdPlatform.Pages.PostSearch
-                     , AdPlatform.Pages.Login
-                     , AdPlatform.Pages.User
-                     , AdPlatform.Pages.Campaign
-                     , AdPlatform.Pages.ImageLibrary
-                     , AdPlatform.Pages.Interactions
-                     , AdPlatform.Main
+                     , BDPlatform.Types
+                     , BDPlatform.Pages.CreateAd
+                     , BDPlatform.Pages.PostSearch
+                     , BDPlatform.Pages.Login
+                     , BDPlatform.Pages.User
+                     , BDPlatform.Pages.Campaign
+                     , BDPlatform.Pages.ImageLibrary
+                     , BDPlatform.Pages.Interactions
+                     , BDPlatform.Main
                      , Components.Notifications
                      , Components.BusyIndicator
                      , Components.MainMenu
@@ -223,8 +223,8 @@ executable bd-example-plots6
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
-executable bd-adplatform
-  main-is:             src/AdPlatform.hs
+executable bd-bdplatform
+  main-is:             src/BDPlatform.hs
   build-depends:       base >=4.8 && <4.9
                      , lubeck
                      , virtual-dom

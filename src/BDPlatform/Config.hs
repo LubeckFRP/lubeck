@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module AdPlatform.Config where
+module BDPlatform.Config where
 
 -- Get auth token using username/password or launch the app without it.
 -- This will be required when the API will require authentication.

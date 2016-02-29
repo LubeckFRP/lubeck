@@ -27,7 +27,7 @@ import Lubeck.App (Html, runAppStatic)
 page :: Html
 page = div () [h1 () [text "Index"]
   , ul ()
-    [ li () [a (href "adplatform/")   [text "Ad platform"]]
+    [ li () [a (href "bdplatform/")   [text "BD Platform"]]
     , li () [a (href "interactions/") [text "Interaction browser"]]
     , li () [a (href "posts/")        [text "Post search"]]
     , li () [a (href "campaigns/")    [text "Campaigns"]]
