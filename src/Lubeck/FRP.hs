@@ -80,7 +80,7 @@ module Lubeck.FRP
   , foldpR
 
   -- ** Sampling behaviors
-  , sample
+  -- , sample
   , snapshot
   , snapshotWith
 
