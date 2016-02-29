@@ -188,7 +188,7 @@ type Sink a = a -> IO ()
 -- TODO redo as newtype
 -- newtype Sink a = Sink { sendTo :: a -> IO () }
 
--- | A sink that acts as a black whole, ignoring all values sent to it.
+-- | A sink that ignores all values sent to it.
 emptySink :: Sink a
 emptySink _ = return ()
 
