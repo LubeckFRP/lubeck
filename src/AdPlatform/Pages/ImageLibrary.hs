@@ -311,6 +311,8 @@ imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
   return (layout <$> galleryView <*> imageView, current galleryS, kbdSink)
 
   where
+    sample = snapshotWith const
+    
     layout indexView imageView = case imageView of
       Nothing -> indexView
       Just v  -> v

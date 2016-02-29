@@ -224,6 +224,8 @@ campaignPage busySink notifSink loadAdsE userB = do
   return adsView
 
   where
+    sample = snapshotWith const
+
     justReloads :: Maybe SecondaryAction -> Bool
     justReloads (Just ReloadAds) = True
     justReloads _                = False

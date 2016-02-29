@@ -162,5 +162,7 @@ adPlatform = do
                             <*> imageLibView
 
   return (mainView, Just kbdSink)
+  where
+    sample = snapshotWith const
 
 main = adPlatform >>= runAppReactiveX
