@@ -198,7 +198,6 @@ import Data.Semigroup(Max(..))
 import qualified Data.Colour
 import qualified Data.Colour.Names as Colors
 import qualified Data.Colour.SRGB
-import qualified Data.JSString
 import qualified Data.List
 import qualified Data.Ord
 import qualified Data.Map
@@ -219,16 +218,24 @@ import qualified Linear.V3
 import qualified Linear.V4
 
 #ifdef __GHCJS__
+import qualified Data.JSString
 import GHCJS.Types(JSString)
 import qualified Web.VirtualDom as VD
 import Web.VirtualDom.Svg (Svg)
 import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
-#else
-type JSString = String
+import Lubeck.Util(showJS)
 #endif
 
-import Lubeck.Util(showJS)
+#ifdef __GHCJS__
+type Str = JSString
+toStr   = showJS
+packStr = Data.JSString.pack
+#else
+type Str = String
+toStr   = show
+packStr = id
+#endif
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
 
@@ -381,7 +388,7 @@ transformPoint t (P (V2 x y)) =
   in P $ V2 (a*x+c*y+e) (b*x+d*y+f)
 
 {-| -}
-newtype Style = S { getS :: Map JSString JSString }
+newtype Style = S { getS :: Map Str Str }
   deriving (Monoid)
 
 {-| -}
@@ -389,7 +396,7 @@ emptyStyle :: Style
 emptyStyle = S $ Data.Map.empty
 
 {-| -}
-styleNamed :: JSString -> JSString -> Style
+styleNamed :: Str -> Str -> Style
 styleNamed k v = S $ Data.Map.singleton k v
 
 {-| -}
@@ -397,16 +404,20 @@ apStyle :: Style -> Style -> Style
 apStyle (S a) (S b) = S $ Data.Map.union a b
 
 {-| -}
-styleToAttrString :: Style -> JSString
+styleToAttrString :: Style -> Str
 styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getS
 
 -- | Embed an arbitrary SVG property on a drawing.
 --
 --   Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
 --   static backends may ignore these properties.
+#ifdef __GHCJS__
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
-
+#else
+addProperty :: () -> Drawing -> Drawing
+addProperty _ = id
+#endif
 
 newtype Envelope v n = Envelope (Maybe (v n -> n))
 
@@ -532,7 +543,9 @@ envelope x = case x of
   Text _        -> envelope Rect
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
+#ifdef __GHCJS__
   Prop  _ x     -> envelope x
+#endif
   Em            -> mempty
   Ap x y        -> mappend (envelope x) (envelope y)
 
@@ -600,12 +613,15 @@ data Drawing
   -- A sequence of straight lines, closed or not. For closed lines, there is no need
   -- to return the original point (i.e. the sum of the vectors does not have to be zeroV).
   | Lines !Bool [V2 Double]
-  | Text !JSString
+  | Text !Str
 
   | Transf !(Transformation Double) !Drawing
   | Style !Style !Drawing
+
+#ifdef __GHCJS__
   -- Embed arbitrary SVG property (typically used for event handlers)
   | Prop !E.Property !Drawing
+#endif
 
   | Em
   | Ap Drawing Drawing
@@ -657,10 +673,10 @@ polygon :: [V2 Double] -> Drawing
 polygon = Lines True
 
 {-| Draw text. See also 'textWithOptions'. -}
-text :: JSString -> Drawing
+text :: Str -> Drawing
 text = Text
 
-textStart, textMiddle, textEnd :: JSString -> Drawing
+textStart, textMiddle, textEnd :: Str -> Drawing
 
 textStart = textWithOptions $ mempty
   { textAnchor = TextAnchorStart }
@@ -671,7 +687,7 @@ textMiddle = textWithOptions $ mempty
 textEnd = textWithOptions $ mempty
   { textAnchor = TextAnchorEnd }
 
-textLeftMiddle, textMiddleMiddle, textRightMiddle :: JSString -> Drawing
+textLeftMiddle, textMiddleMiddle, textRightMiddle :: Str -> Drawing
 
 textLeftMiddle = textWithOptions $ mempty
   { textAnchor        = TextAnchorStart
@@ -743,26 +759,30 @@ instance Monoid TextOptions where
 --    , alignmentBaseline = AlignmentBaselineMiddle }
 -- @
 --
-textWithOptions :: TextOptions -> JSString -> Drawing
-textWithOptions opts = _fontStyle . _textAnchor . Text
+textWithOptions :: TextOptions -> Str -> Drawing
+textWithOptions opts = _fontStyle . _textAnchor . _alignmentBaseline . Text
   where
-    _fontStyle  = case fontStyle opts of
-      FontStyleNormal           -> Prop (VD.attribute "font-style" "normal")
-      FontStyleItalic           -> Prop (VD.attribute "font-style" "italic")
-      FontStyleOblique          -> Prop (VD.attribute "font-style" "oblique")
-      FontStyleInherit          -> id
+    _fontStyle = id
+    _textAnchor = id
+    _alignmentBaseline = id
 
-    _textAnchor = case textAnchor opts of
-      TextAnchorStart           -> Prop (VD.attribute "text-anchor"  "start")
-      TextAnchorMiddle          -> Prop (VD.attribute "text-anchor"  "middle")
-      TextAnchorEnd             -> Prop (VD.attribute "text-anchor"  "end")
-      TextAnchorInherit         -> id
-
-    _alignmentBaseline = case alignmentBaseline opts of
-      AlignmentBaselineAuto     -> id
-      AlignmentBaselineBaseline -> Prop (VD.attribute "alignment-baseline" "baseline")
-      AlignmentBaselineMiddle   -> Prop (VD.attribute "alignment-baseline" "middle")
-      AlignmentBaselineCentral  -> Prop (VD.attribute "alignment-baseline" "central")
+    -- _fontStyle  = case fontStyle opts of
+    --   FontStyleNormal           -> Prop (VD.attribute "font-style" "normal")
+    --   FontStyleItalic           -> Prop (VD.attribute "font-style" "italic")
+    --   FontStyleOblique          -> Prop (VD.attribute "font-style" "oblique")
+    --   FontStyleInherit          -> id
+    --
+    -- _textAnchor = case textAnchor opts of
+    --   TextAnchorStart           -> Prop (VD.attribute "text-anchor"  "start")
+    --   TextAnchorMiddle          -> Prop (VD.attribute "text-anchor"  "middle")
+    --   TextAnchorEnd             -> Prop (VD.attribute "text-anchor"  "end")
+    --   TextAnchorInherit         -> id
+    --
+    -- _alignmentBaseline = case alignmentBaseline opts of
+    --   AlignmentBaselineAuto     -> id
+    --   AlignmentBaselineBaseline -> Prop (VD.attribute "alignment-baseline" "baseline")
+    --   AlignmentBaselineMiddle   -> Prop (VD.attribute "alignment-baseline" "middle")
+    --   AlignmentBaselineCentral  -> Prop (VD.attribute "alignment-baseline" "central")
 -- TODO use styles not props
 
 
@@ -924,13 +944,13 @@ fillColor x = style (styleNamed "fill" $ showColor x)
 strokeColor :: Colour Double -> Drawing -> Drawing
 strokeColor x = style (styleNamed "stroke" $ showColor x)
 
-showColor = Data.JSString.pack . Data.Colour.SRGB.sRGB24show
+showColor = packStr . Data.Colour.SRGB.sRGB24show
 
 {-| -}
 fillColorA :: AlphaColour Double -> Drawing -> Drawing
 fillColorA x = fillColor c . alpha a
   where
-    alpha a = style (styleNamed "fill-opacity" $ showJS a)
+    alpha a = style (styleNamed "fill-opacity" $ toStr a)
     c = Data.Colour.over x Colors.black
     a = Data.Colour.alphaChannel x
 
@@ -938,14 +958,14 @@ fillColorA x = fillColor c . alpha a
 strokeColorA :: AlphaColour Double -> Drawing -> Drawing
 strokeColorA x = strokeColor c . alpha a
   where
-    alpha a = style (styleNamed "stroke-opacity" $ showJS a)
+    alpha a = style (styleNamed "stroke-opacity" $ toStr a)
     c = Data.Colour.over x Colors.black
     a = Data.Colour.alphaChannel x
 
 {-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
 -}
 strokeWidth :: Double -> Drawing -> Drawing
-strokeWidth x = style (styleNamed "stroke-width" (showJS x <> "px"))
+strokeWidth x = style (styleNamed "stroke-width" (toStr x <> "px"))
 -- TODO this can be overriden by setting the non-scaling-stroke attribute. Wrap in nice API?
 
 
@@ -968,18 +988,19 @@ instance Monoid RenderingOptions where
   mempty  = RenderingOptions (P $ V2 800 800) Center
   mappend = const
 
+#ifdef __GHCJS__
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
 toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
   svgTopNode
-    (showJS $ floor x)
-    (showJS $ floor y)
-    ("0 0 " <> showJS (floor x) <> " " <> showJS (floor y))
+    (toStr $ floor x)
+    (toStr $ floor y)
+    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
     (toSvg1 [] $ placeOrigo $ drawing)
   where
     P (V2 x y) = dimensions
 
-    svgTopNode :: JSString -> JSString -> JSString -> [Svg] -> Svg
+    svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
     svgTopNode w h vb = E.svg
       [ A.width w
       , A.height h
@@ -991,10 +1012,10 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
       Center      -> translateX (x/2) . translateY (y/(-2))
       BottomLeft  -> translateY (y*(-1))
 
-    pointsToSvgString :: [P2 Double] -> JSString
+    pointsToSvgString :: [P2 Double] -> Str
     pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
       where
-        toJSString = Data.JSString.pack
+        toJSString = packStr
         pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
 
     toSvg1 :: [E.Property] -> Drawing -> [Svg]
@@ -1024,7 +1045,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
           Transf t x -> single $ E.g
-            [A.transform $ "matrix" <> showJS (negY $ transformationToMatrix t) <> ""]
+            [A.transform $ "matrix" <> toStr (negY $ transformationToMatrix t) <> ""]
             (toSvg1 ps x)
           Style s x  -> single $ E.g
             [A.style $ styleToAttrString s]
@@ -1034,3 +1055,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           Em         -> single $ E.g ps []
           -- Event handlers applied to a group go on the g node
           Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
+#else
+toSvg :: RenderingOptions -> Drawing -> ()
+toSvg _ _ = ()
+#endif

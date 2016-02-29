@@ -1,0 +1,28 @@
+
+name:                lubeck-drawing
+version:             0.1.0.0
+synopsis:            Functional 2D graphics based on SVG
+license:             AllRightsReserved
+license-file:        LICENSE
+author:              Beautiful Destinations
+maintainer:          hans@beautifuldestinations.com
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     Lubeck.Drawing
+  build-depends:       base
+                     , text
+                     , mtl
+                     , transformers
+                     , containers
+                     , unordered-containers
+                     , semigroups
+                     , linear
+                    --  , vector-space
+                     , colour
+                     , xml
+                     , containers
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  ghc-options:         -fno-warn-typed-holes
