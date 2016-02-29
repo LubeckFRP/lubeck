@@ -217,6 +217,13 @@ import qualified Linear.V2
 import qualified Linear.V3
 import qualified Linear.V4
 
+#if __GLASGOW_HASKELL__ <= 708
+import Linear.Epsilon
+#endif
+
+-- GHC 7.8.4 compability
+import Data.Foldable(Foldable(..))
+
 #ifdef __GHCJS__
 import qualified Data.JSString
 import GHCJS.Types(JSString)
@@ -336,9 +343,22 @@ instance Num a => Num (Transformation a) where
   signum = error "Missing in Num (Transformation a)"
   fromInteger n = TF $ identity !!* fromInteger n
 
-instance Floating a => Fractional (Transformation a) where
-  recip (TF x) = TF (inv33 x)
+instance (Floating a
+#if __GLASGOW_HASKELL__ <= 708
+  , Epsilon a
+#endif
+  )
+  => Fractional (Transformation a) where
+  recip (TF x) = TF (inv33_ x)
   fromRational = error "Missing in Fractional (Transformation a)"
+
+#if __GLASGOW_HASKELL__ > 708
+inv33_ = inv33
+#else
+inv33_ m = case inv33 m of
+  Nothing -> m
+  Just mi -> mi
+#endif
 
 -- | a.k.a. @1@
 emptyTransformation :: Num a => Transformation a
@@ -349,8 +369,12 @@ apTransformation :: Num a => Transformation a -> Transformation a -> Transformat
 apTransformation (TF x) (TF y) = TF (x !*! y)
 
 -- | a.k.a 'recip'
-negTransformation :: (Num a, Floating a) => Transformation a -> Transformation a
-negTransformation (TF x) = TF (inv33 x)
+negTransformation :: (Num a, Floating a
+#if __GLASGOW_HASKELL__ <= 708
+  , Epsilon a
+#endif
+  ) => Transformation a -> Transformation a
+negTransformation (TF x) = TF (inv33_ x)
 
 -- $matrixContructorLayout
 --
@@ -452,7 +476,11 @@ transl t = let (a,b,c,d,e,f) = transformationToMatrix t
 
 -- TODO cleanup definitions/names here
 
-transformEnvelope :: (Floating n) => Transformation n -> Envelope V2 n -> Envelope V2 n
+transformEnvelope :: (Floating n
+#if __GLASGOW_HASKELL__ <= 708
+  , Epsilon n
+#endif
+  ) => Transformation n -> Envelope V2 n -> Envelope V2 n
 transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
     where
       onEnvelope f (Envelope Nothing)  = Envelope Nothing
