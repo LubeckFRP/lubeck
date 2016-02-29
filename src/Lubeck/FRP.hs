@@ -188,12 +188,16 @@ type Sink a = a -> IO ()
 -- TODO redo as newtype
 -- newtype Sink a = Sink { sendTo :: a -> IO () }
 
+-- | A sink that acts as a black whole, ignoring all values sent to it.
 emptySink :: Sink a
 emptySink _ = return ()
 
+-- | Returns a sink that forwards values sent to it to both of the given sinks.
 appendSinks :: Sink a -> Sink a -> Sink a
 appendSinks f g x = f x >> g x
 
+-- | Creates a new sink that applies the given function to all values sent to it
+-- and forwards the result to the given sink.
 contramapSink :: (a -> b) -> Sink b -> Sink a
 contramapSink f aSink = (\x -> aSink (f x))
 
