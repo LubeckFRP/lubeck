@@ -44,6 +44,7 @@ import           AdPlatform.Pages.ImageLibrary  (imageLibraryPage)
 import           AdPlatform.Pages.Login         (loginPage, Username)
 import           AdPlatform.Pages.PostSearch    (searchPage)
 import           AdPlatform.Pages.User          (userPage)
+import           AdPlatform.Pages.Interactions  (interactionsMain)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
@@ -58,20 +59,22 @@ import           AdPlatform.Config
 
 menuItems :: MenuItems Nav
 menuItems =
-  [ (NavUser,     "User")
-  , (NavSearch,   "Search")
-  , (NavImages,   "Image Library")
-  , (NavCreateAd, "Create Ad")
-  , (NavLogin,    "Logout") -- last item is special in that it will be positioned far right
+  [ (NavUser,         "User")
+  , (NavSearch,       "Search")
+  , (NavImages,       "Image Library")
+  , (NavCreateAd,     "Create Ad")
+  , (NavInteractions, "Shoutout browser")
+  , (NavLogin,        "Logout") -- last item is special in that it will be positioned far right
   ]
 
-rootLayout goTo menu err busy login user ads search createAd imlib = case goTo of
-  NavLogin    -> layoutLogin busy err login
-  NavUser     -> layout menu busy err user
-  NavCampaign -> layout menu busy err ads
-  NavSearch   -> layout menu busy err search
-  NavCreateAd -> layout menu busy err createAd
-  NavImages   -> layout menu busy err imlib
+rootLayout goTo menu err busy login user ads search createAd imlib interactions = case goTo of
+  NavLogin        -> layoutLogin busy err login
+  NavUser         -> layout menu busy err user
+  NavCampaign     -> layout menu busy err ads
+  NavSearch       -> layout menu busy err search
+  NavCreateAd     -> layout menu busy err createAd
+  NavImages       -> layout menu busy err imlib
+  NavInteractions -> layout menu busy err interactions
   where
     layoutLogin busy err page =
       div [class_ "container login-top-buffer"]
@@ -124,6 +127,8 @@ adPlatform = do
   -- searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB
   createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
+  interactionsView                      <- interactionsMain busySink notifSink
+
   let firstPage                         = NavUser
 
   -- first time menu gets rendered with initial state argument
@@ -160,6 +165,7 @@ adPlatform = do
                             <*> searchPageView
                             <*> createAdView
                             <*> imageLibView
+                            <*> interactionsView
 
   return (mainView, Just kbdSink)
   where

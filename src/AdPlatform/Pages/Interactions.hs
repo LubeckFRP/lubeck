@@ -1,66 +1,78 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
-module Main where
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
+module AdPlatform.Pages.Interactions (interactionsMain) where
 
-import Prelude hiding (div)
+import           Prelude                        hiding (div)
 import qualified Prelude
 
-import Control.Applicative
-import Control.Concurrent (threadDelay, forkIO)
-import Control.Monad (forM_, forever, unless)
-import Control.Monad.Except (runExceptT)
-import Data.String (fromString)
-import qualified Data.Map as Map
-import Data.Map(Map)
+import           Control.Applicative
+import           Control.Concurrent             (forkIO, threadDelay)
+import           Control.Lens                   (over, set)
+import           Control.Lens.TH                (makeLenses)
+import           Control.Monad                  (forM_, forever, unless)
+import           Control.Monad.Except           (runExceptT)
+import           Data.Default                   (def)
 import qualified Data.List
-import Data.List.Zipper (fromList, beginp, empty, emptyp, endp, cursor, start, end, left, right, Zipper(..))
-import Data.Monoid
-import Data.Maybe(fromMaybe, maybe)
-import Data.Default (def)
-import Control.Lens (over, set)
-import Control.Lens.TH(makeLenses)
-import Data.Time (UTCTime(..), DiffTime, Day(..))
+import           Data.List.Zipper               (Zipper (..), beginp, cursor,
+                                                 empty, emptyp, end, endp,
+                                                 fromList, left, right, start)
+import           Data.Map                       (Map)
+import qualified Data.Map                       as Map
+import           Data.Maybe                     (fromMaybe, maybe)
+import           Data.Monoid
+import           Data.String                    (fromString)
+import           Data.Time                      (Day (..), DiffTime,
+                                                 UTCTime (..))
 
-import GHCJS.Foreign.QQ (js, jsu, jsu')
-import GHCJS.Types(JSString, jsval)
-import Data.JSString (pack)
-import Web.VirtualDom.Html (p, h1, div, text, form, button, img, hr, a, table, tbody, th, tr, td, input, label)
-import Web.VirtualDom.Html.Events (click, change, keyup, submit, stopPropagation, preventDefault, value)
-import Web.VirtualDom.Html.Attributes (src, width, class_, type_, href, target, width, src, style)
-import qualified Web.VirtualDom.Html as E
+import           Data.JSString                  (pack)
+import           GHCJS.Foreign.QQ               (js, jsu, jsu')
+import           GHCJS.Types                    (JSString, jsval)
+import           Web.VirtualDom.Html            (a, button, div, form, h1, hr,
+                                                 img, input, label, p, table,
+                                                 tbody, td, text, th, tr)
+import qualified Web.VirtualDom.Html            as E
+import           Web.VirtualDom.Html.Attributes (class_, href, src, src, style,
+                                                 target, type_, width, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import qualified Web.VirtualDom.Html.Events as Ev
+import           Web.VirtualDom.Html.Events     (change, click, keyup,
+                                                 preventDefault,
+                                                 stopPropagation, submit, value)
+import qualified Web.VirtualDom.Html.Events     as Ev
 
-import Lubeck.FRP
-import Lubeck.App (Html, runAppReactive)
-import Lubeck.Forms
-import Lubeck.Forms.Button (buttonWidget, multiButtonWidget)
-import Lubeck.DV.SimpleNormalized (simpleTimeSeries, simpleTimeSeriesWithOverlay)
-import Lubeck.Util (reactimateIOAsync, showIntegerWithThousandSeparators, contentPanel, showJS)
-import qualified Lubeck.Drawing as Drawing
+import           Lubeck.App                     (Html, runAppReactive)
+import qualified Lubeck.Drawing                 as Drawing
+import           Lubeck.DV.SimpleNormalized     (simpleTimeSeries,
+                                                 simpleTimeSeriesWithOverlay)
+import           Lubeck.Forms
+import           Lubeck.Forms.Button            (buttonWidget,
+                                                 multiButtonWidget)
+import           Lubeck.FRP
+import           Lubeck.Types
+import           Lubeck.Util                    (contentPanel,
+                                                 reactimateIOAsync, showIntegerWithThousandSeparators,
+                                                 showJS)
 
-import qualified BD.Data.Account as A
-import qualified BD.Data.Count as C
-import qualified BD.Data.SearchPost as P
-import BD.Data.SearchPost(SearchPost)
-import qualified BD.Data.Interaction as I
-import BD.Data.Interaction hiding (interactions)
+import qualified BD.Data.Account                as A
+import qualified BD.Data.Count                  as C
+import           BD.Data.Interaction            hiding (interactions)
+import qualified BD.Data.Interaction            as I
+import           BD.Data.SearchPost             (SearchPost)
+import qualified BD.Data.SearchPost             as P
 
-import Components.BusyIndicator (withBusy, BusyCmd(..), busyIndicatorComponent)
+import           Components.BusyIndicator       (BusyCmd, withBusy)
 
 type TwoAccounts = (Maybe JSString, Maybe JSString)
 type Shoutouts = Zipper (Interaction SearchPost)
 
 render :: Html -> Html -> Html -> Html
-render loadInteractsForm displayAccs interaction = div
-  -- (customAttrs $ Map.fromList [("style", "width: 900px; margin-left: auto; margin-right: auto") ])
-  [ style "width: 900px; margin-left: auto; margin-right: auto" ]
-  [ div [class_ "page-header"]
-      [ h1 [] [ text "Shoutout browser" ] ]
-  , div []
-    [ loadInteractsForm ]
-  , div [class_ "panel panel-default"]
-    [ displayAccs, interaction ]
-  ]
+render loadInteractsForm displayAccs interaction = contentPanel $
+  div [ class_ "form-horizontal"
+      , style " margin-left: auto; margin-right: auto" ]
+    [ div [] [ loadInteractsForm ]
+    , div [class_ "panel panel-default"] [ displayAccs, interaction ] ]
 
 loadInteractionsW :: Widget TwoAccounts (Submit TwoAccounts)
 loadInteractionsW sink (x,y) = div [ class_ "form-horizontal"  ]
@@ -121,8 +133,7 @@ interactionBrowserW :: Widget Shoutouts Shoutouts
 interactionBrowserW shoutoutSink shoutoutZ =
   if emptyp shoutoutZ then div [] []
   else div []
-    [ interactionW emptySink $ cursor shoutoutZ
-    , div [ A.class_ "row" ]
+    [ div [ A.class_ "row" ]
       [ div [ A.class_ "col-xs-4 col-lg-4" ]
             [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
       , div [ A.class_ "col-xs-3 col-lg-3" ]
@@ -130,6 +141,7 @@ interactionBrowserW shoutoutSink shoutoutZ =
       , div [ A.class_ "col-xs-1 col-lg-1" ]
             [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
       ]
+    , interactionW emptySink $ cursor shoutoutZ
     ]
   where nOutOfM (Zip xs ys) = let lenXs = length xs in (lenXs, lenXs + length ys)
 
@@ -189,18 +201,18 @@ getShoutouts accs = do
     Left err -> return $ InteractionSet Nothing Nothing []
     Right interactionSet -> return interactionSet
 
-main :: IO ()
-main = do
-  (busyView, busySink) <- busyIndicatorComponent []
-
+interactionsMain :: Sink BusyCmd -> Sink (Maybe Notification) -> IO (Signal Html)
+interactionsMain busySink notifSink = do
   let initInteractions = InteractionSet Nothing Nothing []
-      initFormContent = (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide")
+      initFormContent  = (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide")
 
   (loadInteractionsS, loadInterBtnE) <- formComponent initFormContent loadInteractionsW
-  loadInteractionsE <- reactimateIOAsync $ fmap (withBusy busySink getShoutouts) loadInterBtnE
-  displayAccsS <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE
-  (interactionBrowserS, _) <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE
-  runAppReactive $ busyView <> (render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS)
+  loadInteractionsE                  <- reactimateIOAsync $ fmap (withBusy busySink getShoutouts) loadInterBtnE
+  displayAccsS                       <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE
+  (interactionBrowserS, _)           <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE
+  let viewS                          =  render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS
+
+  return viewS
 
 -- UTILITY
 

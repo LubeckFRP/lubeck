@@ -47,6 +47,7 @@ library
                      , AdPlatform.Pages.User
                      , AdPlatform.Pages.Campaign
                      , AdPlatform.Pages.ImageLibrary
+                     , AdPlatform.Pages.Interactions
                      , AdPlatform.Main
                      , Components.Notifications
                      , Components.BusyIndicator
@@ -81,6 +82,7 @@ library
                      , bytestring
                      , monad-parallel
                      , random
+                     , ListZipper
   hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
@@ -221,30 +223,6 @@ executable bd-example-plots6
                      , ghcjs-base ==0.2.0.0
   default-language:    Haskell2010
 
-executable bd-interactions
-  main-is:             src/Interactions.hs
-  build-depends:       base >=4.8 && <4.9
-                     , lubeck
-                     , virtual-dom
-                     , ghcjs-base ==0.2.0.0
-                     , ghcjs-ffiqq == 0.1.0.0
-                     , stm
-                     --, contravariant
-                     , text
-                     , mtl
-                     , time
-                     , containers
-                     , lens
-                     , xml
-                     , neat-interpolation
-                     , data-default
-                     , containers
-                     , aeson
-                     , bytestring
-                     , ListZipper
-  default-language:    Haskell2010
-  ghc-options:         -fno-warn-typed-holes
-
 executable bd-adplatform
   main-is:             src/AdPlatform.hs
   build-depends:       base >=4.8 && <4.9
@@ -267,6 +245,7 @@ executable bd-adplatform
                      , aeson
                      , bytestring
                      , monad-parallel
+                     , ListZipper
 
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
