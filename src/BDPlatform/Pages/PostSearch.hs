@@ -110,6 +110,18 @@ searchForm dayNow outputSink (trackedHTs, query) =
                 (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (Data.Maybe.fromMaybe "" $ PQ.trackedHashTag query) ]
         ]
 
+      , div [ class_ "form-group"  ]
+        [ label [class_ "control-label col-xs-2"] [text "Max number of posts returned" ]
+        , div [class_ "col-xs-10 form-inline"]
+            [ selectWidget
+                [ (50,  "50")
+                , (100, "100")
+                , (200, "200")
+                , (400, "400") ]
+                (contramapSink (\new -> DontSubmit $ query { limit = new }) outputSink) (PQ.limit query)
+            ]
+        ]
+
       , div [class_ "form-group"]
           [ div [class_ "col-xs-offset-2 col-xs-10"]
               [ button [A.class_ "btn btn-success", click $ \e -> outputSink $ Submit query]
@@ -239,10 +251,11 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
       Left e     -> synchronously . notifSink . Just . apiError $ "Failed to load tracked hashtags"
       Right thts -> synchronously . thtsInitSink $ thts
 
-  -- update tracked hash tags heuristics. Better: use websockets and FRP to push updated from the server
+  -- update tracked hash tags heuristics. Better: use websockets and FRP to push updates directly from the server
   let n                            = Lubeck.FRP.filter (NavSearch ==) (updates navS)
-  thtsReloadE                      <- withErrorIO notifSink $ fmap (withBusy busySink (\_ -> P.getTrackedHashtags)) n :: IO (Events [P.TrackedHashtag])
-  thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                                           :: IO (Behavior [P.TrackedHashtag])
+  thtsReloadE                      <- withErrorIO notifSink $
+                                        fmap (withBusy busySink (\_ -> P.getTrackedHashtags)) n    :: IO (Events [P.TrackedHashtag])
+  thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                        :: IO (Behavior [P.TrackedHashtag])
 
   (searchView, searchRequested)    <- formComponentExtra1 thtsB initPostQuery (searchForm (utctDay now))
   (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)

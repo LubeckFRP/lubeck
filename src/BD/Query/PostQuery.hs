@@ -93,20 +93,21 @@ dateEnc = toJSON . (<> "T00:00:00.000Z") . formatDateFromUTC
 
 
 -- | Non-recursive version of 'PostQuery', suitable for use in forms.
-data SimplePostQuery = SimplePostQuery {
-    caption        :: Text,
-    comment        :: Text,
-    hashTag        :: Text,
-    userName       :: Text,
+data SimplePostQuery = SimplePostQuery
+  { caption        :: Text
+  , comment        :: Text
+  , hashTag        :: Text
+  , userName       :: Text
 
-    followers      :: Interval Int, -- Nothing for inf
-    date           :: Interval Day,
-    location       :: Maybe Int,
+  , followers      :: Interval Int -- Nothing for inf
+  , date           :: Interval Day
+  , location       :: Maybe Int
 
-    orderBy        :: PostOrder,
-    direction      :: SortDirection,
+  , orderBy        :: PostOrder
+  , direction      :: SortDirection
 
-    trackedHashTag :: Maybe Text
+  , trackedHashTag :: Maybe Text
+  , limit          :: Int
   }
   deriving (Eq, Show)
 
@@ -123,24 +124,27 @@ data SortDirection
   deriving (Eq, Ord, Show)
 
 defSimplePostQuery :: SimplePostQuery
-defSimplePostQuery = SimplePostQuery {
-    caption        = "",
-    comment        = "",
-    hashTag        = "",
-    userName       = "",
-    followers      = whole,
-    date           = whole,
-    location       = Nothing,
-    orderBy        = PostByLikes,
-    direction      = Desc,
-    trackedHashTag = Nothing
-  }
+defSimplePostQuery = SimplePostQuery
+  { caption        = ""
+  , comment        = ""
+  , hashTag        = ""
+  , userName       = ""
+  , followers      = whole
+  , date           = whole
+  , location       = Nothing
+  , orderBy        = PostByLikes
+  , direction      = Desc
+  , trackedHashTag = Nothing
+  , limit          = 50 }
 
 -- | Convert a 'SimplePostQuery' to a 'PostQuery'.
 complexifyPostQuery :: SimplePostQuery -> PostQuery
-complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, followers, date, location, orderBy, direction, trackedHashTag}) =
+complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, followers, date, location, orderBy, direction, trackedHashTag, limit}) =
   case trackedHashTag of
-    Just x  -> PostQueryTrackedHashtag x
+    Just x  ->
+      PostQueryAnd $
+         [PostQueryTrackedHashtag x]
+      ++ [PostQueryLimit limit]
     Nothing ->
       PostQueryAnd $
          (if caption  == "" then [] else [PostQueryInCaption caption])
@@ -150,6 +154,7 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
       ++ complexifyInterval 0       PostQueryFollowers followers
       ++ complexifyInterval someDay PostQueryDate date
       ++ [PostQueryOrderBy orderBy, PostQueryOrderDirection direction]
+      ++ [PostQueryLimit limit]
   where
     someDay = ModifiedJulianDay 0
     complexifyInterval z f x = fmap (uncurry f) (intervalToOrderings z x)
