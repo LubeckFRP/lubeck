@@ -67,38 +67,49 @@ import           Components.BusyIndicator       (BusyCmd, withBusy)
 type TwoAccounts = (Maybe JSString, Maybe JSString)
 type Shoutouts = Zipper (Interaction SearchPost)
 
+-- div
+--   [ class_ "form-group" ]
+--   [ label [class_ "control-label col-xs-2"] [text title]
+--   , div [class_ "col-xs-10"]
+
 render :: Html -> Html -> Html -> Html
 render loadInteractsForm displayAccs interaction = contentPanel $
-  div [ class_ "form-horizontal"
-      , style " margin-left: auto; margin-right: auto" ]
+  div [ class_ "form-horizontal" ]
     [ div [] [ loadInteractsForm ]
-    , div [class_ "panel panel-default"] [ displayAccs, interaction ] ]
+    , div [class_ "panel panel-default"]
+        [ displayAccs
+        , interaction ] ]
 
 loadInteractionsW :: Widget TwoAccounts (Submit TwoAccounts)
-loadInteractionsW sink (x,y) = div [ class_ "form-horizontal"  ]
-  [ div [ class_ "form-group form-inline" ] $
-    [ label [class_ "control-label col-xs-1"] [text "From"]
-    , E.div [class_ "col-xs-3", A.style "padding: 0"]
-        [ E.input [ class_ "form-control"
-                  , A.value $ nToEmpty x
-                  , A.style "width: 100%"
-                  , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ]
-                  [] ]
+loadInteractionsW sink (x,y) =
+  div [ class_ "form-horizontal"  ]
+    [ div [ class_ "form-group form-inline" ] $
+      [ label [class_ "control-label col-xs-2"] [text "From"]
+      , E.div [class_ "col-xs-10"]
+          [ E.input [ class_ "form-control"
+                    , A.value $ nToEmpty x
+                    , A.style "width: 100%"
+                    , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ]
+                    [] ]
+      ]
+    , div [ class_ "form-group form-inline" ] $
+      [ label [class_ "control-label col-xs-2"] [text "To"]
+      , E.div [class_ "col-xs-10" ]
+          [ E.input [ class_ "form-control"
+                    , A.style "width: 100%"
+                    , A.value $ nToEmpty y
+                    , change $ \e -> sink (DontSubmit (x,emptyToN $ value e)) ]
+                    [] ]
+      ]
+    , div [class_ "form-group"]
+        [ div [class_ "col-xs-offset-2 col-xs-10"]
+            [ button [A.class_ "btn btn-success", click $ \e -> sink (Submit (x,y)) >> preventDefault e ]
+                [ E.i [class_ "fa fa-bullhorn", A.style "margin-right: 5px"] []
+                , text "Load shoutouts!"
+                ] ]
+        ]
     ]
-  , div [ class_ "form-group form-inline" ] $
-    [ label [class_ "control-label col-xs-1"] [text "To"]
-    , E.div [class_ "col-xs-3", A.style "padding: 0" ]
-        [ E.input [ class_ "form-control"
-                  , A.style "width: 100%"
-                  , A.value $ nToEmpty y
-                  , change $ \e -> sink (DontSubmit (x,emptyToN $ value e)) ]
-                  [] ]
-    ]
-  , div [ class_ "form-group" ] $
-    pure $ button
-      [ class_ "btn btn-success col-xs-offset-1 col-xs-3"
-      , click $ \e -> sink (Submit (x,y)) >> preventDefault e ]
-      [ text "Load shoutouts!"] ]
+
   where
     _1 f (x,y) = fmap (,y) $ f x
     _2 f (x,y) = fmap (x,) $ f y
@@ -108,10 +119,13 @@ loadInteractionsW sink (x,y) = div [ class_ "form-horizontal"  ]
     nToEmpty (Just xs) = xs
 
 displayAccsW :: Widget (InteractionSet SearchPost) ()
-displayAccsW _ interactionSet = div [class_ "panel-body"]
-  [ p [] [ text $ "Showing " <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: from_account .:? A.username)
-         , text $ " to "     <>  (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: to_account .:? A.username) ]
-  ]
+displayAccsW _ interactionSet =
+  div [class_ "col-xs-offset-2 col-xs-10"]
+    [ text "Showing "
+    , text $ (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: from_account .:? A.username)
+    , text " to "
+    , text $ (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: to_account .:? A.username)
+    ]
 
 prevBtnAction :: Shoutouts -> () -> Shoutouts
 prevBtnAction shoutoutZ _
@@ -132,32 +146,31 @@ displayIndex _ (nOutOf,m) = div
 interactionBrowserW :: Widget Shoutouts Shoutouts
 interactionBrowserW shoutoutSink shoutoutZ =
   if emptyp shoutoutZ then div [] []
-  else div []
-    [ div [ A.class_ "row" ]
-      [ div [ A.class_ "col-xs-4 col-lg-4" ]
-            [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) () ]
-      , div [ A.class_ "col-xs-3 col-lg-3" ]
-            [ displayIndex emptySink $ nOutOfM shoutoutZ ]
-      , div [ A.class_ "col-xs-1 col-lg-1" ]
-            [ buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
-      ]
-    , interactionW emptySink $ cursor shoutoutZ
-    ]
+  else
+    div [class_ "col-xs-offset-2 col-xs-10"]
+      [ div [class_ "btn-toolbar"]
+          [ div [ A.class_ "btn-group" ]
+              [ buttonWidget (pack "Previous") (contramapSink (prevBtnAction shoutoutZ) shoutoutSink) ()
+              , E.span [ class_ "btn" ] [ displayIndex emptySink $ nOutOfM shoutoutZ ]
+              , buttonWidget (pack "Next") (contramapSink (nextBtnAction shoutoutZ) shoutoutSink) () ]
+          ]
+      , interactionW emptySink $ cursor shoutoutZ ]
+
   where nOutOfM (Zip xs ys) = let lenXs = length xs in (lenXs, lenXs + length ys)
 
 interactionW :: Widget (Interaction SearchPost) ()
-interactionW _ interaction = div
-  []
-  [ p [ A.class_ "text-center" ] [text (showJS $ interaction .: interaction_time)]
-  , div [class_ "row"]
-        [ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
-              [ interactionPlotOrNot ]
-        , div [ class_ "col-xs-4 col-lg-4" ]
-              [ displayImage image
-              , div [] [ caption ]
-              ]
-        ]
-  ]
+interactionW _ interaction =
+  div [A.style "width: 800px; margin-top: 40px;"]
+    [ p [ A.class_ "text-center" ] [text (showJS $ interaction .: interaction_time)]
+    , div [class_ "row"]
+          [ div [class_ "col-xs-8 col-lg-8", style "overflow: hidden"]
+                [ interactionPlotOrNot ]
+          , div [ class_ "col-xs-4 col-lg-4" ]
+                [ displayImage image
+                , div [] [ caption ]
+                ]
+          ]
+    ]
   where
     interactionPlotOrNot =
       if null (I.target_counts interaction)
