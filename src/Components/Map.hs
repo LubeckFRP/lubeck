@@ -65,7 +65,7 @@ newtype LTileLayer = LTileLayer { lTileLayer :: JSVal }
 
 newtype LMarkerClusterGroup = LMarkerClusterGroup { lMarkerClusterGroup :: JSVal }
 
-data MapCommand = MapInit | MapDestroy | AddMarkers [Marker] | AddClusterLayer [Marker]
+data MapCommand = MapInit | MapDestroy | AddMarkers [Marker] | AddClusterLayer [Marker] | ClearMap
 
 data MapAction = MapClicked Point
 
@@ -115,6 +115,12 @@ foreign import javascript unsafe "L.markerClusterGroup()"
 
 makeMarkerClusterGroup :: IO LMarkerClusterGroup
 makeMarkerClusterGroup = makeMarkerClusterGroup_ >>= return . LMarkerClusterGroup
+
+foreign import javascript unsafe "$2.removeLayer($1)"
+  removeLayer_ :: JSVal -> JSVal -> IO ()
+
+removeClusterGroup :: LMarkerClusterGroup -> LMap -> IO ()
+removeClusterGroup lyr lm = removeLayer_ (lMarkerClusterGroup lyr) (lMap lm)
 
 foreign import javascript unsafe "$2.addLayer($1)"
   addLayerToMap_ :: JSVal -> JSVal -> IO ()
@@ -189,13 +195,20 @@ mapComponent z = do
   let mapId                        = fromString . take 10 $ (randomRs ('a', 'z') g)
   let htmlS                        = pure (mapW mapId)                          :: Signal Html
   mapRef                           <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
+  lyrRef                           <- TVar.newTVarIO []                         :: IO (TVar.TVar [LMarkerClusterGroup])
 
   subscribeEvent lifecycleEvents $ \mapCommand -> case mapCommand of
+    ClearMap -> withMap mapRef $ \gmap -> do
+      lyrs <- atomically $ TVar.readTVar lyrRef
+      mapM_ (flip removeClusterGroup $ gmap) lyrs
+      atomically $ TVar.modifyTVar' lyrRef (\_ -> [])
+
     AddClusterLayer ms -> withMap mapRef $ \gmap -> do
       fitMapToLayers gmap ms
       clusterGroup <- makeMarkerClusterGroup
       mapM_ (addMarkerToCluster clusterGroup) ms
       addMarkerClusterGroupToMap clusterGroup gmap
+      atomically $ TVar.modifyTVar' lyrRef (\old -> old <> [clusterGroup])
 
     AddMarkers ms -> withMap mapRef $ \gmap -> do
       fitMapToLayers gmap ms

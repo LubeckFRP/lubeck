@@ -225,6 +225,7 @@ postToMarkerIO uploadImage p = do
 
 showResultsOnMap mapSink uploadImage mbPosts = do
   -- TODO remove prev markers
+  mapSink ClearMap
   mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
   mapSink $ AddClusterLayer $ Data.Maybe.catMaybes mbms
 
