@@ -8,6 +8,7 @@
 module Components.BusyIndicator
   ( busyIndicatorComponent
   , BusyCmd(..)
+  , withBusy0
   , withBusy
   , withBusy2
   , withBusy3
@@ -42,6 +43,12 @@ data BusyCmd = PushBusy | PopBusy deriving (Show)
 type BusyStack = [Bool] -- can be Int, for example, but the idea is to save some additional info about busy actions later
 
 -- FIXME what about lazyness etc?
+withBusy0 sink f = do
+  sink PushBusy
+  y <- f
+  sink PopBusy
+  return y
+
 withBusy sink f = \x -> do
   sink PushBusy
   y <- f x

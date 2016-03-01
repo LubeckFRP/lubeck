@@ -51,7 +51,7 @@ import           Lubeck.Forms.Select
 import           Lubeck.FRP
 import           Lubeck.Util                    (contentPanel, divideFromEnd,
                                                  newEventOf, showIntegerWithThousandSeparators,
-                                                 showJS, which)
+                                                 showJS, which, withErrorIO)
 import           Lubeck.Web.URI                 (getURIParameter)
 
 import           BD.Api
@@ -68,23 +68,23 @@ import           BDPlatform.Types
 import           Components.Map
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent,
-                                                 withBusy, withBusy2)
+                                                 withBusy, withBusy2, withBusy0)
 
 
 -- TODO finish
-searchForm :: Day -> Widget SimplePostQuery (Submit SimplePostQuery)
-searchForm dayNow output query =
+searchForm :: Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
+searchForm dayNow outputSink (trackedHTs, query) =
   contentPanel $
     div [ class_ "form-horizontal"
-        , keyup $ \e -> if which e == 13 then output (Submit query) else return ()
+        , keyup $ \e -> if which e == 13 then outputSink (Submit query) else return ()
         ]  -- event delegation
-      [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  output) (PQ.caption query)
-      , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  output) (PQ.comment query)
-      , longStringWidget "Hashtag"   False (contramapSink (\new -> DontSubmit $ query { hashTag = new })  output) (PQ.hashTag query)
-      , longStringWidget "User name" False (contramapSink (\new -> DontSubmit $ query { userName = new }) output) (PQ.userName query)
+      [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  outputSink) (PQ.caption query)
+      , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  outputSink) (PQ.comment query)
+      , longStringWidget "Hashtag"   False (contramapSink (\new -> DontSubmit $ query { hashTag = new })  outputSink) (PQ.hashTag query)
+      , longStringWidget "User name" False (contramapSink (\new -> DontSubmit $ query { userName = new }) outputSink) (PQ.userName query)
 
-      , integerIntervalWidget "Poster followers"    (contramapSink (\new -> DontSubmit $ query { followers = new }) output) (PQ.followers query)
-      , dateIntervalWidget    dayNow "Posting date" (contramapSink (\new -> DontSubmit $ query { date = new }) output)      (PQ.date query)
+      , integerIntervalWidget "Poster followers"    (contramapSink (\new -> DontSubmit $ query { followers = new }) outputSink) (PQ.followers query)
+      , dateIntervalWidget    dayNow "Posting date" (contramapSink (\new -> DontSubmit $ query { date = new }) outputSink)      (PQ.date query)
 
       , div [ class_ "form-group"  ]
         [ label [class_ "control-label col-xs-2"] [text "Sort by" ]
@@ -94,17 +94,25 @@ searchForm dayNow output query =
                 , (PostByLikes,     "Likes")
                 , (PostByComments,  "Comments")
                 , (PostByCreated,   "Posting time") ]
-                (contramapSink (\new -> DontSubmit $ query { orderBy = new }) output) (PQ.orderBy query)
+                (contramapSink (\new -> DontSubmit $ query { orderBy = new }) outputSink) (PQ.orderBy query)
             , selectWidget
                 [ (Desc,  "from highest to lowest")
                 , (Asc,   "from lowest to highest") ]
-                (contramapSink (\new -> DontSubmit $ query { direction = new }) output) (PQ.direction query)
+                (contramapSink (\new -> DontSubmit $ query { direction = new }) outputSink) (PQ.direction query)
             ]
+        ]
+
+      , div [ class_ "form-group"  ]
+        [ label [class_ "control-label col-xs-2"] [text "Tracked hashtags" ]
+        , div [class_ "col-xs-10 form-inline"]
+            [ selectWithPromptWidget
+                (zip (P.tag <$> trackedHTs) (P.tag <$> trackedHTs)) -- FIXME
+                (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (Data.Maybe.fromMaybe "" $ PQ.trackedHashTag query) ]
         ]
 
       , div [class_ "form-group"]
           [ div [class_ "col-xs-offset-2 col-xs-10"]
-              [ button [A.class_ "btn btn-success", click $ \e -> output $ Submit query]
+              [ button [A.class_ "btn btn-success", click $ \e -> outputSink $ Submit query]
                   [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
                   , text "Search!"
                   ] ]
@@ -204,8 +212,10 @@ postToMarkerIO uploadImage p = do
   return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
 
 showResultsOnMap mapSink uploadImage mbPosts = do
+  -- TODO remove prev markers
   mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
   mapSink $ AddClusterLayer $ Data.Maybe.catMaybes mbms
+
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
@@ -221,7 +231,20 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
 
   now                              <- getCurrentTime
 
-  (searchView, searchRequested)    <- formComponent initPostQuery (searchForm (utctDay now))
+  -- load tracked hash tags initially (at the very start of the app, before login)
+  (thtsInitSink, thtsInitE)        <- newEventOf (undefined                                        :: [P.TrackedHashtag])
+  void $ forkIO $ do
+    z <- withBusy0 busySink P.getTrackedHashtags                                                   :: IO (Either AppError [P.TrackedHashtag])
+    case z of
+      Left e     -> synchronously . notifSink . Just . apiError $ "Failed to load tracked hashtags"
+      Right thts -> synchronously . thtsInitSink $ thts
+
+  -- update tracked hash tags heuristics. Better: use websockets and FRP to push updated from the server
+  let n                            = Lubeck.FRP.filter (NavSearch ==) (updates navS)
+  thtsReloadE                      <- withErrorIO notifSink $ fmap (withBusy busySink (\_ -> P.getTrackedHashtags)) n :: IO (Events [P.TrackedHashtag])
+  thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                                           :: IO (Behavior [P.TrackedHashtag])
+
+  (searchView, searchRequested)    <- formComponentExtra1 thtsB initPostQuery (searchForm (utctDay now))
   (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)
   (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Post])
 

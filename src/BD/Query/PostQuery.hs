@@ -36,6 +36,7 @@ data PostQuery
   | PostQueryHashtag Text
   | PostQueryUsername Text
   | PostQueryUsernames [Text]
+  | PostQueryTrackedHashtag Text
 
   | PostQueryFollowers Ordering Int
   | PostQueryDate Ordering Day
@@ -62,6 +63,7 @@ instance ToJSON PostQuery where
     PostQueryUsername x          -> inObjectNamed "username" $ toJSON x
     PostQueryLocation x          -> inObjectNamed "location" $ (Number . fromIntegral) x
     PostQueryHashtag x           -> inObjectNamed "hashtag" $ toJSON x
+    PostQueryTrackedHashtag x    -> inObjectNamed "hashtag" $ toJSON x
 
     PostQueryOrderBy x           -> inObjectNamed "orderBy" $ searchPostOrderEnc x
     PostQueryOrderDirection x    -> inObjectNamed "orderDirection" $ sortDirectionEnc x
@@ -92,17 +94,19 @@ dateEnc = toJSON . (<> "T00:00:00.000Z") . formatDateFromUTC
 
 -- | Non-recursive version of 'PostQuery', suitable for use in forms.
 data SimplePostQuery = SimplePostQuery {
-    caption      :: Text,
-    comment      :: Text,
-    hashTag      :: Text,
-    userName     :: Text,
+    caption        :: Text,
+    comment        :: Text,
+    hashTag        :: Text,
+    userName       :: Text,
 
-    followers    :: Interval Int, -- Nothing for inf
-    date         :: Interval Day,
-    location     :: Maybe Int,
+    followers      :: Interval Int, -- Nothing for inf
+    date           :: Interval Day,
+    location       :: Maybe Int,
 
-    orderBy     :: PostOrder,
-    direction   :: SortDirection
+    orderBy        :: PostOrder,
+    direction      :: SortDirection,
+
+    trackedHashTag :: Maybe Text
   }
   deriving (Eq, Show)
 
@@ -120,28 +124,32 @@ data SortDirection
 
 defSimplePostQuery :: SimplePostQuery
 defSimplePostQuery = SimplePostQuery {
-    caption   = "",
-    comment   = "",
-    hashTag   = "",
-    userName  = "",
-    followers = whole,
-    date      = whole,
-    location  = Nothing,
-    orderBy   = PostByLikes,
-    direction = Desc
+    caption        = "",
+    comment        = "",
+    hashTag        = "",
+    userName       = "",
+    followers      = whole,
+    date           = whole,
+    location       = Nothing,
+    orderBy        = PostByLikes,
+    direction      = Desc,
+    trackedHashTag = Nothing
   }
 
 -- | Convert a 'SimplePostQuery' to a 'PostQuery'.
 complexifyPostQuery :: SimplePostQuery -> PostQuery
-complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, followers, date, location, orderBy, direction}) =
-    PostQueryAnd $
-       (if caption  == "" then [] else [PostQueryInCaption caption])
-    ++ (if comment  == "" then [] else [PostQueryHasComment comment])
-    ++ (if hashTag  == "" then [] else [PostQueryHashtag hashTag])
-    ++ (if userName == "" then [] else [PostQueryUsername userName])
-    ++ complexifyInterval 0       PostQueryFollowers followers
-    ++ complexifyInterval someDay PostQueryDate date
-    ++ [PostQueryOrderBy orderBy, PostQueryOrderDirection direction]
+complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, followers, date, location, orderBy, direction, trackedHashTag}) =
+  case trackedHashTag of
+    Just x  -> PostQueryTrackedHashtag x
+    Nothing ->
+      PostQueryAnd $
+         (if caption  == "" then [] else [PostQueryInCaption caption])
+      ++ (if comment  == "" then [] else [PostQueryHasComment comment])
+      ++ (if hashTag  == "" then [] else [PostQueryHashtag hashTag])
+      ++ (if userName == "" then [] else [PostQueryUsername userName])
+      ++ complexifyInterval 0       PostQueryFollowers followers
+      ++ complexifyInterval someDay PostQueryDate date
+      ++ [PostQueryOrderBy orderBy, PostQueryOrderDirection direction]
   where
     someDay = ModifiedJulianDay 0
     complexifyInterval z f x = fmap (uncurry f) (intervalToOrderings z x)
@@ -151,11 +159,11 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
 --  First argument is an arbitrary value of the type.
 intervalToOrderings :: a -> Interval a -> [(Ordering, a)]
 intervalToOrderings arbitrary i = case (a, b) of
-  (NegInf, PosInf) -> [] -- full
-  (NegInf, Finite b)  -> [(LT, b)] -- max
-  (Finite a,  PosInf) -> [(GT, a)] -- min
-  (Finite a,  Finite b)  -> [(GT, a), (LT, b)] -- min,max
-  _                -> [(GT, arbitrary), (LT, arbitrary)] -- empty
+  (NegInf,   PosInf)   -> [] -- full
+  (NegInf,   Finite b) -> [(LT, b)] -- max
+  (Finite a, PosInf)   -> [(GT, a)] -- min
+  (Finite a, Finite b) -> [(GT, a), (LT, b)] -- min,max
+  _                    -> [(GT, arbitrary), (LT, arbitrary)] -- empty
   where
     (a, b) = (lowerBound i, upperBound i)
 -- TODO arguaby wrong behavior w.r.t. open/closed

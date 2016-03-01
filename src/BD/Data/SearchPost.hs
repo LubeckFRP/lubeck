@@ -1,36 +1,60 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
 
 module BD.Data.SearchPost
     ( SearchPost(..)
+    , TrackedHashtag(..)
+    , getTrackedHashtags
     ) where
 
-import Control.Monad
-import Data.Aeson -- TODO proper
-import Data.Data
-import Data.Time.Clock (UTCTime)
+import           BD.Api
+import           BD.Data.AdTypes
+import           BD.Types
+import           Control.Monad
+import           Data.Aeson
 import qualified Data.Aeson.Types
-import qualified GHC.Generics as GHC
+import           Data.Data
+import           Data.Time.Clock               (UTCTime)
+import qualified GHC.Generics                  as GHC
 
-import BD.Types
+import           Data.Bifunctor                (first)
+import           JavaScript.Web.XMLHttpRequest (FormDataVal (..))
+
+import           BD.Types
 
 data SearchPost = SearchPost
-  { post_id          :: Integer
-  , account_id       :: Integer
-  , thumbnail_url    :: Text
-  , url              :: Text
-  , description      :: Maybe Text
-  , created_at       :: UTCTime
-  , comment_count    :: Int
-  , like_count       :: Int
-  , location_id      :: Maybe Int
-  , follower_count   :: Maybe Int
-  , username         :: Text
-  , deleted          :: Bool
-  , ig_web_url       :: Maybe Text
-  , latitude         :: Maybe Double
-  , longitude        :: Maybe Double
+  { post_id        :: Integer
+  , account_id     :: Integer
+  , thumbnail_url  :: Text
+  , url            :: Text
+  , description    :: Maybe Text
+  , created_at     :: UTCTime
+  , comment_count  :: Int
+  , like_count     :: Int
+  , location_id    :: Maybe Int
+  , follower_count :: Maybe Int
+  , username       :: Text
+  , deleted        :: Bool
+  , ig_web_url     :: Maybe Text
+  , latitude       :: Maybe Double
+  , longitude      :: Maybe Double
   } deriving (GHC.Generic)
 
 instance FromJSON SearchPost
 instance ToJSON   SearchPost
+
+data TrackedHashtag = TrackedHashtag
+  { post_count :: Int
+  , tag        :: Text
+  } deriving (GHC.Generic, Show)
+
+instance FromJSON TrackedHashtag
+instance ToJSON   TrackedHashtag
+
+getTrackedHashtags :: IO (Either AppError [TrackedHashtag])
+getTrackedHashtags = getAPIEither defaultAPI "hashtags" >>= return . first ApiError
