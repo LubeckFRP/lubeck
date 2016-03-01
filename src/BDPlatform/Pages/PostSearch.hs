@@ -195,11 +195,11 @@ resultsLayout sink gridH mapH mode posts = case mode of
           , div [A.style "text-align: center;"]
               [ div [class_ "btn-group", A.style "margin-bottom: 20px;"]
                   [ button [ class_ ("btn " <> if asel then "btn-primary" else "btn-default")
-                           , click $ \e -> sink ResultsGrid]
+                           , click $ \e -> if asel then return () else sink ResultsGrid]
                               [ E.i [class_ "fa fa-th", A.style "margin-right: 5px;"] []
                               , text "Grid"]
                   , button [ class_ ("btn " <> if bsel then "btn-primary" else "btn-default")
-                           , click $ \e -> sink ResultsMap]
+                           , click $ \e -> if bsel then return () else sink ResultsMap]
                               [ E.i [class_ "fa fa-map-o", A.style "margin-right: 5px;"] []
                               , text "Map"] ]
               , x ]
@@ -224,7 +224,6 @@ postToMarkerIO uploadImage p = do
   return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
 
 showResultsOnMap mapSink uploadImage mbPosts = do
-  -- TODO remove prev markers
   mapSink ClearMap
   mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
   mapSink $ AddClusterLayer $ Data.Maybe.catMaybes mbms
