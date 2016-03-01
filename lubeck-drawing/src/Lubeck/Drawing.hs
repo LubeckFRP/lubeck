@@ -789,30 +789,25 @@ instance Monoid TextOptions where
 -- @
 --
 textWithOptions :: TextOptions -> Str -> Drawing
-textWithOptions opts = _fontStyle . _textAnchor . _alignmentBaseline . Text
+textWithOptions opts = style (mconcat [_fontStyle, _textAnchor, _alignmentBaseline]) . Text
   where
-    _fontStyle = id
-    _textAnchor = id
-    _alignmentBaseline = id
+    _fontStyle  = case fontStyle opts of
+      FontStyleNormal           -> styleNamed "font-style" "normal"
+      FontStyleItalic           -> styleNamed "font-style" "italic"
+      FontStyleOblique          -> styleNamed "font-style" "oblique"
+      FontStyleInherit          -> mempty
 
-    -- _fontStyle  = case fontStyle opts of
-    --   FontStyleNormal           -> Prop (VD.attribute "font-style" "normal")
-    --   FontStyleItalic           -> Prop (VD.attribute "font-style" "italic")
-    --   FontStyleOblique          -> Prop (VD.attribute "font-style" "oblique")
-    --   FontStyleInherit          -> id
-    --
-    -- _textAnchor = case textAnchor opts of
-    --   TextAnchorStart           -> Prop (VD.attribute "text-anchor"  "start")
-    --   TextAnchorMiddle          -> Prop (VD.attribute "text-anchor"  "middle")
-    --   TextAnchorEnd             -> Prop (VD.attribute "text-anchor"  "end")
-    --   TextAnchorInherit         -> id
-    --
-    -- _alignmentBaseline = case alignmentBaseline opts of
-    --   AlignmentBaselineAuto     -> id
-    --   AlignmentBaselineBaseline -> Prop (VD.attribute "alignment-baseline" "baseline")
-    --   AlignmentBaselineMiddle   -> Prop (VD.attribute "alignment-baseline" "middle")
-    --   AlignmentBaselineCentral  -> Prop (VD.attribute "alignment-baseline" "central")
--- TODO use styles not props
+    _textAnchor = case textAnchor opts of
+      TextAnchorStart           -> styleNamed "text-anchor"  "start"
+      TextAnchorMiddle          -> styleNamed "text-anchor"  "middle"
+      TextAnchorEnd             -> styleNamed "text-anchor"  "end"
+      TextAnchorInherit         -> mempty
+
+    _alignmentBaseline = case alignmentBaseline opts of
+      AlignmentBaselineAuto     -> mempty
+      AlignmentBaselineBaseline -> styleNamed "alignment-baseline" "baseline"
+      AlignmentBaselineMiddle   -> styleNamed "alignment-baseline" "middle"
+      AlignmentBaselineCentral  -> styleNamed "alignment-baseline" "central"
 
 
 {-| Apply a [Transformation](#Transformation) to an image.
