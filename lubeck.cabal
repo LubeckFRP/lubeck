@@ -43,6 +43,7 @@ library
                      , BDPlatform.Types
                      , BDPlatform.Pages.CreateAd
                      , BDPlatform.Pages.PostSearch
+                     , BDPlatform.Pages.AccountSearch
                      , BDPlatform.Pages.Login
                      , BDPlatform.Pages.User
                      , BDPlatform.Pages.Campaign

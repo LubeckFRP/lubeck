@@ -11,5 +11,5 @@ data IPCMessage = ImageLibraryUpdated | Noop deriving (Show, Eq)
 
 
 -- FIXME should be in BD Platform types probably
-data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages | NavInteractions
+data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages | NavInteractions | NavAccountSearch
   deriving (Show, Eq)
