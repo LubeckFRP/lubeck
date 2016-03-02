@@ -83,7 +83,7 @@ library
                      , monad-parallel
                      , random
                      , ListZipper
-  hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src
+  hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
   ghc-options:         -fno-warn-typed-holes
