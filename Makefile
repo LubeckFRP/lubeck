@@ -23,6 +23,16 @@ build-client-fast:
 	clear && \
 	time stack build -j4 --fast
 
+.PHONY: build-client-ghc
+build-client-ghc:
+	clear && \
+	stack build --stack-yaml=stack-ghc.yaml
+
+.PHONY: build-client-ghc-7.8.4
+build-client-ghc-7.8.4:
+	clear && \
+	stack build --stack-yaml=stack-ghc-7.8.4.yaml
+
 .PHONY: build-server
 build-server:
 	(cd server && stack install -j8 --install-ghc)
