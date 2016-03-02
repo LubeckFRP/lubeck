@@ -117,11 +117,11 @@ searchForm dayNow outputSink query =
           ]
       ]
 
-data Action = ViewDetails Ac.Account
+data Action = ViewDetails Ac.Account | ViewAllResults
 
 itemMarkup :: Widget Ac.Account Action
 itemMarkup output account =
-  E.tr [class_ "", click $ \e -> (print (showJS account)) >> (output $ ViewDetails account)]
+  E.tr [class_ "", click $ \e -> output $ ViewDetails account]
     [ E.td [class_ "acc-pic"] [ img [A.src (Data.Maybe.fromMaybe "defaultPic" (Ac.profile_picture account))] [] ]
     , E.td [class_ "acc-username"] [ E.a [ class_ "acc-username"
                                          , click $ \e -> stopPropagation e
@@ -137,7 +137,13 @@ itemMarkup output account =
     , E.td [class_ "acc-num"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.numfollowing account ]
     ]
 
-
+detailsW :: Widget Action Action
+detailsW sink action = case action of
+  ViewDetails acc ->
+    div []
+      [ button [class_ "btn btn-primary", click $ \e -> sink ViewAllResults ] [text "Back"]
+      , text $ showJS acc]
+  _               -> div [] [text "hello"]
 
 accountSearchResultW :: Widget [Ac.Account] Action
 accountSearchResultW outputSink accounts = resultsTable outputSink accounts
@@ -156,14 +162,22 @@ accountSearchResultW outputSink accounts = resultsTable outputSink accounts
         , E.tbody [] (map (itemMarkup outputSink) accounts)
         ]
 
-data ResultsViewMode = ResultsGrid | ResultsDetails deriving (Show, Eq)
+resultsLayout :: Maybe Action -> Html -> Maybe Html -> Maybe [Ac.Account] -> Html
+resultsLayout mba resultsV detailsV accounts = case mba of
+  Nothing -> resWrapper resultsV accounts
+  Just (ViewDetails x) -> case detailsV of     -- TODO XXX FIXME later
+    Nothing -> resWrapper resultsV accounts    -- two different approaches to switch view modes exist currently
+    Just dv -> detWraper dv                    -- choose one (separate Action from ViewMode?)
+  Just ViewAllResults -> resWrapper resultsV accounts
 
-resultsLayout :: Sink ResultsViewMode -> Html -> ResultsViewMode -> Maybe [Ac.Account] -> Html
-resultsLayout sink gridH mode accounts = case mode of
-  ResultsGrid    -> wrapper sink gridH True False accounts
-  ResultsDetails -> div [] [text "details here"]
   where
-    wrapper sink x asel bsel accounts =
+    detWraper det =
+      contentPanel $
+        div []
+          [ div [class_ "page-header"] [ h1 [] [ text "Details view " ] ]
+          , div [] [ det ] ]
+
+    resWrapper x accounts =
       contentPanel $
         div []
           [ div [class_ "page-header"]
@@ -182,18 +196,19 @@ accountSearchPage :: Sink BusyCmd
 accountSearchPage busySink notifSink ipcSink mUserNameB navS = do
   let initPostQuery                = defSimpleAccountQuery
 
-  (viewModeSink, viewModeEvents)   <- newEventOf (undefined                                        :: ResultsViewMode)
-  resultsViewModeS                 <- stepperS ResultsGrid viewModeEvents
+  (actionSink, actionEvents)       <- newEventOf (undefined                                           :: Action)
+  actionsS                         <- stepperS Nothing (fmap Just actionEvents)                       :: IO (Signal (Maybe Action))
 
   now                              <- getCurrentTime
 
   (searchView, searchRequested)    <- formComponent initPostQuery (searchForm (utctDay now))
-  (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Ac.Account])
-  results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Ac.Account]))
+  (srchResSink, srchResEvents)     <- newEventOf (undefined                                          :: Maybe [Ac.Account])
+  results                          <- stepperS Nothing srchResEvents                                 :: IO (Signal (Maybe [Ac.Account]))
 
-  let gridView                     = fmap ((altW (text "") accountSearchResultW) emptySink) results :: Signal Html
-  let resultsViewS                 = (resultsLayout viewModeSink) <$> gridView <*> resultsViewModeS <*> results :: Signal Html
-  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS         :: Signal Html
+  let gridView                     = fmap ((altW (text "") accountSearchResultW) actionSink) results :: Signal Html
+  let detailsView                  = fmap (fmap (detailsW actionSink)) actionsS                      :: Signal (Maybe Html)
+  let resultsViewS                 = resultsLayout <$> actionsS <*> gridView <*> detailsView <*> results          :: Signal Html
+  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS           :: Signal Html
 
   subscribeEvent searchRequested $ \query -> void $ forkIO $ do
     srchResSink Nothing -- reset previous search results
