@@ -155,6 +155,7 @@ import Lubeck.Util(showJS)
 
 #ifdef __GHCJS__
 type Str = JSString
+toStr :: Show a => a -> Str
 toStr   = showJS
 packStr = Data.JSString.pack
 #else
