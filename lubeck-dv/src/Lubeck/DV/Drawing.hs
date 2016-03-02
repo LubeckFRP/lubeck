@@ -131,9 +131,7 @@ import Control.Monad.Reader
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid ((<>), First(..))
 -- import Data.VectorSpace
-import GHCJS.Types(JSString, jsval)
 import qualified Data.Colour.Names as Colors
-import qualified Data.JSString
 import qualified Data.VectorSpace as VS
 
 import Linear.Vector
@@ -147,8 +145,24 @@ import Linear.V3
 import Linear.V4
 
 import Lubeck.Drawing
-import Lubeck.Util(showJS)
 import qualified Lubeck.Drawing
+
+#ifdef __GHCJS__
+import GHCJS.Types(JSString)
+import qualified Data.JSString
+import Lubeck.Util(showJS)
+#endif
+
+#ifdef __GHCJS__
+type Str = JSString
+toStr   = showJS
+packStr = Data.JSString.pack
+#else
+type Str = String
+toStr   = show
+packStr = id
+#endif
+
 
 data VerticalHorizontal = Vertical | Horizontal
 -- How to display a bar plot with more than two dimensions.§
@@ -524,8 +538,8 @@ discreteHeatMap = undefined
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
 -- Positions outside the normalized range are discarded.
 ticks
-  :: [(Double, JSString)] -- ^ X axis ticks.
-  -> [(Double, JSString)] -- ^ Y axis ticks.
+  :: [(Double, Str)] -- ^ X axis ticks.
+  -> [(Double, Str)] -- ^ Y axis ticks.
   -> Styled Drawing
 ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
   where
@@ -536,8 +550,8 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
 -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
 ticksNoFilter
-  :: [(Double, JSString)] -- ^ X axis ticks.
-  -> [(Double, JSString)] -- ^ Y axis ticks.
+  :: [(Double, Str)] -- ^ X axis ticks.
+  -> [(Double, Str)] -- ^ Y axis ticks.
   -> Styled Drawing
 ticksNoFilter xt yt = return $ mconcat [xTicks, yTicks]
   where
@@ -557,8 +571,8 @@ ticksNoFilter xt yt = return $ mconcat [xTicks, yTicks]
 
 -- | Draw X and Y axis.
 labeledAxis
-  :: JSString -- ^ X axis label.
-  -> JSString -- ^ Y axis label.
+  :: Str -- ^ X axis label.
+  -> Str -- ^ Y axis label.
   -> Styled Drawing
 labeledAxis labelX labelY = return $ mconcat
   [ scale 300 $ axis
