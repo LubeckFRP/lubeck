@@ -332,12 +332,20 @@ div, h1, h2, img, p, span {
   border-radius: 50%;
 }
 .acc-username .btn {
-  display: block;
+  /*display: block;*/
   text-align: left;
 }
 .acc-username {
   text-align: left;
+  padding: 3px;
 }
 .acc-num {
   width: 100px;
+}
+.acc-fullname {
+    padding: 3px;
+}
+.acc-bio {
+    padding: 3px;
+    color: grey;
 }
