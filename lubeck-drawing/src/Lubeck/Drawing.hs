@@ -240,7 +240,7 @@ type Str = JSString
 toStr   = showJS
 packStr = Data.JSString.pack
 #else
--- type Str = String
+type Str = String
 toStr   = show
 packStr = id
 #endif
