@@ -241,7 +241,7 @@ toStr   = showJS
 packStr = Data.JSString.pack
 #else
 -- type Str = String
--- toStr   = show
+toStr   = show
 packStr = id
 #endif
 
