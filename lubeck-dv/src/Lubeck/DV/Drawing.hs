@@ -132,7 +132,7 @@ import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid ((<>), First(..))
 -- import Data.VectorSpace
 import qualified Data.Colour.Names as Colors
-import qualified Data.VectorSpace as VS
+-- import qualified Data.VectorSpace as VS
 
 import Linear.Vector
 import Linear.Affine
@@ -159,6 +159,7 @@ toStr   = showJS
 packStr = Data.JSString.pack
 #else
 type Str = String
+toStr :: Show a => a -> Str
 toStr   = show
 packStr = id
 #endif

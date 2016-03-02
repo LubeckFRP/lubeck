@@ -1,15 +1,21 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, CPP #-}
 
 -- |
 -- Basic normalized visualization.
 module Lubeck.DV.SimpleNormalized
+#ifdef __GHCJS__
   ( simpleLinePlot
   , simpleTimeSeries
   , simpleTimeSeriesWithOverlay
   , utcTimeToApproxReal
   , realToApproxUTCTime
   ) where
+#else
+  () where
+#endif
+
+#ifdef __GHCJS__
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -222,3 +228,5 @@ tickCalc tickCount (lo, hi) =
   in [lb, lb+stepSize..ub]
   where
     exrng = (2.1, 11.5)
+
+#endif
