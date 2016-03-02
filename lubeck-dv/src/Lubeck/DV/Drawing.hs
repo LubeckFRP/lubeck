@@ -1,6 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections,
-  TemplateHaskell, CPP #-}
+  TemplateHaskell, ConstraintKinds, CPP #-}
 
 -- |
 -- Basics for drawing plots.
@@ -129,7 +129,7 @@ import Control.Monad.Identity
 import Control.Monad.Reader
 -- import Data.AffineSpace
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
-import Data.Monoid ((<>), First(..))
+import Data.Monoid
 -- import Data.VectorSpace
 import qualified Data.Colour.Names as Colors
 -- import qualified Data.VectorSpace as VS
@@ -162,6 +162,12 @@ type Str = String
 toStr :: Show a => a -> Str
 toStr   = show
 packStr = id
+#endif
+
+#if __GLASGOW_HASKELL__ <= 708
+type Monad' m = (Monad m, Applicative m)
+#else
+type Monad' m = Monad m
 #endif
 
 
@@ -283,7 +289,10 @@ type Styled = StyledT Identity
 newtype StyledT m a = Styled { _getStyled :: ReaderT Styling m a }
   deriving (Functor, Applicative, Monad, MonadReader Styling)
 
-instance (Monad m, Monoid a) => Monoid (StyledT m a) where
+instance
+  ( Monad' m
+  , Monoid a
+  ) => Monoid (StyledT m a) where
   mempty = pure mempty
   mappend = liftA2 mappend
 
@@ -304,7 +313,7 @@ withDefaultStyleT x = getStyledT x mempty
 -- TODO consolidate origin, intoRect
 
 -- | Draw data for a scatter plot.
-scatterData :: Monad m => [P2 Double] -> StyledT m Drawing
+scatterData :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
   let base  = id
@@ -316,7 +325,7 @@ scatterData ps = do
   return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring Y values.
-scatterDataX :: Monad m => [P2 Double] -> StyledT m Drawing
+scatterDataX :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
@@ -325,7 +334,7 @@ scatterDataX ps = do
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring X values.
-scatterDataY :: Monad m => [P2 Double] ->  StyledT m Drawing
+scatterDataY :: (Monad' m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
@@ -334,7 +343,7 @@ scatterDataY ps = do
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) (fmap intoRect ps)
 
 -- | Draw data for a line plot.
-lineData :: Monad m => [P2 Double] -> StyledT m Drawing
+lineData :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 lineData []     = mempty
 lineData [_]    = mempty
 lineData (p:ps) = do
@@ -347,15 +356,16 @@ lineData (p:ps) = do
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
+
 -- | Step chart
 --
 -- See Visualize this p 124
-stepData :: Monad m => P2 Double -> [V2 Double] -> StyledT m Drawing
+stepData :: (Monad' m) => P2 Double -> [V2 Double] -> StyledT m Drawing
 stepData z vs = lineData (offsetVectors z vs)
 
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
-linearData :: Monad m => Double -> Double -> StyledT m Drawing
+linearData :: (Monad' m) => Double -> Double -> StyledT m Drawing
 linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
   where
     f x = a*x + b
@@ -363,7 +373,7 @@ linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
 -- TODO bar graphs can be transposed (x/y) (how?)
 
 -- | Draw a bar graph.
-barData :: Monad m => [P1 Double] -> StyledT m Drawing
+barData :: (Monad' m) => [P1 Double] -> StyledT m Drawing
 barData ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
@@ -377,22 +387,22 @@ barData ps = do
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- | Draw a bar graph.
-barData2 :: Monad m => [P2 Double] -> StyledT m Drawing
+barData2 :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 -- | Draw a bar graph.
-barData3 :: Monad m => [P3 Double] -> StyledT m Drawing
+barData3 :: (Monad' m) => [P3 Double] -> StyledT m Drawing
 -- | Draw a bar graph.
-barData4 :: Monad m => [P4 Double] -> StyledT m Drawing
+barData4 :: (Monad' m) => [P4 Double] -> StyledT m Drawing
 [barData2, barData3, barData4] = undefined
 
 -- rawBarData4 :: [[R]] -> StyledT m Drawing
 
 
 -- | Draw a bar graph.
-barDataWithColor  :: Monad m => [P2 Double] -> StyledT m Drawing
+barDataWithColor  :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 -- | Draw a bar graph.
-barDataWithColor2 :: Monad m => [P3 Double] -> StyledT m Drawing
+barDataWithColor2 :: (Monad' m) => [P3 Double] -> StyledT m Drawing
 -- | Draw a bar graph.
-barDataWithColor3 :: Monad m => [P4 Double] -> StyledT m Drawing
+barDataWithColor3 :: (Monad' m) => [P4 Double] -> StyledT m Drawing
 -- | Draw
 -- barDataWithColor4 :: [R5] -> StyledT m Drawing
 [barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
@@ -400,7 +410,7 @@ barDataWithColor3 :: Monad m => [P4 Double] -> StyledT m Drawing
 -- | Visualizes a count.
 --
 -- See "Visualize this" pXXII (Godfather example)
-discreteData :: (Enum a, Monad m) => [(a, Int)] -> StyledT m Drawing
+discreteData :: (Enum a, Monad' m) => [(a, Int)] -> StyledT m Drawing
 discreteData = undefined
 
 -- TODO calendar map, see Visualize this p70
@@ -411,12 +421,12 @@ discreteData = undefined
 
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-intData :: Monad m => Int -> StyledT m Drawing
+intData :: (Monad' m) => Int -> StyledT m Drawing
 intData = undefined
 
 -- | Visualizes a ratio. Essentially a 1-category bar graph.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioData :: Monad m => P1 Double -> StyledT m Drawing
+ratioData :: (Monad' m) => P1 Double -> StyledT m Drawing
 ratioData (P (V1 v)) = do
   style <- ask
   let fg = style^.ratioPlotForegroundColor
@@ -430,7 +440,7 @@ ratioData (P (V1 v)) = do
 
 -- | Visualizes ration with colour.
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioDataWithColor :: Monad m => P2 Double -> StyledT m Drawing
+ratioDataWithColor :: (Monad' m) => P2 Double -> StyledT m Drawing
 ratioDataWithColor (P (V2 v1 v2)) = do
   style <- ask
   let bg  = style^.ratioPlotBackgroundColor
@@ -447,7 +457,7 @@ ratioDataWithColor (P (V2 v1 v2)) = do
 
 
 -- | Visualizes the plotting rectangle. Useful for deugging.
-plotRectangle :: Monad m => StyledT m Drawing
+plotRectangle :: (Monad' m) => StyledT m Drawing
 plotRectangle = do
   style <- ask
   return $ transform (scalingRR style) (scale 2 xyCoords)
@@ -455,19 +465,19 @@ plotRectangle = do
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- | Draw a circle size plot.
-circleData :: Monad m => [Double] -> StyledT m Drawing
+circleData :: (Monad' m) => [Double] -> StyledT m Drawing
 circleData = undefined
 -- TODO use a ratio/percantage type wrapper
 -- TODO use area not radius
 
 -- | Draw a pie chart.
-pieChartData :: Monad m => [Double] -> StyledT m Drawing
+pieChartData :: (Monad' m) => [Double] -> StyledT m Drawing
 pieChartData = undefined
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
 
 
 -- | Draw
-circleDataWithColor :: Monad m => [P2 Double] -> StyledT m Drawing
+circleDataWithColor :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 circleDataWithColor = undefined
 
 -- circleDataWithColor = do
@@ -490,7 +500,7 @@ circleDataWithColor = undefined
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 -- | Draw a tree map.
-treeMapGraph :: Monad m => [Double] -> StyledT m Drawing
+treeMapGraph :: (Monad' m) => [Double] -> StyledT m Drawing
 treeMapGraph = undefined
 -- TODO use a ratio/percantage type wrapper
 
@@ -509,11 +519,11 @@ See also "Visualize this, p 157"
 
 
 -- | Like 'treeMapGraph', mapping the last dimension to colour.
-treeMapGraphWithColor :: Monad m => [P2 Double] -> StyledT m Drawing
+treeMapGraphWithColor :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 treeMapGraphWithColor = undefined
 
 -- | Draw a discrete heat map.
-discreteHeatMap :: Monad m => (Int -> Int -> Double) -> StyledT m Drawing
+discreteHeatMap :: (Monad' m) => (Int -> Int -> Double) -> StyledT m Drawing
 discreteHeatMap = undefined
 -- TODO use a ratio/percantage type wrapper
 
