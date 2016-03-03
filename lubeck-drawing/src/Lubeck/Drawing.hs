@@ -68,6 +68,8 @@ module Lubeck.Drawing
   , P2
   , P3
   , P4
+  , _x
+  , _y
 
   , Angle
   , acosA
