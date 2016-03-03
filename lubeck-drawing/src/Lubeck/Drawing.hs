@@ -1116,7 +1116,11 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
     svgTopNode w h vb = mkN "svg"
       [ mkA "width" w
       , mkA "height" h
-      , mkA "viewBox" vb ]
+      , mkA "viewBox" vb
+      -- Needed for static SVG and doesn't do any harm in the DOM
+      , mkA "xmlns:svg" "http://www.w3.org/2000/svg"
+      , mkA "xmlns" "http://www.w3.org/2000/svg"
+      ]
 
     placeOrigo :: Drawing -> Drawing
     placeOrigo = case originPlacement of
