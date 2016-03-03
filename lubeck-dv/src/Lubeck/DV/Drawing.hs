@@ -29,13 +29,15 @@
 --    ** Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
 module Lubeck.DV.Drawing
   (
+    Str(..)
+  , Monad'(..)
   -- * Drawing data
 
   -- $normalizeInputPoint
   -- $normalizeInputScalar
 
   -- ** Scatter
-    scatterData
+  , scatterData
   , scatterDataX
   , scatterDataY
 
@@ -153,18 +155,9 @@ import qualified Data.JSString
 import Lubeck.Util(showJS)
 #endif
 
-#ifdef __GHCJS__
-type Str = JSString
-toStr :: Show a => a -> Str
-toStr   = showJS
-packStr = Data.JSString.pack
-#else
-type Str = String
-toStr :: Show a => a -> Str
-toStr   = show
-packStr = id
-#endif
-
+-- | Both 'Monad' and 'Applicative'.
+-- For compability with pre-FAMP code
+-- See https://wiki.haskell.org/Functor-Applicative-Monad_Proposal
 #if __GLASGOW_HASKELL__ <= 708
 type Monad' m = (Monad m, Applicative m)
 #else

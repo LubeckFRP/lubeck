@@ -52,9 +52,11 @@ Main differences from Diagrams:
 -}
 module Lubeck.Drawing
   (
+    Str(..)
+
   -- * Creating drawings
   -- ** Geometry
-    Point(..)
+  , Point(..)
   , V1(..)
   , V2(..)
   , V3(..)
@@ -237,10 +239,12 @@ import Lubeck.Util(showJS)
 
 #ifdef __GHCJS__
 type Str = JSString
+toStr :: Show a => a -> Str
 toStr   = showJS
 packStr = Data.JSString.pack
 #else
 type Str = String
+toStr :: Show a => a -> Str
 toStr   = show
 packStr = id
 #endif
