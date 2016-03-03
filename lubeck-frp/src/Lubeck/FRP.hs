@@ -451,7 +451,8 @@ accumE :: a -> Events (a -> a) -> IO (Events a)
 accumE x a = do
   acc <- accumB x a
   return $ acc `sample` a
-
+  where
+    sample = snapshotWith const
 
 -- | Create a varying value by starting with the given initial value, and replacing it
 -- whenever an update occurs.
@@ -533,6 +534,8 @@ snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
 -- | Get an events stream that emits an event whenever the signal is updated.
 updates :: Signal a -> Events a
 updates (S (e,r)) = sample r e
+  where
+    sample = snapshotWith const
 
 -- | Convert a signal to a behavior that always has the same as the signal.
 current :: Signal a -> Behavior a
