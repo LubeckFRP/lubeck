@@ -28,6 +28,9 @@ import Data.Time (UTCTime(..), DiffTime, Day(..))
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
 
+import Text.Blaze (Markup, Attribute, Tag, AttributeValue, dataAttribute)
+import Text.Blaze.Internal (customParent)
+
 import Lubeck.FRP
 import Lubeck.DV.Drawing
 import Lubeck.DV.SimpleNormalized
@@ -39,13 +42,13 @@ import Lubeck.Forms.Basic
 import Lubeck.Drawing
 import Lubeck.Util(showJS, parseDateAndTimeToUTC)
 
-import Linear.Vector
-import Linear.Affine
-import Linear.V0
-import Linear.V1
-import Linear.V2
-import Linear.V3
-import Linear.V4
+-- import Linear.Vector
+-- import Linear.Affine
+-- import Linear.V0
+-- import Linear.V1
+-- import Linear.V2
+-- import Linear.V3
+-- import Linear.V4
 
 import qualified Lubeck.Drawing
 
@@ -55,12 +58,19 @@ import qualified Data.Colour.Names as Colors
 
 -- MAIN
 main = do
-  let dr = scale 10 (fillColor Colors.red circle)
-  let _ = toSvgAny mempty dr id $
-              \name attrs nodes -> "<" <> name <> ">"
-                <> mconcat (fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
+  -- let dr = scale 10 (fillColor Colors.red circle)
+  let dr = getStyled mempty $ combine [scatterDataX, scatterData]  ordRandPoints
+
+  let svgStr = toSvgAny mempty dr id $
+              \name attrs nodes -> "<" <> name <> " "
+                <> mconcat (Data.List.intersperse " " $ fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
+                <> ">"
                 <> mconcat nodes <> "</" <> name <> ">"
-  putStrLn "Hello"
+
+  putStrLn $ unpackStr svgStr
+  where
+    -- combine [f, g...] x = mconcat [f x, g x...]
+    combine fs x = mconcat $ fmap ($ x) fs
 
 
 -- Some random series for testing
