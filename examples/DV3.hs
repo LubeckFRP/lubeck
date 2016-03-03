@@ -56,8 +56,10 @@ import qualified Data.Colour.Names as Colors
 -- MAIN
 main = do
   let dr = scale 10 (fillColor Colors.red circle)
-  let _ = toSvgAny mempty dr id
-    (\name attrs nodes -> "<" <> name <> ">" <> fmap (\k v -> k <> "=\"" <> v <> "\"") attrs <> mconcat nodes <> "</" <> name <> ">")
+  let _ = toSvgAny mempty dr id $
+              \name attrs nodes -> "<" <> name <> ">"
+                <> mconcat (fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
+                <> mconcat nodes <> "</" <> name <> ">"
   putStrLn "Hello"
 
 
