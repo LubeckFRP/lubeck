@@ -80,7 +80,6 @@ module Lubeck.FRP
   , foldpR
 
   -- ** Sampling behaviors
-  -- , sample
   , snapshot
   , snapshotWith
 
@@ -95,22 +94,12 @@ module Lubeck.FRP
   , updates
   , current
 
-
   -- * Run FRP
   -- ** Standard
   , newEvent
   , subscribeEvent
   , pollBehavior
-  -- reactimate
   , reactimateIO
-
-  -- , FRPSystem(..)
-  -- , runFRP
-  -- , runFRP'
-  -- , runFRP''
-
-  -- ** Utility
-  -- testFRP
 
   -- * Sink
   , Sink
@@ -135,9 +124,7 @@ import Control.Monad (forever, forM_, join)
 
 import Control.Concurrent(forkIO)
 import Control.Monad.STM (atomically)
--- import qualified Control.Concurrent.STM.TChan as TChan
 import qualified Control.Concurrent.STM.TVar as TVar
--- import Control.Concurrent.STM.TChan (TChan)
 import Control.Concurrent.STM.TVar(TVar)
 
 import qualified Data.IntMap as Map
@@ -351,20 +338,6 @@ pollBehavior (R aProvider) = do
   aProvider (atomically . TVar.writeTVar v)
   TVar.readTVarIO v
 
--- | Execute an 'IO' action whenever an event occurs, and broadcast results.
-reactimateIO :: Events (IO a) -> IO (Events a)
-reactimateIO (E ioAProvider) = do
-  v <- TVar.newTVarIO undefined
-  ioAProvider $ \ioA -> do
-    a <- ioA
-    atomically $ TVar.writeTVar v a
-  return $ E $ \aSink ->
-    ioAProvider $ \_ -> do
-      a <- TVar.readTVarIO v
-      aSink a
--- TODO can actually be implemented in terms of newEvent/subscribeEvent
-
-
 
 -- PSEUDO-PRIMITIVES
 
@@ -374,36 +347,36 @@ reactimateIO (E ioAProvider) = do
 mapB :: (a -> b) -> Behavior a -> Behavior b
 mapB f (R aProvider) = R $ \bSink ->
   aProvider $ contramapSink f bSink
-{-
-Derived version:
-  mapB f x = x >>= (pure . f)
 
-Proof of equivalence:
-
-Th.
-  \f x -> pureB f `zipB` x == mapB f x
-Proof
-  \f x -> R ($ f) `zipB` x == mapB f x
-
-  \f (R x) -> R $ \as ->
-    ($ f) $ \ab -> x $ \a -> as $ ab a
-          ==
-   \f (R x) = R $ \as ->
-     x $ contramapSink f as
-
-  \f (R x) -> R $ \as ->
-    ($ f) $ (\ab -> x $ (\a -> as $ ab a))
-          ==
-   \f (R x) = R $ \as ->
-     x $ (\x -> as (f x))
-
-  \f (R x) -> R $ \as ->
-    x $ (\x -> as (f x))
-          ==
-   \f (R x) = R $ \as ->
-     x $ \x -> as (f x)
-
--}
+--
+-- Derived version:
+--   mapB f x = x >>= (pure . f)
+--
+-- Proof of equivalence:
+--
+-- Th.
+--   \f x -> pureB f `zipB` x == mapB f x
+-- Proof
+--   \f x -> R ($ f) `zipB` x == mapB f x
+--
+--   \f (R x) -> R $ \as ->
+--     ($ f) $ \ab -> x $ \a -> as $ ab a
+--           ==
+--    \f (R x) = R $ \as ->
+--      x $ contramapSink f as
+--
+--   \f (R x) -> R $ \as ->
+--     ($ f) $ (\ab -> x $ (\a -> as $ ab a))
+--           ==
+--    \f (R x) = R $ \as ->
+--      x $ (\x -> as (f x))
+--
+--   \f (R x) -> R $ \as ->
+--     x $ (\x -> as (f x))
+--           ==
+--    \f (R x) = R $ \as ->
+--      x $ \x -> as (f x)
+--
 
 -- | Drop 'Nothing' events.
 -- Specialization of 'scatter'.
@@ -419,40 +392,32 @@ filterJust (E maProvider) = E $ \aSink -> do
 filter :: (a -> Bool) -> Events a -> Events a
 filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
--- | A system that
---
---   * Can receive values of type a
---   * Can be polled for a state of type b
---   * Allow subscribers for events of type c
---
-data FRPSystem a b c = FRPSystem {
-  frpSystemInput  :: Sink a,
-  frpSystemState  :: Sink b -> IO (),
-  frpSystemOutput :: Sink c -> IO UnsubscribeAction
-  }
-
--- | Run an FRP system.
--- It starts in some initial state defined by the R component, and reacts to updates of type a.
-runFRP :: (Events a -> IO (Behavior b, Events c)) -> IO (FRPSystem a b c)
-runFRP f = do
-  Dispatcher aProvider aSink <- newDispatcher -- must accept subscriptions and feed values from the given sink
-  -- The providers
-  (R bProvider, E cProvider) <- f (E aProvider)
-  return $ FRPSystem aSink bProvider cProvider
-{-
-TODO Show how this can be defined in terms of newEvent/subscribeEvent/pollBehavior
--}
-
 
 zipB :: Behavior (a -> b) -> Behavior a -> Behavior b
 zipB (R abProvider) (R aProvider) = R $ \bSink ->
   abProvider $
     \ab -> aProvider $
       \a -> bSink $ ab a
-{-
-TODO Show how this can be derived from scatter.
-If the Monad instance is removed, this SHOULD be a primitive.
--}
+
+-- TODO Show how zipB can be derived from scatter.
+-- If the Monad instance is removed, this SHOULD be a primitive.
+
+
+-- | Execute an 'IO' action whenever an event occurs, and broadcast results.
+reactimateIO :: Events (IO a) -> IO (Events a)
+reactimateIO (E ioAProvider) = do
+  v <- TVar.newTVarIO undefined
+  ioAProvider $ \ioA -> do
+    a <- ioA
+    atomically $ TVar.writeTVar v a
+  return $ E $ \aSink ->
+    ioAProvider $ \_ -> do
+      a <- TVar.readTVarIO v
+      aSink a
+
+-- TODO show how reactimateIO can be derived from newEvent/subscribeEvent
+
+
 
 -- DERIVED
 
@@ -477,23 +442,8 @@ foldpE f a e = a `accumE` (f <$> e)
 foldpS :: (a -> b -> b) -> b -> Signal a -> IO (Signal b)
 foldpS f z s = accumS z (fmap f $ updates s)
 
-
--- foldpR.flip :: (b -> a -> b) -> b -> Stream a -> Signal b
--- foldpR const :: b -> Stream b -> Signal b
-
--- filter :: (a -> Bool) -> E a -> E a
--- filter p = scatter . mapE (\x -> if p x then [x] else [])
-
-{-# DEPRECATED sample "Use 'snapshotWith const'" #-}
-
--- | Get the current value of the behavior whenever an event occurs.
-sample :: Behavior a -> Events b -> Events a
-sample = snapshotWith const
-
--- snapshot :: R a -> E b -> E (a, b)
+-- snapshot :: Behavior a -> Events b -> Events (a, b)
 -- snapshot = snapshotWith (,)
-
--- snapshotWith ($)   :: Signal (a -> c) -> Stream a -> Stream c
 
 -- | Create an event stream that emits the result of accumulating its inputs
 -- whenever an update occurs.
@@ -587,32 +537,3 @@ updates (S (e,r)) = sample r e
 -- | Convert a signal to a behavior that always has the same as the signal.
 current :: Signal a -> Behavior a
 current (S (e,r)) = r
-
-
-{-# DEPRECATED runFRP   "Use newEvent/subscribeEvent/pollBehavior" #-}
-{-# DEPRECATED runFRP'  "Use newEvent/subscribeEvent/pollBehavior" #-}
-{-# DEPRECATED runFRP'' "Use newEvent/subscribeEvent/pollBehavior" #-}
-
--- | Run an FRP system, producing a behavior.
--- You can poll the sstem for the current state, or subscribe to changes in its output.
---
--- Note that as this returns a behavior, the resulting system will emit an output on every
--- input event, whether the actual output of the network has changed or nor.
-runFRP' :: (Events a -> IO (Behavior b)) -> IO (FRPSystem a b b)
-runFRP' f = runFRP (\e -> f e >>= \r -> return (r, sample r e))
-
--- | Run an FRP system starting in the given state.
--- The behavior passed to the function starts in the initial state provided here and reacts to inputs to the system.
--- You can poll system for the current state, or subscribe to changes in its output.
---
--- Note that as this returns a behavior, the resulting system will emit an output on every
--- input event, whether the actual output of the network has changed or nor.
-runFRP'' :: a -> (Behavior a -> IO (Behavior b)) -> IO (FRPSystem a b b)
-runFRP'' z f = runFRP' (stepper z >=> f)
-
-testFRP :: (Events String -> IO (Behavior String)) -> IO b
-testFRP x = do
-  system <- runFRP' x
-  frpSystemOutput system putStrLn
-  -- TODO print initial!
-  forever $ getLine >>= frpSystemInput system
