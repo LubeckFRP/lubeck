@@ -43,6 +43,7 @@ import           BDPlatform.Pages.CreateAd      (createAdPage)
 import           BDPlatform.Pages.ImageLibrary  (imageLibraryPage)
 import           BDPlatform.Pages.Login         (loginPage, Username)
 import           BDPlatform.Pages.PostSearch    (searchPage)
+import           BDPlatform.Pages.AccountSearch (accountSearchPage)
 import           BDPlatform.Pages.User          (userPage)
 import           BDPlatform.Pages.Interactions  (interactionsMain)
 
@@ -59,22 +60,24 @@ import           BDPlatform.Config
 
 menuItems :: MenuItems Nav
 menuItems =
-  [ (NavUser,         "User")
-  , (NavSearch,       "Search")
-  , (NavImages,       "Image Library")
-  , (NavCreateAd,     "Create Ad")
-  , (NavInteractions, "Shoutout browser")
-  , (NavLogin,        "Logout") -- last item is special in that it will be positioned far right
+  [ (NavUser,          "User")
+  , (NavSearch,        "Search")
+  , (NavImages,        "Image Library")
+  , (NavCreateAd,      "Create Ad")
+  , (NavInteractions,  "Shoutout browser")
+  , (NavAccountSearch, "Account search")
+  , (NavLogin,         "Logout") -- last item is special in that it will be positioned far right
   ]
 
-rootLayout goTo menu err busy login user ads search createAd imlib interactions = case goTo of
-  NavLogin        -> layoutLogin busy err login
-  NavUser         -> layout menu busy err user
-  NavCampaign     -> layout menu busy err ads
-  NavSearch       -> layout menu busy err search
-  NavCreateAd     -> layout menu busy err createAd
-  NavImages       -> layout menu busy err imlib
-  NavInteractions -> layout menu busy err interactions
+rootLayout goTo menu err busy login user ads search createAd imlib interactions accountSearchPageView = case goTo of
+  NavLogin         -> layoutLogin busy err login
+  NavUser          -> layout menu busy err user
+  NavCampaign      -> layout menu busy err ads
+  NavSearch        -> layout menu busy err search
+  NavCreateAd      -> layout menu busy err createAd
+  NavImages        -> layout menu busy err imlib
+  NavInteractions  -> layout menu busy err interactions
+  NavAccountSearch -> layout menu busy err accountSearchPageView
   where
     layoutLogin busy err page =
       div [class_ "container login-top-buffer"]
@@ -138,7 +141,8 @@ adPlatform = do
   let campaignNavE                      = fmap (const NavCampaign) (updates adsView)
   navS                                  <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
 
-  searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB navS
+  searchPageView                        <- searchPage        busySink notifSink ipcSink           usernameB navS
+  accountSearchPageView                 <- accountSearchPage busySink notifSink ipcSink           usernameB navS
 
   -- composition of keyboard listeners, looks like an inverse to Html signal distribution & flow
   subscribeEvent kbdEvents $ \e -> do
@@ -166,6 +170,7 @@ adPlatform = do
                             <*> createAdView
                             <*> imageLibView
                             <*> interactionsView
+                            <*> accountSearchPageView
 
   return (mainView, Just kbdSink)
   where
