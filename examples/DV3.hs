@@ -18,6 +18,7 @@ import System.Random (mkStdGen, randoms, split)
 
 import Control.Lens (view)
 import Control.Lens.Operators
+import Data.String (IsString(fromString))
 
 
 -- TODO move
@@ -28,7 +29,7 @@ import Data.Time (UTCTime(..), DiffTime, Day(..))
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
 
-import Text.Blaze (Markup, Attribute, Tag, AttributeValue, dataAttribute)
+import Text.Blaze (Markup, Attribute, Tag, AttributeValue, customAttribute, string, (!))
 import Text.Blaze.Internal (customParent)
 
 import Lubeck.FRP
@@ -48,7 +49,7 @@ import Lubeck.Util(showJS, parseDateAndTimeToUTC)
 -- import Linear.V1
 -- import Linear.V2
 -- import Linear.V3
--- import Linear.V4
+import Linear.V4(_x)
 
 import qualified Lubeck.Drawing
 
@@ -59,7 +60,11 @@ import qualified Data.Colour.Names as Colors
 -- MAIN
 main = do
   -- let dr = scale 10 (fillColor Colors.red circle)
-  let dr = getStyled mempty $ combine [scatterDataX, scatterData]  ordRandPoints
+  let dr = flip getStyled mempty $ combine [lineData, scatterData]  ordRandPoints
+
+  let svgBlaze = toSvgAny mempty dr (string . unpackStr) $
+              \name attrs nodes ->
+                foldr (\(k,v) n -> n ! customAttribute "" "") (customParent (fromString $ unpackStr name) $ mconcat nodes) attrs
 
   let svgStr = toSvgAny mempty dr id $
               \name attrs nodes -> "<" <> name <> " "
