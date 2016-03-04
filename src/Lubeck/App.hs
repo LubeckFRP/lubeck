@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 
 {-|
 This module provides a way to write single-page apps using "Lubeck.FRP" and "Web.VirtualDom".
@@ -129,7 +129,7 @@ runAppReactiveX (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $
 --   -> (Sink action -> model -> Html)
 --   -> IO ()
 -- runAppPure update render = runApp (fmap (fmap $ \x -> (x,Nothing)) . update) render
--- 
+--
 -- {-# DEPRECATED runApp "Please use runAppStatic or runAppReactive" #-}
 -- -- | Run an application, Elm-style.
 -- runApp

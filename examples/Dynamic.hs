@@ -1,4 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections #-}
+
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, OverloadedStrings, TupleSections #-}
 
 module Main where
 
@@ -30,8 +31,8 @@ sumAndReset intE resetE = accumS 0 $ merge adder putZ
 main :: IO ()
 main = do
   (intBtnView, intE) <- component 0 . multiButtonWidget $ map (\x -> (pack (show x), x)) [1..20]
-  (resetView, resetE) <- component () $ buttonWidget "Reset Sum" 
+  (resetView, resetE) <- component () $ buttonWidget "Reset Sum"
   sumAndResS <- sumAndReset intE resetE
   let sumView = componentListen intDisplayWidget sumAndResS
-   
+
   runAppReactive $ mconcat [intBtnView, sumView, resetView]

@@ -108,14 +108,6 @@ executable bd-example-static-page
                      , ghcjs-base
   default-language:    Haskell2010
 
-executable bd-example-widget-composition
-  main-is:             examples/WidgetComposition.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , ghcjs-base
-  default-language:    Haskell2010
-
 executable bd-example-dynamic-page
   main-is:             examples/Dynamic.hs
   build-depends:       base
