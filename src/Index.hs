@@ -14,7 +14,7 @@ import Lubeck.App (Html, runAppStatic)
 
 
 page :: Html
-page = div [] [h1 [] [text "Index"]
+page = div [] [h1 [] [text "Inde"]
   , h2 [] [text "Applications"]
   , ul []
     [ li [] [a [href "bdplatform/"]      [text "BD Platform"]]
