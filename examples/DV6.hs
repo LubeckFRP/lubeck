@@ -56,6 +56,13 @@ import qualified Data.Colour.Names as Colors
 -- MAIN
 
 
+{-
+Ships:
+
+
+-}
+
+
 chooseDrawing :: [Drawing] -> IO (Signal Html)
 chooseDrawing ds = do
   (view, intE) <- componentEvent 0 (rangeWidget 0 (length ds - 1) 1) mempty
