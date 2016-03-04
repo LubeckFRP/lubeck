@@ -39,6 +39,20 @@ Basic GUI examples:
 -- | FRP routing monad. Should be MonadIO but not IO. Could be more specific, i.e. separating polling/sending etc a la reflex.
 type FRP = IO
 
+-- | Put the constant value in the sink whatever is put into resulting sink (often @()@).
+(>$) :: b -> Sink b -> Sink a
+(>$) = contramapSink . const
+
+(>$<) :: (a -> b) -> Sink b -> Sink a
+(>$<) = contramapSink
+
+(>$$<) :: Sink b -> (a -> b) -> Sink a
+(>$$<) = flip contramapSink
+
+
+
+
+
 -- A facet is much like a widget or component.
 type Facet   r a b = (Signal r, Signal b, Sink a)
 type FacetO  r b   = (Signal r, Signal b)
@@ -75,15 +89,21 @@ data MouseEv = Up | Down | Over | Out | Move deriving (Enum, Eq, Ord, Show, Read
 
 addMouseInteraction :: Sink MouseEv -> Drawing -> Drawing
 addMouseInteraction s dr = id
-  $ addProperty (SVG.onMouseUp   $ contramapSink Up   s)
-  $ addProperty (SVG.onMouseDown $ contramapSink Down s)
-  $ addProperty (SVG.onMouseOver $ contramapSink Over s)
-  $ addProperty (SVG.onMouseOut  $ contramapSink Out  s)
-  $ addProperty (SVG.onMouseMove $ contramapSink Move s)
+  $ addProperty (SVG.onMouseUp   $ Up >$ s)
+  $ addProperty (SVG.onMouseDown $ contramapSink (const Down) s)
+  $ addProperty (SVG.onMouseOver $ contramapSink (const Over) s)
+  $ addProperty (SVG.onMouseOut  $ contramapSink (const Out)  s)
+  $ addProperty (SVG.onMouseMove $ contramapSink (const Move) s)
   $ dr
 
 addMouseInteraction2 ::  Facet Drawing MouseEv b -> Facet Drawing MouseEv b
 addMouseInteraction2 = facetI addMouseInteraction
+
+
+
+
+
+
 
 clickableDW :: WidgetT' Drawing ()
 clickableDW outp () = mconcat [ci,sq]
@@ -94,6 +114,15 @@ clickableF :: FRP (FacetO Drawing ())
 clickableF = facetOutputOnly clickableDW
 -- | A button that displays a boolan state and sends () when clicked.
 
+
+
+-- clickableDW :: WidgetT' Drawing ()
+-- clickableDW outp () = mconcat [ci,sq]
+--   where
+--     sq = fillColor Colors.grey   square
+--     ci = fillColor Colors.yellow circle
+-- clickableF :: FRP (FacetO Drawing ())
+-- clickableF = facetOutputOnly clickableDW
 
 -- How do we make a basic hover component?
 -- How do we implement a timely flash, a la "bang" in Max?
