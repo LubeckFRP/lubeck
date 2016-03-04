@@ -25,7 +25,7 @@ main = do
     liftIO $ runMake `catch` (\e -> print (e :: SomeException))
     print "Rebuild done"
 
-    print "Restarting server"
+    print "Restarting server (using fast build)"
     p <- atomically $ readTVar p_
     case p of
       Nothing -> return ()
