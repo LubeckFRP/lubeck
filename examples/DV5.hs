@@ -178,7 +178,7 @@ bangF = facetOutputOnlyWM_ bangW
 
 -- How do we make a basic hover component?
 -- How do we implement a timely flash, a la "bang" in Max?
-
+-- Do we need Monad Signal here? (that would give us Monad FacetO)
 
 
 
@@ -188,7 +188,7 @@ gui = do
   (v1,o1) <- bangF
   (v2,o2) <- bangF
   subscribeEvent (updates (liftA2 (,) o1 o2)) print
-  return $ (<> smokeBackground) <$> scale 0.96 <$> liftA2 (|||) v1 v2
+  return $ (<> smokeBackground) <$> scale 1.88 <$> liftA2 (|||) v1 v2
   -- return mempty
 
 main = do
