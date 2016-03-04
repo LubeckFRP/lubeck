@@ -28,7 +28,6 @@ type Layout =
     :<|> "labelrefiner"               :> Raw
     :<|> "example-static"             :> Raw
     :<|> "example-dynamic"            :> Raw
-    :<|> "example-widget-composition" :> Raw
     :<|> "example-api-req"            :> Raw
     :<|> "example-plots"              :> Raw
     :<|> "example-plots2"             :> Raw
@@ -91,7 +90,6 @@ main = do
       labelRefinerServer       <- serveApp rnd jsExeDir "bd-label-refiner"
       exampleStaticServer      <- serveApp rnd jsExeDir "bd-example-static-page"
       exampleDynamicServer     <- serveApp rnd jsExeDir "bd-example-dynamic-page"
-      exampleWidgetComposition <- serveApp rnd jsExeDir "bd-example-widget-composition"
       exampleApiReq            <- serveApp rnd jsExeDir "bd-example-api-req"
       examplePlots             <- serveApp rnd jsExeDir "bd-example-plots"
       examplePlots2            <- serveApp rnd jsExeDir "bd-example-plots2"
@@ -112,7 +110,6 @@ main = do
           :<|> labelRefinerServer
           :<|> exampleStaticServer
           :<|> exampleDynamicServer
-          :<|> exampleWidgetComposition
           :<|> exampleApiReq
           :<|> examplePlots
           :<|> examplePlots2
