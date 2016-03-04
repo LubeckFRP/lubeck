@@ -135,7 +135,8 @@ instance Diffable MouseState where
   patch (MouseState inside down) Up   = MouseState inside False
   patch (MouseState inside down) Down = MouseState inside True
   patch (MouseState inside down) Over = MouseState True   down
-  patch (MouseState inside down) Out  = MouseState False  down
+  -- If mouse goes while button is still pressed, release
+  patch (MouseState inside down) Out  = MouseState False  False
   patch x _ = x
 
 
