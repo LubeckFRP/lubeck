@@ -23,8 +23,8 @@ module Lubeck.Web.History
   ) where
 
 import GHCJS.Types (JSVal)
-import GHCJS.Foreign.QQ (js_, jsu_)
 import GHCJS.Types(JSString, jsval)
+-- import GHCJS.Foreign.QQ (js_, jsu_)
 
 import GHCJS.Foreign.Callback (Callback, syncCallback1, OnBlocked(ThrowWouldBlock))
 
@@ -40,17 +40,19 @@ back    = go (-1)
 
 -- |
 -- See https://developer.mozilla.org/en-US/docs/Web/API/History/go
-go :: Int -> IO ()
-go n = [jsu_| window.history.go(`n) |]
+foreign import javascript unsafe "window.history.go($1)"
+  go :: Int -> IO ()
+-- go n = [jsu_| window.history.go(`n) |]
 
 -- |
 -- See https://developer.mozilla.org/en-US/docs/Web/API/History/pushState
-pushState
-  :: JSVal
-  -> JSString
-  -> JSString
-  -> IO ()
-pushState state title url = [jsu_| window.history.pushState(`state, `title, `url) |]
+foreign import javascript unsafe "window.history.pushState($1, $2, $3)"
+  pushState
+    :: JSVal
+    -> JSString
+    -> JSString
+    -> IO ()
+-- pushState state title url = [jsu_| window.history.pushState(`state, `title, `url) |]
 -- pushState state title url = [jsu_| console.log([`state, `title, `url]) |]
 
 -- | Type of events passed to 'onpopstate'.

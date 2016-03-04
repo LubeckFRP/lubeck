@@ -28,7 +28,6 @@ import           Data.Time                      (Day (..), DiffTime,
                                                  UTCTime (..))
 
 import           Data.JSString                  (pack)
-import           GHCJS.Foreign.QQ               (js, jsu, jsu')
 import           GHCJS.Types                    (JSString, jsval)
 import           Web.VirtualDom.Html            (a, button, div, form, h1, hr,
                                                  img, input, label, p, table,
