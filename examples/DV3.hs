@@ -29,8 +29,8 @@ import Data.Time (UTCTime(..), DiffTime, Day(..))
 import Control.Concurrent(forkIO, threadDelay)
 import Control.Monad(forever)
 
-import Text.Blaze (Markup, Attribute, Tag, AttributeValue, customAttribute, string, (!))
-import Text.Blaze.Internal (customParent)
+-- import Text.Blaze (Markup, Attribute, Tag, AttributeValue, customAttribute, string, (!))
+-- import Text.Blaze.Internal (customParent)
 
 import Lubeck.FRP
 import Lubeck.DV.Drawing
@@ -62,9 +62,9 @@ main = do
   -- let dr = scale 10 (fillColor Colors.red circle)
   let dr = flip getStyled mempty $ combine [lineData, scatterData]  ordRandPoints
 
-  let svgBlaze = toSvgAny mempty dr (string . unpackStr) $
-              \name attrs nodes ->
-                foldr (\(k,v) n -> n ! customAttribute "" "") (customParent (fromString $ unpackStr name) $ mconcat nodes) attrs
+  -- let svgBlaze = toSvgAny mempty dr (string . unpackStr) $
+  --             \name attrs nodes ->
+  --               foldr (\(k,v) n -> n ! customAttribute "" "") (customParent (fromString $ unpackStr name) $ mconcat nodes) attrs
 
   let svgStr = toSvgAny mempty dr id $
               \name attrs nodes -> "<" <> name <> " "
