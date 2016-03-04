@@ -1,5 +1,6 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, OverloadedStrings, TupleSections, ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, OverloadedStrings, TupleSections, ScopedTypeVariables, TypeFamilies
+  , FlexibleContexts #-}
 
 module Main where
 
@@ -38,17 +39,30 @@ Basic GUI examples:
 
 -- | FRP routing monad. Should be MonadIO but not IO. Could be more specific, i.e. separating polling/sending etc a la reflex.
 type FRP = IO
+contramap = contramapSink
 
 -- | Put the constant value in the sink whatever is put into resulting sink (often @()@).
 (>$) :: b -> Sink b -> Sink a
-(>$) = contramapSink . const
+(>$) = contramap . const
 
 (>$<) :: (a -> b) -> Sink b -> Sink a
-(>$<) = contramapSink
+(>$<) = contramap
 
 (>$$<) :: Sink b -> (a -> b) -> Sink a
-(>$$<) = flip contramapSink
+(>$$<) = flip contramap
 
+data Void
+
+-- Like Affine/AffineSpace except the diff type has no negate
+class Monoid (Diff p) => Diffable p where
+  type Diff p :: *
+  diff :: p -> p -> Diff p
+  patch :: p -> Diff p -> p
+-- TODO scalar instances
+-- TODO:
+-- AffineSpace p => AffineSpace (a -> p)
+-- (AffineSpace p, AffineSpace q) => AffineSpace (p, q)
+-- (AffineSpace p, AffineSpace q, AffineSpace r) => AffineSpace (p, q, r)
 
 
 
@@ -69,12 +83,31 @@ facet2  :: (b -> a -> a) -> (c -> a -> a)
         -> FRP (Facet r b a)
 facet2 f g z w = do
   (v,o,i) <- facet z (rmapWidget g w)
-  return (v,o,contramapSink f i)
+  return (v,o,contramap f i)
+-- Note facet and facet2 can be defined in terms of each other!
 
-facetOutputOnly :: Monoid a => WidgetT r a c -> FRP (FacetO r a)
+facetOutputOnly :: Monoid a => WidgetT r a c_ -> FRP (FacetO r a)
 facetOutputOnly w = dropInput <$> facet2 (flip const) (flip const) mempty w
   where
     dropInput (v,o,i) = (v,o)
+
+facetOutputOnlyWM :: Monoid a => (MouseEv -> a -> a) -> WidgetT Drawing a c_ -> FRP (FacetO Drawing a)
+facetOutputOnlyWM f w = dropInput <$> facetI addMouseInteraction <$> facet2 f (flip const) mempty w
+  where
+    dropInput (v,o,i) = (v,o)
+
+    addMouseInteraction :: Sink MouseEv -> Drawing -> Drawing
+    addMouseInteraction s dr = id
+      $ addProperty (SVG.onMouseUp   $ Up   >$ s)
+      $ addProperty (SVG.onMouseDown $ Down >$ s)
+      $ addProperty (SVG.onMouseOver $ Over >$ s)
+      $ addProperty (SVG.onMouseOut  $ Out  >$ s)
+      $ addProperty (SVG.onMouseMove $ Move >$ s)
+      $ dr
+
+-- | Lift a widget that visualizes mouse state to a mouse-state facet.
+facetOutputOnlyWM_ :: WidgetT Drawing MouseState c_ -> FRP (FacetO Drawing MouseState)
+facetOutputOnlyWM_ = facetOutputOnlyWM (flip patch)
 
 -- Like a standard facet
 
@@ -82,23 +115,34 @@ facetOutputOnly w = dropInput <$> facet2 (flip const) (flip const) mempty w
 facetI :: (Sink a -> r -> r) -> Facet r a b -> Facet r a b
 facetI f (v,o,i) = (fmap (f i) v,o,i)
 
+facetI2 :: (c -> a) -> (Sink c -> r -> r) -> Facet r a b -> Facet r a b
+facetI2 g f = facetI (f . contramap g)
+
 
 
 -- Drawing-based GUI
-data MouseEv = Up | Down | Over | Out | Move deriving (Enum, Eq, Ord, Show, Read)
+data MouseEv = None | Up | Down | Over | Out | Move deriving (Enum, Eq, Ord, Show, Read)
+instance Monoid MouseEv where
+  mempty = None
+  mappend x y = x -- last event to happen as
+data MouseState = MouseState { mouseInside :: Bool, mouseDown :: Bool }
+instance Monoid MouseState where
+  mempty = MouseState False False -- how do we know this?
+  mappend x y = x -- ?
+instance Diffable MouseState where
+  type Diff MouseState = MouseEv
+  diff _ _ = error "TODO MouseState.diff"
+  patch (MouseState inside down) Up   = MouseState inside False
+  patch (MouseState inside down) Down = MouseState inside True
+  patch (MouseState inside down) Over = MouseState True   down
+  patch (MouseState inside down) Out  = MouseState False  down
 
-addMouseInteraction :: Sink MouseEv -> Drawing -> Drawing
-addMouseInteraction s dr = id
-  $ addProperty (SVG.onMouseUp   $ Up >$ s)
-  $ addProperty (SVG.onMouseDown $ contramapSink (const Down) s)
-  $ addProperty (SVG.onMouseOver $ contramapSink (const Over) s)
-  $ addProperty (SVG.onMouseOut  $ contramapSink (const Out)  s)
-  $ addProperty (SVG.onMouseMove $ contramapSink (const Move) s)
-  $ dr
 
-addMouseInteraction2 ::  Facet Drawing MouseEv b -> Facet Drawing MouseEv b
-addMouseInteraction2 = facetI addMouseInteraction
 
+
+-- facet2  :: (b -> a -> a) -> (c -> a -> a)
+--         -> a -> WidgetT r a c
+--         -> FRP (Facet r b a)
 
 
 
@@ -106,7 +150,7 @@ addMouseInteraction2 = facetI addMouseInteraction
 
 
 clickableDW :: WidgetT' Drawing ()
-clickableDW outp () = mconcat [ci,sq]
+clickableDW _ () = mconcat [ci,sq]
   where
     sq = fillColor Colors.grey   square
     ci = fillColor Colors.yellow circle
@@ -114,6 +158,18 @@ clickableF :: FRP (FacetO Drawing ())
 clickableF = facetOutputOnly clickableDW
 -- | A button that displays a boolan state and sends () when clicked.
 
+
+hoverableDW :: WidgetT Drawing MouseState Void
+hoverableDW _ (MouseState inside down) = mconcat [ci,sq]
+  where
+    sq = fillColor Colors.grey   square
+    ci = fillColor circleCol circle
+    circleCol
+      | down      = Colors.red
+      | inside    = Colors.orange
+      | otherwise = Colors.yellow
+hoverableF :: FRP (FacetO Drawing MouseState)
+hoverableF = facetOutputOnlyWM_ hoverableDW
 
 
 -- clickableDW :: WidgetT' Drawing ()
