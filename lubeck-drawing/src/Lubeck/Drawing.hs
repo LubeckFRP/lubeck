@@ -52,9 +52,14 @@ Main differences from Diagrams:
 -}
 module Lubeck.Drawing
   (
+    Str(..)
+  , toStr
+  , packStr
+  , unpackStr
+
   -- * Creating drawings
   -- ** Geometry
-    Point(..)
+  , Point(..)
   , V1(..)
   , V2(..)
   , V3(..)
@@ -63,6 +68,8 @@ module Lubeck.Drawing
   , P2
   , P3
   , P4
+  , _x
+  , _y
 
   , Angle
   , acosA
@@ -238,12 +245,16 @@ import Lubeck.Util(showJS)
 
 #ifdef __GHCJS__
 type Str = JSString
-toStr   = showJS
-packStr = Data.JSString.pack
+toStr :: Show a => a -> Str
+toStr     = showJS
+packStr   = Data.JSString.pack
+unpackStr = Data.JSString.unpack
 #else
 type Str = String
-toStr   = show
-packStr = id
+toStr :: Show a => a -> Str
+toStr     = show
+packStr   = id
+unpackStr = id
 #endif
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
@@ -1112,7 +1123,11 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
     svgTopNode w h vb = mkN "svg"
       [ mkA "width" w
       , mkA "height" h
-      , mkA "viewBox" vb ]
+      , mkA "viewBox" vb
+      -- Needed for static SVG and doesn't do any harm in the DOM
+      , mkA "xmlns:svg" "http://www.w3.org/2000/svg"
+      , mkA "xmlns" "http://www.w3.org/2000/svg"
+      ]
 
     placeOrigo :: Drawing -> Drawing
     placeOrigo = case originPlacement of
