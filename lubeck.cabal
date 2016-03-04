@@ -54,10 +54,10 @@ library
                      , Components.BusyIndicator
                      , Components.MainMenu
                      , Components.Map
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , virtual-dom
-                     , ghcjs-ffiqq == 0.1.0.0
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-ffiqq
+                     , ghcjs-base
                      , stm
                      , contravariant
                      , vector
@@ -73,7 +73,6 @@ library
                      , data-interval
                      , linear
                      , vector-space
-                    --  , vector-space-points
                      , colour
                      , xml
                      , neat-interpolation
@@ -91,47 +90,46 @@ library
 
 executable bd-example-app
   main-is:             examples/Reactive.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , colour
-                    --  , vector-space
                      , linear
                      , time
                      , lens
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-static-page
   main-is:             examples/Static.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-widget-composition
   main-is:             examples/WidgetComposition.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-dynamic-page
   main-is:             examples/Dynamic.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-api-req
   main-is:             examples/ApiReq.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-history
@@ -144,37 +142,33 @@ executable bd-example-history
 
 executable bd-example-plots
   main-is:             examples/DV1.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , time
                      , linear
-                    --  , vector-space
-                    --  , vector-space-points
                      , colour
                      , random
                      , lens
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-plots2
   main-is:             examples/DV2.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , time
                      , linear
-                    --  , vector-space
-                    --  , vector-space-points
                      , colour
                      , random
                      , lens
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-plots3
   main-is:             examples/DV3.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , time
@@ -182,14 +176,12 @@ executable bd-example-plots3
                      , colour
                      , random
                      , lens
-                     -- TODO
-                     , blaze-markup
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-plots4
   main-is:             examples/DV4.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , time
@@ -197,12 +189,12 @@ executable bd-example-plots4
                      , colour
                      , random
                      , lens
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-plots5
   main-is:             examples/DV5.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , time
@@ -210,12 +202,12 @@ executable bd-example-plots5
                      , colour
                      , random
                      , lens
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-example-plots6
   main-is:             examples/DV6.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , time
@@ -223,18 +215,17 @@ executable bd-example-plots6
                      , colour
                      , random
                      , lens
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-bdplatform
   main-is:             src/BDPlatform.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
-                     , ghcjs-base ==0.2.0.0
-                     , ghcjs-ffiqq == 0.1.0.0
+                     , ghcjs-base
+                     , ghcjs-ffiqq
                      , stm
-                     --, contravariant
                      , text
                      , mtl
                      , time
@@ -249,13 +240,12 @@ executable bd-bdplatform
                      , bytestring
                      , monad-parallel
                      , ListZipper
-
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-label-refiner
   main-is:             src/LabelRefiner.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
                      , colour
@@ -263,13 +253,13 @@ executable bd-label-refiner
                      , time
                      , lens
                      , aeson
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
 
 executable bd-index
   main-is:             src/Index.hs
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , lubeck
                      , virtual-dom
-                     , ghcjs-base ==0.2.0.0
+                     , ghcjs-base
   default-language:    Haskell2010
