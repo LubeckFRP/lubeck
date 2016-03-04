@@ -9,6 +9,7 @@ import qualified Prelude
 import Data.Monoid ((<>))
 import GHCJS.Types(JSString, jsval)
 import qualified Web.VirtualDom.Html as H
+import qualified Web.VirtualDom.Svg.Events as SVG
 import qualified Data.JSString
 import qualified Data.List
 import qualified Data.Ord
@@ -61,8 +62,28 @@ facetOutputOnly w = dropInput <$> facet2 (flip const) (flip const) mempty w
   where
     dropInput (v,o,i) = (v,o)
 
+-- Like a standard facet
+
+-- | Gives a facet access to its input.
+facetI :: (Sink a -> r -> r) -> Facet r a b -> Facet r a b
+facetI f (v,o,i) = (fmap (f i) v,o,i)
+
+
 
 -- Drawing-based GUI
+data MouseEv = Up | Down | Over | Out | Move deriving (Enum, Eq, Ord, Show, Read)
+
+addMouseInteraction :: Sink MouseEv -> Drawing -> Drawing
+addMouseInteraction s dr = id
+  $ addProperty (SVG.onMouseUp   $ contramapSink Up   s)
+  $ addProperty (SVG.onMouseDown $ contramapSink Down s)
+  $ addProperty (SVG.onMouseOver $ contramapSink Over s)
+  $ addProperty (SVG.onMouseOut  $ contramapSink Out  s)
+  $ addProperty (SVG.onMouseMove $ contramapSink Move s)
+  $ dr
+
+addMouseInteraction2 ::  Facet Drawing MouseEv b -> Facet Drawing MouseEv b
+addMouseInteraction2 = facetI addMouseInteraction
 
 clickableDW :: WidgetT' Drawing ()
 clickableDW outp () = mconcat [ci,sq]
@@ -72,6 +93,12 @@ clickableDW outp () = mconcat [ci,sq]
 clickableF :: FRP (FacetO Drawing ())
 clickableF = facetOutputOnly clickableDW
 -- | A button that displays a boolan state and sends () when clicked.
+
+
+-- How do we make a basic hover component?
+-- How do we implement a timely flash, a la "bang" in Max?
+
+
 
 
 
