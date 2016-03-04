@@ -190,8 +190,8 @@ hoverableF = facetOutputOnlyWM_ hoverableDW
 gui :: FRP (Signal Drawing)
 gui = do
   (v1,_) <- hoverableF
-  (v2,_) <- clickableF
-  return $ liftA2 (|||) v1 v2
+  (v2,_) <- hoverableF
+  return $ scale 0.1 <$> liftA2 (|||) v1 v2
   -- return mempty
 
 main = do
