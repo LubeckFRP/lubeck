@@ -73,7 +73,7 @@ library
                      , data-interval
                      , linear
                      , vector-space
-                     , vector-space-points
+                    --  , vector-space-points
                      , colour
                      , xml
                      , neat-interpolation

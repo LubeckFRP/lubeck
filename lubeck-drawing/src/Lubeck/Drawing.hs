@@ -225,7 +225,8 @@ import qualified Linear.V2
 import qualified Linear.V3
 import qualified Linear.V4
 
-#if __GLASGOW_HASKELL__ <= 708
+#if MIN_VERSION_linear(1,20,0)
+#else
 import Linear.Epsilon
 #endif
 
@@ -355,8 +356,10 @@ instance Num a => Num (Transformation a) where
   signum = error "Missing in Num (Transformation a)"
   fromInteger n = TF $ identity !!* fromInteger n
 
+-- linear 1.19 vs linear 1.20
 instance (Floating a
-#if __GLASGOW_HASKELL__ <= 708
+#if MIN_VERSION_linear(1,20,0)
+#else
   , Epsilon a
 #endif
   )
@@ -364,7 +367,7 @@ instance (Floating a
   recip (TF x) = TF (inv33_ x)
   fromRational = error "Missing in Fractional (Transformation a)"
 
-#if __GLASGOW_HASKELL__ > 708
+#if MIN_VERSION_linear(1,20,0)
 inv33_ = inv33
 #else
 inv33_ m = case inv33 m of
@@ -382,7 +385,8 @@ apTransformation (TF x) (TF y) = TF (x !*! y)
 
 -- | a.k.a 'recip'
 negTransformation :: (Num a, Floating a
-#if __GLASGOW_HASKELL__ <= 708
+#if MIN_VERSION_linear(1,20,0)
+#else
   , Epsilon a
 #endif
   ) => Transformation a -> Transformation a
@@ -489,7 +493,8 @@ transl t = let (a,b,c,d,e,f) = transformationToMatrix t
 -- TODO cleanup definitions/names here
 
 transformEnvelope :: (Floating n
-#if __GLASGOW_HASKELL__ <= 708
+#if MIN_VERSION_linear(1,20,0)
+#else
   , Epsilon n
 #endif
   ) => Transformation n -> Envelope V2 n -> Envelope V2 n
