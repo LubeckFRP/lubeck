@@ -136,7 +136,7 @@ instance Diffable MouseState where
   patch (MouseState inside down) Down = MouseState inside True
   patch (MouseState inside down) Over = MouseState True   down
   patch (MouseState inside down) Out  = MouseState False  down
-
+  patch x _ = x
 
 
 
@@ -189,7 +189,7 @@ hoverableF = facetOutputOnlyWM_ hoverableDW
 
 gui :: FRP (Signal Drawing)
 gui = do
-  (v1,_) <- clickableF
+  (v1,_) <- hoverableF
   (v2,_) <- clickableF
   return $ liftA2 (|||) v1 v2
   -- return mempty
