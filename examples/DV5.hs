@@ -51,6 +51,8 @@ contramap = contramapSink
 (>$$<) :: Sink b -> (a -> b) -> Sink a
 (>$$<) = flip contramap
 
+type WidgetD a b = WidgetT Drawing a b
+
 data Void
 
 -- Like Affine/AffineSpace except the diff type has no negate
@@ -86,12 +88,12 @@ facet2 f g z w = do
   return (v,o,contramap f i)
 -- Note facet and facet2 can be defined in terms of each other!
 
-facetOutputOnly :: Monoid a => WidgetT r a c_ -> FRP (FacetO r a)
+facetOutputOnly :: Monoid a => WidgetT r a void -> FRP (FacetO r a)
 facetOutputOnly w = dropInput <$> facet2 (flip const) (flip const) mempty w
   where
     dropInput (v,o,i) = (v,o)
 
-facetOutputOnlyWM :: Monoid a => (MouseEv -> a -> a) -> WidgetT Drawing a c_ -> FRP (FacetO Drawing a)
+facetOutputOnlyWM :: Monoid a => (MouseEv -> a -> a) -> WidgetD a void -> FRP (FacetO Drawing a)
 facetOutputOnlyWM f w = dropInput <$> facetI addMouseInteraction <$> facet2 f (flip const) mempty w
   where
     dropInput (v,o,i) = (v,o)
@@ -106,7 +108,7 @@ facetOutputOnlyWM f w = dropInput <$> facetI addMouseInteraction <$> facet2 f (f
       $ dr
 
 -- | Lift a widget that visualizes mouse state to a mouse-state facet.
-facetOutputOnlyWM_ :: WidgetT Drawing MouseState c_ -> FRP (FacetO Drawing MouseState)
+facetOutputOnlyWM_ :: WidgetD MouseState void -> FRP (FacetO Drawing MouseState)
 facetOutputOnlyWM_ = facetOutputOnlyWM (flip patch)
 
 -- Like a standard facet
@@ -144,34 +146,27 @@ instance Diffable MouseState where
 -- facet2  :: (b -> a -> a) -> (c -> a -> a)
 --         -> a -> WidgetT r a c
 --         -> FRP (Facet r b a)
-
-
-
-
-
-
-clickableDW :: WidgetT' Drawing ()
-clickableDW _ () = mconcat [ci,sq]
+bangF :: FRP (FacetO Drawing MouseState)
+bangF = facetOutputOnlyWM_ bangW
   where
-    sq = fillColor Colors.grey   square
-    ci = fillColor Colors.yellow circle
-clickableF :: FRP (FacetO Drawing ())
-clickableF = facetOutputOnly clickableDW
--- | A button that displays a boolan state and sends () when clicked.
+    bangW :: WidgetD MouseState Void
+    bangW _ (MouseState inside down) = mconcat [ci,sq]
+      where
+        sq = fillColor Colors.grey   square
+        ci = fillColor circleCol circle
+        circleCol
+          | down      = Colors.red
+          | inside    = Colors.orange
+          | otherwise = Colors.yellow
 
 
-hoverableDW :: WidgetT Drawing MouseState Void
-hoverableDW _ (MouseState inside down) = mconcat [ci,sq]
-  where
-    sq = fillColor Colors.grey   square
-    ci = fillColor circleCol circle
-    circleCol
-      | down      = Colors.red
-      | inside    = Colors.orange
-      | otherwise = Colors.yellow
-hoverableF :: FRP (FacetO Drawing MouseState)
-hoverableF = facetOutputOnlyWM_ hoverableDW
+-- TODO Higher order: dynamically add bang objects to view and broadcast clicks to
+-- a central location (with unique ids or similar)
+-- TODO make these bang objects draggable/deleteable
 
+-- TODO keyboard
+-- TODO score/DAW-style region editor
+-- TODO other basic max stuff
 
 -- clickableDW :: WidgetT' Drawing ()
 -- clickableDW outp () = mconcat [ci,sq]
@@ -190,8 +185,8 @@ hoverableF = facetOutputOnlyWM_ hoverableDW
 
 gui :: FRP (Signal Drawing)
 gui = do
-  (v1,_) <- hoverableF
-  (v2,_) <- hoverableF
+  (v1,_) <- bangF
+  (v2,_) <- bangF
   return $ scale 0.1 <$> liftA2 (|||) v1 v2
   -- return mempty
 
