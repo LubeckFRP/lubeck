@@ -127,7 +127,7 @@ data MouseEv = None | Up | Down | Over | Out | Move deriving (Enum, Eq, Ord, Sho
 instance Monoid MouseEv where
   mempty = None
   mappend x y = x -- last event to happen as
-data MouseState = MouseState { mouseInside :: Bool, mouseDown :: Bool }
+data MouseState = MouseState { mouseInside :: Bool, mouseDown :: Bool } deriving (Eq, Ord, Show, Read)
 instance Monoid MouseState where
   mempty = MouseState False False -- how do we know this?
   mappend x y = x -- ?
@@ -185,13 +185,18 @@ bangF = facetOutputOnlyWM_ bangW
 
 gui :: FRP (Signal Drawing)
 gui = do
-  (v1,_) <- bangF
-  (v2,_) <- bangF
-  return $ scale 0.1 <$> liftA2 (|||) v1 v2
+  (v1,o1) <- bangF
+  (v2,o2) <- bangF
+  subscribeEvent (updates (liftA2 (,) o1 o2)) print
+  return $ (<> smokeBackground) <$> scale 0.96 <$> liftA2 (|||) v1 v2
   -- return mempty
 
 main = do
+  useDarkBackground
   (x :: Signal Html) <- fmap (fmap (toSvg drawOpts . scale 200)) $ gui
   runAppReactive x
   where
     drawOpts = mempty { dimensions = P (V2 400 400)}
+
+foreign import javascript unsafe "document.body.style.backgroundColor = 'darkgrey'"
+  useDarkBackground :: IO ()
