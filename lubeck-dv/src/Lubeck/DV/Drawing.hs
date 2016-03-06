@@ -66,6 +66,7 @@ module Lubeck.DV.Drawing
 
   -- ** Discrete data and counts
   , discreteData
+  , discreteDataGroup
   , intData
   , discreteHeatMap
 
@@ -307,6 +308,10 @@ withDefaultStyleT x = getStyledT x mempty
 -- TODO consolidate origin, intoRect
 
 -- | Draw data for a scatter plot.
+--
+--   X and Y coordinates map to points in the plotting rectangle.
+--
+--   Can be combined with `scatterDataX`, `scatterDataY` and `lineData`.
 scatterData :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
@@ -318,7 +323,12 @@ scatterData ps = do
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
 
--- | Draw data for a scatter plot ignoring Y values.
+-- | Draw data for a scatter plot, ignoring Y values.
+--
+--   By default the X coordinate of each given point is rendered as a vertical line at the corresponding position
+--   in the plotting rectangle.
+--
+--   Can be combined with `scatterData`, `lineData` etc.
 scatterDataX :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
@@ -328,6 +338,11 @@ scatterDataX ps = do
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
 
 -- | Draw data for a scatter plot ignoring X values.
+--
+--   By default the X coordinate of each given point is rendered as a horizontal line at the corresponding position
+--   in the plotting rectangle.
+--
+--   Can be combined with `scatterData`, `lineData` etc.
 scatterDataY :: (Monad' m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
@@ -337,6 +352,8 @@ scatterDataY ps = do
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) (fmap intoRect ps)
 
 -- | Draw data for a line plot.
+--
+--   Can be combined with `scatterData`, `scatterDataX` etc.
 lineData :: (Monad' m) => [P2 Double] -> StyledT m Drawing
 lineData []     = mempty
 lineData [_]    = mempty
@@ -351,14 +368,20 @@ lineData (p:ps) = do
   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 
--- | Step chart
+-- | Draw a step chart.
 --
--- See Visualize this p 124
+-- Similar to 'lineData', except it renders a series of changes (vectors) relative a starting point.
+--
+-- Can be combined with `scatterData`, `scatterDataX` etc.
+--
+-- See /Visualize this/, p. 124
 stepData :: (Monad' m) => P2 Double -> [V2 Double] -> StyledT m Drawing
 stepData z vs = lineData (offsetVectors z vs)
 
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
+--
+--   Can be combined with `scatterData`, `scatterDataX` etc.
 linearData :: (Monad' m) => Double -> Double -> StyledT m Drawing
 linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
   where
@@ -366,7 +389,9 @@ linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
 
 -- TODO bar graphs can be transposed (x/y) (how?)
 
--- | Draw a bar graph.
+-- | Draw a one-dimensional bar graph.
+--
+-- For grouped/stacked charts, see `barData2`, `barData3` etc.
 barData :: (Monad' m) => [P1 Double] -> StyledT m Drawing
 barData ps = do
   style <- ask
@@ -380,11 +405,25 @@ barData ps = do
     scaleRR = transform . scalingRR
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
--- | Draw a bar graph.
+-- | Draw a two-dimensional bar graph.
+--
+--  Every dimension in the given data set maps to a seprate bar.
+--
+-- Bars can be redered as grouped (default), stacked, or on opposite sides of the axis, depending on styling.
 barData2 :: (Monad' m) => [P2 Double] -> StyledT m Drawing
--- | Draw a bar graph.
+
+-- | Draw a three-dimensional bar graph.
+--
+--  Every dimension in the given data set maps to a seprate bar.
+--
+-- Bars can be redered as grouped (default) or stacked depending on styling.
 barData3 :: (Monad' m) => [P3 Double] -> StyledT m Drawing
--- | Draw a bar graph.
+
+-- | Draw a four-dimensional bar graph.
+--
+--  Every dimension in the given data set maps to a seprate bar.
+--
+-- Bars can be redered as grouped (default) or stacked depending on styling.
 barData4 :: (Monad' m) => [P4 Double] -> StyledT m Drawing
 [barData2, barData3, barData4] = undefined
 
@@ -401,11 +440,20 @@ barDataWithColor3 :: (Monad' m) => [P4 Double] -> StyledT m Drawing
 -- barDataWithColor4 :: [R5] -> StyledT m Drawing
 [barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
 
--- | Visualizes a count.
+-- | Visualizes a discrete count.
 --
--- See "Visualize this" pXXII (Godfather example)
+-- By default, this renders as a set of squares, coloured and grouped by the given element count.
+--
+-- See /Visualize this/ p XXII (Godfather example)
 discreteData :: (Enum a, Monad' m) => [(a, Int)] -> StyledT m Drawing
 discreteData = undefined
+
+-- | Similar to 'discreteData', but groups and counts equal elements in the given list.
+--
+-- >>> discreteDataGroup [True,True,False,True]
+--
+discreteDataGroup :: (Ord a, Monad' m) => [a] -> StyledT m Drawing
+discreteDataGroup = undefined
 
 -- TODO calendar map, see Visualize this p70
 
@@ -413,13 +461,13 @@ discreteData = undefined
 -- See "Visualize this, p 233"
 -- heatDiscrete2D :: (Enum a, Enum b) => (a -> b -> Double)
 
--- | Visualizes a ratio. Essentially a 1-category bar graph.
--- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-intData :: (Monad' m) => Int -> StyledT m Drawing
-intData = undefined
+-- | Visualizes an integer.
+intData :: (Monad' m) => P1 Int -> StyledT m Drawing
+intData (P (V1 n)) = discreteDataGroup (replicate n ())
 
--- | Visualizes a ratio. Essentially a 1-category bar graph.
--- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
+-- | Visualizes a ratio. Similar to 'barData', but only shows a single element.
+--
+-- See http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
 ratioData :: (Monad' m) => P1 Double -> StyledT m Drawing
 ratioData (P (V1 v)) = do
   style <- ask
@@ -432,7 +480,8 @@ ratioData (P (V1 v)) = do
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 
--- | Visualizes ration with colour.
+-- | Visualizes ratio with colour.
+--
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
 ratioDataWithColor :: (Monad' m) => P2 Double -> StyledT m Drawing
 ratioDataWithColor (P (V2 v1 v2)) = do
@@ -450,7 +499,9 @@ ratioDataWithColor (P (V2 v1 v2)) = do
 -- TODO consolidate ratioData, ratioDataWithColor
 
 
--- | Visualizes the plotting rectangle. Useful for deugging.
+-- | Draws the plotting rectangle.
+--
+-- Useful for deugging.
 plotRectangle :: (Monad' m) => StyledT m Drawing
 plotRectangle = do
   style <- ask
@@ -459,16 +510,15 @@ plotRectangle = do
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- | Draw a circle size plot.
-circleData :: (Monad' m) => [Double] -> StyledT m Drawing
+circleData :: (Monad' m) => [P1 Double] -> StyledT m Drawing
 circleData = undefined
 -- TODO use a ratio/percantage type wrapper
 -- TODO use area not radius
 
 -- | Draw a pie chart.
-pieChartData :: (Monad' m) => [Double] -> StyledT m Drawing
+pieChartData :: (Monad' m) => [P1 Double] -> StyledT m Drawing
 pieChartData = undefined
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
-
 
 -- | Draw
 circleDataWithColor :: (Monad' m) => [P2 Double] -> StyledT m Drawing
@@ -494,7 +544,7 @@ circleDataWithColor = undefined
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 -- | Draw a tree map.
-treeMapGraph :: (Monad' m) => [Double] -> StyledT m Drawing
+treeMapGraph :: (Monad' m) => [P1 Double] -> StyledT m Drawing
 treeMapGraph = undefined
 -- TODO use a ratio/percantage type wrapper
 
