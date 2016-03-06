@@ -30,7 +30,6 @@
 module Lubeck.DV.Drawing
   (
     Str(..)
-  , Monad'(..)
   -- * Drawing data
 
   -- $normalizeInputPoint
@@ -81,44 +80,12 @@ module Lubeck.DV.Drawing
   -- , crossLineX
   -- , crossLineY
   , plotRectangle
-
-
-
   -- * Drawing legends
 
   -- * Drawing titles
 
   -- * Drawing overlays/explanatories
 
-  -- * Styling
-
-  -- ** Building a style
-  , Styling
-  -- TODO exort all lenses here
-  , renderingRectangle
-  , linePlotStrokeColor
-  , linePlotStrokeWidth
-  , linePlotStrokeType
-  , linePlotFillColor
-
-  , scatterPlotStrokeColor
-  , scatterPlotFillColor
-  , scatterPlotShape
-
-  , barPlotBarColors
-  , barPlotWidth
-  , barPlotUngroupedOffset
-  , barPlotGroupedOffset
-  , barPlotSpaceUsed
-
-  -- ** Running a style
-  , Styled
-  , getStyled
-  , withDefaultStyle
-
-  , StyledT
-  , getStyledT
-  , withDefaultStyleT
   ) where
 
 import Prelude hiding (div)
@@ -149,161 +116,7 @@ import Linear.V4
 
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
-
-#ifdef __GHCJS__
-import GHCJS.Types(JSString)
-import qualified Data.JSString
-import Lubeck.Util(showJS)
-#endif
-
--- | Both 'Monad' and 'Applicative'.
--- For compability with pre-FAMP code
--- See https://wiki.haskell.org/Functor-Applicative-Monad_Proposal
-#if __GLASGOW_HASKELL__ <= 708
-type Monad' m = (Monad m, Applicative m)
-#else
-type Monad' m = Monad m
-#endif
-
-
-data VerticalHorizontal = Vertical | Horizontal
--- How to display a bar plot with more than two dimensions.§
-data BarPlotType = Grouped | Stacked | TwoSides
-
-data Styling = Styling
-  { _dummy                            :: ()
-
-  -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
-  , _renderingRectangle               :: V2 Double
-
-  -- Line plots
-  , _linePlotStrokeColor              :: AlphaColour Double
-  , _linePlotStrokeWidth              :: Double
-  , _linePlotStrokeType               :: () -- TODO
-  , _linePlotFillColor                :: AlphaColour Double
-
-  -- Scatter plots
-  , _scatterPlotStrokeColor           :: AlphaColour Double
-  , _scatterPlotStrokeWidth           :: Double
-  , _scatterPlotFillColor             :: AlphaColour Double
-  , _scatterPlotSize                  :: Double
-  , _scatterPlotShape                 :: ()
-
-  -- Bar plots
-  -- Infinite list of bar colours:
-  , _barPlotBarColors                 :: [AlphaColour Double]
-  , _barPlotWidth                     :: V2 Double
-  , _barPlotUngroupedOffset           :: V2 Double
-  , _barPlotGroupedOffset             :: V2 Double
-  , _barPlotStackedOffset             :: V2 Double
-  -- Percentage of horizontal dim taken up by plots, in [0..1] (default 1)
-  -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
-  , _barPlotSpaceUsed                 :: Double
-
-  , _ratioPlotBackgroundColor         :: AlphaColour Double
-  , _ratioPlotForegroundColor         :: AlphaColour Double
-
-  -- Color allocator
-    -- TODO idea: to allocate colors to categories/dimensions
-    -- This could work very well with Control.Monad.Reader.local.
-
-    -- I.e. there should be a function (subStyle 1 4 :: Styling -> Styling) that transforms the styling
-    -- (in this case 1 out of 4), by recursively applying over all styles that support this (i.e. the bar colour space).
-
-    -- NOTE there are two ways of using color with this API: through styling (appropriate for
-    -- bar groups etc where the color is not strictly bound to the data), or through an extra R dimension ("withColor",
-    -- appropriate for heat maps etc)
-
-  -- Axis/ticks
-    -- X,Y axis name
-      -- NOTE: Standard styles: left/below centered, at end
-
-    -- X Axis standard (usually left) line (strokeWith, strokeColorA)
-    -- X Axis opposite                line (strokeWith, strokeColorA)
-    -- Y Axis standard                line (strokeWith, strokeColorA)
-    -- Y Axis opposite                line (strokeWith, strokeColorA)
-
-    -- Axis arrow end?
-
-    -- NOTE: strike-through/background ticks are rarely used together
-    -- X,Y strike-through/background ticks
-    -- X,Y tick (length, width, pos rel axis (see below), strokeColorA)
-    -- Text position relative tick
-    -- Text rotation
-      -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
-
-  -- Heat maps and related
-  , _heatMapColour1                   :: AlphaColour Double
-  , _heatMapColour2                   :: AlphaColour Double
-
-  }
-  deriving (Show)
-
-makeLenses ''Styling
-
-instance Monoid Styling where
-  mempty = Styling
-    { _dummy                        = mempty
-    , _renderingRectangle           = V2 300 300
-
-    , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
-    , _linePlotStrokeWidth          = 2.5
-    , _linePlotStrokeType           = mempty
-    , _linePlotFillColor            = Colors.black `withOpacity` 0
-
-    , _scatterPlotStrokeColor       = Colors.red `withOpacity` 0.6
-    , _scatterPlotStrokeWidth       = 1
-    , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
-    , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
-    , _scatterPlotShape             = mempty
-
-    , _barPlotBarColors             = fmap (`withOpacity` 0.6) $ cycle
-                                      [ Colors.red
-                                      , Colors.green
-                                      , Colors.blue
-                                      , Colors.pink
-                                      , Colors.orange
-                                      , Colors.purple
-                                      ]
-    , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
-    , _barPlotUngroupedOffset       = V2 0.5 0
-    , _barPlotGroupedOffset         = V2 0   0
-    , _barPlotStackedOffset         = V2 0   0.1
-    , _barPlotSpaceUsed             = 9/10
-
-    , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
-    , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
-
-    , _heatMapColour1               = Colors.red        `withOpacity` 1
-    , _heatMapColour2               = Colors.purple     `withOpacity` 1
-    }
-  mappend = const
-
-type Styled = StyledT Identity
-
-newtype StyledT m a = Styled { _getStyled :: ReaderT Styling m a }
-  deriving (Functor, Applicative, Monad, MonadReader Styling)
-
-instance
-  ( Monad' m
-  , Monoid a
-  ) => Monoid (StyledT m a) where
-  mempty = pure mempty
-  mappend = liftA2 mappend
-
--- | Extract a 'Styled' value.
-getStyled :: Styled a -> Styling -> a
-getStyled = runReader . _getStyled
-
--- | Extract a 'Styled' value.
-getStyledT :: StyledT m a -> Styling -> m a
-getStyledT = runReaderT . _getStyled
-
-withDefaultStyle :: Styled a -> a
-withDefaultStyle x = getStyled x mempty
-
-withDefaultStyleT :: StyledT m a -> m a
-withDefaultStyleT x = getStyledT x mempty
+import qualified Lubeck.DV.Styling
 
 -- TODO consolidate origin, intoRect
 
@@ -312,7 +125,7 @@ withDefaultStyleT x = getStyledT x mempty
 --   X and Y coordinates map to points in the plotting rectangle.
 --
 --   Can be combined with `scatterDataX`, `scatterDataY` and `lineData`.
-scatterData :: (Monad' m) => [P2 Double] -> StyledT m Drawing
+scatterData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
   let base  = id
@@ -329,7 +142,7 @@ scatterData ps = do
 --   in the plotting rectangle.
 --
 --   Can be combined with `scatterData`, `lineData` etc.
-scatterDataX :: (Monad' m) => [P2 Double] -> StyledT m Drawing
+scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
@@ -343,7 +156,7 @@ scatterDataX ps = do
 --   in the plotting rectangle.
 --
 --   Can be combined with `scatterData`, `lineData` etc.
-scatterDataY :: (Monad' m) => [P2 Double] ->  StyledT m Drawing
+scatterDataY :: (Monad m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
@@ -354,7 +167,7 @@ scatterDataY ps = do
 -- | Draw data for a line plot.
 --
 --   Can be combined with `scatterData`, `scatterDataX` etc.
-lineData :: (Monad' m) => [P2 Double] -> StyledT m Drawing
+lineData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 lineData []     = mempty
 lineData [_]    = mempty
 lineData (p:ps) = do
@@ -375,14 +188,14 @@ lineData (p:ps) = do
 -- Can be combined with `scatterData`, `scatterDataX` etc.
 --
 -- See /Visualize this/, p. 124
-stepData :: (Monad' m) => P2 Double -> [V2 Double] -> StyledT m Drawing
+stepData :: (Monad m) => P2 Double -> [V2 Double] -> StyledT m Drawing
 stepData z vs = lineData (offsetVectors z vs)
 
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
 --
 --   Can be combined with `scatterData`, `scatterDataX` etc.
-linearData :: (Monad' m) => Double -> Double -> StyledT m Drawing
+linearData :: (Monad m) => Double -> Double -> StyledT m Drawing
 linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
   where
     f x = a*x + b
@@ -392,7 +205,7 @@ linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
 -- | Draw a one-dimensional bar graph.
 --
 -- For grouped/stacked charts, see `barData2`, `barData3` etc.
-barData :: (Monad' m) => [P1 Double] -> StyledT m Drawing
+barData :: (Monad m) => [P1 Double] -> StyledT m Drawing
 barData ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
@@ -410,32 +223,32 @@ barData ps = do
 --  Every dimension in the given data set maps to a seprate bar.
 --
 -- Bars can be redered as grouped (default), stacked, or on opposite sides of the axis, depending on styling.
-barData2 :: (Monad' m) => [P2 Double] -> StyledT m Drawing
+barData2 :: (Monad m) => [P2 Double] -> StyledT m Drawing
 
 -- | Draw a three-dimensional bar graph.
 --
 --  Every dimension in the given data set maps to a seprate bar.
 --
 -- Bars can be redered as grouped (default) or stacked depending on styling.
-barData3 :: (Monad' m) => [P3 Double] -> StyledT m Drawing
+barData3 :: (Monad m) => [P3 Double] -> StyledT m Drawing
 
 -- | Draw a four-dimensional bar graph.
 --
 --  Every dimension in the given data set maps to a seprate bar.
 --
 -- Bars can be redered as grouped (default) or stacked depending on styling.
-barData4 :: (Monad' m) => [P4 Double] -> StyledT m Drawing
+barData4 :: (Monad m) => [P4 Double] -> StyledT m Drawing
 [barData2, barData3, barData4] = undefined
 
 -- rawBarData4 :: [[R]] -> StyledT m Drawing
 
 
 -- | Draw a bar graph.
-barDataWithColor  :: (Monad' m) => [P2 Double] -> StyledT m Drawing
+barDataWithColor  :: (Monad m) => [P2 Double] -> StyledT m Drawing
 -- | Draw a bar graph.
-barDataWithColor2 :: (Monad' m) => [P3 Double] -> StyledT m Drawing
+barDataWithColor2 :: (Monad m) => [P3 Double] -> StyledT m Drawing
 -- | Draw a bar graph.
-barDataWithColor3 :: (Monad' m) => [P4 Double] -> StyledT m Drawing
+barDataWithColor3 :: (Monad m) => [P4 Double] -> StyledT m Drawing
 -- | Draw
 -- barDataWithColor4 :: [R5] -> StyledT m Drawing
 [barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
@@ -445,14 +258,14 @@ barDataWithColor3 :: (Monad' m) => [P4 Double] -> StyledT m Drawing
 -- By default, this renders as a set of squares, coloured and grouped by the given element count.
 --
 -- See /Visualize this/ p XXII (Godfather example)
-discreteData :: (Enum a, Monad' m) => [(a, Int)] -> StyledT m Drawing
+discreteData :: (Enum a, Monad m) => [(a, Int)] -> StyledT m Drawing
 discreteData = undefined
 
 -- | Similar to 'discreteData', but groups and counts equal elements in the given list.
 --
 -- >>> discreteDataGroup [True,True,False,True]
 --
-discreteDataGroup :: (Ord a, Monad' m) => [a] -> StyledT m Drawing
+discreteDataGroup :: (Ord a, Monad m) => [a] -> StyledT m Drawing
 discreteDataGroup = undefined
 
 -- TODO calendar map, see Visualize this p70
@@ -462,13 +275,13 @@ discreteDataGroup = undefined
 -- heatDiscrete2D :: (Enum a, Enum b) => (a -> b -> Double)
 
 -- | Visualizes an integer.
-intData :: (Monad' m) => P1 Int -> StyledT m Drawing
+intData :: (Monad m) => P1 Int -> StyledT m Drawing
 intData (P (V1 n)) = discreteDataGroup (replicate n ())
 
 -- | Visualizes a ratio. Similar to 'barData', but only shows a single element.
 --
 -- See http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioData :: (Monad' m) => P1 Double -> StyledT m Drawing
+ratioData :: (Monad m) => P1 Double -> StyledT m Drawing
 ratioData (P (V1 v)) = do
   style <- ask
   let fg = style^.ratioPlotForegroundColor
@@ -483,7 +296,7 @@ ratioData (P (V1 v)) = do
 -- | Visualizes ratio with colour.
 --
 -- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioDataWithColor :: (Monad' m) => P2 Double -> StyledT m Drawing
+ratioDataWithColor :: (Monad m) => P2 Double -> StyledT m Drawing
 ratioDataWithColor (P (V2 v1 v2)) = do
   style <- ask
   let bg  = style^.ratioPlotBackgroundColor
@@ -502,7 +315,7 @@ ratioDataWithColor (P (V2 v1 v2)) = do
 -- | Draws the plotting rectangle.
 --
 -- Useful for deugging.
-plotRectangle :: (Monad' m) => StyledT m Drawing
+plotRectangle :: (Monad m) => StyledT m Drawing
 plotRectangle = do
   style <- ask
   return $ transform (scalingRR style) (scale 2 xyCoords)
@@ -510,18 +323,18 @@ plotRectangle = do
     scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
 
 -- | Draw a circle size plot.
-circleData :: (Monad' m) => [P1 Double] -> StyledT m Drawing
+circleData :: (Monad m) => [P1 Double] -> StyledT m Drawing
 circleData = undefined
 -- TODO use a ratio/percantage type wrapper
 -- TODO use area not radius
 
 -- | Draw a pie chart.
-pieChartData :: (Monad' m) => [P1 Double] -> StyledT m Drawing
+pieChartData :: (Monad m) => [P1 Double] -> StyledT m Drawing
 pieChartData = undefined
 -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
 
 -- | Draw
-circleDataWithColor :: (Monad' m) => [P2 Double] -> StyledT m Drawing
+circleDataWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
 circleDataWithColor = undefined
 
 -- circleDataWithColor = do
@@ -544,7 +357,7 @@ circleDataWithColor = undefined
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 -- | Draw a tree map.
-treeMapGraph :: (Monad' m) => [P1 Double] -> StyledT m Drawing
+treeMapGraph :: (Monad m) => [P1 Double] -> StyledT m Drawing
 treeMapGraph = undefined
 -- TODO use a ratio/percantage type wrapper
 
@@ -563,11 +376,11 @@ See also "Visualize this, p 157"
 
 
 -- | Like 'treeMapGraph', mapping the last dimension to colour.
-treeMapGraphWithColor :: (Monad' m) => [P2 Double] -> StyledT m Drawing
+treeMapGraphWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
 treeMapGraphWithColor = undefined
 
 -- | Draw a discrete heat map.
-discreteHeatMap :: (Monad' m) => (Int -> Int -> Double) -> StyledT m Drawing
+discreteHeatMap :: (Monad m) => (Int -> Int -> Double) -> StyledT m Drawing
 discreteHeatMap = undefined
 -- TODO use a ratio/percantage type wrapper
 
