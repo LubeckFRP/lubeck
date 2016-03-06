@@ -61,8 +61,8 @@ import Lubeck.Forms.Basic
 import Lubeck.Drawing
 import Lubeck.Util(showJS, formatDateAndTimeFromUTC)
 import qualified Lubeck.Drawing
-import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis, withDefaultStyle)
-
+import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
+import Lubeck.DV.Styling(withDefaultStyle)
 
 
 -- -- TODO to many variants of these

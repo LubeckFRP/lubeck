@@ -115,8 +115,8 @@ import Linear.V3
 import Linear.V4
 
 import Lubeck.Drawing
+import Lubeck.DV.Styling
 import qualified Lubeck.Drawing
-import qualified Lubeck.DV.Styling
 
 -- TODO consolidate origin, intoRect
 

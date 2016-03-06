@@ -25,6 +25,13 @@ module Lubeck.DV.Styling
   , barPlotGroupedOffset
   , barPlotSpaceUsed
 
+  , scatterPlotSize
+  , scatterPlotShape
+  , ratioPlotBackgroundColor
+  , ratioPlotForegroundColor
+  , heatMapColour1
+  , heatMapColour2
+
   -- ** Running a style
   -- *** Styled monad
   , Styled(..)
