@@ -1,6 +1,9 @@
 
 module Lubeck.DV.Interactive
-  ()
+  (
+    MouseState
+  , InteractiveT(..)
+  )
 where
 
 import Control.Monad.Identity
@@ -8,4 +11,4 @@ import Control.Monad.Reader
 
 type MouseState = ()
 
-type AnimatedT m a = ReaderT MouseState m a
+type InteractiveT m a = ReaderT MouseState m a

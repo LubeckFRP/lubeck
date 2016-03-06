@@ -1,6 +1,8 @@
 
 module Lubeck.DV.Animation
-  ()
+  (
+    AnimatedT(..)
+  )
 where
 
 import Control.Monad.Identity
