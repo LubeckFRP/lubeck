@@ -27,11 +27,11 @@ module Lubeck.DV.Styling
 
   -- ** Running a style
   -- *** Styled monad
-  , Styled
+  , Styled(..)
   , getStyled
   , withDefaultStyle
   -- *** StyledT monad transformer
-  , StyledT
+  , StyledT(..)
   , getStyledT
   , withDefaultStyle
   )
