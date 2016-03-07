@@ -142,7 +142,6 @@ import qualified Data.Traversable
 -- UNDERLYING
 
 frpInternalLog :: Sink String
--- frpInternalLog = putStrLn
 frpInternalLog _ = return ()
 
 {-|
@@ -251,6 +250,7 @@ instance Applicative Signal where
 -- | Never occurs. Identity for 'merge'.
 never :: Events a
 never = E (\_ -> return (return ()))
+
 -- Subscriber safety : Sink submitted is ignored, so will never be called
 
 -- | Merge two event streams by interleaving occurances.
@@ -276,6 +276,7 @@ merge (E f) (E g) = E $ \aSink -> do
   return $ do
     unsubF
     unsubG
+
 -- Subscriber safety: sink is usubscribed from both upstream events
 
   -- Sink is registered with both Es
@@ -290,12 +291,18 @@ scatter (E taProvider) = E $ \aSink -> do
   taProvider $ mapM_ aSink
   where
     mapM_ f = fmap (const ()) . Data.Traversable.mapM f
+
 -- Subscriber safety: modified version of the sink is submitted upstream
 -- this is unsubscribed by the returned UnsubscribeAction.
+
+{-# SPECIALIZE scatter :: Events (Maybe a) -> Events a #-}
+{-# SPECIALIZE scatter :: Events (Seq a)   -> Events a #-}
+{-# SPECIALIZE scatter :: Events [a]       -> Events a #-}
 
 mapE :: (a -> b) -> Events a -> Events b
 mapE f (E aProvider) = E $ \aSink ->
   aProvider $ contramapSink f aSink
+
 -- Subscriber safety: modified version of the sink is submitted upstream
 -- this is unsubscribed by the returned UnsubscribeAction.
 
@@ -320,9 +327,9 @@ accumB z (E aaProvider) = do
     value <- TVar.readTVarIO var
     aSink value
     return ()
-  -- TODO UnsubscribeAction?
-  -- There should arguably be a version that returns the UnsubscribeAction as well
-  -- Calling it would freeze the behavior
+
+-- There should arguably be a version of accumB that returns an
+-- UnsubscribeAction as well calling it would freeze the behavior for ever.
 
 -- | Sample the current value of a behavior whenever an event occurs.
 snapshot :: Behavior a -> Events b -> Events (a, b)
@@ -353,12 +360,7 @@ pollBehavior (R aProvider) = do
   aProvider (atomically . TVar.writeTVar v)
   TVar.readTVarIO v
 
-
--- PSEUDO-PRIMITIVES
-
--- I.e. functions that have a primitive implementation for efficiency, but
--- need not actually be primitive.
-
+-- TODO this is effectively a primitive, we need return/fmap/join OR return/bind
 mapB :: (a -> b) -> Behavior a -> Behavior b
 mapB f (R aProvider) = R $ \bSink ->
   aProvider $ contramapSink f bSink
@@ -393,21 +395,11 @@ mapB f (R aProvider) = R $ \bSink ->
 --      x $ \x -> as (f x)
 --
 
--- | Drop 'Nothing' events.
--- Specialization of 'scatter'.
-filterJust :: Events (Maybe a) -> Events a
-filterJust (E maProvider) = E $ \aSink -> do
-  frpInternalLog "Setting up filter"
-  maProvider $ \ma -> case ma of
-    Nothing -> return ()
-    Just a  -> aSink a
--- Subscriber safety: a sink callning aSink is submitted upstream
--- this is unsubscribed by the returned UnsubscribeAction.
 
--- | Drop occurances that does not match a given predicate.
-filter :: (a -> Bool) -> Events a -> Events a
-filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
+-- PSEUDO-PRIMITIVES
 
+-- I.e. functions that have a primitive implementation for efficiency, but
+-- need not actually be primitive.
 
 zipB :: Behavior (a -> b) -> Behavior a -> Behavior b
 zipB (R abProvider) (R aProvider) = R $ \bSink ->
@@ -415,9 +407,8 @@ zipB (R abProvider) (R aProvider) = R $ \bSink ->
     \ab -> aProvider $
       \a -> bSink $ ab a
 
--- TODO Show how zipB can be derived from scatter.
+-- TODO Show how zipB can be derived from mapB and joinB.
 -- If the Monad instance is removed, this SHOULD be a primitive.
-
 
 -- | Execute an 'IO' action whenever an event occurs, and broadcast results.
 reactimateIO :: Events (IO a) -> IO (Events a)
@@ -438,6 +429,15 @@ reactimateIO (E ioAProvider) = do
 
 
 -- DERIVED
+
+-- | Drop occurances that does not match a given predicate.
+filter :: (a -> Bool) -> Events a -> Events a
+filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
+
+-- | Drop 'Nothing' events.
+-- Specialization of 'scatter'.
+filterJust :: Events (Maybe a) -> Events a
+filterJust = scatter
 
 -- | Create a behavior that starts out as a given behavior, and switches to
 --   a different behavior whenever and event occurs.
@@ -481,9 +481,6 @@ stepper z x = accumB z (mapE const x)
 counter :: Events b -> IO (Behavior Int)
 counter e = accumB 0 (fmap (const succ) e)
 
-
-
-
 -- | Record n events and emit in a group. Inverse of 'scatter'.
 gather :: Int -> Events a -> IO (Events (Seq a))
 gather n = fmap ((Seq.reverse <$>) . filter (\xs -> Seq.length xs == n)) . foldpE g mempty
@@ -510,10 +507,8 @@ withPreviousWith f e
 withPrevious :: Events a -> IO (Events (a, a))
 withPrevious = withPreviousWith (,)
 
--- lastE = fmap snd . withPrevious
 
--- delayE n = foldr (.) id (replicate n lastE)
-
+-- SIGNALS
 
 -- | A constant signal.
 pureS :: a -> Signal a
@@ -547,7 +542,6 @@ snapshotS b1 (S (e,b2)) = S (e, liftA2 (,) b1 b2)
 -- | Similar to 'snapshotS', but uses the given function go combine the values.
 snapshotWithS :: (a -> b -> c) -> Behavior a -> Signal b -> Signal c
 snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
-
 
 -- | Get an events stream that emits an event whenever the signal is updated.
 updates :: Signal a -> Events a
