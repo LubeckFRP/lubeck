@@ -30,6 +30,7 @@
 module Lubeck.DV.Drawing
   (
     Str(..)
+
   -- * Drawing data
 
   -- $normalizeInputPoint
@@ -76,16 +77,24 @@ module Lubeck.DV.Drawing
   -- * Drawing axes
   , ticks
   , ticksNoFilter
+  , barPlotTicks
+
+  -- * Drawing axes
   , labeledAxis
-  -- , crossLineX
-  -- , crossLineY
-  , plotRectangle
+
   -- * Drawing legends
+  , quantLegend
+  , intervalLegend
+  , scaleLegend
 
   -- * Drawing titles
+  , title
 
   -- * Drawing overlays/explanatories
+  , overlay
 
+  -- * Utility
+  , plotRectangle
   ) where
 
 import Prelude hiding (div)
@@ -100,6 +109,7 @@ import Control.Monad.Reader
 -- import Data.AffineSpace
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid
+import Data.Map(Map)
 -- import Data.VectorSpace
 import qualified Data.Colour.Names as Colors
 -- import qualified Data.VectorSpace as VS
@@ -390,8 +400,33 @@ discreteHeatMap = undefined
 -- TODO Visualize pairs, lists, ordered sets, maps, trees, directed graphs
 -- TODO Pie charts
 
+-- | Basic type of legend.
+-- Every string is matched to a single color.
+--
+-- >>> quantLegend ["Male", "Female"]
+quantLegend :: [Str] -> StyledT m Drawing
+quantLegend = undefined
 
+-- | Similar to 'quantLegend', except strings indicate endpoint of a region.
+-- The number of visualized
+--
+-- >>> quantLegend ["0", "50", "100"]
+intervalLegend :: [Str] -> StyledT m Drawing
+intervalLegend = undefined
 
+--  | A legend where colours are interpolated in a continous space (i.e. for heat maps).
+--
+-- >>> scaleLegend (packStr . show) (0, 100)
+scaleLegend :: (a -> Str) -> (a, a) -> StyledT m Drawing
+scaleLegend = undefined
+
+-- | Draw a title.
+title :: Str -> StyledT m Drawing
+title = undefined
+
+-- | Draw a number of overlays which supports showing/hiding based on a current "focus".
+overlay :: Map p Drawing -> m [p] -> StyledT m Drawing
+overlay = undefined
 
 
 -- TODO alternating tick size (i.e. every 50 year, 100 year etc)
