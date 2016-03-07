@@ -19,6 +19,7 @@ import           System.IO.Error
 import           System.Process
 import qualified System.Process
 import           System.Random
+import           Data.Monoid ((<>))
 
 import           Util.ParseEnv             (getJsExeBinPathFromEnv, getApiDocPathFromEnv)
 import           Util.StackEnv             (getStackEnv)
