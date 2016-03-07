@@ -118,8 +118,9 @@ refTime = case Data.Time.Format.parseTime Data.Time.Format.defaultTimeLocale
   (Data.Time.Format.iso8601DateFormat Nothing) "2000-01-01" of
   Just t -> t
 
-unDay = toModifiedJulianDay
-day = ModifiedJulianDay
+-- unDay = toModifiedJulianDay
+-- day   = ModifiedJulianDay
+--
 
 {-|
 Draw a simple line plot. Steps performed:
@@ -186,7 +187,29 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
     -- as' :: [a], bs' :: [b]
     (as', bs') = unzip xs
 
+    -- Utility
     unzip xs = (fmap fst xs, fmap snd xs)
+
+    normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
+    normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
+
+    --from here http://stackoverflow.com/questions/326679/choosing-an-attractive-linear-scale-for-a-graphs-y-axis
+    -- see also http://stackoverflow.com/questions/361681/algorithm-for-nice-grid-line-intervals-on-a-graph
+
+    -- number of ticks, interval, outpouts ticks
+    tickCalc :: Int -> (Double, Double) -> [Double]
+    tickCalc tickCount (lo, hi) =
+      let range = hi - lo :: Double
+          unroundedTickSize = range/(realToFrac $ tickCount-1) :: Double
+          x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) :: Double
+          pow10x = 10**x -- Math.pow(10, x);
+          stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
+          lb = stepSize * realToFrac (floor (lo / stepSize))
+          ub = stepSize * realToFrac (ceiling (hi / stepSize))
+
+      in [lb, lb+stepSize..ub]
+      where
+        exrng = (2.1, 11.5)
 
 
 
@@ -208,25 +231,5 @@ simpleTimeSeriesWithOverlay s f g times dat = plot2 <> plot1
       10 10
       dat
 
-normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
-normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
-
---from here http://stackoverflow.com/questions/326679/choosing-an-attractive-linear-scale-for-a-graphs-y-axis
--- see also http://stackoverflow.com/questions/361681/algorithm-for-nice-grid-line-intervals-on-a-graph
-
--- number of ticks, interval, outpouts ticks
-tickCalc :: Int -> (Double, Double) -> [Double]
-tickCalc tickCount (lo, hi) =
-  let range = hi - lo :: Double
-      unroundedTickSize = range/(realToFrac $ tickCount-1) :: Double
-      x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) :: Double
-      pow10x = 10**x -- Math.pow(10, x);
-      stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
-      lb = stepSize * realToFrac (floor (lo / stepSize))
-      ub = stepSize * realToFrac (ceiling (hi / stepSize))
-
-  in [lb, lb+stepSize..ub]
-  where
-    exrng = (2.1, 11.5)
 
 #endif

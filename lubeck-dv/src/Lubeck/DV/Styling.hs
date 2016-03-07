@@ -18,6 +18,7 @@ module Lubeck.DV.Styling
   , scatterPlotStrokeColor
   , scatterPlotFillColor
   , scatterPlotShape
+  , scatterPlotSize
 
   , barPlotBarColors
   , barPlotWidth
@@ -25,8 +26,6 @@ module Lubeck.DV.Styling
   , barPlotGroupedOffset
   , barPlotSpaceUsed
 
-  , scatterPlotSize
-  , scatterPlotShape
   , ratioPlotBackgroundColor
   , ratioPlotForegroundColor
   , heatMapColour1
@@ -36,10 +35,10 @@ module Lubeck.DV.Styling
   -- *** Styled monad
   , Styled(..)
   , getStyled
-  , withDefaultStyle
   -- *** StyledT monad transformer
   , StyledT(..)
   , getStyledT
+  -- *** Utility
   , withDefaultStyle
   )
 where

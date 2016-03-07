@@ -73,7 +73,6 @@ module Lubeck.Drawing
 
   , Angle
   , acosA
-  , angleBetween
   , turn
   , angleToRadians
   , angleToDegrees
@@ -415,7 +414,6 @@ matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
 {-| -}
 transformationToMatrix :: Num a => Transformation a -> (a, a, a, a, a, a)
 transformationToMatrix (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = (a,b,c,d,e,f)
-transformationToMatrix _ = error "transformationToMatrix: Bad transformation"
 
 transformVector :: Num a => Transformation a -> V2 a -> V2 a
 transformVector t (V2 x y) =
@@ -464,10 +462,9 @@ newtype Envelope v n = Envelope (Maybe (v n -> n))
 instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) where
   mempty      = Envelope Nothing
   mappend (Envelope x) (Envelope y) = case (x, y) of
-    (Nothing, g)       -> Envelope y
-    (f,       Nothing) -> Envelope x
+    (Nothing, _)       -> Envelope y
+    (_,       Nothing) -> Envelope x
     (Just f,  Just g)  -> Envelope $ Just $ maxEnv f g
-    _                  -> Envelope Nothing
 
     -- Invoke max explicitly, as Data.Monoid.Max has a superflous Bounded constraint
     -- Alternatively, we could escape this by using the semigroup version
