@@ -723,25 +723,43 @@ text = Text
 
 textStart, textMiddle, textEnd :: Str -> Drawing
 
+-- | Text horizontally aligned to the start of the text.
+--
+-- See also 'TextAnchor'.
 textStart = textWithOptions $ mempty
   { textAnchor = TextAnchorStart }
 
+-- | Text horizontally aligned to the middle of the text.
+--
+-- See also 'TextAnchor'.
 textMiddle = textWithOptions $ mempty
   { textAnchor = TextAnchorMiddle }
 
+-- | Text horizontally aligned to the end of the text.
+--
+-- See also 'TextAnchor'.
 textEnd = textWithOptions $ mempty
   { textAnchor = TextAnchorEnd }
 
 textLeftMiddle, textMiddleMiddle, textRightMiddle :: Str -> Drawing
 
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline.
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
 textLeftMiddle = textWithOptions $ mempty
   { textAnchor        = TextAnchorStart
   , alignmentBaseline = AlignmentBaselineMiddle }
 
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
 textMiddleMiddle = textWithOptions $ mempty
   { textAnchor        = TextAnchorMiddle
   , alignmentBaseline = AlignmentBaselineMiddle }
 
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
 textRightMiddle = textWithOptions $ mempty
   { textAnchor        = TextAnchorEnd
   , alignmentBaseline = AlignmentBaselineMiddle }
@@ -944,24 +962,31 @@ xyCoords :: Drawing
 xyCoords = fillColorA (Colors.black `withOpacity` 0) $ strokeColor Colors.darkgreen $
   strokeWidth 0.5 $ mconcat [horizontalLine, verticalLine, circle, square]
 
+-- | Draw the unit vector.
 showUnitX :: Drawing
 showUnitX = strokeColor Colors.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 
+-- | Draw an image representing a direction.
 showDirection :: Direction V2 Double -> Drawing
 showDirection dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
   where
     tp = Colors.black `withOpacity` 0
 
+-- | Draw an image representing two boundaries of an image along the given line.
+--
+-- See also 'boundaries'.
 showBoundaries :: V2 Double -> Drawing -> Drawing
 showBoundaries v dr = case boundaries v (envelope dr) of
   Nothing -> dr
   Just (lo, hi) -> strokeColor Colors.blue (showPoint lo) <> scale 2 (showPoint hi) <> dr
 
+-- | Draw an image representing a point.
 showPoint :: Point V2 Double -> Drawing
 showPoint p = translate (p .-. origin) base
   where
     base = strokeColor Colors.red $ fillColorA (Colors.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
 
+-- | Draw an image representing an envelope.
 showEnvelope :: V2 Double -> Drawing -> Drawing
 showEnvelope v drawing = case envelopeVMay v drawing of
   Nothing -> drawing
