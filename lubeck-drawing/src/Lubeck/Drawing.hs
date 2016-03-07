@@ -237,7 +237,7 @@ import Linear.Epsilon
 import Data.Foldable(Foldable(..))
 
 #ifdef __GHCJS__
-  import GHCJS.Types(JSString)
+import GHCJS.Types(JSString)
 import qualified Data.JSString
 import Web.VirtualDom.Svg (Svg)
 import qualified Web.VirtualDom as VD
