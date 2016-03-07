@@ -1,12 +1,17 @@
 
 module Lubeck.DV
-  ( module M
+  ( module Lubeck.DV.Animation
+  , module Lubeck.DV.Drawing
+  , module Lubeck.DV.Interactive
+  , module Lubeck.DV.Plottable
+  , module Lubeck.DV.SimpleNormalized
+  , module Lubeck.DV.Styling
   )
 where
 
-import qualified Lubeck.DV.Animation as M
-import qualified Lubeck.DV.Drawing as M
-import qualified Lubeck.DV.Interactive as M
-import qualified Lubeck.DV.Plottable as M
-import qualified Lubeck.DV.SimpleNormalized as M
-import qualified Lubeck.DV.Styling as M
+import Lubeck.DV.Animation
+import Lubeck.DV.Drawing
+import Lubeck.DV.Interactive
+import Lubeck.DV.Plottable
+import Lubeck.DV.SimpleNormalized
+import Lubeck.DV.Styling

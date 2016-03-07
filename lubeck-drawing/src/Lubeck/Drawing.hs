@@ -196,6 +196,7 @@ module Lubeck.Drawing
   , RenderingOptions(..)
   -- mempty
   , toSvg
+  , toSvgStr
   , toSvgAny
   ) where
 
@@ -1211,3 +1212,12 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Em         -> single $ mkN "g" ps []
           -- Event handlers applied to a group go on the g node
           Ap x y     -> single $ mkN "g" ps (toSvg1 [] x ++ toSvg1 [] y)
+
+
+
+toSvgStr :: RenderingOptions -> Drawing -> Str
+toSvgStr st dr = toSvgAny st dr id $
+        \name attrs nodes -> "<" <> name <> " "
+          <> mconcat (Data.List.intersperse " " $ fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
+          <> ">"
+          <> mconcat nodes <> "</" <> name <> ">"
