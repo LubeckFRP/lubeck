@@ -390,7 +390,9 @@ treeMapGraphWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
 treeMapGraphWithColor = undefined
 
 -- | Draw a discrete heat map.
-discreteHeatMap :: (Monad m) => (Int -> Int -> Double) -> StyledT m Drawing
+--
+-- Example http://bokeh.pydata.org/en/latest/docs/gallery/les_mis.html
+discreteHeatMap :: (Monad m) => [a] -> [b] -> (a -> b -> Double) -> StyledT m Drawing
 discreteHeatMap = undefined
 -- TODO use a ratio/percantage type wrapper
 
