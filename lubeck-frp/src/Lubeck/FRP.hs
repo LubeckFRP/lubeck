@@ -241,11 +241,17 @@ instance Applicative Signal where
   (<*>) = zipS
 
 
+-- Subscriber safety
+-- When returning an en event from a (possiblty pseudo)-primitive:
+--  Assure that after the UnsubscribeAction returned by the event is called, the sink
+--  submitted in the same call can never be called into again.
+
 -- PRIMITIVE COMBINATORS
 
 -- | Never occurs. Identity for 'merge'.
 never :: Events a
 never = E (\_ -> return (return ()))
+-- Subscriber safety : Sink submitted is ignored, so will never be called
 
 -- | Merge two event streams by interleaving occurances.
 --
@@ -270,6 +276,8 @@ merge (E f) (E g) = E $ \aSink -> do
   return $ do
     unsubF
     unsubG
+-- Subscriber safety: sink is usubscribed from both upstream events
+
   -- Sink is registered with both Es
   -- When UnsubscribeActionistered, UnsubscribeActionister with both Es
 
@@ -282,12 +290,14 @@ scatter (E taProvider) = E $ \aSink -> do
   taProvider $ mapM_ aSink
   where
     mapM_ f = fmap (const ()) . Data.Traversable.mapM f
+-- Subscriber safety: modified version of the sink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 mapE :: (a -> b) -> Events a -> Events b
 mapE f (E aProvider) = E $ \aSink ->
   aProvider $ contramapSink f aSink
-  -- Sink is registered with given E
-  -- When UnsubscribeActionistered, UnsubscribeActionister with E
+-- Subscriber safety: modified version of the sink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 pureB :: a -> Behavior a
 pureB z = R ($ z)
@@ -311,6 +321,8 @@ accumB z (E aaProvider) = do
     aSink value
     return ()
   -- TODO UnsubscribeAction?
+  -- There should arguably be a version that returns the UnsubscribeAction as well
+  -- Calling it would freeze the behavior
 
 -- | Sample the current value of a behavior whenever an event occurs.
 snapshot :: Behavior a -> Events b -> Events (a, b)
@@ -319,12 +331,15 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
   bProvider $ \b ->
     aProvider $ \a ->
       abSink (a,b)
+-- Subscriber safety: a sink callning abSink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 -- | Create a new event stream and a sink that writes to it in the 'IO' monad.
 newEvent :: IO (Sink a, Events a)
 newEvent = do
   Dispatcher aProvider aSink <- newDispatcher
   return $ (aSink, E aProvider)
+-- Subscriber safety: provided by the underlying dispatcher.
 
 -- | Subscribe to an event stream in the 'IO' monad.
 -- The given sink will be called into whenever an event occurs.
@@ -383,10 +398,11 @@ mapB f (R aProvider) = R $ \bSink ->
 filterJust :: Events (Maybe a) -> Events a
 filterJust (E maProvider) = E $ \aSink -> do
   frpInternalLog "Setting up filter"
-  unsub <- maProvider $ \ma -> case ma of
+  maProvider $ \ma -> case ma of
     Nothing -> return ()
     Just a  -> aSink a
-  return unsub
+-- Subscriber safety: a sink callning aSink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 -- | Drop occurances that does not match a given predicate.
 filter :: (a -> Bool) -> Events a -> Events a
@@ -414,6 +430,8 @@ reactimateIO (E ioAProvider) = do
     ioAProvider $ \_ -> do
       a <- TVar.readTVarIO v
       aSink a
+-- Subscriber safety: a sink callning aSink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 -- TODO show how reactimateIO can be derived from newEvent/subscribeEvent
 
