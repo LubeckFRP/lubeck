@@ -104,7 +104,7 @@ main = do
       exampleHistoryServer     <- serveApp rnd jsExeDir "bd-example-history"
       indexServer              <- serveApp rnd jsExeDir "bd-index"
 
-      tmpServer <_ serveDir "temporary files" tmpDir
+      tmpServer <- serveDir "temporary files" tmpDir
       docServer <- case docDir of
         Left msg     -> print "Warning: Could not find documentation" >> serveNothing "documentation"
         Right docDir -> serveDir "documentation" docDir
