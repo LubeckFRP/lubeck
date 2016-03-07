@@ -411,6 +411,7 @@ zipB (R abProvider) (R aProvider) = R $ \bSink ->
 -- If the Monad instance is removed, this SHOULD be a primitive.
 
 -- | Execute an 'IO' action whenever an event occurs, and broadcast results.
+-- This is basically 'sequence', restricted to 'IO' and 'Events'.
 reactimateIO :: Events (IO a) -> IO (Events a)
 reactimateIO (E ioAProvider) = do
   v <- TVar.newTVarIO undefined
