@@ -4,4 +4,4 @@ packages:
 - 'lubeck-frp'
 - 'lubeck-drawing'
 - 'lubeck-dv'
-resolver: lts-5.5
+resolver: lts-3.20
