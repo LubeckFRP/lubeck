@@ -4,34 +4,18 @@
 -- |
 -- Basic normalized visualization.
 module Lubeck.DV.SimpleNormalized
-#ifdef __GHCJS__
   ( simpleLinePlot
   , simpleTimeSeries
   , simpleTimeSeriesWithOverlay
   , utcTimeToApproxReal
   , realToApproxUTCTime
   ) where
-#else
-  () where
-#endif
-
-#ifdef __GHCJS__
 
 import Prelude hiding (div)
 import qualified Prelude
 
 import Data.Monoid ((<>))
 
-import GHCJS.Types(JSString, jsval)
-import qualified Data.JSString
-import qualified Web.VirtualDom as VD
-import qualified Web.VirtualDom.Html as H
-import qualified Web.VirtualDom.Html.Attributes as H
-import qualified Web.VirtualDom.Html.Events as H
-import qualified Web.VirtualDom.Svg.Events as SvgEv
-import qualified Data.JSString
--- import Data.VectorSpace
--- import Data.AffineSpace
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 
@@ -53,13 +37,13 @@ import Linear.V2
 import Linear.V3
 import Linear.V4
 
-import Lubeck.FRP
-import Lubeck.App (Html, runAppReactive)
-import Lubeck.Forms
+-- import Lubeck.FRP
+-- import Lubeck.App (Html, runAppReactive)
+-- import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
-import Lubeck.Forms.Basic
+-- import Lubeck.Forms.Basic
+
 import Lubeck.Drawing
-import Lubeck.Util(showJS, formatDateAndTimeFromUTC)
 import qualified Lubeck.Drawing
 import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
 import Lubeck.DV.Styling(withDefaultStyle)
@@ -143,8 +127,8 @@ Draw a simple line plot. Steps performed:
 
 -}
 simpleLinePlot
-  :: (a -> JSString)                  -- ^ How to print ticks on X axis.
-  -> (b -> JSString)                  -- ^ How to print ticks on Y axis.
+  :: (a -> Str)                  -- ^ How to print ticks on X axis.
+  -> (b -> Str)                  -- ^ How to print ticks on Y axis.
   -> (a -> Double) -> (Double -> a)   -- ^ Mapping from domain(X) to R.
   -> (b -> Double) -> (Double -> b)   -- ^ Linear map from domain(Y) to R.
   -> Int                              -- ^ Number of ticks on X axis.
@@ -213,23 +197,29 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
 
 
 
-simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
+simpleTimeSeries :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
 simpleTimeSeries s f g = snd . simpleLinePlot
-  (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
+  (replaceStr "T" "  " . takeStr 16 . formatDateAndTimeFromUTC) s
   utcTimeToApproxReal realToApproxUTCTime
   f g
   10 10
 
-simpleTimeSeriesWithOverlay :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
+simpleTimeSeriesWithOverlay :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
 simpleTimeSeriesWithOverlay s f g times dat = plot2 <> plot1
   where
     plot2 = withDefaultStyle $ scatterDataX $ fmap ((\t -> P $ V2 t 0.5) . normT . utcTimeToApproxReal) times
     ((normT, _), plot1) = simpleLinePlot
-      (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
+      (replaceStr "T" "  " . takeStr 16 . formatDateAndTimeFromUTC) s
       utcTimeToApproxReal realToApproxUTCTime
       f g
       10 10
       dat
 
+-- TODO consolidate
 
-#endif
+-- | Format a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
+formatDateAndTimeFromUTC :: UTCTime -> Str
+formatDateAndTimeFromUTC = packStr . Data.Time.Format.formatTime l f
+  where
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")
