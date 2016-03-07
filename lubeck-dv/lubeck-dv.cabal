@@ -10,7 +10,8 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Lubeck.DV.Drawing
+  exposed-modules:     Lubeck.DV
+                     , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling
                      , Lubeck.DV.Animation

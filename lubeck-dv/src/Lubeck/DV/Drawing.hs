@@ -437,6 +437,10 @@ ticksNoFilter xt yt = return $ mconcat [xTicks, yTicks]
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
 
+barPlotTicks :: [Str] -> [Str] -> Styled Drawing
+barPlotTicks = undefined
+
+
 -- | Draw X and Y axis.
 labeledAxis
   :: Str -- ^ X axis label.

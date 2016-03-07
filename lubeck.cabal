@@ -22,6 +22,7 @@ library
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
+                     , Lubeck.DV
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling

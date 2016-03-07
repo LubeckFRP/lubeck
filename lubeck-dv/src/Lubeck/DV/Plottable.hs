@@ -4,5 +4,8 @@ module Lubeck.DV.Plottable
 where
 
 
+type Iso' a b = ( (a -> b), (b -> a) )
+
 class Plottable a where
-  
+  dim  :: Iso' a Double
+  -- "dimension"

@@ -93,7 +93,6 @@ import Lubeck.DV.Styling(withDefaultStyle)
 utcTimeToApproxReal :: UTCTime -> Double
 utcTimeToApproxReal t = realToFrac $ (t `diffUTCTime` refTime) / (1000000000000)
 
-
 realToApproxUTCTime :: Double -> UTCTime
 realToApproxUTCTime x = ((realToFrac x) * 1000000000000) `addUTCTime` refTime
 
@@ -184,8 +183,8 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
     tickCalc :: Int -> (Double, Double) -> [Double]
     tickCalc tickCount (lo, hi) =
       let range = hi - lo :: Double
-          unroundedTickSize = range/(realToFrac $ tickCount-1) :: Double
-          x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) :: Double
+          unroundedTickSize = range/(realToFrac $ tickCount-1)        --  :: Double
+          x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) --  :: Double
           pow10x = 10**x -- Math.pow(10, x);
           stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
           lb = stepSize * realToFrac (floor (lo / stepSize))
