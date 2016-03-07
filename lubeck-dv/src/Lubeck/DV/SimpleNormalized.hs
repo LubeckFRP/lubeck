@@ -98,7 +98,7 @@ realToApproxUTCTime :: Double -> UTCTime
 realToApproxUTCTime x = ((realToFrac x) * 1000000000000) `addUTCTime` refTime
 
 refTime :: UTCTime
-refTime = case Data.Time.Format.parseTime Data.Time.Format.defaultTimeLocale
+refTime = case Data.Time.Format.parseTimeM True Data.Time.Format.defaultTimeLocale
   (Data.Time.Format.iso8601DateFormat Nothing) "2000-01-01" of
   Just t -> t
 
