@@ -12,6 +12,7 @@ import           Control.Applicative
 import           Data.Monoid
 import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString, JSVal)
+import           GHCJS.Concurrent               (synchronously)
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -99,8 +100,11 @@ rootLayout goTo menu err busy login user ads search createAd imlib interactions 
 
 adPlatform :: IO (Signal Html, Maybe (Sink KbdEvents))
 adPlatform = do
-  (kbdSink, kbdEvents)                  <- newEventOf (undefined :: KbdEvents)
-  (ipcSink, ipcEvents)                  <- newEventOf (undefined :: IPCMessage)
+  (kbdSink', kbdEvents)                  <- newEventOf (undefined :: KbdEvents)
+  (ipcSink', ipcEvents)                  <- newEventOf (undefined :: IPCMessage)
+
+  let ipcSink = synchronously . ipcSink'
+  let kbdSink = synchronously . kbdSink'
 
   (notifView, notifSink, notifKbdSink)  <- notificationsComponent []
   (busyView, busySink)                  <- busyIndicatorComponent []

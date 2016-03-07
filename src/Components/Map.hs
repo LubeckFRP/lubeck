@@ -26,6 +26,7 @@ import qualified Control.Concurrent.STM.TVar as TVar
 import           Control.Monad.STM              (atomically)
 
 import           GHCJS.Types                    (JSVal, JSString, jsval)
+import           GHCJS.Concurrent               (synchronously)
 
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -188,14 +189,15 @@ withMap' mapRef e f = do
 
 mapComponent :: [Marker] -> IO (Signal Html, Sink MapCommand, Events MapAction)
 mapComponent z = do
-  (actionsSink, actionsEvents)     <- newEventOf (undefined                     :: MapAction)
-  (lifecycleSink, lifecycleEvents) <- newEventOf (undefined                     :: MapCommand)
+  (actionsSink, actionsEvents)      <- newEventOf (undefined                     :: MapAction)
+  (lifecycleSink', lifecycleEvents) <- newEventOf (undefined                     :: MapCommand)
+  let lifecycleSink                 = synchronously . lifecycleSink'
 
-  g                                <- getStdGen
-  let mapId                        = fromString . take 10 $ (randomRs ('a', 'z') g)
-  let htmlS                        = pure (mapW mapId)                          :: Signal Html
-  mapRef                           <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
-  lyrRef                           <- TVar.newTVarIO []                         :: IO (TVar.TVar [LMarkerClusterGroup])
+  g                                 <- getStdGen
+  let mapId                         = fromString . take 10 $ (randomRs ('a', 'z') g)
+  let htmlS                         = pure (mapW mapId)                          :: Signal Html
+  mapRef                            <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
+  lyrRef                            <- TVar.newTVarIO []                         :: IO (TVar.TVar [LMarkerClusterGroup])
 
   subscribeEvent lifecycleEvents $ \mapCommand -> case mapCommand of
     ClearMap -> withMap mapRef $ \gmap -> do
