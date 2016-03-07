@@ -44,12 +44,12 @@ div, h1, h2, img, p, span {
   border-radius: 0px;
 }
 .busy-indicator {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 2050;
+  position    : fixed;
+  top         : 0;
+  left        : 50%;
+  margin-left : -75px;
+  width       : 150px;
+  z-index     : 2050;
 }
 .loader-img {
   margin-right: 5px;

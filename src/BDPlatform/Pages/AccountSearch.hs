@@ -64,7 +64,7 @@ import           BD.Types
 import           BDPlatform.Types
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent,
-                                                 withBusy, withBusy2, withBusy0)
+                                                 withBusy, withBusy2)
 
 searchForm :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)
 searchForm dayNow outputSink query =
@@ -196,32 +196,35 @@ accountSearchPage :: Sink BusyCmd
 accountSearchPage busySink notifSink ipcSink mUserNameB navS = do
   let initPostQuery                = defSimpleAccountQuery
 
-  (actionSink, actionEvents)       <- newEventOf (undefined                                           :: Action)
-  actionsS                         <- stepperS Nothing (fmap Just actionEvents)                       :: IO (Signal (Maybe Action))
+  (actionSink', actionEvents)      <- newEventOf (undefined                                              :: Action)
+  actionsS                         <- stepperS Nothing (fmap Just actionEvents)                          :: IO (Signal (Maybe Action))
+
+  let actionSink                   = synchronously . actionSink'
 
   now                              <- getCurrentTime
 
   (searchView, searchRequested)    <- formComponent initPostQuery (searchForm (utctDay now))
-  (srchResSink, srchResEvents)     <- newEventOf (undefined                                          :: Maybe [Ac.Account])
-  results                          <- stepperS Nothing srchResEvents                                 :: IO (Signal (Maybe [Ac.Account]))
+  (srchResSink', srchResEvents)    <- newEventOf (undefined                                              :: Maybe [Ac.Account])
+  let srchResSink                  = synchronously . srchResSink'
+  results                          <- stepperS Nothing srchResEvents                                     :: IO (Signal (Maybe [Ac.Account]))
 
-  let gridView                     = fmap ((altW (text "") accountSearchResultW) actionSink) results :: Signal Html
-  let detailsView                  = fmap (fmap (detailsW actionSink)) actionsS                      :: Signal (Maybe Html)
-  let resultsViewS                 = resultsLayout <$> actionsS <*> gridView <*> detailsView <*> results          :: Signal Html
-  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS           :: Signal Html
+  let gridView                     = fmap ((altW (text "") accountSearchResultW) actionSink) results     :: Signal Html
+  let detailsView                  = fmap (fmap (detailsW actionSink)) actionsS                          :: Signal (Maybe Html)
+  let resultsViewS                 = resultsLayout <$> actionsS <*> gridView <*> detailsView <*> results :: Signal Html
+  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS               :: Signal Html
 
-  subscribeEvent searchRequested $ \query -> void $ forkIO $ do
-    srchResSink Nothing -- reset previous search results
+  subscribeEvent searchRequested $ \query -> void . forkIO $ do
+    srchResSink $ Nothing -- reset previous search results
 
     let complexQuery = AccountQuery $ complexifyAccountQuery query
-    eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
+    eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
     case eQueryId of
-      Left e        -> synchronously . notifSink . Just . apiError $ "Failed posting query: " <> showJS e
-      Right queryId -> void $ forkIO $ do
-        eitherPosts <- (withBusy (synchronously . busySink) (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
+      Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
+      Right queryId -> void . forkIO $ do
+        eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
-          Left e   -> synchronously . notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-          Right ps -> synchronously . srchResSink $ Just ps
+          Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
+          Right ps -> srchResSink $ Just ps
     return ()
 
   return view

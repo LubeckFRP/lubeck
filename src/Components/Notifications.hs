@@ -16,6 +16,8 @@ import           Control.Applicative
 import qualified Data.List
 import           Data.Monoid
 
+import           GHCJS.Concurrent               (synchronously)
+
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
                                                  tbody, td, text, th, thead, tr)
@@ -68,7 +70,7 @@ notificationsComponent initialErrorMessages = do
   (kbdSink, kbdE) <- newEventOf (undefined :: KbdEvents)
 
   subscribeEvent kbdE $ \e -> case e of
-    (Key 27) -> internalSink 0 -- esc: remove top most notification
+    (Key 27) -> synchronously . internalSink $ 0 -- esc: remove top most notification
     _        -> return ()
 
   let inputE    = fmap externalToInternal externalEvents :: Events ([Notification] -> [Notification])
@@ -76,9 +78,9 @@ notificationsComponent initialErrorMessages = do
   let allEvents = merge inputE filterE                   :: Events ([Notification] -> [Notification])
 
   errorsS       <- accumS initialErrorMessages allEvents :: IO (Signal [Notification])
-  let htmlS     = fmap (notificationW internalSink) errorsS
+  let htmlS     = fmap (notificationW (synchronously . internalSink)) errorsS
 
-  return (htmlS, externalSink, kbdSink)
+  return (htmlS, (synchronously . externalSink), (synchronously . kbdSink))
 
   where
     -- inserts new error into internal errors list
