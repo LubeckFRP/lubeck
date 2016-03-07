@@ -237,10 +237,10 @@ import Linear.Epsilon
 import Data.Foldable(Foldable(..))
 
 #ifdef __GHCJS__
+  import GHCJS.Types(JSString)
 import qualified Data.JSString
-import GHCJS.Types(JSString)
-import qualified Web.VirtualDom as VD
 import Web.VirtualDom.Svg (Svg)
+import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
 import Lubeck.Util(showJS)
@@ -262,27 +262,7 @@ packStr   = id
 unpackStr = id
 takeStr   = take
 replaceStr :: Str -> Str -> Str -> Str
-replace old new = Data.List.intercalate new . Data.List.Split.splitOn old
--- replaceStr old new l = join new . split old $ l
---   where
---     spanList func list@(x:xs) =
---         if func list
---            then (x:ys,zs)
---            else ([],list)
---         where (ys,zs) = spanList func xs
---     join delim l = concat (Data.List.intersperse delim l)
---     startswith = Data.List.isPrefixOf
---     breakList func = spanList (not . func)
---     split _ [] = []
---     split delim str =
---         let (firstline, remainder) = breakList (startswith delim) str
---             in
---             firstline : case remainder of
---                                        [] -> []
---                                        x -> if x == delim
---                                             then [] : []
---                                             else split delim
---                                                      (drop (length delim) x)
+replaceStr old new = Data.List.intercalate new . Data.List.Split.splitOn old
 #endif
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
