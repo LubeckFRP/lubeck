@@ -233,9 +233,6 @@ import qualified Data.List.Split
 import Linear.Epsilon
 #endif
 
--- GHC 7.8.4 compability
-import Data.Foldable(Foldable(..))
-
 #ifdef __GHCJS__
 import GHCJS.Types(JSString)
 import qualified Data.JSString

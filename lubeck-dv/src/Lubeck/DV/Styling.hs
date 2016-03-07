@@ -72,13 +72,6 @@ import Linear.V4
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
 
-#ifdef __GHCJS__
-import GHCJS.Types(JSString)
-import qualified Data.JSString
-import Lubeck.Util(showJS)
-#endif
-
-
 data VerticalHorizontal = Vertical | Horizontal
 -- How to display a bar plot with more than two dimensions.§
 data BarPlotType = Grouped | Stacked | TwoSides

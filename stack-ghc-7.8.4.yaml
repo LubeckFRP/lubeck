@@ -1,7 +1,0 @@
-
-flags: {}
-packages:
-- 'lubeck-frp'
-- 'lubeck-drawing'
-- 'lubeck-dv'
-resolver: lts-2.22
