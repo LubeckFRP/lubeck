@@ -68,7 +68,7 @@ import           BDPlatform.Types
 import           Components.Map
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent,
-                                                 withBusy, withBusy2, withBusy0)
+                                                 withBusy, withBusy2)
 
 
 -- TODO finish
@@ -224,10 +224,13 @@ postToMarkerIO uploadImage p = do
   return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
 
 showResultsOnMap mapSink uploadImage mbPosts = do
-  mapSink ClearMap
+  mapSink $ ClearMap
   mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
   mapSink $ AddClusterLayer $ Data.Maybe.catMaybes mbms
 
+-- UX notice: not using `withBusy` here because this is not a user provoked action,
+-- so there is no need to notify a user, just do the job in background
+loadTrackedHashtags = P.getTrackedHashtags                                                         :: IO (Either AppError [P.TrackedHashtag])
 
 searchPage :: Sink BusyCmd
            -> Sink (Maybe Notification)
@@ -245,27 +248,29 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
 
   -- load tracked hash tags initially (at the very start of the app, before login)
   (thtsInitSink, thtsInitE)        <- newEventOf (undefined                                        :: [P.TrackedHashtag])
-  void $ forkIO $ do
-    z <- withBusy0 busySink P.getTrackedHashtags                                                   :: IO (Either AppError [P.TrackedHashtag])
+  void . forkIO $ do
+    z <- loadTrackedHashtags
     case z of
-      Left e     -> synchronously . notifSink . Just . apiError $ "Failed to load tracked hashtags"
+      Left e     -> notifSink . Just . apiError $ "Failed to load tracked hashtags"
       Right thts -> synchronously . thtsInitSink $ thts
 
   -- update tracked hash tags heuristics. Better: use websockets and FRP to push updates directly from the server
   let n                            = Lubeck.FRP.filter (NavSearch ==) (updates navS)
-  thtsReloadE                      <- withErrorIO notifSink $
-                                        fmap (withBusy busySink (\_ -> P.getTrackedHashtags)) n    :: IO (Events [P.TrackedHashtag])
+  thtsReloadE                      <- withErrorIO notifSink $ fmap (\_ -> loadTrackedHashtags) n   :: IO (Events [P.TrackedHashtag])
   thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                        :: IO (Behavior [P.TrackedHashtag])
 
   (searchView, searchRequested)    <- formComponentExtra1 thtsB initPostQuery (searchForm (utctDay now))
-  (uploadImage, uploadedImage)     <- newEventOf (undefined                                        :: PostAction)
-  (srchResSink, srchResEvents)     <- newEventOf (undefined                                        :: Maybe [Post])
+  (uploadImage', uploadedImage)    <- newEventOf (undefined                                        :: PostAction)
+  (srchResSink', srchResEvents)    <- newEventOf (undefined                                        :: Maybe [Post])
+
+  let uploadImage                  = synchronously . uploadImage'
+  let srchResSink                  = synchronously . srchResSink'
 
   (mapView, mapSink, _)            <- mapComponent []
 
   results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
   let gridView                     = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
-  let resultsViewS                 = (resultsLayout viewModeSink) <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
+  let resultsViewS                 = (resultsLayout (synchronously . viewModeSink)) <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
   let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS         :: Signal Html
 
   -- This will try to destroy the map on any navigation
@@ -276,42 +281,39 @@ searchPage busySink notifSink ipcSink mUserNameB navS = do
 
   subscribeEvent (updates results) (showResultsOnMap mapSink uploadImage)
 
-  subscribeEvent (updates resetMapS) $ \x -> void $ forkIO $ case x of
+  subscribeEvent (updates resetMapS) $ \x -> void . forkIO $ case x of
     Nothing -> return ()
     Just x  -> do
-      threadDelay 50 -- give DOM a litle time
-      synchronously . mapSink $ x
+      threadDelay 20000 -- give DOM a litle time?
+      mapSink $ x
 
-      threadDelay 1000 -- give map a little time
-
+      threadDelay 100000 -- give map a little time?
       curRes <- pollBehavior (current results)
-      (synchronously . showResultsOnMap mapSink uploadImage) curRes
+      showResultsOnMap mapSink uploadImage curRes
 
-  -- Create ad
-  subscribeEvent uploadedImage $ \(UploadImage post) -> void $ forkIO $ do
+  subscribeEvent uploadedImage $ \(UploadImage post) -> void . forkIO $ do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
-      Nothing -> synchronously . notifSink . Just . blError $ "No account to upload post to"
+      Nothing       -> notifSink . Just . blError $ "No account to upload post to"
       Just userName -> do
-        res <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+        res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
         case res of
-          Left e        -> synchronously  . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
-          Right (Ok s)  -> (synchronously . notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (synchronously . ipcSink $ ImageLibraryUpdated)
-          Right (Nok s) -> synchronously  . notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
+          Left e        -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
+          Right (Ok s)  -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (ipcSink ImageLibraryUpdated)
+          Right (Nok s) -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
 
-  -- Fetch Posts
-  subscribeEvent searchRequested $ \query -> void $ forkIO $ do
-    srchResSink Nothing -- reset previous search results
+  subscribeEvent searchRequested $ \query -> void . forkIO $ do
+    srchResSink $ Nothing -- reset previous search results
 
     let complexQuery = PostQuery $ complexifyPostQuery query
-    eQueryId <- (withBusy2 (synchronously . busySink) (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
+    eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
     case eQueryId of
-      Left e        -> synchronously . notifSink . Just . apiError $ "Failed posting query: " <> showJS e
-      Right queryId -> void $ forkIO $ do
-        eitherPosts <- (withBusy (synchronously . busySink) (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
+      Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
+      Right queryId -> void . forkIO $ do
+        eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
         case eitherPosts of
-          Left e   -> synchronously . notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-          Right ps -> synchronously . srchResSink $ Just ps
+          Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
+          Right ps -> srchResSink $ Just ps
     return ()
 
   return view

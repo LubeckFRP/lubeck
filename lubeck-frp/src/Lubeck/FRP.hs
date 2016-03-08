@@ -142,7 +142,6 @@ import qualified Data.Traversable
 -- UNDERLYING
 
 frpInternalLog :: Sink String
--- frpInternalLog = putStrLn
 frpInternalLog _ = return ()
 
 {-|
@@ -240,12 +239,22 @@ instance Applicative Signal where
   pure = pureS
   (<*>) = zipS
 
+instance Monad Signal where
+  k >>= f = joinS $ fmap f k
+
+
+-- Subscriber safety
+-- When returning an en event from a (possiblty pseudo)-primitive:
+--  Assure that after the UnsubscribeAction returned by the event is called, the sink
+--  submitted in the same call can never be called into again.
 
 -- PRIMITIVE COMBINATORS
 
 -- | Never occurs. Identity for 'merge'.
 never :: Events a
 never = E (\_ -> return (return ()))
+
+-- Subscriber safety : Sink submitted is ignored, so will never be called
 
 -- | Merge two event streams by interleaving occurances.
 --
@@ -270,6 +279,9 @@ merge (E f) (E g) = E $ \aSink -> do
   return $ do
     unsubF
     unsubG
+
+-- Subscriber safety: sink is usubscribed from both upstream events
+
   -- Sink is registered with both Es
   -- When UnsubscribeActionistered, UnsubscribeActionister with both Es
 
@@ -283,11 +295,19 @@ scatter (E taProvider) = E $ \aSink -> do
   where
     mapM_ f = fmap (const ()) . Data.Traversable.mapM f
 
+-- Subscriber safety: modified version of the sink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
+
+{-# SPECIALIZE scatter :: Events (Maybe a) -> Events a #-}
+{-# SPECIALIZE scatter :: Events (Seq a)   -> Events a #-}
+{-# SPECIALIZE scatter :: Events [a]       -> Events a #-}
+
 mapE :: (a -> b) -> Events a -> Events b
 mapE f (E aProvider) = E $ \aSink ->
   aProvider $ contramapSink f aSink
-  -- Sink is registered with given E
-  -- When UnsubscribeActionistered, UnsubscribeActionister with E
+
+-- Subscriber safety: modified version of the sink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 pureB :: a -> Behavior a
 pureB z = R ($ z)
@@ -310,7 +330,9 @@ accumB z (E aaProvider) = do
     value <- TVar.readTVarIO var
     aSink value
     return ()
-  -- TODO UnsubscribeAction?
+
+-- There should arguably be a version of accumB that returns an
+-- UnsubscribeAction as well calling it would freeze the behavior for ever.
 
 -- | Sample the current value of a behavior whenever an event occurs.
 snapshot :: Behavior a -> Events b -> Events (a, b)
@@ -319,12 +341,15 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
   bProvider $ \b ->
     aProvider $ \a ->
       abSink (a,b)
+-- Subscriber safety: a sink callning abSink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 -- | Create a new event stream and a sink that writes to it in the 'IO' monad.
 newEvent :: IO (Sink a, Events a)
 newEvent = do
   Dispatcher aProvider aSink <- newDispatcher
   return $ (aSink, E aProvider)
+-- Subscriber safety: provided by the underlying dispatcher.
 
 -- | Subscribe to an event stream in the 'IO' monad.
 -- The given sink will be called into whenever an event occurs.
@@ -338,12 +363,7 @@ pollBehavior (R aProvider) = do
   aProvider (atomically . TVar.writeTVar v)
   TVar.readTVarIO v
 
-
--- PSEUDO-PRIMITIVES
-
--- I.e. functions that have a primitive implementation for efficiency, but
--- need not actually be primitive.
-
+-- TODO this is effectively a primitive, we need return/fmap/join OR return/bind
 mapB :: (a -> b) -> Behavior a -> Behavior b
 mapB f (R aProvider) = R $ \bSink ->
   aProvider $ contramapSink f bSink
@@ -378,20 +398,47 @@ mapB f (R aProvider) = R $ \bSink ->
 --      x $ \x -> as (f x)
 --
 
--- | Drop 'Nothing' events.
--- Specialization of 'scatter'.
-filterJust :: Events (Maybe a) -> Events a
-filterJust (E maProvider) = E $ \aSink -> do
-  frpInternalLog "Setting up filter"
-  unsub <- maProvider $ \ma -> case ma of
-    Nothing -> return ()
-    Just a  -> aSink a
-  return unsub
+-- experimental:
 
--- | Drop occurances that does not match a given predicate.
-filter :: (a -> Bool) -> Events a -> Events a
-filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
+-- Events is not a monad (nor applicative!) There is no pure!
+joinE :: Events (Events a) -> Events a
+joinE eea = E $ \aSink -> do
+  v <- TVar.newTVarIO []
+  unsubTop <- subscribeEvent eea $ \ea -> do
+    us <- subscribeEvent ea aSink         -- Make the new event send to the resulting event
+    atomically $ TVar.modifyTVar v (us :) -- Remember how to unsubscribe
+    return ()
+  return $ do
+    unsubTop                  -- Assure no new events will be subscribed
+    uss <- TVar.readTVarIO v  -- Unsubscribe all
+    sequence_ uss
 
+
+joinS :: Signal (Signal a) -> Signal a
+joinS (S (esa, bsa)) = S (ea, ba)
+  where
+    ba = join (fmap current bsa)
+    -- when does updates happen?
+    ea = E $ \currentInnerUpdated -> do
+      unsubInner <- TVar.newTVarIO doNothing
+      unsubTop <- subscribeEvent esa $ \() -> do
+                join $ TVar.readTVarIO unsubInner                 -- Ubsubscribe previous inner
+                currentEvent <- fmap updates $ pollBehavior bsa   -- Subscribe new inner
+                us <- subscribeEvent currentEvent $ \_ -> do
+                  currentInnerUpdated ()
+                atomically $ TVar.writeTVar unsubInner us         -- Remember how to ubsubscribe
+      -- Return action that assures further propagation can not happen
+      return $ do
+        unsubTop                          -- Assure new inner events will not be suscribed
+        join $ TVar.readTVarIO unsubInner -- Usubscribe current inner event
+        return ()
+    doNothing = return ()
+
+
+-- PSEUDO-PRIMITIVES
+
+-- I.e. functions that have a primitive implementation for efficiency, but
+-- need not actually be primitive.
 
 zipB :: Behavior (a -> b) -> Behavior a -> Behavior b
 zipB (R abProvider) (R aProvider) = R $ \bSink ->
@@ -399,11 +446,11 @@ zipB (R abProvider) (R aProvider) = R $ \bSink ->
     \ab -> aProvider $
       \a -> bSink $ ab a
 
--- TODO Show how zipB can be derived from scatter.
+-- TODO Show how zipB can be derived from mapB and joinB.
 -- If the Monad instance is removed, this SHOULD be a primitive.
 
-
 -- | Execute an 'IO' action whenever an event occurs, and broadcast results.
+-- This is basically 'sequence', restricted to 'IO' and 'Events'.
 reactimateIO :: Events (IO a) -> IO (Events a)
 reactimateIO (E ioAProvider) = do
   v <- TVar.newTVarIO undefined
@@ -414,12 +461,23 @@ reactimateIO (E ioAProvider) = do
     ioAProvider $ \_ -> do
       a <- TVar.readTVarIO v
       aSink a
+-- Subscriber safety: a sink callning aSink is submitted upstream
+-- this is unsubscribed by the returned UnsubscribeAction.
 
 -- TODO show how reactimateIO can be derived from newEvent/subscribeEvent
 
 
 
 -- DERIVED
+
+-- | Drop occurances that does not match a given predicate.
+filter :: (a -> Bool) -> Events a -> Events a
+filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
+
+-- | Drop 'Nothing' events.
+-- Specialization of 'scatter'.
+filterJust :: Events (Maybe a) -> Events a
+filterJust = scatter
 
 -- | Create a behavior that starts out as a given behavior, and switches to
 --   a different behavior whenever and event occurs.
@@ -463,9 +521,6 @@ stepper z x = accumB z (mapE const x)
 counter :: Events b -> IO (Behavior Int)
 counter e = accumB 0 (fmap (const succ) e)
 
-
-
-
 -- | Record n events and emit in a group. Inverse of 'scatter'.
 gather :: Int -> Events a -> IO (Events (Seq a))
 gather n = fmap ((Seq.reverse <$>) . filter (\xs -> Seq.length xs == n)) . foldpE g mempty
@@ -492,10 +547,8 @@ withPreviousWith f e
 withPrevious :: Events a -> IO (Events (a, a))
 withPrevious = withPreviousWith (,)
 
--- lastE = fmap snd . withPrevious
 
--- delayE n = foldr (.) id (replicate n lastE)
-
+-- SIGNALS
 
 -- | A constant signal.
 pureS :: a -> Signal a
@@ -529,7 +582,6 @@ snapshotS b1 (S (e,b2)) = S (e, liftA2 (,) b1 b2)
 -- | Similar to 'snapshotS', but uses the given function go combine the values.
 snapshotWithS :: (a -> b -> c) -> Behavior a -> Signal b -> Signal c
 snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
-
 
 -- | Get an events stream that emits an event whenever the signal is updated.
 updates :: Signal a -> Events a

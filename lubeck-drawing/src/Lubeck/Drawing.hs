@@ -56,6 +56,8 @@ module Lubeck.Drawing
   , toStr
   , packStr
   , unpackStr
+  , replaceStr
+  , takeStr
 
   -- * Creating drawings
   -- ** Geometry
@@ -73,7 +75,6 @@ module Lubeck.Drawing
 
   , Angle
   , acosA
-  , angleBetween
   , turn
   , angleToRadians
   , angleToDegrees
@@ -195,6 +196,7 @@ module Lubeck.Drawing
   , RenderingOptions(..)
   -- mempty
   , toSvg
+  , toSvgStr
   , toSvgAny
   ) where
 
@@ -225,19 +227,18 @@ import qualified Linear.V2
 import qualified Linear.V3
 import qualified Linear.V4
 
+import qualified Data.List.Split
+
 #if MIN_VERSION_linear(1,20,0)
 #else
 import Linear.Epsilon
 #endif
 
--- GHC 7.8.4 compability
-import Data.Foldable(Foldable(..))
-
 #ifdef __GHCJS__
-import qualified Data.JSString
 import GHCJS.Types(JSString)
-import qualified Web.VirtualDom as VD
+import qualified Data.JSString
 import Web.VirtualDom.Svg (Svg)
+import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
 import Lubeck.Util(showJS)
@@ -246,15 +247,20 @@ import Lubeck.Util(showJS)
 #ifdef __GHCJS__
 type Str = JSString
 toStr :: Show a => a -> Str
-toStr     = showJS
-packStr   = Data.JSString.pack
-unpackStr = Data.JSString.unpack
+toStr      = showJS
+packStr    = Data.JSString.pack
+unpackStr  = Data.JSString.unpack
+takeStr    = Data.JSString.take
+replaceStr = Data.JSString.replace
 #else
 type Str = String
 toStr :: Show a => a -> Str
 toStr     = show
 packStr   = id
 unpackStr = id
+takeStr   = take
+replaceStr :: Str -> Str -> Str -> Str
+replaceStr old new = Data.List.intercalate new . Data.List.Split.splitOn old
 #endif
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
@@ -415,7 +421,6 @@ matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
 {-| -}
 transformationToMatrix :: Num a => Transformation a -> (a, a, a, a, a, a)
 transformationToMatrix (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = (a,b,c,d,e,f)
-transformationToMatrix _ = error "transformationToMatrix: Bad transformation"
 
 transformVector :: Num a => Transformation a -> V2 a -> V2 a
 transformVector t (V2 x y) =
@@ -464,10 +469,9 @@ newtype Envelope v n = Envelope (Maybe (v n -> n))
 instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) where
   mempty      = Envelope Nothing
   mappend (Envelope x) (Envelope y) = case (x, y) of
-    (Nothing, g)       -> Envelope y
-    (f,       Nothing) -> Envelope x
+    (Nothing, _)       -> Envelope y
+    (_,       Nothing) -> Envelope x
     (Just f,  Just g)  -> Envelope $ Just $ maxEnv f g
-    _                  -> Envelope Nothing
 
     -- Invoke max explicitly, as Data.Monoid.Max has a superflous Bounded constraint
     -- Alternatively, we could escape this by using the semigroup version
@@ -723,25 +727,43 @@ text = Text
 
 textStart, textMiddle, textEnd :: Str -> Drawing
 
+-- | Text horizontally aligned to the start of the text.
+--
+-- See also 'TextAnchor'.
 textStart = textWithOptions $ mempty
   { textAnchor = TextAnchorStart }
 
+-- | Text horizontally aligned to the middle of the text.
+--
+-- See also 'TextAnchor'.
 textMiddle = textWithOptions $ mempty
   { textAnchor = TextAnchorMiddle }
 
+-- | Text horizontally aligned to the end of the text.
+--
+-- See also 'TextAnchor'.
 textEnd = textWithOptions $ mempty
   { textAnchor = TextAnchorEnd }
 
 textLeftMiddle, textMiddleMiddle, textRightMiddle :: Str -> Drawing
 
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline.
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
 textLeftMiddle = textWithOptions $ mempty
   { textAnchor        = TextAnchorStart
   , alignmentBaseline = AlignmentBaselineMiddle }
 
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
 textMiddleMiddle = textWithOptions $ mempty
   { textAnchor        = TextAnchorMiddle
   , alignmentBaseline = AlignmentBaselineMiddle }
 
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
 textRightMiddle = textWithOptions $ mempty
   { textAnchor        = TextAnchorEnd
   , alignmentBaseline = AlignmentBaselineMiddle }
@@ -944,24 +966,31 @@ xyCoords :: Drawing
 xyCoords = fillColorA (Colors.black `withOpacity` 0) $ strokeColor Colors.darkgreen $
   strokeWidth 0.5 $ mconcat [horizontalLine, verticalLine, circle, square]
 
+-- | Draw the unit vector.
 showUnitX :: Drawing
 showUnitX = strokeColor Colors.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 
+-- | Draw an image representing a direction.
 showDirection :: Direction V2 Double -> Drawing
 showDirection dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
   where
     tp = Colors.black `withOpacity` 0
 
+-- | Draw an image representing two boundaries of an image along the given line.
+--
+-- See also 'boundaries'.
 showBoundaries :: V2 Double -> Drawing -> Drawing
 showBoundaries v dr = case boundaries v (envelope dr) of
   Nothing -> dr
   Just (lo, hi) -> strokeColor Colors.blue (showPoint lo) <> scale 2 (showPoint hi) <> dr
 
+-- | Draw an image representing a point.
 showPoint :: Point V2 Double -> Drawing
 showPoint p = translate (p .-. origin) base
   where
     base = strokeColor Colors.red $ fillColorA (Colors.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
 
+-- | Draw an image representing an envelope.
 showEnvelope :: V2 Double -> Drawing -> Drawing
 showEnvelope v drawing = case envelopeVMay v drawing of
   Nothing -> drawing
@@ -1183,3 +1212,12 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Em         -> single $ mkN "g" ps []
           -- Event handlers applied to a group go on the g node
           Ap x y     -> single $ mkN "g" ps (toSvg1 [] x ++ toSvg1 [] y)
+
+
+
+toSvgStr :: RenderingOptions -> Drawing -> Str
+toSvgStr st dr = toSvgAny st dr id $
+        \name attrs nodes -> "<" <> name <> " "
+          <> mconcat (Data.List.intersperse " " $ fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
+          <> ">"
+          <> mconcat nodes <> "</" <> name <> ">"

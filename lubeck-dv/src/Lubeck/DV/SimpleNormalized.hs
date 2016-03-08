@@ -4,34 +4,18 @@
 -- |
 -- Basic normalized visualization.
 module Lubeck.DV.SimpleNormalized
-#ifdef __GHCJS__
   ( simpleLinePlot
   , simpleTimeSeries
   , simpleTimeSeriesWithOverlay
   , utcTimeToApproxReal
   , realToApproxUTCTime
   ) where
-#else
-  () where
-#endif
-
-#ifdef __GHCJS__
 
 import Prelude hiding (div)
 import qualified Prelude
 
 import Data.Monoid ((<>))
 
-import GHCJS.Types(JSString, jsval)
-import qualified Data.JSString
-import qualified Web.VirtualDom as VD
-import qualified Web.VirtualDom.Html as H
-import qualified Web.VirtualDom.Html.Attributes as H
-import qualified Web.VirtualDom.Html.Events as H
-import qualified Web.VirtualDom.Svg.Events as SvgEv
-import qualified Data.JSString
--- import Data.VectorSpace
--- import Data.AffineSpace
 import Data.Colour (withOpacity)
 import qualified Data.Colour.Names as Colors
 
@@ -53,16 +37,16 @@ import Linear.V2
 import Linear.V3
 import Linear.V4
 
-import Lubeck.FRP
-import Lubeck.App (Html, runAppReactive)
-import Lubeck.Forms
+-- import Lubeck.FRP
+-- import Lubeck.App (Html, runAppReactive)
+-- import Lubeck.Forms
   -- (Widget, Widget', component, bothWidget)
-import Lubeck.Forms.Basic
-import Lubeck.Drawing
-import Lubeck.Util(showJS, formatDateAndTimeFromUTC)
-import qualified Lubeck.Drawing
-import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis, withDefaultStyle)
+-- import Lubeck.Forms.Basic
 
+import Lubeck.Drawing
+import qualified Lubeck.Drawing
+import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
+import Lubeck.DV.Styling(withDefaultStyle)
 
 
 -- -- TODO to many variants of these
@@ -109,17 +93,17 @@ import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis
 utcTimeToApproxReal :: UTCTime -> Double
 utcTimeToApproxReal t = realToFrac $ (t `diffUTCTime` refTime) / (1000000000000)
 
-
 realToApproxUTCTime :: Double -> UTCTime
 realToApproxUTCTime x = ((realToFrac x) * 1000000000000) `addUTCTime` refTime
 
 refTime :: UTCTime
-refTime = case Data.Time.Format.parseTime Data.Time.Format.defaultTimeLocale
+refTime = case Data.Time.Format.parseTimeM True Data.Time.Format.defaultTimeLocale
   (Data.Time.Format.iso8601DateFormat Nothing) "2000-01-01" of
   Just t -> t
 
-unDay = toModifiedJulianDay
-day = ModifiedJulianDay
+-- unDay = toModifiedJulianDay
+-- day   = ModifiedJulianDay
+--
 
 {-|
 Draw a simple line plot. Steps performed:
@@ -142,8 +126,8 @@ Draw a simple line plot. Steps performed:
 
 -}
 simpleLinePlot
-  :: (a -> JSString)                  -- ^ How to print ticks on X axis.
-  -> (b -> JSString)                  -- ^ How to print ticks on Y axis.
+  :: (a -> Str)                  -- ^ How to print ticks on X axis.
+  -> (b -> Str)                  -- ^ How to print ticks on Y axis.
   -> (a -> Double) -> (Double -> a)   -- ^ Mapping from domain(X) to R.
   -> (b -> Double) -> (Double -> b)   -- ^ Linear map from domain(Y) to R.
   -> Int                              -- ^ Number of ticks on X axis.
@@ -186,47 +170,55 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
     -- as' :: [a], bs' :: [b]
     (as', bs') = unzip xs
 
+    -- Utility
     unzip xs = (fmap fst xs, fmap snd xs)
 
+    normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
+    normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
+
+    --from here http://stackoverflow.com/questions/326679/choosing-an-attractive-linear-scale-for-a-graphs-y-axis
+    -- see also http://stackoverflow.com/questions/361681/algorithm-for-nice-grid-line-intervals-on-a-graph
+
+    -- number of ticks, interval, outpouts ticks
+    tickCalc :: Int -> (Double, Double) -> [Double]
+    tickCalc tickCount (lo, hi) =
+      let range = hi - lo :: Double
+          unroundedTickSize = range/(realToFrac $ tickCount-1)        --  :: Double
+          x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) --  :: Double
+          pow10x = 10**x -- Math.pow(10, x);
+          stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
+          lb = stepSize * realToFrac (floor (lo / stepSize))
+          ub = stepSize * realToFrac (ceiling (hi / stepSize))
+
+      in [lb, lb+stepSize..ub]
+      where
+        exrng = (2.1, 11.5)
 
 
-simpleTimeSeries :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
+
+simpleTimeSeries :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
 simpleTimeSeries s f g = snd . simpleLinePlot
-  (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
+  (replaceStr "T" "  " . takeStr 16 . formatDateAndTimeFromUTC) s
   utcTimeToApproxReal realToApproxUTCTime
   f g
   10 10
 
-simpleTimeSeriesWithOverlay :: (a -> JSString) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
+simpleTimeSeriesWithOverlay :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
 simpleTimeSeriesWithOverlay s f g times dat = plot2 <> plot1
   where
     plot2 = withDefaultStyle $ scatterDataX $ fmap ((\t -> P $ V2 t 0.5) . normT . utcTimeToApproxReal) times
     ((normT, _), plot1) = simpleLinePlot
-      (Data.JSString.replace "T" "  " . Data.JSString.take 16 . formatDateAndTimeFromUTC) s
+      (replaceStr "T" "  " . takeStr 16 . formatDateAndTimeFromUTC) s
       utcTimeToApproxReal realToApproxUTCTime
       f g
       10 10
       dat
 
-normalizerFromBounds :: Fractional a => (a, a) -> (a -> a, a -> a)
-normalizerFromBounds (lb,ub) = (\x -> (x - lb)/d, \x -> x*d + lb) where d = ub - lb
+-- TODO consolidate
 
---from here http://stackoverflow.com/questions/326679/choosing-an-attractive-linear-scale-for-a-graphs-y-axis
--- see also http://stackoverflow.com/questions/361681/algorithm-for-nice-grid-line-intervals-on-a-graph
-
--- number of ticks, interval, outpouts ticks
-tickCalc :: Int -> (Double, Double) -> [Double]
-tickCalc tickCount (lo, hi) =
-  let range = hi - lo :: Double
-      unroundedTickSize = range/(realToFrac $ tickCount-1) :: Double
-      x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) :: Double
-      pow10x = 10**x -- Math.pow(10, x);
-      stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
-      lb = stepSize * realToFrac (floor (lo / stepSize))
-      ub = stepSize * realToFrac (ceiling (hi / stepSize))
-
-  in [lb, lb+stepSize..ub]
+-- | Format a date written in ISO 8601 i.e. @YYYY-MM-DDTHH:MM:SS@
+formatDateAndTimeFromUTC :: UTCTime -> Str
+formatDateAndTimeFromUTC = packStr . Data.Time.Format.formatTime l f
   where
-    exrng = (2.1, 11.5)
-
-#endif
+    l = Data.Time.Format.defaultTimeLocale
+    f = Data.Time.Format.iso8601DateFormat (Just "%H:%M:%S")

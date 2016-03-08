@@ -22,8 +22,13 @@ library
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
+                     , Lubeck.DV
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
+                     , Lubeck.DV.Styling
+                     , Lubeck.DV.Animation
+                     , Lubeck.DV.Interactive
+                     , Lubeck.DV.Plottable
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
@@ -55,6 +60,7 @@ library
                      , Components.MainMenu
                      , Components.Map
   build-depends:       base
+                     , base-prelude
                      , virtual-dom
                      , ghcjs-ffiqq
                      , ghcjs-base
@@ -83,6 +89,7 @@ library
                      , monad-parallel
                      , random
                      , ListZipper
+                     , split
   hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER

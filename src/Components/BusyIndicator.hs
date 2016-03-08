@@ -20,6 +20,7 @@ import qualified Prelude
 import           Control.Applicative
 import qualified Data.List
 import           Data.Monoid
+import           GHCJS.Concurrent               (synchronously)
 
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -44,32 +45,32 @@ type BusyStack = [Bool] -- can be Int, for example, but the idea is to save some
 
 -- FIXME what about lazyness etc?
 withBusy0 sink f = do
-  sink PushBusy
+  sink $ PushBusy
   y <- f
-  sink PopBusy
+  sink $ PopBusy
   return y
 
 withBusy sink f = \x -> do
-  sink PushBusy
+  sink $ PushBusy
   y <- f x
-  sink PopBusy
+  sink $ PopBusy
   return y
 
 withBusy2 sink f = \x y -> do
-  sink PushBusy
+  sink $ PushBusy
   z <- f x y
-  sink PopBusy
+  sink $ PopBusy
   return z
 
 withBusy3 sink f = \x y z -> do
-  sink PushBusy
+  sink $ PushBusy
   r <- f x y z
-  sink PopBusy
+  sink $ PopBusy
   return r
 
 
 row6Hbusy :: Html -> Html
-row6Hbusy content = div [class_ "row busy-indicator"] [ div [class_ "col-md-4 col-lg-2 col-md-offset-4 col-lg-offset-5"] [content] ]
+row6Hbusy content = div [class_ "busy-indicator"] [ div [] [content] ]
 
 infoPanel :: Html -> Html
 infoPanel content = row6Hbusy $ div [class_ "alert alert-info text-center"] [content]
@@ -88,14 +89,14 @@ busyW _ bs = infoPanel $ div []
 -- It will keep showing busy indicator until busy stack will be empty.
 busyIndicatorComponent :: BusyStack -> IO (Signal Html, Sink BusyCmd)
 busyIndicatorComponent initialBusyStack = do
-  (externalSink :: Sink BusyCmd, externalEvents :: Events BusyCmd) <- newEvent
+  (externalSink :: Sink BusyCmd, externalEvents    :: Events BusyCmd) <- newEvent
 
-  let busyCmds = fmap applyBusyCmd externalEvents :: Events (BusyStack -> BusyStack)
+  let busyCmds = fmap applyBusyCmd externalEvents  :: Events (BusyStack -> BusyStack)
 
   busyStackS   <- accumS initialBusyStack busyCmds :: IO (Signal BusyStack)
   let htmlS    = fmap (busyW emptySink) busyStackS
 
-  return (htmlS, externalSink)
+  return (htmlS, (synchronously . externalSink))
 
   where
     applyBusyCmd :: BusyCmd -> (BusyStack -> BusyStack)

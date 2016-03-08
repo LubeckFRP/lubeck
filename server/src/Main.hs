@@ -13,11 +13,13 @@ import qualified Network.Wai.Handler.Warp
 import           Servant
 import           Servant.Utils.StaticFiles (serveDirectory)
 import           System.Directory          (copyFile)
+import qualified System.Directory
 import           System.Exit               (ExitCode (..))
 import           System.IO.Error
 import           System.Process
 import qualified System.Process
 import           System.Random
+import           Data.Monoid ((<>))
 
 import           Util.ParseEnv             (getJsExeBinPathFromEnv, getApiDocPathFromEnv)
 import           Util.StackEnv             (getStackEnv)
@@ -36,6 +38,7 @@ type Layout =
     :<|> "example-plots5"             :> Raw
     :<|> "example-plots6"             :> Raw
     :<|> "example-history"            :> Raw
+    :<|> "tmp"                        :> Raw
     :<|> "doc"                        :> Raw
     :<|> Raw
 
@@ -78,6 +81,7 @@ main = do
   -- Uses some heuristics to find the location of the compiled code (see getJsExeBinPathFromEnv)
   jsExeDir <- fmap getJsExeBinPathFromEnv getStackEnv
   docDir   <- fmap getApiDocPathFromEnv getStackEnv
+  tmpDir   <- fmap (<> "/static/tmp") System.Directory.getCurrentDirectory
 
   -- If successful, serve the compiled code
   case jsExeDir of
@@ -99,6 +103,8 @@ main = do
       examplePlots6            <- serveApp rnd jsExeDir "bd-example-plots6"
       exampleHistoryServer     <- serveApp rnd jsExeDir "bd-example-history"
       indexServer              <- serveApp rnd jsExeDir "bd-index"
+
+      tmpServer <- serveDir "temporary files" tmpDir
       docServer <- case docDir of
         Left msg     -> print "Warning: Could not find documentation" >> serveNothing "documentation"
         Right docDir -> serveDir "documentation" docDir
@@ -118,6 +124,7 @@ main = do
           :<|> examplePlots5
           :<|> examplePlots6
           :<|> exampleHistoryServer
+          :<|> tmpServer
           :<|> docServer
           :<|> indexServer
 

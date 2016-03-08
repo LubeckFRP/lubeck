@@ -30,6 +30,7 @@ import Control.Monad(forever)
 
 import Lubeck.FRP
 import Lubeck.DV.Drawing
+import Lubeck.DV.Styling
 import Lubeck.DV.SimpleNormalized
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms
