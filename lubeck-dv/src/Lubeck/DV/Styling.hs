@@ -220,10 +220,14 @@ withDefaultStyleT x = getStyledT x mempty
 
 
 type DV = DV_T Identity
--- DVI = DV_T Behavior
+-- DV_S = DV_T Identity
+-- DV_I = DV_T Behavior
 
 newtype DV_T m a = DV_T { _getDV_T :: ReaderT Styling (WriterT Drawing m) a }
   deriving (Functor, Applicative, Monad, MonadReader Styling, MonadWriter Drawing)
+
+liftDV :: Monad m => m a -> DV_T m a
+liftDV = DV_T . lift . lift
 
 instance (Monad m, Monoid a) => Monoid (DV_T m a) where
   mempty = pure mempty
@@ -240,6 +244,9 @@ localStyling = local
 -- | Draw something to the screen
 draw :: Monad m => Drawing -> DV_T m ()
 draw = tell
+
+drawM :: Monad m => m Drawing -> DV_T m ()
+drawM x = pass $ fmap (\d -> ((), (<> d))) $ liftDV x
 
 -- | Apply a transformation to the current drawing (useful for facets etc).
 postDrawing :: Monad m => (Drawing -> Drawing) -> DV_T m a -> DV_T m a
