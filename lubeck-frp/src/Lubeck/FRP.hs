@@ -239,6 +239,9 @@ instance Applicative Signal where
   pure = pureS
   (<*>) = zipS
 
+instance Monad Signal where
+  k >>= f = joinS $ fmap f k
+
 
 -- Subscriber safety
 -- When returning an en event from a (possiblty pseudo)-primitive:
@@ -394,6 +397,42 @@ mapB f (R aProvider) = R $ \bSink ->
 --    \f (R x) = R $ \as ->
 --      x $ \x -> as (f x)
 --
+
+-- experimental:
+
+-- Events is not a monad (nor applicative!) There is no pure!
+joinE :: Events (Events a) -> Events a
+joinE eea = E $ \aSink -> do
+  v <- TVar.newTVarIO []
+  unsubTop <- subscribeEvent eea $ \ea -> do
+    us <- subscribeEvent ea aSink         -- Make the new event send to the resulting event
+    atomically $ TVar.modifyTVar v (us :) -- Remember how to unsubscribe
+    return ()
+  return $ do
+    unsubTop                  -- Assure no new events will be subscribed
+    uss <- TVar.readTVarIO v  -- Unsubscribe all
+    sequence_ uss
+
+
+joinS :: Signal (Signal a) -> Signal a
+joinS (S (esa, bsa)) = S (ea, ba)
+  where
+    ba = join (fmap current bsa)
+    -- when does updates happen?
+    ea = E $ \currentInnerUpdated -> do
+      unsubInner <- TVar.newTVarIO doNothing
+      unsubTop <- subscribeEvent esa $ \() -> do
+                join $ TVar.readTVarIO unsubInner                 -- Ubsubscribe previous inner
+                currentEvent <- fmap updates $ pollBehavior bsa   -- Subscribe new inner
+                us <- subscribeEvent currentEvent $ \_ -> do
+                  currentInnerUpdated ()
+                atomically $ TVar.writeTVar unsubInner us         -- Remember how to ubsubscribe
+      -- Return action that assures further propagation can not happen
+      return $ do
+        unsubTop                          -- Assure new inner events will not be suscribed
+        join $ TVar.readTVarIO unsubInner -- Usubscribe current inner event
+        return ()
+    doNothing = return ()
 
 
 -- PSEUDO-PRIMITIVES
