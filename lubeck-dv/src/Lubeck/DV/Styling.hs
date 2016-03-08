@@ -40,6 +40,14 @@ module Lubeck.DV.Styling
   , getStyledT
   -- *** Utility
   , withDefaultStyle
+
+  -- ** DV Monad
+  , DV
+  , DV_T
+  , askStyling
+  , localStyling
+  , draw
+  , postDrawing
   )
 where
 
@@ -52,6 +60,7 @@ import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
 import Control.Monad.Reader
+import Control.Monad.Writer
 -- import Data.AffineSpace
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid
@@ -190,10 +199,7 @@ type Styled = StyledT Identity
 newtype StyledT m a = Styled { _getStyled :: ReaderT Styling m a }
   deriving (Functor, Applicative, Monad, MonadReader Styling)
 
-instance
-  ( Monad m
-  , Monoid a
-  ) => Monoid (StyledT m a) where
+instance (Monad m, Monoid a) => Monoid (StyledT m a) where
   mempty = pure mempty
   mappend = liftA2 mappend
 
@@ -210,3 +216,31 @@ withDefaultStyle x = getStyled x mempty
 
 withDefaultStyleT :: StyledT m a -> m a
 withDefaultStyleT x = getStyledT x mempty
+
+
+
+type DV = DV_T Identity
+-- DVI = DV_T Behavior
+
+newtype DV_T m a = DV_T { _getDV_T :: ReaderT Styling (WriterT Drawing m) a }
+  deriving (Functor, Applicative, Monad, MonadReader Styling, MonadWriter Drawing)
+
+instance (Monad m, Monoid a) => Monoid (DV_T m a) where
+  mempty = pure mempty
+  mappend = liftA2 mappend
+
+-- | Get current styling (i.e. for drawing)
+askStyling :: Monad m => DV_T m Styling
+askStyling = ask
+
+-- | Apply a local styling (i.e. for subgraphs)
+localStyling :: Monad m => (Styling -> Styling) -> DV_T m a -> DV_T m a
+localStyling = local
+
+-- | Draw something to the screen
+draw :: Monad m => Drawing -> DV_T m ()
+draw = tell
+
+-- | Apply a transformation to the current drawing (useful for facets etc).
+postDrawing :: Monad m => (Drawing -> Drawing) -> DV_T m a -> DV_T m a
+postDrawing = censor

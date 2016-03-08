@@ -135,7 +135,7 @@ import qualified Lubeck.Drawing
 --   X and Y coordinates map to points in the plotting rectangle.
 --
 --   Can be combined with `scatterDataX`, `scatterDataY` and `lineData`.
-scatterData :: (Monad m) => [P2 Double] -> StyledT m Drawing
+scatterData :: (Monad m) => [P2 Double] -> DV_T m ()
 scatterData ps = do
   style <- ask
   let base  = id
@@ -144,7 +144,8 @@ scatterData ps = do
             $ scale (style^.scatterPlotSize) circle
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
+  draw $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
+  return ()
 
 -- | Draw data for a scatter plot, ignoring Y values.
 --
@@ -152,13 +153,14 @@ scatterData ps = do
 --   in the plotting rectangle.
 --
 --   Can be combined with `scatterData`, `lineData` etc.
-scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
+scatterDataX :: (Monad m) => [P2 Double] -> DV_T m ()
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
+  draw $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
+  return ()
 
 -- | Draw data for a scatter plot ignoring X values.
 --
