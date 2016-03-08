@@ -135,7 +135,7 @@ import qualified Lubeck.Drawing
 --   X and Y coordinates map to points in the plotting rectangle.
 --
 --   Can be combined with `scatterDataX`, `scatterDataY` and `lineData`.
-scatterData :: (Monad m) => [P2 Double] -> StyledT m ()
+scatterData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
   let base  = id
@@ -154,7 +154,7 @@ scatterData ps = do
 --   in the plotting rectangle.
 --
 --   Can be combined with `scatterData`, `lineData` etc.
-scatterDataX :: (Monad m) => [P2 Double] -> StyledT m ()
+scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
