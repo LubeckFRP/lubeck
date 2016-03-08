@@ -225,6 +225,12 @@ type DV = DV_T Identity
 
 newtype DV_T m a = DV_T { _getDV_T :: ReaderT Styling (WriterT Drawing m) a }
   deriving (Functor, Applicative, Monad, MonadReader Styling, MonadWriter Drawing)
+{-
+ReaderT Styling (WriterT Drawing m) a
+Styling -> WriterT Drawing m a
+Styling -> m (a, Drawing)
+-}
+
 
 liftDV :: Monad m => m a -> DV_T m a
 liftDV = DV_T . lift . lift
