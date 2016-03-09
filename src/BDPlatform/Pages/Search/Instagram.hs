@@ -5,8 +5,8 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
-module BDPlatform.Pages.PostSearch
-  ( searchPage
+module BDPlatform.Pages.Search.Instagram
+  ( searchInstagram
   ) where
 
 import           Prelude                        hiding (div)
@@ -232,13 +232,13 @@ showResultsOnMap mapSink uploadImage mbPosts = do
 -- so there is no need to notify a user, just do the job in background
 loadTrackedHashtags = P.getTrackedHashtags                                                         :: IO (Either AppError [P.TrackedHashtag])
 
-searchPage :: Sink BusyCmd
-           -> Sink (Maybe Notification)
-           -> Sink IPCMessage
-           -> Behavior (Maybe JSString)
-           -> Signal Nav
-           -> IO (Signal Html)
-searchPage busySink notifSink ipcSink mUserNameB navS = do
+searchInstagram :: Sink BusyCmd
+                -> Sink (Maybe Notification)
+                -> Sink IPCMessage
+                -> Behavior (Maybe JSString)
+                -> Signal Nav
+                -> IO (Signal Html)
+searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   let initPostQuery                = defSimplePostQuery
 
   (viewModeSink, viewModeEvents)   <- newEventOf (undefined                                        :: ResultsViewMode)

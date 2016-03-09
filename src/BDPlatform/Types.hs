@@ -10,6 +10,15 @@ module BDPlatform.Types where
 data IPCMessage = ImageLibraryUpdated | Noop deriving (Show, Eq)
 
 
--- FIXME should be in BD Platform types probably
-data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages | NavInteractions | NavAccountSearch
+data Nav = NavLogin
+         | NavUser
+         | NavCampaign
+         | NavSearch
+         | NavCreateAd
+         | NavImages
+         | NavInteractions
+         | NavAccountSearch
+         | NavAccounts
+         | NavResults
+         | NavManage
   deriving (Show, Eq)

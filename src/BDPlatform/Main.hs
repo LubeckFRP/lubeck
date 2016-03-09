@@ -41,12 +41,12 @@ import           BD.Api
 
 import           BDPlatform.Pages.Campaign      (campaignPage, getCampaigns)
 import           BDPlatform.Pages.CreateAd      (createAdPage)
-import           BDPlatform.Pages.ImageLibrary  (imageLibraryPage)
 import           BDPlatform.Pages.Login         (loginPage, Username)
-import           BDPlatform.Pages.PostSearch    (searchPage)
-import           BDPlatform.Pages.AccountSearch (accountSearchPage)
 import           BDPlatform.Pages.User          (userPage)
 import           BDPlatform.Pages.Interactions  (interactionsMain)
+import           BDPlatform.Pages.Search.Index  (searchIndexPage)
+import           BDPlatform.Pages.Accounts.Index (accountsIndexPage)
+import           BDPlatform.Pages.Manage.Index  (manageIndexPage)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
@@ -61,24 +61,23 @@ import           BDPlatform.Config
 
 menuItems :: MenuItems Nav
 menuItems =
-  [ (NavUser,          "User")
-  , (NavSearch,        "Search")
-  , (NavImages,        "Image Library")
-  , (NavCreateAd,      "Create Ad")
-  , (NavInteractions,  "Shoutout browser")
-  , (NavAccountSearch, "Account search")
-  , (NavLogin,         "Logout") -- last item is special in that it will be positioned far right
+  [ (NavAccounts, "Accounts")
+  , (NavSearch,   "Search content")
+  , (NavManage,   "Manage content")
+  , (NavResults,  "Results")
+  , (NavLogin,    "Logout") -- last item is special in that it will be positioned far right
   ]
 
-rootLayout goTo menu err busy login user ads search createAd imlib interactions accountSearchPageView = case goTo of
+rootLayout goTo menu err busy login user ads search createAd interactions accountsIndexView manageIndexView = case goTo of
   NavLogin         -> layoutLogin busy err login
   NavUser          -> layout menu busy err user
   NavCampaign      -> layout menu busy err ads
   NavSearch        -> layout menu busy err search
   NavCreateAd      -> layout menu busy err createAd
-  NavImages        -> layout menu busy err imlib
   NavInteractions  -> layout menu busy err interactions
-  NavAccountSearch -> layout menu busy err accountSearchPageView
+  NavAccounts      -> layout menu busy err accountsIndexView
+  NavManage        -> layout menu busy err manageIndexView
+
   where
     layoutLogin busy err page =
       div [class_ "container login-top-buffer"]
@@ -130,13 +129,12 @@ adPlatform = do
 
   (userView, loadAdsE)                  <- userPage         busySink notifSink                   userB campaignsS
   adsView                               <- campaignPage     busySink notifSink loadAdsE          userB
-  (imageLibView, imsB, imlibKbdSink)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
-  -- searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB
+  (manageIndexView, imsB, manageKbdSink) <- manageIndexPage   busySink notifSink ipcSink ipcEvents userE -- navS
   createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
   interactionsView                      <- interactionsMain busySink notifSink
 
-  let firstPage                         = NavUser
+  let firstPage                         = NavAccounts
 
   -- first time menu gets rendered with initial state argument
   (menuView, menuNavE)                  <- mainMenuComponent menuItems "BD Platform" firstPage
@@ -145,8 +143,8 @@ adPlatform = do
   let campaignNavE                      = fmap (const NavCampaign) (updates adsView)
   navS                                  <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
 
-  searchPageView                        <- searchPage        busySink notifSink ipcSink           usernameB navS
-  accountSearchPageView                 <- accountSearchPage busySink notifSink ipcSink           usernameB navS
+  searchIndexView                       <- searchIndexPage   busySink notifSink ipcSink usernameB navS
+  accountsIndexView                     <- accountsIndexPage busySink notifSink ipcSink usernameB navS
 
   -- composition of keyboard listeners, looks like an inverse to Html signal distribution & flow
   subscribeEvent kbdEvents $ \e -> do
@@ -158,7 +156,7 @@ adPlatform = do
 
     -- local listeners
     case nav of
-      NavImages -> imlibKbdSink e
+      NavManage -> manageKbdSink e
       _         -> return ()
 
     return ()
@@ -170,11 +168,11 @@ adPlatform = do
                             <*> loginView
                             <*> userView
                             <*> adsView
-                            <*> searchPageView
+                            <*> searchIndexView
                             <*> createAdView
-                            <*> imageLibView
                             <*> interactionsView
-                            <*> accountSearchPageView
+                            <*> accountsIndexView
+                            <*> manageIndexView
 
   return (mainView, Just kbdSink)
   where

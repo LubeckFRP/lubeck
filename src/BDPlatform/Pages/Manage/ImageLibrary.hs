@@ -3,8 +3,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module BDPlatform.Pages.ImageLibrary
-  ( imageLibraryPage
+module BDPlatform.Pages.Manage.ImageLibrary
+  ( imageLibrary
   ) where
 
 import           Prelude                        hiding (div)
@@ -269,13 +269,13 @@ enhanceImage acc image = Im.enhanceImageOrError (Account.username acc) (Im.id im
 
 -- main entry point
 
-imageLibraryPage :: Sink BusyCmd
-                 -> Sink (Maybe Notification)
-                 -> Sink IPCMessage
-                 -> Events IPCMessage
-                 -> Events Account.Account
-                 -> IO (Signal Html, Behavior (Maybe [Im.Image]), Sink KbdEvents)
-imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
+imageLibrary :: Sink BusyCmd
+             -> Sink (Maybe Notification)
+             -> Sink IPCMessage
+             -> Events IPCMessage
+             -> Events Account.Account
+             -> IO (Signal Html, Behavior (Maybe [Im.Image]), Sink KbdEvents)
+imageLibrary busySink notifSink ipcSink ipcEvents userE = do
   (actionsSink,  actionsE)  <- newEventOf (undefined :: ImgLibraryActions)
   (actionsSink2, actionsE2) <- newEventOf (undefined :: ImgLibraryActions)
 
@@ -312,7 +312,7 @@ imageLibraryPage busySink notifSink ipcSink ipcEvents userE = do
 
   where
     sample = snapshotWith const
-    
+
     layout indexView imageView = case imageView of
       Nothing -> indexView
       Just v  -> v
