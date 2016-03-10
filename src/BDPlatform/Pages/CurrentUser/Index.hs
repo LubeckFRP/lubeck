@@ -46,9 +46,9 @@ type Session = (Ac.Account, Auth.AuthInfo)
 toolbarW :: Widget (Maybe Session, Maybe CurrentUserAction) CurrentUserAction
 toolbarW sink (session, action) = mconcat
   [ toolbar' $ buttonGroup
-      ((ifAdmin session [button "Create user" [markActive action CreateUser, Ev.click $ \e -> sink CreateUser]] []) <>
-      [ button "Change password" [markActive action ChangePassword, Ev.click $ \e -> sink ChangePassword]
-      , button "Logout"          [markActive action CUALogout,      Ev.click $ \e -> sink CUALogout] ])
+      ((ifAdmin session [buttonIcon "Create user" "user-plus" (action ~== CreateUser) [Ev.click $ \e -> sink CreateUser]] []) <>
+      [ buttonIcon "Change password" "key"       (action ~== ChangePassword) [Ev.click $ \e -> sink ChangePassword]
+      , buttonIcon "Logout"          "power-off" (action ~== CUALogout )     [Ev.click $ \e -> sink CUALogout] ])
   ]
 
 ifAdmin :: Maybe Session -> a -> a -> a

@@ -42,8 +42,8 @@ data ManageAction = PredictForPagePost | PredictForAd
 indexW :: Widget (Maybe ManageAction) ManageAction
 indexW sink action = mconcat
   [ toolbar' $ buttonGroup
-      [ button "Predict for Page Post" [markActive action PredictForPagePost, Ev.click $ \e -> sink PredictForPagePost]
-      , button "Predict for Ad"        [markActive action PredictForAd,       Ev.click $ \e -> sink PredictForAd] ]
+      [ button "Predict for Page Post" (action ~== PredictForPagePost) [Ev.click $ \e -> sink PredictForPagePost]
+      , button "Predict for Ad"        (action ~== PredictForAd)       [Ev.click $ \e -> sink PredictForAd] ]
   ]
 
 layout action toolbar libview =

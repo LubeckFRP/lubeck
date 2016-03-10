@@ -40,8 +40,8 @@ data AccountsAction = FindAccounts | MagageGroups
 indexW :: Widget (Maybe AccountsAction) AccountsAction
 indexW sink action = mconcat
   [ toolbar' $ buttonGroup
-      [ button "Find accounts" [markActive action FindAccounts, Ev.click $ \e -> sink FindAccounts]
-      , button "Manage groups" [markActive action MagageGroups, Ev.click $ \e -> sink MagageGroups] ]
+      [ button "Find accounts" (action ~== FindAccounts) [Ev.click $ \e -> sink FindAccounts]
+      , button "Manage groups" (action ~== MagageGroups) [Ev.click $ \e -> sink MagageGroups] ]
   ]
 
 layout action toolbar accountsearch =

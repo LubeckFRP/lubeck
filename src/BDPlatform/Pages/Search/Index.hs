@@ -40,11 +40,12 @@ data SearchAction = SearchUpload | SearchBDContent | SearchBDCommunity | SearchI
 indexW :: Widget (Maybe SearchAction) SearchAction
 indexW sink action = mconcat
   [ toolbar' $ buttonGroup
-      [ button "Upload"       [markActive action SearchUpload,      Ev.click $ \e -> sink SearchUpload]
-      , button "BD Content"   [markActive action SearchBDContent,   Ev.click $ \e -> sink SearchBDContent]
-      , button "BD Community" [markActive action SearchBDCommunity, Ev.click $ \e -> sink SearchBDCommunity]
-      , button "Instagram"    [markActive action SearchInstagram,   Ev.click $ \e -> sink SearchInstagram] ]
+      [ button "Upload"       (action ~== SearchUpload)      [Ev.click $ \e -> sink SearchUpload]
+      , button "BD Content"   (action ~== SearchBDContent)   [Ev.click $ \e -> sink SearchBDContent]
+      , button "BD Community" (action ~== SearchBDCommunity) [Ev.click $ \e -> sink SearchBDCommunity]
+      , button "Instagram"    (action ~== SearchInstagram)   [Ev.click $ \e -> sink SearchInstagram] ]
   ]
+
 
 layout action toolbar instagrambody =
   contentPanel $ mconcat [ toolbar, body ]
