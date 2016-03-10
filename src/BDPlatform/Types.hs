@@ -21,4 +21,5 @@ data Nav = NavLogin
          | NavAccounts
          | NavResults
          | NavManage
+         | NavCurrentUser
   deriving (Show, Eq)
