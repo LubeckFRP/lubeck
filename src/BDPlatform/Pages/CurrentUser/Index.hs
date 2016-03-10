@@ -7,6 +7,8 @@ module BDPlatform.Pages.CurrentUser.Index (currentUserIndexPage) where
 import           Prelude                        hiding (div)
 import qualified Prelude
 
+import           Control.Applicative
+
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
@@ -28,6 +30,7 @@ import           Lubeck.Util                    (contentPanel, newEventOf,
 
 import           BD.Types
 import qualified BD.Data.Account                as Ac
+import qualified BD.Data.Auth                   as Auth
 import qualified BD.Data.Image                  as Im
 
 import           BDPlatform.Types
@@ -35,22 +38,27 @@ import           Components.BusyIndicator       (BusyCmd (..))
 
 import           BDPlatform.HTMLCombinators
 
-data CurrentUserAction = ChangePassword | CreateUser | Logout
+data CurrentUserAction = ChangePassword | CreateUser | CUALogout
   deriving (Show, Eq)
 
-indexW :: Widget (Maybe CurrentUserAction) CurrentUserAction
-indexW sink action = mconcat
+type Session = (Ac.Account, Auth.AuthInfo)
+
+toolbarW :: Widget (Maybe Session, Maybe CurrentUserAction) CurrentUserAction
+toolbarW sink (session, action) = mconcat
   [ toolbar' $ buttonGroup
+      ((ifAdmin session [button "Create user" [markActive action CreateUser, Ev.click $ \e -> sink CreateUser]] []) <>
       [ button "Change password" [markActive action ChangePassword, Ev.click $ \e -> sink ChangePassword]
-      , button "Create user"     [markActive action CreateUser,     Ev.click $ \e -> sink CreateUser]
-      , button "Logout"          [markActive action Logout,         Ev.click $ \e -> sink Logout]
-      ]
+      , button "Logout"          [markActive action CUALogout,      Ev.click $ \e -> sink CUALogout] ])
   ]
 
+ifAdmin :: Maybe Session -> a -> a -> a
+ifAdmin Nothing _ y = y
+ifAdmin (Just (acc, (Auth.AuthInfo token s))) x y =
+  if (Auth.is_admin s) then x else y
 
-userW :: Widget (Maybe Ac.Account) CurrentUserAction
+userW :: Widget (Maybe Session) CurrentUserAction
 userW sink Nothing    = E.div [] [E.text "No current user"]
-userW sink (Just acc) =
+userW sink (Just (acc, sess)) =
   E.li [A.class_ "list-group-item"]
       [ E.div [A.class_ "media"]
           [ E.div [A.class_ "media-left"]
@@ -72,23 +80,28 @@ layout action toolbar userview =
     body = case action of
              Just ChangePassword -> E.text "Change password"
              Just CreateUser     -> E.text "Create user"
-             Just Logout         -> E.text "Logout"
+             Just CUALogout      -> E.text "Logout"
              Nothing             -> E.text "Select an option"
-
 
 currentUserIndexPage :: Sink BusyCmd
                      -> Sink (Maybe Notification)
                      -> Sink IPCMessage
                      -> Signal (Maybe Ac.Account)
+                     -> Signal (Maybe Auth.AuthInfo)
                      -> IO (Signal Html)
-currentUserIndexPage busySink notifSink ipcSink userS = do
+currentUserIndexPage busySink notifSink ipcSink userS authS = do
   (actionsSink', actionEvents)       <- newEventOf (undefined                     :: CurrentUserAction)
   let actionsSink                    = synchronously . actionsSink'
 
+  let sessionS                       = liftA2 (liftA2 (,)) userS authS            :: Signal (Maybe Session)
   actionsS                           <- stepperS Nothing (fmap Just actionEvents) :: IO (Signal (Maybe CurrentUserAction))
 
-  let toolbarView                    = fmap (indexW actionsSink) actionsS
-  let userView                       = fmap (userW actionsSink) userS
+  let profileS                       = liftA2 (,) sessionS actionsS               :: Signal (Maybe Session, Maybe CurrentUserAction)
+
+  let toolbarView                    = fmap (toolbarW actionsSink) profileS
+  let userView                       = fmap (userW actionsSink) sessionS
+
+  subscribeEvent (Lubeck.FRP.filter (== CUALogout) actionEvents) $ \_ -> ipcSink Logout
 
   let view                           = layout <$> actionsS <*> toolbarView <*> userView
 

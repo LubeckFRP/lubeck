@@ -35,6 +35,7 @@ library
                      , BD.Api
                      , BD.Types
                      , BD.Data.Account
+                     , BD.Data.Auth
                      , BD.Data.AdTypes
                      , BD.Data.Ad
                      , BD.Data.AdInsight
