@@ -61,6 +61,7 @@ library
                      , BDPlatform.Pages.CurrentUser.Index
                      , BDPlatform.Pages.CurrentUser.User
                      , BDPlatform.HTMLCombinators
+                     , BDPlatform.Validators
                      , BDPlatform.Main
                      , Components.Notifications
                      , Components.BusyIndicator
@@ -97,6 +98,7 @@ library
                      , random
                      , ListZipper
                      , split
+                     , either
   hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
@@ -246,6 +248,7 @@ executable bd-bdplatform
                      , bytestring
                      , monad-parallel
                      , ListZipper
+                     , either
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
 
