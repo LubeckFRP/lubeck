@@ -6,7 +6,9 @@
 module BD.Data.Auth
     ( AuthInfo (..)
     , AuthSession (..)
+    , ChangePasswordForm (..)
     , authenticateOrError
+    , changePasswordOrError
     ) where
 
 import           Control.Monad
@@ -46,6 +48,11 @@ data AuthSession = AuthSession { account_id :: Int
 
 instance FromJSON AuthSession
 
+data ChangePasswordForm = ChangePasswordForm { oldpassword :: JSString
+                                             , newpassword :: JSString } deriving (GHC.Generic, Show)
+
+instance ToJSON ChangePasswordForm
+
 instance FromJSON AuthInfo where
   parseJSON (Object o) = parseResponse hasToken o
     where
@@ -57,13 +64,16 @@ instance FromJSON AuthInfo where
 
   parseJSON _ = return $ NoAuthToken "Sorry, access denied."
 
+changePasswordOrError :: ChangePasswordForm -> IO (Either AppError Ok)
+changePasswordOrError x = postAPIEither BD.Api.defaultAPI "change-password" x >>= return . bimap ApiError id 
+
 authenticateOrError :: (JSString, JSString) -> IO (Either AppError AuthInfo)
 authenticateOrError (unm, psw) = do
   res <- getAPIEither' api "get-auth-token" :: IO (Either JSString AuthInfo)
   return $ case res of
     Left a                -> Left . ApiError $ "Sorry, access denied."
     Right (NoAuthToken s) -> Left . ApiError $ s
-    Right (AuthInfo t s) -> Right $ AuthInfo t s
+    Right (AuthInfo t s)  -> Right $ AuthInfo t s
 
   where
     api = BD.Api.defaultAPI { headers = [authHeader] }

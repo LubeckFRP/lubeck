@@ -56,6 +56,7 @@ module Lubeck.Forms
 
   -- * Form helpers
   , longStringWidget
+  , passwordWidget
 
 
   ) where
@@ -341,6 +342,24 @@ submits = filterJust . fmap g
   where
     g (Submit x) = Just x
     g _          = Nothing
+
+passwordWidget :: JSString -> Bool -> Widget' JSString
+passwordWidget title focus update value = div
+  [ class_ "form-group" ]
+  [ label [class_ "control-label col-xs-2"] [text title]
+  , div [class_ "col-xs-10"]
+      [ input
+        ([ A.type_ "password"
+        -- TODO size, show value
+        , A.class_ "form-control"
+        , A.value value
+        , change  $ contramapSink Ev.value update
+        , keyup   $ contramapSink Ev.value update
+        ] <> fcs) []
+      ]
+  ]
+  where
+    fcs = if focus then [(VD.attribute "autofocus") "true"] else []
 
 
 longStringWidget :: JSString -> Bool -> Widget' JSString
