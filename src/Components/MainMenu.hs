@@ -67,7 +67,7 @@ menuW menuItems brand sink value =
 
     lastMenuItem (nav, title) =
       E.li [ click $ \_ -> sink nav ]
-           [ E.a [] [ E.i [class_ "fa fa-power-off", A.style "color: orange; margin-right: 5px;"] []
+           [ E.a [] [ E.i [class_ "fa fa-user", A.style "color: orange; margin-right: 5px;"] []
                     , text title]]
 
     markActive x v = if x == v then "active" else ""
