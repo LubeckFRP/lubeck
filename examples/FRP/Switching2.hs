@@ -37,7 +37,7 @@ game newShip = [] `accumS` (fmap (:) newShip)
 -- Continuous transformation of ships per time unit (i.e. damage over time, movement over time etc).
 -- Integrate to get basic ship movement.
 physics :: Game -> Events (ShipState -> ShipState)
-physics = undefined
+physics _ = mempty
 
 -- often :: Events Duration -- time since last firing, current time
 -- often = mempty
