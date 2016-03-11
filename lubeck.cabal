@@ -23,6 +23,7 @@ library
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
                      , Lubeck.DV
+                     , Lubeck.DV.New
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling

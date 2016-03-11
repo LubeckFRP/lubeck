@@ -5,6 +5,10 @@
   , FlexibleContexts
   #-}
 
+module Lubeck.DV.New
+-- ()
+where
+
 import BasePrelude
 import Data.Functor.Contravariant
 import Control.Monad.Zip(mzipWith)
@@ -109,22 +113,39 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- data Aes a
 newtype Aes a = Aes
-  { getAes :: ([a] -> a -> Map String Double, ())
+  { getAes ::
+    ( [a] -> a -> Map String Double
+    , [a] -> Map String (Double, Double)
+    , [a] -> Map String [(Double, String)]
+    )
   }
   deriving (Monoid)
 
 runAes :: Aes a -> [a] -> a -> Map String Double
-runAes (Aes (convert, ())) = convert
+runAes (Aes (convert, _, _)) = convert
+-- TODO naming
+runAesT (Aes (_, ticks, _)) = ticks
+runAesB (Aes (_, _, bounds)) = bounds
 
 -- Anything that is scaled can be maed into an aesthetic.
 defaultAes :: HasScale a => String -> Aes a
-defaultAes n = Aes (convert, ())
+defaultAes n = Aes (convert, genBounds, genTicks)
   where
-    convert = \vs v -> Data.Map.singleton n $ runScale (scale v) vs v
+    convert   = \vs v -> Data.Map.singleton n $ runScale (scale v) vs v
+    genBounds = \vs -> case vs of
+      []    -> Data.Map.singleton n $ (0,0)
+      (v:_) -> Data.Map.singleton n $ bounds (scale v) vs
+    genTicks  = \vs -> case vs of
+      []    -> Data.Map.singleton n $ []
+      (v:_) -> Data.Map.singleton n $ ticks (scale v) vs
 
 instance Contravariant Aes where
-  contramap f (Aes (g,()))
-    = Aes (\xs x -> g (fmap f xs) (f x), ())
+  contramap f (Aes (g, h, i))
+    = Aes
+      ( \xs x -> g (fmap f xs) (f x)
+      , \xs   -> h (fmap f xs)
+      , \xs   -> i (fmap f xs)
+      )
 
 data Scale a = Scale
   { runScale :: [a] -> a -> Double
@@ -201,9 +222,9 @@ thickness = defaultAes "thickness"
 -- TODO assure no duplicates
 categorical :: (Ord a, Show a) => Scale a
 categorical = Scale
-  { runScale = \vs v -> realToFrac $ succ $ findPlaceIn vs v
-  , bounds   = \vs -> (0, realToFrac $ length vs + 1)
-  , ticks    = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] vs
+  { runScale = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
+  , bounds   = \vs -> (0, realToFrac $ length (sortNub vs) + 1)
+  , ticks    = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] (sortNub vs)
   }
   where
     -- >>> findPlaceIn "bce" 'b'
@@ -215,11 +236,14 @@ categorical = Scale
     -- >>> findPlaceIn "bce" 'e'
     -- 2
     findPlaceIn :: Ord a => [a] -> a -> Int
-    findPlaceIn xs x = length $ takeWhile (< x) $ Data.List.nub $ Data.List.sort xs
+    findPlaceIn xs x = length $ takeWhile (< x) xs
+
+    sortNub = Data.List.nub . Data.List.sort
 
 linear :: (Real a, Show a) => Scale a
 linear = Scale
   { runScale = \vs v -> realToFrac v
+  -- TODO resize LB to 0?
   , bounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
   -- TODO something nicer
   , ticks    = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
@@ -250,7 +274,10 @@ visualize' :: [s] -> [Aes s] -> [Map String Double] -- TODO result type
 visualize' dat aes = fmap ((runAes $ mconcat aes) dat) dat
 
 visualize :: [s] -> [Aes s] -> IO () -- TODO result type
-visualize dat aes = mapM_ print $ visualize' dat aes
+visualize dat aes = do
+  mapM_ print $ fmap ((runAes  $ mconcat aes) dat) dat
+  mapM_ print $ ((runAesT $ mconcat aes) dat)
+  mapM_ print $ ((runAesB $ mconcat aes) dat)
 
 infixl 4 `withScale`
 infixl 3 <~
