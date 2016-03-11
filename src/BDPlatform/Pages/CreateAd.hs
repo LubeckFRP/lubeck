@@ -18,7 +18,6 @@ import           Control.Lens                   (lens, over, set, view)
 import           Control.Monad                  (void)
 
 import           Control.Concurrent             (forkIO)
-import           GHCJS.Concurrent               (synchronously)
 
 import           Data.Aeson
 import           Data.Bifunctor                 (bimap)
@@ -183,14 +182,14 @@ createAdPage busySink notifSink mUserNameB imsB campB = do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
       Just username -> void $ forkIO $ do
-        res <- ((withBusy2 (synchronously . busySink) postNewAd) username newAd) >>= (eitherToError (synchronously . notifSink))
+        res <- ((withBusy2 busySink postNewAd) username newAd) >>= (eitherToError notifSink)
         case res of
-          Just (Ok s)  -> synchronously . notifSink . Just . NSuccess $ "Ad created! :-)"
-          Just (Nok s) -> synchronously . notifSink . Just . apiError $ s
+          Just (Ok s)  -> notifSink . Just . NSuccess $ "Ad created! :-)"
+          Just (Nok s) -> notifSink . Just . apiError $ s
           Nothing      -> print "Error already should have been reported"
         return ()
 
-      Nothing -> synchronously . notifSink . Just . blError $ "can't create ad: no username!"
+      Nothing -> notifSink . Just . blError $ "can't create ad: no username!"
     return ()
 
   return view
