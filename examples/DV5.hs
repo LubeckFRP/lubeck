@@ -38,7 +38,6 @@ Basic GUI examples:
 -}
 
 -- | FRP routing monad. Should be MonadIO but not IO. Could be more specific, i.e. separating polling/sending etc a la reflex.
-type FRP = IO
 contramap = contramapSink
 
 -- | Put the constant value in the sink whatever is put into resulting sink (often @()@).
