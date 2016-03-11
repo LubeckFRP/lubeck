@@ -21,8 +21,10 @@ newtype Name = Name String deriving (Eq, Ord, Show, IsString)
 
 data Person = P { personName :: Name, personAge :: Int, personHeight :: Double }
   deriving (Eq, Ord, Show)
+
 data Person2 = P2 { person2Name :: Name, person2Age :: Int, person2Height :: Double, person2Gender :: Gender }
   deriving (Eq, Ord, Show)
+
 $(makeFields ''Person)
 $(makeFields ''Person2)
 
@@ -50,7 +52,8 @@ test = mapM_ print people >> visualize people
     x     <~ name
   , y     <~ age `withScale` linear
   , color <~ height
-  , color <~ gender
+  , shape <~ gender
+
   ]
 test2 = visualize ([(1,2), (3,4)] :: [(Int, Int)])
   [
@@ -62,6 +65,8 @@ test3 = visualize ( [ ] :: [(UTCTime, Int)])
     x <~ to fst
   , y <~ to snd
   ]
+
+test4 = visualize ("hello world" :: String) [x <~ id]
 
 
 --
@@ -75,31 +80,51 @@ test3 = visualize ( [ ] :: [(UTCTime, Int)])
 
 -- Algebra:
 
-idBlend   :: [a]
-blend     :: [a] -> [a] -> [a]
+-- | A "table" with no columns.
+blendId :: [a]
+blendId = mempty
+
+-- | Concatenate columns.
+blend :: [a] -> [a] -> [a]
+blend = (<>)
+
 -- TODO some type class thing here for merging tuples/records
 -- so i.e.
 --  cross (1,2) (3,4) => (1,2,3,4)
 --  cross {foo=1, bar=""} {baz=()} => {foo=1, bar="", baz=()}
-crossWith :: (a -> b -> c) -> [a] -> [b] -> [c]
-idBlend   = []
-blend     = (<>)
 -- TODO generic long zip! (Traversable, ZipList Applicative?)
+
+-- | Concatenate rows left-to-right. If one row is shorter it is repeated.
+crossWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
   where
     cyc = cycle
     -- cyc xs = xs <> cyc xs
 
+
+
 -- Scale/Aesthetics:
+
+-- TODO pass along ticks/bounds in aesthetic
 
 -- data Aes a
 newtype Aes a = Aes
-  { getAes :: [a] -> a -> Map String Double
+  { getAes :: ([a] -> a -> Map String Double, ())
   }
   deriving (Monoid)
 
+runAes :: Aes a -> [a] -> a -> Map String Double
+runAes (Aes (convert, ())) = convert
+
+-- Anything that is scaled can be maed into an aesthetic.
+defaultAes :: HasScale a => String -> Aes a
+defaultAes n = Aes (convert, ())
+  where
+    convert = \vs v -> Data.Map.singleton n $ runScale (scale v) vs v
+
 instance Contravariant Aes where
-  contramap f (Aes g) = Aes (\xs x -> g (fmap f xs) (f x))
+  contramap f (Aes (g,()))
+    = Aes (\xs x -> g (fmap f xs) (f x), ())
 
 data Scale a = Scale
   { runScale :: [a] -> a -> Double
@@ -110,6 +135,19 @@ data Scale a = Scale
 instance Contravariant Scale where
   contramap f (Scale r b t) = Scale (\vs v -> r (fmap f vs) (f v)) (b . fmap f) (t . fmap f)
 
+-- | Types with a default scale.
+--
+-- If you're writing an instance you can safely ignore the @a@ argument, however if
+-- you are invoking 'scale' you need to pass an actual value. The reason for this
+-- is that the 'Scaled' instance will use the scale defined in the value, so this
+-- must be defined even though it is not otherwise used in the construction of
+-- the scale.
+--
+-- >>> ticks (scale (undefined :: Double)) []
+-- []
+-- >>> ticks (scale (undefined :: Scaled Double)) []
+-- *** Exception: Prelude.undefined
+--
 class HasScale a where
   scale :: a -> Scale a
 instance HasScale Double where
@@ -127,19 +165,38 @@ instance HasScale UTCTime where
 -- instance Ord a => HasScale [a] where
   -- type S UTCTime = UTCTime
   -- scale = const categorical
+
+-- | A utility for allowing users override the default scale type.
+--
+-- This works by wrapping up the value with a scale, and providing a 'HasScale'
+-- instance that uses this scale, ignoring any other instances for 'a'.
+--
+-- Typically used with 'withScale' as follows:
+--
+-- @
+-- [ x <~ name
+-- , y <~ age `withScale` linear
+-- ]
+-- @
 data Scaled a = Scaled
   { scaledValue :: a
   , scaledScale :: Scale a
   }
-instance HasScale (Scaled a) where -- ignore eventual a instance
+instance HasScale (Scaled a) where
+  -- Here 'scaledScale' is used to extract the actual scale, which will be returned
+  -- The 'contramap scaledValue' bit is to make sure the returned scale can handle
+  -- its input by ignoring the passed scale (looking only at the value).
   scale = contramap scaledValue . scaledScale
 
 
+
 x, y, color, size, shape, thickness :: HasScale a => Aes a
-x = Aes $ \vs v -> Data.Map.singleton "x" $ runScale (scale v) vs v
-y = Aes $ \vs v -> Data.Map.singleton "y" $ runScale (scale v) vs v
-color = Aes $ \vs v -> Data.Map.singleton "color" $ runScale (scale v) vs v
-[size, shape, thickness] = undefined
+x = defaultAes "x"
+y = defaultAes "y"
+color = defaultAes "color"
+size = defaultAes "size"
+shape = defaultAes "shape"
+thickness = defaultAes "thickness"
 
 -- TODO assure no duplicates
 categorical :: (Ord a, Show a) => Scale a
@@ -188,8 +245,9 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 (~>) :: Getter s a -> Aes a -> Aes s
 (~>) g a = contramap (^.g) a
 
+-- >>> visualize "hello world" [x <~ id]
 visualize' :: [s] -> [Aes s] -> [Map String Double] -- TODO result type
-visualize' dat aes = fmap ((getAes $ mconcat aes) dat) dat
+visualize' dat aes = fmap ((runAes $ mconcat aes) dat) dat
 
 visualize :: [s] -> [Aes s] -> IO () -- TODO result type
 visualize dat aes = mapM_ print $ visualize' dat aes
