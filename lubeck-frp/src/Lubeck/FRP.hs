@@ -54,8 +54,11 @@ no sequencing with respect to other threads (much like reading a 'TVar').
 -}
 module Lubeck.FRP
   (
+  -- * FRP monad
+    FRP(..)
+    
   -- * Combinators
-    Events
+  , Events
   , Behavior
   , Signal
 
@@ -122,7 +125,7 @@ import Control.Monad
 import Control.Monad (forever, forM_, join)
 --import Data.Functor.Contravariant
 
-import Control.Concurrent(forkIO)
+-- import Control.Concurrent(forkIO)
 import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TVar as TVar
 import Control.Concurrent.STM.TVar(TVar)
@@ -141,29 +144,40 @@ import qualified Data.Traversable
 
 -- UNDERLYING
 
+type FRP = IO
+type Var = TVar
+newVar     :: a -> FRP (Var a)
+modifyVar  :: Var a -> (a -> a) -> FRP ()
+readVar    :: Var a -> FRP a
+writeVar   :: Var a -> a -> FRP ()
+newVar         = TVar.newTVarIO
+modifyVar v f  = atomically $ TVar.modifyTVar v f
+writeVar v b   = atomically $ TVar.writeTVar v b
+readVar v      = TVar.readTVarIO v
+
 frpInternalLog :: Sink String
 frpInternalLog _ = return ()
 
 {-|
 An imperative dispatcher.
 -}
-data Dispatcher a = Dispatcher { subscribe :: Sink a -> IO UnsubscribeAction, dispatch :: Sink a }
+data Dispatcher a = Dispatcher { subscribe :: Sink a -> FRP UnsubscribeAction, dispatch :: Sink a }
 
-newDispatcher :: IO (Dispatcher a)
+newDispatcher :: FRP (Dispatcher a)
 newDispatcher = do
-  ints <- TVar.newTVarIO (0 :: Int)
-  sinks <- TVar.newTVarIO (Map.empty :: (IntMap (Sink a)))
+  ints <- newVar (0 :: Int)
+  sinks <- newVar (Map.empty :: (IntMap (Sink a)))
   let insert sink = do {
-      atomically $ TVar.modifyTVar ints succ
-      ; i <- atomically $ TVar.readTVar ints
+      modifyVar ints succ
+      ; i <- readVar ints
       ; frpInternalLog ("Current number of subscribers is " ++ show i)
-      ; atomically $ TVar.modifyTVar sinks (Map.insert i sink)
+      ; modifyVar sinks (Map.insert i sink)
       ; frpInternalLog "Registered with dispatcher"
       ; return $ do {
             frpInternalLog "Unsubscribed to dispatcher"
-          ; atomically $ TVar.modifyTVar sinks (Map.delete i) } }
+          ; modifyVar sinks (Map.delete i) } }
   let dispatch value = do {
-      sinksNow <- atomically $ TVar.readTVar sinks
+      sinksNow <- readVar sinks
       ; frpInternalLog ("Dispatcher propagating to " ++ show (Map.size sinksNow) ++ " subscribers")
       ; Data.Traversable.mapM ($ value) sinksNow
       ; return () }
@@ -172,13 +186,13 @@ newDispatcher = do
 
 -- | An action used to unsubscribe a sink from a dispatcher.
 -- Unsibscribing more than once has no effect.
-type UnsubscribeAction = IO ()
+type UnsubscribeAction = FRP ()
 
 -- | A sink is a computation that can recieve a value of some type to perform a side effect (typically sending the
 -- value along to some other part of the system). The most interesting functions are 'mappend' and 'contramapSink'.
-type Sink a = a -> IO ()
+type Sink a = a -> FRP ()
 -- TODO redo as newtype
--- newtype Sink a = Sink { sendTo :: a -> IO () }
+-- newtype Sink a = Sink { sendTo :: a -> FRP () }
 
 -- | A sink that ignores all values sent to it.
 emptySink :: Sink a
@@ -198,11 +212,11 @@ contramapSink f aSink = (\x -> aSink (f x))
 
 -- | A series of values.
 --   We call a value occuring an /event/, other libraries might refer to them as /occurences/ or /updates/.
-newtype Events a = E (Sink a -> IO UnsubscribeAction)
+newtype Events a = E (Sink a -> FRP UnsubscribeAction)
 -- | A time-varying value.
 --   Can be polled for the current value.
 --   There is no way of being notified when a behavior is updated, use 'Events' or 'Signal' if this is desired.
-newtype Behavior a = R (Sink a -> IO ())
+newtype Behavior a = R (Sink a -> FRP ())
 -- | A time-varying value that allow users to be notified when it is updated.
 --   The same as Elm's signal.
 newtype Signal a = S (Events (), Behavior a)
@@ -302,9 +316,6 @@ scatter (E taProvider) = E $ \aSink -> do
 {-# SPECIALIZE scatter :: Events (Seq a)   -> Events a #-}
 {-# SPECIALIZE scatter :: Events [a]       -> Events a #-}
 
-mapE :: (a -> b) -> Events a -> Events b
-mapE f (E aProvider) = E $ \aSink ->
-  aProvider $ contramapSink f aSink
 
 -- Subscriber safety: modified version of the sink is submitted upstream
 -- this is unsubscribed by the returned UnsubscribeAction.
@@ -312,22 +323,16 @@ mapE f (E aProvider) = E $ \aSink ->
 pureB :: a -> Behavior a
 pureB z = R ($ z)
 
-joinB :: Behavior (Behavior a) -> Behavior a
-joinB (R behAProvider) = R $ \aSink ->
-  behAProvider $ \(R aProvider) -> aProvider aSink
-
 -- | Create a behavior from an initial value and an series of updates.
 --   Whenever the event occurs, the value is updated by applying the function
 --   contained in the event.
-accumB :: a -> Events (a -> a) -> IO (Behavior a)
+accumB :: a -> Events (a -> a) -> FRP (Behavior a)
 accumB z (E aaProvider) = do
   frpInternalLog "Setting up accum"
-  var <- TVar.newTVarIO z
-  unregAA_ <- aaProvider $
-    \aa -> do
-      atomically $ TVar.modifyTVar var aa
+  var <- newVar z
+  unregAA_ <- aaProvider $ modifyVar var
   return $ R $ \aSink -> do
-    value <- TVar.readTVarIO var
+    value <- readVar var
     aSink value
     return ()
 
@@ -344,29 +349,17 @@ snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
 -- Subscriber safety: a sink callning abSink is submitted upstream
 -- this is unsubscribed by the returned UnsubscribeAction.
 
--- | Create a new event stream and a sink that writes to it in the 'IO' monad.
-newEvent :: IO (Sink a, Events a)
-newEvent = do
-  Dispatcher aProvider aSink <- newDispatcher
-  return $ (aSink, E aProvider)
--- Subscriber safety: provided by the underlying dispatcher.
+mapE :: (a -> b) -> Events a -> Events b
+mapE f (E aProvider) = E $ \bSink ->
+  aProvider $ contramapSink f bSink
 
--- | Subscribe to an event stream in the 'IO' monad.
--- The given sink will be called into whenever an event occurs.
-subscribeEvent :: Events a -> Sink a -> IO UnsubscribeAction
-subscribeEvent (E x) = x
-
--- | Return the current state of a behavior in the 'IO' monad.
-pollBehavior :: Behavior a -> IO a
-pollBehavior (R aProvider) = do
-  v <- TVar.newTVarIO undefined
-  aProvider (atomically . TVar.writeTVar v)
-  TVar.readTVarIO v
-
--- TODO this is effectively a primitive, we need return/fmap/join OR return/bind
 mapB :: (a -> b) -> Behavior a -> Behavior b
 mapB f (R aProvider) = R $ \bSink ->
   aProvider $ contramapSink f bSink
+
+joinB :: Behavior (Behavior a) -> Behavior a
+joinB (R behAProvider) = R $ \aSink ->
+  behAProvider $ \(R aProvider) -> aProvider aSink
 
 --
 -- Derived version:
@@ -403,14 +396,14 @@ mapB f (R aProvider) = R $ \bSink ->
 -- Events is not a monad (nor applicative!) There is no pure!
 joinE :: Events (Events a) -> Events a
 joinE eea = E $ \aSink -> do
-  v <- TVar.newTVarIO []
+  v <- newVar []
   unsubTop <- subscribeEvent eea $ \ea -> do
     us <- subscribeEvent ea aSink         -- Make the new event send to the resulting event
-    atomically $ TVar.modifyTVar v (us :) -- Remember how to unsubscribe
+    modifyVar v (us :)                    -- Save all unsubscribe actions
     return ()
   return $ do
     unsubTop                  -- Assure no new events will be subscribed
-    uss <- TVar.readTVarIO v  -- Unsubscribe all
+    uss <- readVar v          -- Unsubscribe all
     sequence_ uss
 
 
@@ -420,19 +413,40 @@ joinS (S (esa, bsa)) = S (ea, ba)
     ba = join (fmap current bsa)
     -- when does updates happen?
     ea = E $ \currentInnerUpdated -> do
-      unsubInner <- TVar.newTVarIO doNothing
+      unsubInner <- newVar doNothing
       unsubTop <- subscribeEvent esa $ \() -> do
-                join $ TVar.readTVarIO unsubInner                 -- Ubsubscribe previous inner
+                join $ readVar unsubInner                         -- Unsubscribe previous inner
                 currentEvent <- fmap updates $ pollBehavior bsa   -- Subscribe new inner
                 us <- subscribeEvent currentEvent $ \_ -> do
                   currentInnerUpdated ()
-                atomically $ TVar.writeTVar unsubInner us         -- Remember how to ubsubscribe
-      -- Return action that assures further propagation can not happen
+                writeVar unsubInner us                            -- Remember how to ubsubscribe
       return $ do
-        unsubTop                          -- Assure new inner events will not be suscribed
-        join $ TVar.readTVarIO unsubInner -- Usubscribe current inner event
+        unsubTop                                                  -- Assure new inner events will not be suscribed
+        join $ readVar unsubInner                                 -- Usubscribe current inner event
         return ()
+
     doNothing = return ()
+
+
+-- | Create a new event stream and a sink that writes to it in the 'FRP' monad.
+newEvent :: FRP (Sink a, Events a)
+newEvent = do
+  Dispatcher aProvider aSink <- newDispatcher
+  return $ (aSink, E aProvider)
+-- Subscriber safety: provided by the underlying dispatcher.
+
+-- | Subscribe to an event stream in the 'FRP' monad.
+-- The given sink will be called into whenever an event occurs.
+subscribeEvent :: Events a -> Sink a -> FRP UnsubscribeAction
+subscribeEvent (E x) = x
+
+-- | Return the current state of a behavior in the 'FRP' monad.
+pollBehavior :: Behavior a -> FRP a
+pollBehavior (R aProvider) = do
+  v <- newVar undefined
+  aProvider $ writeVar v
+  readVar v
+
 
 
 -- PSEUDO-PRIMITIVES
@@ -449,17 +463,17 @@ zipB (R abProvider) (R aProvider) = R $ \bSink ->
 -- TODO Show how zipB can be derived from mapB and joinB.
 -- If the Monad instance is removed, this SHOULD be a primitive.
 
--- | Execute an 'IO' action whenever an event occurs, and broadcast results.
--- This is basically 'sequence', restricted to 'IO' and 'Events'.
-reactimateIO :: Events (IO a) -> IO (Events a)
+-- | Execute an 'FRP' action whenever an event occurs, and broadcast results.
+-- This is basically 'sequence', restricted to 'FRP' and 'Events'.
+reactimateIO :: Events (FRP a) -> FRP (Events a)
 reactimateIO (E ioAProvider) = do
-  v <- TVar.newTVarIO undefined
+  v <- newVar undefined
   ioAProvider $ \ioA -> do
     a <- ioA
-    atomically $ TVar.writeTVar v a
+    writeVar v a
   return $ E $ \aSink ->
     ioAProvider $ \_ -> do
-      a <- TVar.readTVarIO v
+      a <- readVar v
       aSink a
 -- Subscriber safety: a sink callning aSink is submitted upstream
 -- this is unsubscribed by the returned UnsubscribeAction.
@@ -481,7 +495,7 @@ filterJust = scatter
 
 -- | Create a behavior that starts out as a given behavior, and switches to
 --   a different behavior whenever and event occurs.
-switcher :: Behavior a -> Events (Behavior a) -> IO (Behavior a)
+switcher :: Behavior a -> Events (Behavior a) -> FRP (Behavior a)
 switcher z e = fmap joinB (stepper z e)
 
 -- | Similar to 'snapshot', but uses the given function go combine the values.
@@ -489,15 +503,15 @@ snapshotWith :: (a -> b -> c) -> Behavior a -> Events b -> Events c
 snapshotWith f r e = fmap (uncurry f) $ snapshot r e
 
 -- | Create a past-dependent behavior.
-foldpR :: (a -> b -> b) -> b -> Events a -> IO (Behavior b)
+foldpR :: (a -> b -> b) -> b -> Events a -> FRP (Behavior b)
 foldpR f z e = accumB z (fmap f e)
 
 -- | Create a past-dependent event stream.
-foldpE :: (a -> b -> b) -> b -> Events a -> IO (Events b)
+foldpE :: (a -> b -> b) -> b -> Events a -> FRP (Events b)
 foldpE f a e = a `accumE` (f <$> e)
 
 -- | Create a past-dependent signal.
-foldpS :: (a -> b -> b) -> b -> Signal a -> IO (Signal b)
+foldpS :: (a -> b -> b) -> b -> Signal a -> FRP (Signal b)
 foldpS f z s = accumS z (fmap f $ updates s)
 
 -- snapshot :: Behavior a -> Events b -> Events (a, b)
@@ -505,7 +519,7 @@ foldpS f z s = accumS z (fmap f $ updates s)
 
 -- | Create an event stream that emits the result of accumulating its inputs
 -- whenever an update occurs.
-accumE :: a -> Events (a -> a) -> IO (Events a)
+accumE :: a -> Events (a -> a) -> FRP (Events a)
 accumE x a = do
   acc <- accumB x a
   return $ acc `sample` a
@@ -514,27 +528,27 @@ accumE x a = do
 
 -- | Create a varying value by starting with the given initial value, and replacing it
 -- whenever an update occurs.
-stepper :: a -> Events a -> IO (Behavior a)
+stepper :: a -> Events a -> FRP (Behavior a)
 stepper z x = accumB z (mapE const x)
 
 -- | Count number of occurences, starting from zero.
-counter :: Events b -> IO (Behavior Int)
+counter :: Events b -> FRP (Behavior Int)
 counter e = accumB 0 (fmap (const succ) e)
 
 -- | Record n events and emit in a group. Inverse of 'scatter'.
-gather :: Int -> Events a -> IO (Events (Seq a))
+gather :: Int -> Events a -> FRP (Events (Seq a))
 gather n = fmap ((Seq.reverse <$>) . filter (\xs -> Seq.length xs == n)) . foldpE g mempty
     where
         g x xs | Seq.length xs <  n  =  x Seq.<| xs
                | Seq.length xs == n  =  x Seq.<| mempty
                | otherwise           = error "gather: Wrong length"
 
-buffer :: Int -> Events a -> IO (Events (Seq a))
+buffer :: Int -> Events a -> FRP (Events (Seq a))
 buffer n = fmap (Seq.reverse <$>) . foldpE g mempty
     where
         g x xs = x Seq.<| Seq.take (n-1) xs
 
-withPreviousWith :: (b -> b -> a) -> Events b -> IO (Events a)
+withPreviousWith :: (b -> b -> a) -> Events b -> FRP (Events a)
 withPreviousWith f e
     = fmap (joinMaybes' . fmap combineMaybes)
     $ dup Nothing `accumE` fmap (shift . Just) e
@@ -544,7 +558,7 @@ withPreviousWith f e
         joinMaybes'   = filterJust
         combineMaybes = uncurry (liftA2 f)
 
-withPrevious :: Events a -> IO (Events (a, a))
+withPrevious :: Events a -> FRP (Events (a, a))
 withPrevious = withPreviousWith (,)
 
 
@@ -564,13 +578,13 @@ zipS :: Signal (a -> b) -> Signal a -> Signal b
 zipS (S (fe,fr)) (S (xe,xr)) = let r = fr <*> xr in S (fmap (const ()) fe <> xe, r)
 
 -- | Create a signal from an initial value and an series of updates.
-stepperS :: a -> Events a -> IO (Signal a)
+stepperS :: a -> Events a -> FRP (Signal a)
 stepperS z e = do
   r <- stepper z e
   return $ S (fmap (const ()) e, r)
 
 -- | Create a signal from an initial value and an series of updates.
-accumS :: a -> Events (a -> a) -> IO (Signal a)
+accumS :: a -> Events (a -> a) -> FRP (Signal a)
 accumS z e = do
   r <- accumB z e
   return $ S (fmap (const ()) e, r)

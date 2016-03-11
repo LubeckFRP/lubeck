@@ -144,7 +144,9 @@ scatterData ps = do
             $ scale (style^.scatterPlotSize) circle
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  -- draw
   return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
+  -- return ()
 
 -- | Draw data for a scatter plot, ignoring Y values.
 --
@@ -158,7 +160,9 @@ scatterDataX ps = do
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  -- draw
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
+  -- return ()
 
 -- | Draw data for a scatter plot ignoring X values.
 --
