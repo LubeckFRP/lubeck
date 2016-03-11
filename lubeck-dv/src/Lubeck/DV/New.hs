@@ -6,7 +6,21 @@
   #-}
 
 module Lubeck.DV.New
--- ()
+  (
+    blendId
+  , blend
+  , crossWith
+  , Aes
+  , defaultAes
+  , Scale(..)
+  , HasScale(..)
+  , Scaled(..)
+  , x, y, color, size, shape, thickness, categorical, linear, logarithmic, timeScale
+  , withScale
+  , (<~)
+  , (~>)
+  , visualize
+  )
 where
 
 import BasePrelude
