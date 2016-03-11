@@ -7,9 +7,19 @@ module BDPlatform.Types where
 
 
 -- aka Inter-Page-Communication
-data IPCMessage = ImageLibraryUpdated | Noop deriving (Show, Eq)
+data IPCMessage = ImageLibraryUpdated | Logout | Noop deriving (Show, Eq)
 
 
--- FIXME should be in BD Platform types probably
-data Nav = NavLogin | NavUser | NavCampaign | NavSearch | NavCreateAd | NavImages | NavInteractions | NavAccountSearch
+data Nav = NavLogin
+         | NavUser
+         | NavCampaign
+         | NavSearch
+         | NavCreateAd
+         | NavImages
+         | NavInteractions
+         | NavAccountSearch
+         | NavAccounts
+         | NavResults
+         | NavManage
+         | NavCurrentUser
   deriving (Show, Eq)

@@ -28,6 +28,7 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 
 import qualified BD.Data.Account                as Account
+import qualified BD.Data.Auth                   as Auth
 import qualified BD.Data.Ad                     as Ad
 import qualified BD.Data.AdCampaign             as AdCampaign
 import qualified BD.Data.Count                  as C
@@ -41,12 +42,13 @@ import           BD.Api
 
 import           BDPlatform.Pages.Campaign      (campaignPage, getCampaigns)
 import           BDPlatform.Pages.CreateAd      (createAdPage)
-import           BDPlatform.Pages.ImageLibrary  (imageLibraryPage)
 import           BDPlatform.Pages.Login         (loginPage, Username)
-import           BDPlatform.Pages.PostSearch    (searchPage)
-import           BDPlatform.Pages.AccountSearch (accountSearchPage)
-import           BDPlatform.Pages.User          (userPage)
+-- import           BDPlatform.Pages.User          (userPage)
 import           BDPlatform.Pages.Interactions  (interactionsMain)
+import           BDPlatform.Pages.Search.Index  (searchIndexPage)
+import           BDPlatform.Pages.Accounts.Index (accountsIndexPage)
+import           BDPlatform.Pages.Manage.Index  (manageIndexPage)
+import           BDPlatform.Pages.CurrentUser.Index (currentUserIndexPage)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
@@ -61,24 +63,24 @@ import           BDPlatform.Config
 
 menuItems :: MenuItems Nav
 menuItems =
-  [ (NavUser,          "User")
-  , (NavSearch,        "Search")
-  , (NavImages,        "Image Library")
-  , (NavCreateAd,      "Create Ad")
-  , (NavInteractions,  "Shoutout browser")
-  , (NavAccountSearch, "Account search")
-  , (NavLogin,         "Logout") -- last item is special in that it will be positioned far right
+  [ (NavAccounts,    "Accounts")
+  , (NavSearch,      "Search content")
+  , (NavManage,      "Manage content")
+  , (NavResults,     "Results")
+  , (NavCurrentUser, "Current user") -- last item is special in that it will be positioned far right
   ]
 
-rootLayout goTo menu err busy login user ads search createAd imlib interactions accountSearchPageView = case goTo of
+rootLayout goTo menu err busy login {- user ads -} search createAd interactions accountsIndexView manageIndexView currentUserIndexView = case goTo of
   NavLogin         -> layoutLogin busy err login
-  NavUser          -> layout menu busy err user
-  NavCampaign      -> layout menu busy err ads
+  -- NavUser          -> layout menu busy err user
+  -- NavCampaign      -> layout menu busy err ads
   NavSearch        -> layout menu busy err search
   NavCreateAd      -> layout menu busy err createAd
-  NavImages        -> layout menu busy err imlib
   NavInteractions  -> layout menu busy err interactions
-  NavAccountSearch -> layout menu busy err accountSearchPageView
+  NavAccounts      -> layout menu busy err accountsIndexView
+  NavManage        -> layout menu busy err manageIndexView
+  NavCurrentUser   -> layout menu busy err currentUserIndexView
+
   where
     layoutLogin busy err page =
       div [class_ "container login-top-buffer"]
@@ -112,7 +114,7 @@ adPlatform = do
   (loginView, userLoginE)               <- loginPage (fromString defaultUsername, fromString defaultPassword)
   userLoginB                            <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
-  authOk                                <- withErrorIO notifSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
+  authOk                                <- withErrorIO notifSink $ fmap (withBusy busySink Auth.authenticateOrError) userLoginE :: IO (Events Auth.AuthInfo)
   let validUserLoginE                   = sample userLoginB authOk :: Events (Maybe Username)
 
   let bypassAuthUserE                   = fmap fst userLoginE
@@ -122,31 +124,34 @@ adPlatform = do
 
   camapaignsE                           <- withErrorIO notifSink $ fmap (withBusy busySink getCampaigns) userE
 
+  authS                                 <- stepperS Nothing (fmap Just authOk)  :: IO (Signal (Maybe Auth.AuthInfo))
   userS                                 <- stepperS Nothing (fmap Just userE)
   campaignsS                            <- stepperS Nothing (fmap Just camapaignsE)
 
   let userB                             = current userS
   let usernameB                         = fmap (fmap Account.username) userB
 
-  (userView, loadAdsE)                  <- userPage         busySink notifSink                   userB campaignsS
-  adsView                               <- campaignPage     busySink notifSink loadAdsE          userB
-  (imageLibView, imsB, imlibKbdSink)    <- imageLibraryPage busySink notifSink ipcSink ipcEvents userE
-  -- searchPageView                        <- searchPage       busySink notifSink ipcSink           usernameB
+  (manageIndexView, imsB, manageKbdSink) <- manageIndexPage   busySink notifSink ipcSink ipcEvents userE -- navS
   createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
   interactionsView                      <- interactionsMain busySink notifSink
 
-  let firstPage                         = NavUser
+  let firstPage                         = NavAccounts
 
   -- first time menu gets rendered with initial state argument
   (menuView, menuNavE)                  <- mainMenuComponent menuItems "BD Platform" firstPage
 
   let postLoginNavE                     = fmap (const firstPage) validUserLoginE --(updates userS)
-  let campaignNavE                      = fmap (const NavCampaign) (updates adsView)
-  navS                                  <- stepperS NavLogin (postLoginNavE <> campaignNavE <> menuNavE)
+  (ipcNavSink, ipcNavEvents)            <- newEventOf (undefined :: Nav)
+  navS                                  <- stepperS NavLogin (postLoginNavE <> menuNavE <> ipcNavEvents)
 
-  searchPageView                        <- searchPage        busySink notifSink ipcSink           usernameB navS
-  accountSearchPageView                 <- accountSearchPage busySink notifSink ipcSink           usernameB navS
+  searchIndexView                       <- searchIndexPage      busySink notifSink ipcSink usernameB navS
+  accountsIndexView                     <- accountsIndexPage    busySink notifSink ipcSink usernameB navS
+  currentUserIndexView                  <- currentUserIndexPage busySink notifSink ipcSink userS authS
+
+  subscribeEvent ipcEvents $ \msg -> case msg of
+    Logout -> ipcNavSink NavLogin
+    _      -> return ()
 
   -- composition of keyboard listeners, looks like an inverse to Html signal distribution & flow
   subscribeEvent kbdEvents $ \e -> do
@@ -158,7 +163,7 @@ adPlatform = do
 
     -- local listeners
     case nav of
-      NavImages -> imlibKbdSink e
+      NavManage -> manageKbdSink e
       _         -> return ()
 
     return ()
@@ -168,13 +173,14 @@ adPlatform = do
                             <*> notifView
                             <*> busyView
                             <*> loginView
-                            <*> userView
-                            <*> adsView
-                            <*> searchPageView
+                            -- <*> userView
+                            -- <*> adsView
+                            <*> searchIndexView
                             <*> createAdView
-                            <*> imageLibView
                             <*> interactionsView
-                            <*> accountSearchPageView
+                            <*> accountsIndexView
+                            <*> manageIndexView
+                            <*> currentUserIndexView
 
   return (mainView, Just kbdSink)
   where

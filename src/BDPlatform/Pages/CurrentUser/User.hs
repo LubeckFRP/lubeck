@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module BDPlatform.Pages.User
+module BDPlatform.Pages.CurrentUser.User
   (userPage
   ) where
 

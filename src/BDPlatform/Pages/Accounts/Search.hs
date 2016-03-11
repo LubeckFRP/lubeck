@@ -5,8 +5,8 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
-module BDPlatform.Pages.AccountSearch
-  ( accountSearchPage
+module BDPlatform.Pages.Accounts.Search
+  ( accountSearch
   ) where
 
 import           Prelude                        hiding (div)
@@ -187,13 +187,13 @@ resultsLayout mba resultsV detailsV accounts = case mba of
           , div [A.style "text-align: center;"] [ x ] ]
 
 
-accountSearchPage :: Sink BusyCmd
-                  -> Sink (Maybe Notification)
-                  -> Sink IPCMessage
-                  -> Behavior (Maybe JSString)
-                  -> Signal Nav
-                  -> IO (Signal Html)
-accountSearchPage busySink notifSink ipcSink mUserNameB navS = do
+accountSearch :: Sink BusyCmd
+              -> Sink (Maybe Notification)
+              -> Sink IPCMessage
+              -> Behavior (Maybe JSString)
+              -> Signal Nav
+              -> IO (Signal Html)
+accountSearch busySink notifSink ipcSink mUserNameB navS = do
   let initPostQuery                = defSimpleAccountQuery
 
   (actionSink', actionEvents)      <- newEventOf (undefined                                              :: Action)
