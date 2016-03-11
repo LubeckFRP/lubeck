@@ -1,7 +1,7 @@
 
 {-# LANGUAGE TemplateHaskell, RankNTypes, NoMonomorphismRestriction, MultiParamTypeClasses
   , FunctionalDependencies, TypeFamilies, GeneralizedNewtypeDeriving, OverloadedStrings
-  , NoImplicitPrelude
+  , NoImplicitPrelude, TupleSections
   , FlexibleContexts
   #-}
 
@@ -13,6 +13,7 @@ import qualified Data.Map
 import Control.Lens(Getter, to)
 import Control.Lens.Operators hiding ((<~))
 import Control.Lens.TH
+import qualified Data.List
 import Data.Time(UTCTime)
 
 data Gender = Female | Male deriving (Eq, Ord, Show)
@@ -44,14 +45,14 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = visualize people
+test = mapM_ print people >> visualize people
   [
     x     <~ name
-  , y     <~ age `withScale` categorical
-  -- , color <~ gender
+  , y     <~ age `withScale` linear
   , color <~ height
+  , color <~ gender
   ]
-test2 = visualize ([(1,2), (3,4)] :: [(Int, Double)])
+test2 = visualize ([(1,2), (3,4)] :: [(Int, Int)])
   [
     x <~ to fst
   , y <~ to snd
@@ -93,25 +94,30 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- data Aes a
 newtype Aes a = Aes
-  { getAes :: a -> Map String Double
+  { getAes :: [a] -> a -> Map String Double
   }
   deriving (Monoid)
+
 instance Contravariant Aes where
-  contramap f (Aes g) = Aes (g . f)
+  contramap f (Aes g) = Aes (\xs x -> g (fmap f xs) (f x))
+
 data Scale a = Scale
-  { runScale :: a -> Double
-  , bounds :: [a] -> (Double, Double)
-  , ticks :: [a] -> (Double, String)
+  { runScale :: [a] -> a -> Double
+  , bounds   :: [a] -> (Double, Double)
+  , ticks    :: [a] -> [(Double, String)]
   }
+
+instance Contravariant Scale where
+  contramap f (Scale r b t) = Scale (\vs v -> r (fmap f vs) (f v)) (b . fmap f) (t . fmap f)
 
 class HasScale a where
   scale :: a -> Scale a
 instance HasScale Double where
   scale = const linear
 instance HasScale Int where
+  scale = const linear
+instance HasScale Char where
   scale = const categorical
--- instance HasScale Char where
---   scale = const categorical
 instance HasScale Name where
   scale = const categorical
 instance HasScale Gender where
@@ -123,44 +129,71 @@ instance HasScale UTCTime where
   -- scale = const categorical
 data Scaled a = Scaled
   { scaledValue :: a
-  , scaledScale :: Scale (Scaled a)
+  , scaledScale :: Scale a
   }
 instance HasScale (Scaled a) where -- ignore eventual a instance
-  scale = scaledScale
+  scale = contramap scaledValue . scaledScale
 
 
-x, y, color, size, shape, thickness :: (HasScale a) => Aes a
-x = Aes $ \v -> Data.Map.singleton "x" $ runScale (scale v) v
-y = Aes $ \v -> Data.Map.singleton "y" $ runScale (scale v) v
-color = Aes $ \v -> Data.Map.singleton "color" $ runScale (scale v) v
+x, y, color, size, shape, thickness :: HasScale a => Aes a
+x = Aes $ \vs v -> Data.Map.singleton "x" $ runScale (scale v) vs v
+y = Aes $ \vs v -> Data.Map.singleton "y" $ runScale (scale v) vs v
+color = Aes $ \vs v -> Data.Map.singleton "color" $ runScale (scale v) vs v
+[size, shape, thickness] = undefined
 
-categorical :: (Ord a) => Scale a
--- categorical = Scale
-  -- { runScale
-  --
-  -- }
+-- TODO assure no duplicates
+categorical :: (Ord a, Show a) => Scale a
+categorical = Scale
+  { runScale = \vs v -> realToFrac $ succ $ findPlaceIn vs v
+  , bounds   = \vs -> (0, realToFrac $ length vs + 1)
+  , ticks    = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] vs
+  }
+  where
+    -- >>> findPlaceIn "bce" 'b'
+    -- 0
+    -- >>> findPlaceIn "bce" 'c'
+    -- 1
+    -- >>> findPlaceIn "bce" 'd'
+    -- 2
+    -- >>> findPlaceIn "bce" 'e'
+    -- 2
+    findPlaceIn :: Ord a => [a] -> a -> Int
+    findPlaceIn xs x = length $ takeWhile (< x) $ Data.List.nub $ Data.List.sort xs
 
-linear :: Real a => Scale a
+linear :: (Real a, Show a) => Scale a
+linear = Scale
+  { runScale = \vs v -> realToFrac v
+  , bounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+  -- TODO something nicer
+  , ticks    = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
+  }
+  where
+    safeMin [] = 0
+    safeMin xs = minimum xs
+    safeMax [] = 0
+    safeMax xs = maximum xs
+
 logarithmic :: Floating a => Scale a
 timeScale :: Scale UTCTime
+[logarithmic, timeScale ] = undefined
 
 withScale :: Getter s a -> Scale a -> Getter s (Scaled a)
-withScale g s = to $ \x -> aToScaled s $ x^.g
-  where
-    aToScaled s x = Scaled x (unScaled s)
-    unScaled (Scale f g h) = Scale (f . scaledValue) (g . fmap scaledValue) (h . fmap scaledValue)
+withScale g s = to $ \x -> flip Scaled s $ x^.g
 
+-- Very similar to (>$$<)
+(<~) :: Aes a -> Getter s a -> Aes s
+(<~) a g = contramap (^.g) a
 
-(~>) :: (HasScale a) => Getter s a -> Aes a -> Aes s
-(<~) = flip (~>)
-(~>) g = contramap (^.g)
+-- Very similar to (>$<)
+(~>) :: Getter s a -> Aes a -> Aes s
+(~>) g a = contramap (^.g) a
 
-visualize :: [s] -> [Aes s] -> [Map String Double] -- TODO result type
-visualize dat aes = fmap (getAes $ mconcat aes) dat
+visualize' :: [s] -> [Aes s] -> [Map String Double] -- TODO result type
+visualize' dat aes = fmap ((getAes $ mconcat aes) dat) dat
+
+visualize :: [s] -> [Aes s] -> IO () -- TODO result type
+visualize dat aes = mapM_ print $ visualize' dat aes
 
 infixl 4 `withScale`
 infixl 3 <~
 infixl 3 ~>
-
-[size, shape, thickness,
-  categorical, linear, logarithmic, timeScale ] = undefined
