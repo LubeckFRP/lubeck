@@ -60,6 +60,40 @@ ifAdmin Nothing _ y = y
 ifAdmin (Just (acc, (Auth.AuthInfo token s))) x y =
   if (Auth.is_admin s) then x else y
 
+
+--------------------------------------------------------------------------------
+
+emptyCreateUserForm = Auth.CreateUserForm "" "" "" False
+
+validateCreateUser :: Auth.CreateUserForm -> FormValid ()
+validateCreateUser x =
+  if (Auth.cu_username x) /= "" && (Auth.cu_password x) /= "" && (Auth.cu_account_name x) /= ""
+    then FormValid
+    else FormNotValid ()
+
+createUserW :: Sink CurrentUserAction -> Widget (FormValid (), Auth.CreateUserForm) (Submit Auth.CreateUserForm)
+createUserW actionsSink sink (isValid, val) =
+  let (canSubmitAttr, cantSubmitMsg) = case isValid of
+                                         FormValid      -> ( [ Ev.click $ \e -> sink $ Submit val, A.title "Form ok" ]
+                                                           , "")
+                                         FormNotValid _ -> ( [(VD.attribute "disabled") "true", A.title "Please fill in all fields and make sure passwords match" ]
+                                                           , "Please fill in all fields and make sure passwords match")
+  in formPanel
+      [ longStringWidget "Username"     True  (contramapSink (\new -> DontSubmit $ val { Auth.cu_username  = new }) sink)    (Auth.cu_username val)
+      , passwordWidget   "Password"     False (contramapSink (\new -> DontSubmit $ val { Auth.cu_password = new }) sink)     (Auth.cu_password val)
+      , longStringWidget "Account name" False (contramapSink (\new -> DontSubmit $ val { Auth.cu_account_name = new }) sink) (Auth.cu_account_name val)
+      , checkboxWidget   "Is admin"     False (contramapSink (\new -> DontSubmit $ val { Auth.cu_is_admin = new }) sink)     (Auth.cu_is_admin val)
+
+      , formRowWithNoLabel' . toolbar' . buttonGroup $
+          [ buttonOkIcon "Create user!" "user-plus" False canSubmitAttr
+          , button       "Cancel"                   False [ Ev.click $ \e -> actionsSink HideToolbarActions ]
+          , inlineMessage cantSubmitMsg ]
+      ]
+
+
+--------------------------------------------------------------------------------
+
+
 data ChangePasswordViewForm = ChangePasswordViewForm { oldPassword  :: JSString
                                                      , newPassword1 :: JSString
                                                      , newPassword2 :: JSString
@@ -91,6 +125,8 @@ changePasswordW actionsSink sink (isValid, val) =
           , inlineMessage cantSubmitMsg ]
       ]
 
+--------------------------------------------------------------------------------
+
 userW :: Widget (Maybe Session) CurrentUserAction
 userW sink Nothing    = E.div [] [E.text "No current user"]
 userW sink (Just (acc, sess)) =
@@ -107,13 +143,13 @@ userW sink (Just (acc, sess)) =
       , E.p [] [ E.text $ fromMaybe "" (Ac.bio acc) ]
       , E.p [] [ E.a [ A.href (fromMaybe "" (Ac.website acc)) ] [ E.text $ fromMaybe "" (Ac.website acc) ] ] ]
 
-layout action toolbar userview changePasswordView =
+layout action toolbar userview changePasswordView createUserView =
   contentPanel $ mconcat [ toolbar, body, userview ]
   where
     body = case action of
              Just ChangePassword     -> changePasswordView
-             Just CreateUser         -> E.text "TODO Create user"
-             Just CUALogout          -> E.text "Logout"
+             Just CreateUser         -> {- if isAdmin -} createUserView
+             Just CUALogout          -> E.text "Bye-bye"
              Just HideToolbarActions -> mempty
              Nothing                 -> mempty
 
@@ -139,6 +175,7 @@ currentUserIndexPage busySink notifSink ipcSink userS authS = do
   let userView                       = fmap (userW actionsSink) sessionS
 
   (changePasswordView, changePassE)  <- formWithValidationComponent validateChangePassword emptyChangePasswordViewForm (changePasswordW actionsSink) :: IO (Signal Html, Events ChangePasswordViewForm)
+  (createUserView, createUserE)      <- formWithValidationComponent validateCreateUser     emptyCreateUserForm         (createUserW actionsSink)     :: IO (Signal Html, Events Auth.CreateUserForm)
 
   subscribeEvent (Lubeck.FRP.filter (== CUALogout) actionEvents) $ \_ -> ipcSink Logout
   subscribeEvent changePassE $ \x -> void. forkIO $ do
@@ -149,6 +186,14 @@ currentUserIndexPage busySink notifSink ipcSink userS authS = do
       Nothing      -> print "Errors already should have been reported"
     return ()
 
-  let view                           = layout <$> actionsS <*> toolbarView <*> userView <*> changePasswordView
+  subscribeEvent createUserE $ \x -> void. forkIO $ do
+    res <- ((withBusy busySink Auth.createUserOrError) x) >>= (eitherToError notifSink)
+    case res of
+      Just (Ok s)  -> (notifSink . Just . NSuccess $ "User created :-)") >> (actionsSink HideToolbarActions)
+      Just (Nok s) -> notifSink . Just . apiError $ s
+      Nothing      -> print "Errors already should have been reported"
+    return ()
+
+  let view                           = layout <$> actionsS <*> toolbarView <*> userView <*> changePasswordView <*> createUserView
 
   return view

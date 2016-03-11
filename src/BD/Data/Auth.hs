@@ -7,7 +7,9 @@ module BD.Data.Auth
     ( AuthInfo (..)
     , AuthSession (..)
     , ChangePasswordForm (..)
+    , CreateUserForm (..)
     , authenticateOrError
+    , createUserOrError
     , changePasswordOrError
     ) where
 
@@ -53,6 +55,16 @@ data ChangePasswordForm = ChangePasswordForm { oldpassword :: JSString
 
 instance ToJSON ChangePasswordForm
 
+data CreateUserForm = CreateUserForm { cu_username     :: JSString
+                                     , cu_password     :: JSString
+                                     , cu_account_name :: JSString
+                                     , cu_is_admin     :: Bool } deriving (GHC.Generic, Show)
+
+instance ToJSON CreateUserForm where
+  toJSON = Data.Aeson.Types.genericToJSON
+    Data.Aeson.Types.defaultOptions { Data.Aeson.Types.fieldLabelModifier = drop 3 }
+
+
 instance FromJSON AuthInfo where
   parseJSON (Object o) = parseResponse hasToken o
     where
@@ -65,7 +77,10 @@ instance FromJSON AuthInfo where
   parseJSON _ = return $ NoAuthToken "Sorry, access denied."
 
 changePasswordOrError :: ChangePasswordForm -> IO (Either AppError Ok)
-changePasswordOrError x = postAPIEither BD.Api.defaultAPI "change-password" x >>= return . bimap ApiError id 
+changePasswordOrError x = postAPIEither BD.Api.defaultAPI "change-password" x >>= return . bimap ApiError id
+
+createUserOrError :: CreateUserForm -> IO (Either AppError Ok)
+createUserOrError x = postAPIEither BD.Api.defaultAPI "create-user" x >>= return . bimap ApiError id
 
 authenticateOrError :: (JSString, JSString) -> IO (Either AppError AuthInfo)
 authenticateOrError (unm, psw) = do
