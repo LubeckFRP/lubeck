@@ -49,10 +49,10 @@ type Session = (Ac.Account, Auth.AuthInfo)
 
 toolbarW :: Widget (Maybe Session, Maybe CurrentUserAction) CurrentUserAction
 toolbarW sink (session, action) = mconcat
-  [ toolbarCenter' $ buttonGroupCenter
+  [ toolbar' $ buttonGroup
       ((ifAdmin session [buttonIcon "Create user" "user-plus" (action ~== CreateUser) [Ev.click $ \e -> sink CreateUser]] []) <>
-      [ buttonIcon "Change password" "key"       (action ~== ChangePassword) [Ev.click $ \e -> sink ChangePassword]
-      , buttonIcon "Logout"          "power-off" (action ~== CUALogout )     [Ev.click $ \e -> sink CUALogout] ])
+      [ buttonIcon     "Change password" "key"       (action ~== ChangePassword) [Ev.click $ \e -> sink ChangePassword]
+      , buttonWarnIcon "Logout"          "power-off" (action ~== CUALogout )     [Ev.click $ \e -> sink CUALogout] ])
   ]
 
 ifAdmin :: Maybe Session -> a -> a -> a
@@ -84,7 +84,7 @@ createUserW actionsSink sink (isValid, val) =
       , longStringWidget "Account name" False (contramapSink (\new -> DontSubmit $ val { Auth.cu_account_name = new }) sink) (Auth.cu_account_name val)
       , checkboxWidget   "Is admin"     False (contramapSink (\new -> DontSubmit $ val { Auth.cu_is_admin = new }) sink)     (Auth.cu_is_admin val)
 
-      , formRowWithNoLabel' . toolbar' . buttonGroup $
+      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
           [ buttonOkIcon "Create user!" "user-plus" False canSubmitAttr
           , button       "Cancel"                   False [ Ev.click $ \e -> actionsSink HideToolbarActions ]
           , inlineMessage cantSubmitMsg ]
@@ -119,7 +119,7 @@ changePasswordW actionsSink sink (isValid, val) =
       , passwordWidget "New password"        False (contramapSink (\new -> DontSubmit $ val { newPassword1 = new }) sink) (newPassword1 val)
       , passwordWidget "Repeat new password" False (contramapSink (\new -> DontSubmit $ val { newPassword2 = new }) sink) (newPassword2 val)
 
-      , formRowWithNoLabel' . toolbar' . buttonGroup $
+      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
           [ buttonOkIcon "Change password!" "hand-scissors-o" False canSubmitAttr
           , button       "Cancel"                             False [ Ev.click $ \e -> actionsSink HideToolbarActions ]
           , inlineMessage cantSubmitMsg ]
