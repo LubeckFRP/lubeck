@@ -92,7 +92,7 @@ validateCreateUser' (Auth.CreateUserForm u p n _) =
 createUserW :: Sink CurrentUserAction -> Widget (FormValid [JSString], Auth.CreateUserForm) (Submit Auth.CreateUserForm)
 createUserW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
-                                         FormValid       -> ([ Ev.click $ \e -> sink $ Submit val, A.title "Form ok" ], "")
+                                         FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
                                          FormNotValid es -> ([(VD.attribute "disabled") "true"],   showValidationErrors es)
   in formPanel
       [ longStringWidget "Username"     True  (contramapSink (\new -> DontSubmit $ val { Auth.cu_username  = new }) sink)    (Auth.cu_username val)
@@ -129,7 +129,7 @@ validateChangePassword' (ChangePasswordViewForm o n1 n2) =
 changePasswordW :: Sink CurrentUserAction -> Widget (FormValid [JSString], ChangePasswordViewForm) (Submit ChangePasswordViewForm)
 changePasswordW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
-                                         FormValid       -> ([ Ev.click $ \e -> sink $ Submit val, A.title "Form ok" ], "")
+                                         FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
                                          FormNotValid es -> ([(VD.attribute "disabled") "true"], showValidationErrors es)
   in formPanel
       [ passwordWidget "Old password"        True  (contramapSink (\new -> DontSubmit $ val { oldPassword  = new }) sink) (oldPassword val)
@@ -170,8 +170,25 @@ layout action toolbar userview changePasswordView createUserView =
              Just HideToolbarActions -> mempty
              Nothing                 -> mempty
 
-convertForms :: ChangePasswordViewForm -> Auth.ChangePasswordForm
-convertForms (ChangePasswordViewForm old new _) = Auth.ChangePasswordForm old new
+createUser busySink notifSink actionsSink x = do
+  res <- ((withBusy busySink Auth.createUserOrError) x) >>= (eitherToError notifSink)
+  case res of
+    Just (Ok s)  -> (notifSink . Just . NSuccess $ "User created :-)") >> (actionsSink HideToolbarActions)
+    Just (Nok s) -> notifSink . Just . apiError $ s
+    Nothing      -> print "Errors already should have been reported"
+  return ()
+
+changePass busySink notifSink actionsSink x = do
+  res <- ((withBusy busySink Auth.changePasswordOrError) (convertForms x)) >>= (eitherToError notifSink)
+  case res of
+    Just (Ok s)  -> (notifSink . Just . NSuccess $ "Password changed :-)") >> (actionsSink HideToolbarActions)
+    Just (Nok s) -> notifSink . Just . apiError $ s
+    Nothing      -> print "Errors already should have been reported"
+  return ()
+
+  where
+    convertForms :: ChangePasswordViewForm -> Auth.ChangePasswordForm
+    convertForms (ChangePasswordViewForm old new _) = Auth.ChangePasswordForm old new
 
 currentUserIndexPage :: Sink BusyCmd
                      -> Sink (Maybe Notification)
@@ -194,23 +211,10 @@ currentUserIndexPage busySink notifSink ipcSink userS authS = do
   (changePasswordView, changePassE)  <- formWithValidationComponent validateChangePassword' emptyChangePasswordViewForm (changePasswordW actionsSink) :: IO (Signal Html, Events ChangePasswordViewForm)
   (createUserView, createUserE)      <- formWithValidationComponent validateCreateUser'     emptyCreateUserForm         (createUserW actionsSink)     :: IO (Signal Html, Events Auth.CreateUserForm)
 
-  subscribeEvent (Lubeck.FRP.filter (== CUALogout) actionEvents) $ \_ -> ipcSink Logout
-  subscribeEvent changePassE $ \x -> void. forkIO $ do
-    res <- ((withBusy busySink Auth.changePasswordOrError) (convertForms x)) >>= (eitherToError notifSink)
-    case res of
-      Just (Ok s)  -> (notifSink . Just . NSuccess $ "Password changed :-)") >> (actionsSink HideToolbarActions)
-      Just (Nok s) -> notifSink . Just . apiError $ s
-      Nothing      -> print "Errors already should have been reported"
-    return ()
-
-  subscribeEvent createUserE $ \x -> void. forkIO $ do
-    res <- ((withBusy busySink Auth.createUserOrError) x) >>= (eitherToError notifSink)
-    case res of
-      Just (Ok s)  -> (notifSink . Just . NSuccess $ "User created :-)") >> (actionsSink HideToolbarActions)
-      Just (Nok s) -> notifSink . Just . apiError $ s
-      Nothing      -> print "Errors already should have been reported"
-    return ()
-
   let view                           = layout <$> actionsS <*> toolbarView <*> userView <*> changePasswordView <*> createUserView
+
+  subscribeEvent (Lubeck.FRP.filter (== CUALogout) actionEvents) $ \_ -> ipcSink Logout
+  subscribeEvent changePassE $ \x -> void . forkIO $ changePass busySink notifSink actionsSink x
+  subscribeEvent createUserE $ \x -> void . forkIO $ createUser busySink notifSink actionsSink x
 
   return view
