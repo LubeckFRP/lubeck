@@ -52,14 +52,9 @@ type Session = (Ac.Account, Auth.AuthInfo)
 
 --------------------------------------------------------------------------------
 
-validateUsername :: JSString -> JSString -> Validation [JSString] ()
-validateUsername fn s = runValidation3 <$> (lengthGT fn 3 s) <*> (lengthLT fn 30 s) <*> (isAlphanum fn s)
-
-validatePassword :: JSString -> JSString -> Validation [JSString] ()
-validatePassword fn s = runValidation3 <$> (lengthGT fn 3 s) <*> (lengthLT fn 30 s) <*> (isPrintable fn s)
-
-validateAccName :: JSString -> JSString -> Validation [JSString] ()
-validateAccName fn s = runValidation3 <$> (lengthGT fn 3 s) <*> (lengthLT fn 30 s) <*> (isAlphanum fn s)
+validateUsername fn s = longString fn 3 30 s
+validatePassword fn s = passwordString fn 3 30 s
+validateAccName fn s  = longString fn 3 30 s
 
 --------------------------------------------------------------------------------
 
@@ -80,16 +75,16 @@ ifAdmin (Just (acc, (Auth.AuthInfo token s))) x y =
 
 emptyCreateUserForm = Auth.CreateUserForm "" "" "" False
 
-validateCreateUser' :: Auth.CreateUserForm -> FormValid [JSString]
+validateCreateUser' :: Auth.CreateUserForm -> FormValid VError
 validateCreateUser' (Auth.CreateUserForm u p n _) =
   let validationResult = (runValidation3 <$> validateUsername "Username" u
                                          <*> validatePassword "Password" p
-                                         <*> validateAccName "Account name" n) :: Validation [JSString] ()
+                                         <*> validateAccName "Account name" n) :: Validation VError VSuccess
   in case validationResult of
     Success _  -> FormValid
     Failure es -> FormNotValid es
 
-createUserW :: Sink CurrentUserAction -> Widget (FormValid [JSString], Auth.CreateUserForm) (Submit Auth.CreateUserForm)
+createUserW :: Sink CurrentUserAction -> Widget (FormValid VError, Auth.CreateUserForm) (Submit Auth.CreateUserForm)
 createUserW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
                                          FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
@@ -117,16 +112,16 @@ data ChangePasswordViewForm = ChangePasswordViewForm { oldPassword  :: JSString
 
 emptyChangePasswordViewForm = ChangePasswordViewForm "" "" ""
 
-validateChangePassword' :: ChangePasswordViewForm -> FormValid [JSString]
+validateChangePassword' :: ChangePasswordViewForm -> FormValid VError
 validateChangePassword' (ChangePasswordViewForm o n1 n2) =
   let validationResult = (runValidation3 <$> validatePassword "Old password" o
                                          <*> validatePassword "New password" n1
-                                         <*> validateMatch "New password" "Repeat new password" n1 n2) :: Validation [JSString] ()
+                                         <*> validateMatch "New password" "Repeat new password" n1 n2) :: Validation VError VSuccess
   in case validationResult of
         Success _  -> FormValid
         Failure es -> FormNotValid es
 
-changePasswordW :: Sink CurrentUserAction -> Widget (FormValid [JSString], ChangePasswordViewForm) (Submit ChangePasswordViewForm)
+changePasswordW :: Sink CurrentUserAction -> Widget (FormValid VError, ChangePasswordViewForm) (Submit ChangePasswordViewForm)
 changePasswordW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
                                          FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
