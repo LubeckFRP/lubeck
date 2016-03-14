@@ -462,6 +462,9 @@ m ? k = maybe mempty id $ Data.Map.lookup k m
 line :: Geometry
 line = Geometry $ \ms -> Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
+fill :: Geometry
+fill = Geometry $ \ms -> Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+
 scatter :: Geometry
 scatter = Geometry $ \ms -> Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
@@ -565,4 +568,4 @@ test6 = do
     [ x <~ to fst
     , y <~ to snd
     ]
-  geom = scatter <> line
+  geom = mconcat [scatter, line, fill]

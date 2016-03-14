@@ -174,7 +174,8 @@ instance Monoid Styling where
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
     , _linePlotStrokeType           = mempty
-    , _linePlotFillColor            = Colors.black `withOpacity` 0
+    -- , _linePlotFillColor            = Colors.black `withOpacity` 0
+    , _linePlotFillColor          = Colors.red `withOpacity` 0.2
 
     , _scatterPlotStrokeColor       = Colors.red `withOpacity` 0.6
     , _scatterPlotStrokeWidth       = 1

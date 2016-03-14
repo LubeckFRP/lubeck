@@ -45,6 +45,7 @@ module Lubeck.DV.Drawing
   -- ** Lines
   , lineData
   , lineDataWithColor
+  , fillData
   , stepData
   , linearData
 
@@ -193,7 +194,7 @@ lineData (p:ps) = do
   style <- ask
   let lineStyle = id
                 . strokeColorA  (style^.linePlotStrokeColor)
-                . fillColorA    (style^.linePlotFillColor)
+                . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
@@ -212,6 +213,25 @@ lineDataWithColor _ = error "TODO"
 --   let origin = P $ V3 0 0 0
 --   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
 --   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
+
+fillData :: (Monad m) => [P2 Double] -> StyledT m Drawing
+fillData []     = mempty
+fillData [_]    = mempty
+fillData (p:ps) = do
+  style <- ask
+  let lineStyle = id
+                -- . strokeColorA  (style^.linePlotStrokeColor)
+                . fillColorA    (style^.linePlotFillColor)
+                -- . strokeWidth   (style^.linePlotStrokeWidth)
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect $ addExtraPoints (p:ps)
+
+  where
+    -- Add points from first and last projected on the X axis to make sure space below line is completely filled.
+    addExtraPoints ps = [proj $ head ps] ++ ps ++ [proj $ last ps]
+      where
+        proj (P (V2 x _)) = P (V2 x 0)
 
 -- | Draw a step chart.
 --
