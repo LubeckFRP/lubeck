@@ -553,13 +553,13 @@ test6 = do
   visualizeTest dat geom aes
  where
   dat =
-    [ (Mon, 0.0)
-    , (Tues, 30.2)
-    , (Wed, 3.0)
-    , (Thurs, 3.0)
-    , (Fri, 12.0)
-    , (Sat, 3.0)
-    , (Sun, 10.5 :: Double)]
+    [ (Mon,   0)
+    , (Tues,  30)
+    , (Wed,   3)
+    , (Thurs, 3)
+    , (Fri,   12)
+    , (Sat,   3)
+    , (Sun,   10 :: Int)]
   aes =
     [ x <~ to fst
     , y <~ to snd
