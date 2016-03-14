@@ -22,6 +22,7 @@ library
                      , contravariant
                      , mtl
                      , transformers
+                     , containers
                      , time
                      , lens
                      , colour
