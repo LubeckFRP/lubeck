@@ -72,32 +72,33 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- AESTHETICS
 
-newtype Aes a = Aes
-  { getAes ::
-    ( [a] -> a -> Map String Double
-    , [a] -> Map String (Double, Double)
-    , [a] -> Map String [(Double, String)]
-    , [a] -> Map String String -- name of scale used to plot the given aesthetic
-    )
+data Aes a = Aes
+  { getAes1 :: [a] -> a -> Map String Double
+  , getAes2 :: [a] -> Map String (Double, Double)
+  , getAes3 :: [a] -> Map String [(Double, String)]
+  , getAes4 :: [a] -> Map String String -- name of scale used to plot the given aesthetic
   }
-  deriving (Monoid)
+
+instance Monoid (Aes a) where
+  mempty = Aes mempty mempty mempty mempty
+  mappend (Aes a1 a2 a3 a4) (Aes b1 b2 b3 b4) = Aes (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
 
   -- TODO naming
 runAes :: Aes a -> [a] -> a -> Map String Double
-runAes (Aes (convert, _, _, _)) = convert
+runAes = getAes1
 
 runAesBounds :: Aes t -> [t] -> Map String (Double, Double)
-runAesBounds (Aes (_, bounds, _, _)) = bounds
+runAesBounds  = getAes2
 
 runAesGuides :: Aes t -> [t] -> Map String [(Double, String)]
-runAesGuides (Aes (_, _, guides, _)) = guides
+runAesGuides  = getAes3
 
 runAesScaleBaseName :: Aes t -> [t] -> Map String String
-runAesScaleBaseName (Aes (_, _, _, sbn)) = sbn
+runAesScaleBaseName = getAes4
 
 -- Anything that is scaled can be maed into an aesthetic.
 defaultAes :: HasScale a => String -> Aes a
-defaultAes n = Aes (convert, genBounds, genGuides, getScaleBaseName)
+defaultAes n = Aes convert genBounds genGuides getScaleBaseName
   where
     convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
     genBounds = \vs -> case vs of
@@ -112,13 +113,12 @@ defaultAes n = Aes (convert, genBounds, genGuides, getScaleBaseName)
 
 
 instance Contravariant Aes where
-  contramap f (Aes (g, h, i, j))
+  contramap f (Aes g h i j)
     = Aes
-      ( \xs x -> g (fmap f xs) (f x)
-      , \xs   -> h (fmap f xs)
-      , \xs   -> i (fmap f xs)
-      , \xs   -> j (fmap f xs)
-      )
+      (\xs x -> g (fmap f xs) (f x))
+      (\xs   -> h (fmap f xs))
+      (\xs   -> i (fmap f xs))
+      (\xs   -> j (fmap f xs))
 
 x, y, color, size, shape, thickness :: HasScale a => Aes a
 x         = defaultAes "x"
@@ -310,9 +310,6 @@ infixl 4 `withScale`
 infixl 3 <~
 infixl 3 ~>
 
--- instance Monoid (Aes a) where
---   mempty = Aes2 mempty mempty mempty mempty
---   mappend (Aes2 a1 a2 a3 a4) (Aes2 b1 b2 b3 b4) = Aes2 (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
 
 
 
