@@ -11,6 +11,8 @@ import           Control.Applicative
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void)
 
+
+import           Data.Either.Validation
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
@@ -38,6 +40,7 @@ import qualified BD.Data.Auth                   as Auth
 import qualified BD.Data.Image                  as Im
 
 import           BDPlatform.Types
+import           BDPlatform.Validators
 import           Components.BusyIndicator       (BusyCmd (..), withBusy)
 
 import           BDPlatform.HTMLCombinators
@@ -46,6 +49,14 @@ data CurrentUserAction = ChangePassword | CreateUser | CUALogout | HideToolbarAc
   deriving (Show, Eq)
 
 type Session = (Ac.Account, Auth.AuthInfo)
+
+--------------------------------------------------------------------------------
+
+validateUsername fn s = longString fn 3 30 s
+validatePassword fn s = passwordString fn 3 30 s
+validateAccName fn s  = longString fn 3 30 s
+
+--------------------------------------------------------------------------------
 
 toolbarW :: Widget (Maybe Session, Maybe CurrentUserAction) CurrentUserAction
 toolbarW sink (session, action) = mconcat
@@ -60,24 +71,24 @@ ifAdmin Nothing _ y = y
 ifAdmin (Just (acc, (Auth.AuthInfo token s))) x y =
   if (Auth.is_admin s) then x else y
 
-
 --------------------------------------------------------------------------------
 
 emptyCreateUserForm = Auth.CreateUserForm "" "" "" False
 
-validateCreateUser :: Auth.CreateUserForm -> FormValid ()
-validateCreateUser x =
-  if (Auth.cu_username x) /= "" && (Auth.cu_password x) /= "" && (Auth.cu_account_name x) /= ""
-    then FormValid
-    else FormNotValid ()
+validateCreateUser' :: Auth.CreateUserForm -> FormValid VError
+validateCreateUser' (Auth.CreateUserForm u p n _) =
+  let validationResult = (runValidation3 <$> validateUsername "Username" u
+                                         <*> validatePassword "Password" p
+                                         <*> validateAccName "Account name" n) :: Validation VError VSuccess
+  in case validationResult of
+    Success _  -> FormValid
+    Failure es -> FormNotValid es
 
-createUserW :: Sink CurrentUserAction -> Widget (FormValid (), Auth.CreateUserForm) (Submit Auth.CreateUserForm)
+createUserW :: Sink CurrentUserAction -> Widget (FormValid VError, Auth.CreateUserForm) (Submit Auth.CreateUserForm)
 createUserW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
-                                         FormValid      -> ( [ Ev.click $ \e -> sink $ Submit val, A.title "Form ok" ]
-                                                           , "")
-                                         FormNotValid _ -> ( [(VD.attribute "disabled") "true", A.title "Please fill in all fields and make sure passwords match" ]
-                                                           , "Please fill in all fields and make sure passwords match")
+                                         FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
+                                         FormNotValid es -> ([(VD.attribute "disabled") "true"],   showValidationErrors es)
   in formPanel
       [ longStringWidget "Username"     True  (contramapSink (\new -> DontSubmit $ val { Auth.cu_username  = new }) sink)    (Auth.cu_username val)
       , passwordWidget   "Password"     False (contramapSink (\new -> DontSubmit $ val { Auth.cu_password = new }) sink)     (Auth.cu_password val)
@@ -101,19 +112,20 @@ data ChangePasswordViewForm = ChangePasswordViewForm { oldPassword  :: JSString
 
 emptyChangePasswordViewForm = ChangePasswordViewForm "" "" ""
 
-validateChangePassword :: ChangePasswordViewForm -> FormValid ()
-validateChangePassword x =
-  if (oldPassword x) /= "" && (Data.JSString.length (newPassword1 x)) > 5 && (newPassword1 x) == (newPassword2 x)
-    then FormValid
-    else FormNotValid ()
+validateChangePassword' :: ChangePasswordViewForm -> FormValid VError
+validateChangePassword' (ChangePasswordViewForm o n1 n2) =
+  let validationResult = (runValidation3 <$> validatePassword "Old password" o
+                                         <*> validatePassword "New password" n1
+                                         <*> validateMatch "New password" "Repeat new password" n1 n2) :: Validation VError VSuccess
+  in case validationResult of
+        Success _  -> FormValid
+        Failure es -> FormNotValid es
 
-changePasswordW :: Sink CurrentUserAction -> Widget (FormValid (), ChangePasswordViewForm) (Submit ChangePasswordViewForm)
+changePasswordW :: Sink CurrentUserAction -> Widget (FormValid VError, ChangePasswordViewForm) (Submit ChangePasswordViewForm)
 changePasswordW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
-                                         FormValid      -> ( [ Ev.click $ \e -> sink $ Submit val, A.title "Form ok" ]
-                                                           , "")
-                                         FormNotValid _ -> ( [(VD.attribute "disabled") "true", A.title "Please fill in all fields and make sure passwords match" ]
-                                                           , "Please fill in all fields and make sure passwords match")
+                                         FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
+                                         FormNotValid es -> ([(VD.attribute "disabled") "true"], showValidationErrors es)
   in formPanel
       [ passwordWidget "Old password"        True  (contramapSink (\new -> DontSubmit $ val { oldPassword  = new }) sink) (oldPassword val)
       , passwordWidget "New password"        False (contramapSink (\new -> DontSubmit $ val { newPassword1 = new }) sink) (newPassword1 val)
@@ -153,8 +165,25 @@ layout action toolbar userview changePasswordView createUserView =
              Just HideToolbarActions -> mempty
              Nothing                 -> mempty
 
-convertForms :: ChangePasswordViewForm -> Auth.ChangePasswordForm
-convertForms (ChangePasswordViewForm old new _) = Auth.ChangePasswordForm old new
+createUser busySink notifSink actionsSink x = do
+  res <- ((withBusy busySink Auth.createUserOrError) x) >>= (eitherToError notifSink)
+  case res of
+    Just (Ok s)  -> (notifSink . Just . NSuccess $ "User created :-)") >> (actionsSink HideToolbarActions)
+    Just (Nok s) -> notifSink . Just . apiError $ s
+    Nothing      -> print "Errors already should have been reported"
+  return ()
+
+changePass busySink notifSink actionsSink x = do
+  res <- ((withBusy busySink Auth.changePasswordOrError) (convertForms x)) >>= (eitherToError notifSink)
+  case res of
+    Just (Ok s)  -> (notifSink . Just . NSuccess $ "Password changed :-)") >> (actionsSink HideToolbarActions)
+    Just (Nok s) -> notifSink . Just . apiError $ s
+    Nothing      -> print "Errors already should have been reported"
+  return ()
+
+  where
+    convertForms :: ChangePasswordViewForm -> Auth.ChangePasswordForm
+    convertForms (ChangePasswordViewForm old new _) = Auth.ChangePasswordForm old new
 
 currentUserIndexPage :: Sink BusyCmd
                      -> Sink (Maybe Notification)
@@ -174,26 +203,13 @@ currentUserIndexPage busySink notifSink ipcSink userS authS = do
   let toolbarView                    = fmap (toolbarW actionsSink) profileS
   let userView                       = fmap (userW actionsSink) sessionS
 
-  (changePasswordView, changePassE)  <- formWithValidationComponent validateChangePassword emptyChangePasswordViewForm (changePasswordW actionsSink) :: IO (Signal Html, Events ChangePasswordViewForm)
-  (createUserView, createUserE)      <- formWithValidationComponent validateCreateUser     emptyCreateUserForm         (createUserW actionsSink)     :: IO (Signal Html, Events Auth.CreateUserForm)
-
-  subscribeEvent (Lubeck.FRP.filter (== CUALogout) actionEvents) $ \_ -> ipcSink Logout
-  subscribeEvent changePassE $ \x -> void. forkIO $ do
-    res <- ((withBusy busySink Auth.changePasswordOrError) (convertForms x)) >>= (eitherToError notifSink)
-    case res of
-      Just (Ok s)  -> (notifSink . Just . NSuccess $ "Password changed :-)") >> (actionsSink HideToolbarActions)
-      Just (Nok s) -> notifSink . Just . apiError $ s
-      Nothing      -> print "Errors already should have been reported"
-    return ()
-
-  subscribeEvent createUserE $ \x -> void. forkIO $ do
-    res <- ((withBusy busySink Auth.createUserOrError) x) >>= (eitherToError notifSink)
-    case res of
-      Just (Ok s)  -> (notifSink . Just . NSuccess $ "User created :-)") >> (actionsSink HideToolbarActions)
-      Just (Nok s) -> notifSink . Just . apiError $ s
-      Nothing      -> print "Errors already should have been reported"
-    return ()
+  (changePasswordView, changePassE)  <- formWithValidationComponent validateChangePassword' emptyChangePasswordViewForm (changePasswordW actionsSink) :: IO (Signal Html, Events ChangePasswordViewForm)
+  (createUserView, createUserE)      <- formWithValidationComponent validateCreateUser'     emptyCreateUserForm         (createUserW actionsSink)     :: IO (Signal Html, Events Auth.CreateUserForm)
 
   let view                           = layout <$> actionsS <*> toolbarView <*> userView <*> changePasswordView <*> createUserView
+
+  subscribeEvent (Lubeck.FRP.filter (== CUALogout) actionEvents) $ \_ -> ipcSink Logout
+  subscribeEvent changePassE $ \x -> void . forkIO $ changePass busySink notifSink actionsSink x
+  subscribeEvent createUserE $ \x -> void . forkIO $ createUser busySink notifSink actionsSink x
 
   return view

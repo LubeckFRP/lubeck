@@ -67,6 +67,7 @@ menuItems =
   , (NavSearch,      "Search content")
   , (NavManage,      "Manage content")
   , (NavResults,     "Results")
+  , (NavCreateAd,    "Create Ad")
   , (NavCurrentUser, "Current user") -- last item is special in that it will be positioned far right
   ]
 

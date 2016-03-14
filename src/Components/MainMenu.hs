@@ -66,7 +66,7 @@ menuW menuItems brand sink value =
            , click $ \_ -> sink nav ] [E.a [] [text title]]
 
     lastMenuItem (nav, title) =
-      E.li [ click $ \_ -> sink nav ]
+      E.li [ class_ (markActive nav value), click $ \_ -> sink nav ]
            [ E.a [] [ E.i [class_ "fa fa-user", A.style "color: orange; margin-right: 5px;"] []
                     , text title]]
 

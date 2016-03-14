@@ -15,6 +15,7 @@ import qualified Prelude
 import           Control.Applicative
 import           Control.Lens                   (lens, over, set, view)
 import           Control.Monad                  (void)
+import           Data.Either.Validation
 import qualified Data.List
 import           Data.Map                       (Map)
 import qualified Data.Map                       as Map
@@ -30,6 +31,7 @@ import qualified Data.JSString
 import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
+import qualified Web.VirtualDom                 as VD
 import           Web.VirtualDom                 (renderToString, createElement, DOMNode)
 import           Web.VirtualDom.Html            (Property, a, button, div, form,
                                                  h1, hr, img, input, label, p,
@@ -62,6 +64,8 @@ import qualified BD.Data.SearchPost             as P
 import           BD.Query.PostQuery
 import qualified BD.Query.PostQuery             as PQ
 import           BD.Types
+import qualified BDPlatform.HTMLCombinators     as HC
+import           BDPlatform.Validators
 
 
 import           BDPlatform.Types
@@ -71,9 +75,15 @@ import           Components.BusyIndicator       (BusyCmd (..),
                                                  withBusy, withBusy2)
 
 
+type Post = SearchPost
+
+data PageAction = UploadImage Post | ShowCreateHTagDialog | HideCreateHTagDialog deriving (Eq)
+
+data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
+
 -- TODO finish
-searchForm :: Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
-searchForm dayNow outputSink (trackedHTs, query) =
+searchForm :: Sink PageAction -> Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
+searchForm pageActionSink dayNow outputSink (trackedHTs, query) =
   contentPanel $
     div [ class_ "form-horizontal"
         , keyup $ \e -> if which e == 13 then outputSink (Submit query) else return ()
@@ -107,7 +117,10 @@ searchForm dayNow outputSink (trackedHTs, query) =
         , div [class_ "col-xs-10 form-inline"]
             [ selectWithPromptWidget
                 (zip (P.tag <$> trackedHTs) (P.tag <$> trackedHTs)) -- FIXME
-                (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (Data.Maybe.fromMaybe "" $ PQ.trackedHashTag query) ]
+                (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (Data.Maybe.fromMaybe "" $ PQ.trackedHashTag query)
+
+            , HC.buttonIcon "New hashtag" "new" False [click $ \e -> pageActionSink ShowCreateHTagDialog]
+            ]
         ]
 
       , div [ class_ "form-group"  ]
@@ -131,12 +144,7 @@ searchForm dayNow outputSink (trackedHTs, query) =
           ]
       ]
 
-type Post = SearchPost
-
-data PostAction
-  = UploadImage Post
-
-itemMarkup :: Widget Post PostAction
+itemMarkup :: Widget Post PageAction
 itemMarkup output post =
   div [ class_ "thumbnail custom-thumbnail-1 fit-text" ]
     [ a [ target "_blank"
@@ -171,14 +179,12 @@ itemMarkup output post =
   where
     imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
-postSearchResultW :: Widget [Post] PostAction
+postSearchResultW :: Widget [Post] PageAction
 postSearchResultW output posts = postTable output posts
   where
-    postTable :: Widget [Post] PostAction
+    postTable :: Widget [Post] PageAction
     postTable output posts =
       div [] (map (itemMarkup output) posts)
-
-data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
 
 resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
 resultsLayout sink gridH mapH mode posts = case mode of
@@ -205,7 +211,6 @@ resultsLayout sink gridH mapH mode posts = case mode of
               , x ]
           ]
 
-
 renderToString' :: Html -> IO JSString
 renderToString' n = renderToString (div [] [n])
 
@@ -216,21 +221,54 @@ mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapCommand
 mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
 mapLifecycle (_, _)                   = Just MapDestroy
 
-postToMarkerIO :: Sink PostAction -> Post -> IO (Maybe Marker)
-postToMarkerIO uploadImage p = do
-  -- minfo <- renderToString' $ itemMarkup uploadImage p
+postToMarkerIO :: Sink PageAction -> Post -> IO (Maybe Marker)
+postToMarkerIO pageActionsSink p = do
+  -- minfo <- renderToString' $ itemMarkup pageActionsSink p
   -- return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonString minfo)
-  minfo <- renderToDOMNode $ itemMarkup uploadImage p
+  minfo <- renderToDOMNode $ itemMarkup pageActionsSink p
   return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
 
-showResultsOnMap mapSink uploadImage mbPosts = do
+showResultsOnMap mapSink pageActionsSink mbPosts = do
   mapSink $ ClearMap
-  mbms <- mapM (postToMarkerIO uploadImage) (Data.Maybe.fromMaybe [] mbPosts)
+  mbms <- mapM (postToMarkerIO pageActionsSink) (Data.Maybe.fromMaybe [] mbPosts)
   mapSink $ AddClusterLayer $ Data.Maybe.catMaybes mbms
+
+--------------------------------------------------------------------------------
 
 -- UX notice: not using `withBusy` here because this is not a user provoked action,
 -- so there is no need to notify a user, just do the job in background
-loadTrackedHashtags = P.getTrackedHashtags                                                         :: IO (Either AppError [P.TrackedHashtag])
+loadTrackedHashtags notifSink thtsInitSink = do
+  z <- P.getTrackedHashtags                                                         :: IO (Either AppError [P.TrackedHashtag])
+  case z of
+    Left e     -> notifSink . Just . apiError $ "Failed to load tracked hashtags"
+    Right thts -> synchronously . thtsInitSink $ thts
+
+validateHTag :: JSString -> FormValid VError
+validateHTag newHTag =
+  let validationResult = runValidation1 <$> longString "Hashtag" 1 80 newHTag :: Validation VError VSuccess
+  in case validationResult of
+        Success _  -> FormValid
+        Failure es -> FormNotValid es
+
+createHTagW :: Sink PageAction -> Widget (FormValid VError, JSString) (Submit JSString)
+createHTagW actionsSink sink (isValid, val) =
+  let (canSubmitAttr, cantSubmitMsg) = case isValid of
+                                         FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
+                                         FormNotValid es -> ([(VD.attribute "disabled") "true"], showValidationErrors es)
+  in HC.modalPopup' $ HC.formPanel
+      [ longStringWidget "New hashtag" True (contramapSink (\new -> DontSubmit new ) sink) val
+
+      , HC.formRowWithNoLabel' . HC.toolbarLeft' . HC.buttonGroupLeft $
+          [ HC.buttonOkIcon "Submit" "hashtag" False canSubmitAttr
+          , HC.button       "Cancel"           False [ Ev.click $ \e -> actionsSink HideCreateHTagDialog ]
+          , HC.inlineMessage cantSubmitMsg ]
+      ]
+
+--------------------------------------------------------------------------------
+
+layout :: Bool -> Html -> Html -> Html -> Html
+layout showHT sv rv chtv =
+  E.div [] ([sv, rv] <> (if showHT then [chtv] else []))
 
 searchInstagram :: Sink BusyCmd
                 -> Sink (Maybe Notification)
@@ -248,30 +286,34 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
 
   -- load tracked hash tags initially (at the very start of the app, before login)
   (thtsInitSink, thtsInitE)        <- newEventOf (undefined                                        :: [P.TrackedHashtag])
-  void . forkIO $ do
-    z <- loadTrackedHashtags
-    case z of
-      Left e     -> notifSink . Just . apiError $ "Failed to load tracked hashtags"
-      Right thts -> synchronously . thtsInitSink $ thts
+  void . forkIO $ loadTrackedHashtags notifSink thtsInitSink
 
   -- update tracked hash tags heuristics. Better: use websockets and FRP to push updates directly from the server
   let n                            = Lubeck.FRP.filter (NavSearch ==) (updates navS)
-  thtsReloadE                      <- withErrorIO notifSink $ fmap (\_ -> loadTrackedHashtags) n   :: IO (Events [P.TrackedHashtag])
+  thtsReloadE                      <- withErrorIO notifSink $ fmap (\_ -> P.getTrackedHashtags) n   :: IO (Events [P.TrackedHashtag])
   thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                        :: IO (Behavior [P.TrackedHashtag])
 
-  (searchView, searchRequested)    <- formComponentExtra1 thtsB initPostQuery (searchForm (utctDay now))
-  (uploadImage', uploadedImage)    <- newEventOf (undefined                                        :: PostAction)
+  (pageActionsSink', pageActionsEvents) <- newEventOf (undefined                                   :: PageAction)
   (srchResSink', srchResEvents)    <- newEventOf (undefined                                        :: Maybe [Post])
 
-  let uploadImage                  = synchronously . uploadImage'
+  let pageActionsSink              = synchronously . pageActionsSink'
   let srchResSink                  = synchronously . srchResSink'
+
+  (searchView, searchRequested)    <- formComponentExtra1 thtsB initPostQuery (searchForm pageActionsSink (utctDay now))
 
   (mapView, mapSink, _)            <- mapComponent []
 
   results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
-  let gridView                     = fmap ((altW (text "") postSearchResultW) uploadImage) results :: Signal Html
+
+  (createHTagView, createHTagE)    <- formWithValidationComponent validateHTag "" (createHTagW pageActionsSink) :: IO (Signal Html, Events JSString)
+  createHTagS                      <- stepperS False (fmap (\x -> if x == ShowCreateHTagDialog then True else False)
+                                                           (Lubeck.FRP.filter (\x -> (x == ShowCreateHTagDialog)
+                                                                                  || (x == HideCreateHTagDialog))
+                                                                              pageActionsEvents))
+
+  let gridView                     = fmap ((altW (text "") postSearchResultW) pageActionsSink) results :: Signal Html
   let resultsViewS                 = (resultsLayout (synchronously . viewModeSink)) <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
-  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS         :: Signal Html
+  let view                         = layout <$> createHTagS <*> searchView <*> resultsViewS <*> createHTagView         :: Signal Html
 
   -- This will try to destroy the map on any navigation
   -- What we need is to destroy the map just the first time a user navigates out of the search page
@@ -279,7 +321,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
   let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapCommand)
 
-  subscribeEvent (updates results) (showResultsOnMap mapSink uploadImage)
+  subscribeEvent (updates results) (showResultsOnMap mapSink pageActionsSink)
 
   subscribeEvent (updates resetMapS) $ \x -> void . forkIO $ case x of
     Nothing -> return ()
@@ -289,18 +331,29 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
 
       threadDelay 100000 -- give map a little time?
       curRes <- pollBehavior (current results)
-      showResultsOnMap mapSink uploadImage curRes
+      showResultsOnMap mapSink pageActionsSink curRes
 
-  subscribeEvent uploadedImage $ \(UploadImage post) -> void . forkIO $ do
-    mUserName <- pollBehavior mUserNameB
-    case mUserName of
-      Nothing       -> notifSink . Just . blError $ "No account to upload post to"
-      Just userName -> do
-        res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
-        case res of
-          Left e        -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
-          Right (Ok s)  -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (ipcSink ImageLibraryUpdated)
-          Right (Nok s) -> notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
+  subscribeEvent pageActionsEvents $ \act -> void . forkIO $ case act of
+    (UploadImage post) -> do
+      mUserName <- pollBehavior mUserNameB
+      case mUserName of
+        Nothing       -> notifSink . Just . blError $ "No account to upload post to"
+        Just userName -> do
+          res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+          case res of
+            Left e        ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
+            Right (Ok s)  -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (ipcSink ImageLibraryUpdated)
+            Right (Nok s) ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
+    _ -> return ()
+
+  subscribeEvent createHTagE $ \tag -> void. forkIO $ do
+      res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) ("fetch-tag/" <> tag) ()
+      case res of
+        Left e        ->  notifSink . Just . apiError $ "Failed to submit a new hashtag : " <> showJS e
+        Right (Ok s)  -> (notifSink . Just . NSuccess $ "Hashtag added :-) The server will start fetching it within an hour.")
+                      >> (void. forkIO $ loadTrackedHashtags notifSink thtsInitSink)
+                      >> (pageActionsSink HideCreateHTagDialog)
+        Right (Nok s) ->  notifSink . Just . apiError $ "Failed to submit a new hashtag : " <> s
 
   subscribeEvent searchRequested $ \query -> void . forkIO $ do
     srchResSink $ Nothing -- reset previous search results

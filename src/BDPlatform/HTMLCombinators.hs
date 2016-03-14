@@ -34,7 +34,11 @@ panel' c = panel [c]
 formPanel  x = panel' $ E.div [A.class_ "form-horizontal"] x
 formPanel' x = formPanel [x]
 
-inlineMessage x = E.span [A.style "padding-left: 10px"] [E.text x]
+modalPopup  x = E.div [A.class_ "modal-popup"]
+                      [E.div [A.class_ "modal-popup-body"] x]
+modalPopup' x = modalPopup [x]
+
+inlineMessage x = E.span [A.class_ "btn", A.style "padding-left: 10px"] [E.text x]
 
 formGroup x = E.div [A.class_ "form-group"] x
 formGroup' x = formGroup [x]

@@ -21,6 +21,7 @@ import           Control.Concurrent             (forkIO)
 
 import           Data.Aeson
 import           Data.Bifunctor                 (bimap)
+import qualified Data.Either.Validation         as V
 import qualified Data.List
 import           Data.Map                       (Map)
 import qualified Data.Map                       as Map
@@ -60,6 +61,9 @@ import qualified BD.Data.Account                as Ac
 import qualified BD.Data.AdCampaign             as AdCampaign
 import qualified BD.Data.AdTypes                as AdTypes
 import           BD.Types
+
+import           BDPlatform.Validators
+import           BDPlatform.HTMLCombinators
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy2)
 import           Lubeck.Util
@@ -124,15 +128,14 @@ imageH cur_img_hash sink image =
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
 
-createAdForm :: Widget (FormValid (), (Maybe [AdCampaign.AdCampaign], (Maybe [Im.Image], NewAd))) (Submit NewAd)
+createAdForm :: Widget (FormValid VError, (Maybe [AdCampaign.AdCampaign], (Maybe [Im.Image], NewAd))) (Submit NewAd)
 createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
   let (canSubmitAttr, cantSubmitMsg) = case canSubmit of
                                         FormValid      -> ([ click $ \e -> outputSink $ Submit newAd
                                                            , A.title "Please fill in required fields" ], "")
-                                        FormNotValid _ -> ([ (VD.attribute "disabled") "true" ]
-                                                        , "Please fill in all fields")
-  in contentPanel $
-    div [class_ "form-horizontal"]
+                                        FormNotValid es -> ([ (VD.attribute "disabled") "true" ]
+                                                           , showValidationErrors es)
+  in contentPanel . formPanel $
       [ longStringWidget "Caption"
                          True
                          (contramapSink (\new -> DontSubmit $ newAd { caption = new }) outputSink)
@@ -147,12 +150,10 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
       , imageSelectWidget mbIms
                           (contramapSink (\new -> DontSubmit $ newAd { image_hash = (fromMaybe "" $ Im.fb_image_hash new) }) outputSink)
                           (image_hash newAd)
-      , div [class_ "form-group"]
-          [ div [class_ "col-xs-offset-2 col-xs-10"]
-              [ button ([A.class_ "btn btn-success"] <> canSubmitAttr)
-                  [ E.i [A.class_ "fa fa-thumbs-o-up", A.style "margin-right: 5px"] []
-                  , text "Create Ad" ]
-              , E.span [A.style "padding-left: 10px"] [text cantSubmitMsg] ] ]
+
+      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
+          [ buttonOkIcon "Create Ad" "thumbs-o-up" False canSubmitAttr
+          , inlineMessage cantSubmitMsg ]
 
       ]
 
@@ -161,11 +162,21 @@ postNewAd unm newAd = do
   res <- postAPIEither BD.Api.defaultAPI (unm <> "/create-ad") newAd
   return $ bimap ApiError id res
 
-validate :: NewAd -> FormValid ()
+
+validateCaption fn s   = longString fn 3 30 s
+validateImageHash fn s = notEmpty fn s
+validateCampaign fn s  = notEqualTo fn s invalidCampaignId
+validateLink fn s      = notEmpty fn s
+
+validate :: NewAd -> FormValid VError
 validate (NewAd caption image_hash campaign click_link) =
-  if caption /= "" && image_hash /= "" && campaign /= invalidCampaignId && click_link /= ""
-    then FormValid
-    else FormNotValid ()
+  let validationResult = (runValidation4 <$> validateCaption "Caption" caption
+                                         <*> validateImageHash "Image" image_hash
+                                         <*> validateCampaign "Campaign" campaign
+                                         <*> validateLink "Click URL" click_link) :: V.Validation VError VSuccess
+  in case validationResult of
+        V.Success _  -> FormValid
+        V.Failure es -> FormNotValid es
 
 createAdPage :: Sink BusyCmd
              -> Sink (Maybe Notification)
