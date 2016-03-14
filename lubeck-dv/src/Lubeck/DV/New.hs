@@ -20,8 +20,8 @@ module Lubeck.DV.New
 
   -- * Aesthetics
   , x, y, color, size, shape, thickness
-  , Aes
-  , defaultAes
+  , Aesthetic
+  , defaultAesthetic
   -- ** Mapping aesthetics
   , (<~)
   , (~>)
@@ -72,61 +72,49 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- AESTHETICS
 
-data Aes a = Aes
-  { getAes1 :: [a] -> a -> Map String Double
-  , getAes2 :: [a] -> Map String (Double, Double)
-  , getAes3 :: [a] -> Map String [(Double, String)]
-  , getAes4 :: [a] -> Map String String -- name of scale used to plot the given aesthetic
+data Aesthetic a = Aesthetic
+  { aesthetic      :: [a] -> a -> Map String Double
+  , aestheticBounds :: [a] -> Map String (Double, Double)
+  , aestheticGuides :: [a] -> Map String [(Double, String)]
+  , aestheticScaleBaseName :: [a] -> Map String String -- name of scale used to plot the given aesthetic
   }
 
-instance Monoid (Aes a) where
-  mempty = Aes mempty mempty mempty mempty
-  mappend (Aes a1 a2 a3 a4) (Aes b1 b2 b3 b4) = Aes (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
+instance Monoid (Aesthetic a) where
+  mempty = Aesthetic mempty mempty mempty mempty
+  mappend (Aesthetic a1 a2 a3 a4) (Aesthetic b1 b2 b3 b4) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
 
-  -- TODO naming
-runAes :: Aes a -> [a] -> a -> Map String Double
-runAes = getAes1
 
-runAesBounds :: Aes t -> [t] -> Map String (Double, Double)
-runAesBounds  = getAes2
-
-runAesGuides :: Aes t -> [t] -> Map String [(Double, String)]
-runAesGuides  = getAes3
-
-runAesScaleBaseName :: Aes t -> [t] -> Map String String
-runAesScaleBaseName = getAes4
-
--- Anything that is scaled can be maed into an aesthetic.
-defaultAes :: HasScale a => String -> Aes a
-defaultAes n = Aes convert genBounds genGuides getScaleBaseName
+-- | Make a custom aesthetic attribute.
+defaultAesthetic :: HasScale a => String -> Aesthetic a
+defaultAesthetic n = Aesthetic convert genBounds genGuides getScaleBaseName
   where
     convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
-    genBounds = \vs -> case vs of
-      []    -> Data.Map.singleton n $ (0,0)
-      (v:_) -> Data.Map.singleton n $ scaleBounds (scale v) vs
-    genGuides  = \vs -> case vs of
-      []    -> Data.Map.singleton n $ []
-      (v:_) -> Data.Map.singleton n $ scaleGuides (scale v) vs
-    getScaleBaseName = \vs -> case vs of
-      []    -> Data.Map.singleton n $ []
-      (v:_) -> Data.Map.singleton n $ scaleBaseName (scale v)
+    genBounds = \vs -> Data.Map.singleton n $ case vs of
+      []    -> (0,0)
+      (v:_) -> scaleBounds (scale v) vs
+    genGuides  = \vs -> Data.Map.singleton n $ case vs of
+      []    -> []
+      (v:_) -> scaleGuides (scale v) vs
+    getScaleBaseName = \vs -> Data.Map.singleton n $ case vs of
+      []    -> []
+      (v:_) -> scaleBaseName (scale v)
 
 
-instance Contravariant Aes where
-  contramap f (Aes g h i j)
-    = Aes
+instance Contravariant Aesthetic where
+  contramap f (Aesthetic g h i j)
+    = Aesthetic
       (\xs x -> g (fmap f xs) (f x))
       (\xs   -> h (fmap f xs))
       (\xs   -> i (fmap f xs))
       (\xs   -> j (fmap f xs))
 
-x, y, color, size, shape, thickness :: HasScale a => Aes a
-x         = defaultAes "x"
-y         = defaultAes "y"
-color     = defaultAes "color"
-size      = defaultAes "size"
-shape     = defaultAes "shape"
-thickness = defaultAes "thickness"
+x, y, color, size, shape, thickness :: HasScale a => Aesthetic a
+x         = defaultAesthetic "x"
+y         = defaultAesthetic "y"
+color     = defaultAesthetic "color"
+size      = defaultAesthetic "size"
+shape     = defaultAesthetic "shape"
+thickness = defaultAesthetic "thickness"
 
 
 
@@ -279,31 +267,31 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 -- TOP-LEVEL
 
 -- Very similar to (>$$<)
-(<~) :: Aes a -> Getter s a -> Aes s
+(<~) :: Aesthetic a -> Getter s a -> Aesthetic s
 (<~) a g = contramap (^.g) a
 
 -- Very similar to (>$<)
-(~>) :: Getter s a -> Aes a -> Aes s
+(~>) :: Getter s a -> Aesthetic a -> Aesthetic s
 (~>) g a = contramap (^.g) a
 
-visualizeTest' :: [s] -> [Aes s] -> [Map String Double] -- TODO result type
-visualizeTest' dat aes = fmap ((runAes $ mconcat aes) dat) dat
+visualizeTest' :: [s] -> [Aesthetic s] -> [Map String Double] -- TODO result type
+visualizeTest' dat aes = fmap ((aesthetic $ mconcat aes) dat) dat
 
-visualizeTest :: [s] -> [Aes s] -> IO () -- TODO result type
+visualizeTest :: [s] -> [Aesthetic s] -> IO () -- TODO result type
 visualizeTest dat aes = do
   putStrLn $ replicate 20 '-'
 
   putStrLn "Data to plot (column-order):"
-  mapM_ print $ fmap ((runAes $ mconcat aes) dat) dat
+  mapM_ print $ fmap ((aesthetic $ mconcat aes) dat) dat
 
   putStrLn "Scale base types (row-order):"
-  mapM_ print $ ((runAesScaleBaseName $ mconcat aes) dat)
+  mapM_ print $ ((aestheticScaleBaseName $ mconcat aes) dat)
 
   putStrLn "Data bounds (row-order):"
-  mapM_ print $ ((runAesBounds $ mconcat aes) dat)
+  mapM_ print $ ((aestheticBounds $ mconcat aes) dat)
 
   putStrLn "Guides to plot (row-order):"
-  mapM_ print $ ((runAesGuides $ mconcat aes) dat)
+  mapM_ print $ ((aestheticGuides $ mconcat aes) dat)
   putStrLn $ replicate 20 '-'
 
 infixl 4 `withScale`
