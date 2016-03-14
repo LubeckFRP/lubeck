@@ -558,8 +558,8 @@ test6 = do
     , (Wed, 3.0)
     , (Thurs, 3.0)
     , (Fri, 12.0)
-    -- , (Sat, 3.0)
-    , (Sun, 0.3 :: Double)]
+    , (Sat, 3.0)
+    , (Sun, 10.5 :: Double)]
   aes =
     [ x <~ to fst
     , y <~ to snd

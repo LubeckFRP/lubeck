@@ -200,7 +200,19 @@ lineData (p:ps) = do
   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 lineDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
-lineDataWithColor = undefined
+lineDataWithColor []     = mempty
+lineDataWithColor [_]    = mempty
+lineDataWithColor _ = error "TODO"
+-- lineDataWithColor (p:ps) = do
+--   style <- ask
+--   let lineStyle = id
+--                 . strokeColorA  (style^.linePlotStrokeColor)
+--                 . fillColorA    (style^.linePlotFillColor)
+--                 . strokeWidth   (style^.linePlotStrokeWidth)
+--   let origin = P $ V3 0 0 0
+--   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+--   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
+
 -- | Draw a step chart.
 --
 -- Similar to 'lineData', except it renders a series of changes (vectors) relative a starting point.
@@ -474,7 +486,6 @@ ticksNoFilter xt yt = do
   style <- ask
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
-  -- let intoRect = transform (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
             [ mempty
