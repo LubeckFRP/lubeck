@@ -54,6 +54,7 @@ library
                      , BDPlatform.Pages.Interactions
                      , BDPlatform.Pages.Search.Index
                      , BDPlatform.Pages.Search.Instagram
+                     , BDPlatform.Pages.Search.Upload
                      , BDPlatform.Pages.Accounts.Index
                      , BDPlatform.Pages.Accounts.Search
                      , BDPlatform.Pages.Manage.Index
