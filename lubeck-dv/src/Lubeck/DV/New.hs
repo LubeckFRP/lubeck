@@ -314,8 +314,8 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 (~>) :: Getter s a -> Aesthetic a -> Aesthetic s
 (~>) g a = contramap (^.g) a
 
-visualizeTest :: Show s => [s] -> [Aesthetic s] -> geometry -> IO () -- TODO result type
-visualizeTest dat aess _ = putStrLn $ B.render $ box
+printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO () -- TODO result type
+printDebugInfo dat aess = putStrLn $ B.render $ box
   where
     aes = mconcat aess
 
@@ -343,14 +343,25 @@ visualizeTest dat aess _ = putStrLn $ B.render $ box
       ]
     toBox = B.text . show
 
--- TODO debug
-data M a = M a
-instance Functor M
-instance Applicative M
-instance Monad M
+    -- | Make a box table (row-major order).
+    makeTableNoHeader :: [[B.Box]] -> B.Box
+    makeTableNoHeader x = B.hsep 1 B.center1 $ fmap (B.vsep 0 B.top) $ Data.List.transpose x
 
-visualizeTest2 :: Show s => [s] -> [Aesthetic s] -> Geometry Identity -> IO ()
-visualizeTest2 dat aess geom = do
+    -- | Make a box table (row-major order), first argument is headers.
+    makeTable :: [B.Box] -> [[B.Box]] -> B.Box
+    makeTable headers rows = makeTableNoHeader $ headers : belowHeaderLines : rows
+      where
+        longestHeader = maximum $ fmap (length . B.render) headers
+        belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
+
+visualizeTest :: Show s => [s] -> Geometry Identity -> [Aesthetic s] -> IO ()
+visualizeTest dat geom aess = do
+  printDebugInfo dat aess
+  visualizeTest2 dat geom aess
+  return ()
+
+visualizeTest2 :: Show s => [s] -> Geometry Identity -> [Aesthetic s] -> IO ()
+visualizeTest2 dat geom aess = do
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
   let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
   let finalD = mconcat [ticksD, dataD, Lubeck.DV.Drawing.labeledAxis "" ""]
@@ -370,23 +381,20 @@ visualizeTest2 dat aess geom = do
 applyScalingToGuides :: Map AestheticKey (Double,Double)
   -> Map AestheticKey [(Double, str)]
   -> Map AestheticKey [(Double, str)]
-applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (scale (fromJust $ Data.Map.lookup aesK b) d,s)) dsL) m
+applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (scale (fromMaybe idS $ Data.Map.lookup aesK b) d,s)) dsL) m
   where
-    fromJust (Just x) = x -- TODO
+    idS = (0,1)
     scale :: (Double, Double) -> Double -> Double
     scale (lb,ub) x = (x - lb) / (ub - lb)
 
 applyScalingToValues :: Map AestheticKey (Double,Double) -> [Map AestheticKey Double] -> [Map AestheticKey Double]
-applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromJust $ Data.Map.lookup aesK b) d)) m
+applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromMaybe idS $ Data.Map.lookup aesK b) d)) m
   where
-    fromJust (Just x) = x -- TODO
+    idS = (0,1)
     scale :: (Double, Double) -> Double -> Double
     scale (lb,ub) x = (x - lb) / (ub - lb)
 
 type Geometry m = [Map AestheticKey Double] -> StyledT m Drawing
-
-basicLine :: Monad m => Geometry m
-basicLine ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 (!) :: (Num b, Ord k) => Map k b -> k -> b
 m ! k = maybe 0 id $ Data.Map.lookup k m
@@ -394,22 +402,13 @@ m ! k = maybe 0 id $ Data.Map.lookup k m
 (?) :: (Monoid b, Ord k) => Map k b -> k -> b
 m ? k = maybe mempty id $ Data.Map.lookup k m
 
+-- TODO remove (~ Identity) restrictions
+line :: (Monad m, m ~ Identity) => Geometry m
+line ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
--- | Make a box table (row-major order).
-makeTableNoHeader :: [[B.Box]] -> B.Box
-makeTableNoHeader x = B.hsep 1 B.center1 $ fmap (B.vsep 0 B.top) $ Data.List.transpose x
+scatter :: (Monad m, m ~ Identity) => Geometry m
+scatter ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
--- | Make a box table (row-major order), first argument is headers.
-makeTable :: [B.Box] -> [[B.Box]] -> B.Box
-makeTable headers rows = makeTableNoHeader $ headers : belowHeaderLines : rows
-  where
-    longestHeader = maximum $ fmap (length . B.render) headers
-    belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
-
-    -- mapM_ print $ fmap ((aesthetic aes) dat) dat
-    -- mapM_ print $ (aestheticScaleBaseName aes) dat
-    -- mapM_ print $ (aestheticBounds aes) dat
-    -- mapM_ print $ (aestheticGuides aes) dat
 
 infixl 4 `withScale`
 infixl 3 <~
@@ -455,25 +454,25 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = visualizeTest people
+test = visualizeTest people scatter
   [ mempty
   , color <~ height
   , shape <~ gender
   , x     <~ name
   , y     <~ age `withScale` linear
   ]
-test2 = visualizeTest ([(1,2), (3,4)] :: [(Int, Int)])
+test2 = visualizeTest ([(1,2), (3,4)] :: [(Int, Int)]) line
   [ mempty
   , x <~ to fst
   , y <~ to snd
   ]
-test3 = visualizeTest ( [ ] :: [(UTCTime, Int)])
+test3 = visualizeTest ( [ ] :: [(UTCTime, Int)]) line
   [ mempty
   , x <~ to fst
   , y <~ to snd
   ]
 
-test4 = visualizeTest ("hello world" :: String) [x <~ id]
+test4 = visualizeTest ("hello world" :: String) scatter [x <~ id, y <~ id]
 
 
 
@@ -482,25 +481,22 @@ data WD = Mon | Tues | Wed | Thurs | Fri | Sat | Sun deriving (Eq, Ord, Show, En
 instance HasScale WD where
   scale = const categoricalEnum
 
-test5 = visualizeTest [(Mon, 100 :: Int), (Sun, 400)] [x <~ to fst, y <~ to snd]
+test5 = visualizeTest [(Mon, 100 :: Int), (Sun, 400)] line [x <~ to fst, y <~ to snd]
 
 
 test6 = do
-  -- visualizeTest dat aes geom
-  visualizeTest2 dat aes geom
+  visualizeTest dat geom aes
  where
   dat =
     [ (Mon, 0.0)
-    , (Tues, 0.2)
+    , (Tues, 30.2)
     , (Wed, 3.0)
-    , (Wed, 3.0)
-    , (Wed, 3.0)
-    , (Wed, 3.0)
-    , (Wed, 3.0)
-    , (Wed, 3.0)
-    , (Wed, 3.0)
-    , (Wed, 3.0)
-    , (Wed, 3.0)
+    , (Thurs, 3.0)
+    , (Fri, 12.0)
+    -- , (Sat, 3.0)
     , (Sun, 0.3 :: Double)]
-  aes = [x <~ to fst, y <~ to snd]
-  geom = basicLine
+  aes =
+    [ x <~ to fst `withScale` categoricalEnum
+    , y <~ to snd
+    ]
+  geom = line
