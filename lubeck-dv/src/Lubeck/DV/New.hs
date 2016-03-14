@@ -43,6 +43,11 @@ import Data.Time(UTCTime)
 import Data.Proxy
 
 import qualified Text.PrettyPrint.Boxes as B
+import Lubeck.Drawing (Drawing)
+import Lubeck.DV.Drawing ()
+import Lubeck.DV.Styling (StyledT)
+import qualified Lubeck.DV.Drawing
+import qualified Lubeck.DV.Styling
 
 
 
@@ -80,6 +85,12 @@ instance Show AestheticKey where
   -- OK because of the IsString instance
   show = show . getAestheticKey
 
+{-|
+An 'Aesthetic' maps a row/tuple/record to a set of '(AestheticKey, Double)' pairs.
+
+You can also think of it as a function @a -> AestheticKey -> Double@, or as a way
+of visualizing some particular aspect of a type.
+-}
 data Aesthetic a = Aesthetic
   { aestheticMapping       :: [a] -> a -> Map AestheticKey Double
   , aestheticBounds        :: [a] -> Map AestheticKey (Double, Double)
@@ -87,6 +98,9 @@ data Aesthetic a = Aesthetic
   , aestheticScaleBaseName :: [a] -> Map AestheticKey String -- name of scale used to plot the given aesthetic
   }
 
+-- | The empty 'Aesthetic' does not map anything.
+--   Appending aesthetics interleaves their mappings. If bothe aesthetics provide a mapping for the same key
+--   (i.e. both provide "color"), the left-most is always chosen.
 instance Monoid (Aesthetic a) where
   mempty = Aesthetic mempty mempty mempty mempty
   mappend (Aesthetic a1 a2 a3 a4) (Aesthetic b1 b2 b3 b4) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
@@ -107,7 +121,12 @@ customAesthetic n2 = Aesthetic convert genBounds genGuides getScaleBaseName
       []    -> []
       (v:_) -> scaleBaseName (scale v)
 
-
+-- | Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger type.
+--
+-- >>> contramap fst :: Aesthetic a -> Aesthetic (a, b)
+-- >>> contramap show :: Show a => Aesthetic String -> Aesthetic a
+-- >>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
+--
 instance Contravariant Aesthetic where
   contramap f (Aesthetic g h i j)
     = Aesthetic
@@ -311,6 +330,12 @@ visualizeTest dat aess = putStrLn $ B.render $ box
       , "Aesthetics  " B.<+> tab
       ]
     toBox = B.text . show
+
+
+type Geometry m = [Map AestheticKey Double] -> StyledT m Drawing
+-- scatterPlotColor
+
+
 
 -- | Make a box table (row-major order).
 makeTableNoHeader :: [[B.Box]] -> B.Box
