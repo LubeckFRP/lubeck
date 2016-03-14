@@ -41,9 +41,20 @@ import Control.Lens.TH
 import qualified Data.List
 import Data.Time(UTCTime)
 import Data.Proxy
+import Data.Functor.Identity
 
+import Linear.Vector
+import Linear.Affine
+-- import Linear.Matrix hiding (translation)
+-- import Linear.Metric -- Needed?
+import Linear.V0
+import Linear.V1
+import Linear.V2
+import Linear.V3
+import Linear.V4
 import qualified Text.PrettyPrint.Boxes as B
 import Lubeck.Drawing (Drawing)
+import qualified Lubeck.Drawing
 import Lubeck.DV.Drawing ()
 import Lubeck.DV.Styling (StyledT)
 import qualified Lubeck.DV.Drawing
@@ -88,8 +99,10 @@ instance Show AestheticKey where
 {-|
 An 'Aesthetic' maps a row/tuple/record to a set of '(AestheticKey, Double)' pairs.
 
-You can also think of it as a function @a -> AestheticKey -> Double@, or as a way
+You can think of it as a function @a -> AestheticKey -> Double@, or as a way
 of visualizing some particular aspect of a type.
+
+Or as a pair of a 'Scale' and an 'AestheticKey' as whitnessed by 'customAesthetic'.
 -}
 data Aesthetic a = Aesthetic
   { aestheticMapping       :: [a] -> a -> Map AestheticKey Double
@@ -307,9 +320,9 @@ visualizeTest dat aess = putStrLn $ B.render $ box
   where
     aes = mconcat aess
 
-    guidesM     = aestheticGuides aes dat
-    boundsM     = aestheticBounds aes dat
-    scaleBaseNM = aestheticScaleBaseName aes dat
+    guidesM     = aestheticGuides aes dat :: Map AestheticKey [(Double, String)]
+    boundsM     = aestheticBounds aes dat :: Map AestheticKey (Double, Double)
+    scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey String
     mappedData  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
     aKeys       = Data.Map.keys $ mconcat mappedData
 
@@ -331,10 +344,42 @@ visualizeTest dat aess = putStrLn $ B.render $ box
       ]
     toBox = B.text . show
 
+-- TODO debug
+data M a = M a
+instance Functor M
+instance Applicative M
+instance Monad M
+
+visualizeTest2 :: Show s => [s] -> [Aesthetic s] -> Geometry Identity -> IO ()
+visualizeTest2 dat aess geom = do
+  let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
+  let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
+  let finalD = mconcat [ticksD, dataD, Lubeck.DV.Drawing.labeledAxis "" ""]
+  let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
+  writeFile "/root/lubeck/static/tmp/test.svg" svgS
+  return ()
+  where
+    aes = mconcat aess
+    guidesM     = aestheticGuides aes dat :: Map AestheticKey [(Double, String)]
+    boundsM     = aestheticBounds aes dat :: Map AestheticKey (Double, Double)
+    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey String
+    mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
+    mappedAndScaledData = applyScaling boundsM mappedData2
+
+-- TODO
+applyScaling :: Map AestheticKey (Double,Double) -> [Map AestheticKey Double] -> [Map AestheticKey Double]
+applyScaling b m = m
 
 type Geometry m = [Map AestheticKey Double] -> StyledT m Drawing
--- scatterPlotColor
 
+basicLine :: Monad m => Geometry m
+basicLine ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+
+(!) :: (Num b, Ord k) => Map k b -> k -> b
+m ! k = maybe 0 id $ Data.Map.lookup k m
+
+(?) :: (Monoid b, Ord k) => Map k b -> k -> b
+m ? k = maybe mempty id $ Data.Map.lookup k m
 
 
 -- | Make a box table (row-major order).
@@ -369,7 +414,7 @@ infixl 3 ~>
 data Gender = Female | Male deriving (Eq, Ord, Show)
 newtype Name = Name String deriving (Eq, Ord, Show, IsString)
 
-data Person = P { personName :: Name, personAge :: Int, personHeight :: Double }
+data Person = P1 { personName :: Name, personAge :: Int, personHeight :: Double }
   deriving (Eq, Ord, Show)
 
 data Person2 = P2 { person2Name :: Name, person2Age :: Int, person2Height :: Double, person2Gender :: Gender }
@@ -380,16 +425,16 @@ $(makeFields ''Person2)
 
 males, females :: [Person]
 males =
-  [ P (Name "Hans") 28 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
+  [ P1 "Hans" 28 1.15
+  , P1 "Sven" 25 1.15
+  , P1 "Sven" 25 1.15
+  , P1 "Sven" 25 1.15
+  , P1 "Sven" 25 1.15
+  , P1 "Sven" 25 1.15
   ]
 females =
-  [ P "Elin" 21 1.15
-  , P "Alva" 19 1.15
+  [ P1 "Elin" 21 1.15
+  , P1 "Alva" 19 1.15
   ]
 
 people :: [Person2]
@@ -425,3 +470,11 @@ instance HasScale WD where
   scale = const categoricalEnum
 
 test5 = visualizeTest [(Mon, 100 :: Int), (Sun, 400)] [x <~ to fst, y <~ to snd]
+
+
+test6 = visualizeTest2
+  [ (Tues, 0.2)
+  , (Mon, 0.0)
+  , (Mon, 1.0)
+  , (Mon, 0.3 :: Double)]
+  [x <~ to fst, y <~ to snd] basicLine

@@ -38,11 +38,13 @@ module Lubeck.DV.Drawing
 
   -- ** Scatter
   , scatterData
+  , scatterDataWithColor
   , scatterDataX
   , scatterDataY
 
   -- ** Lines
   , lineData
+  , lineDataWithColor
   , stepData
   , linearData
 
@@ -148,6 +150,9 @@ scatterData ps = do
   return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
   -- return ()
 
+scatterDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
+scatterDataWithColor = undefined
+
 -- | Draw data for a scatter plot, ignoring Y values.
 --
 --   By default the X coordinate of each given point is rendered as a vertical line at the corresponding position
@@ -194,7 +199,8 @@ lineData (p:ps) = do
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
-
+lineDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
+lineDataWithColor = undefined
 -- | Draw a step chart.
 --
 -- Similar to 'lineData', except it renders a series of changes (vectors) relative a starting point.
@@ -447,9 +453,10 @@ overlay = undefined
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
 -- Positions outside the normalized range are discarded.
 ticks
-  :: [(Double, Str)] -- ^ X axis ticks.
+  :: Monad m
+  => [(Double, Str)] -- ^ X axis ticks.
   -> [(Double, Str)] -- ^ Y axis ticks.
-  -> Styled Drawing
+  -> StyledT m Drawing
 ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
   where
     filterTicks = filter (withinNormRange . fst)
@@ -459,9 +466,10 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
 -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
 ticksNoFilter
-  :: [(Double, Str)] -- ^ X axis ticks.
+  :: Monad m
+  => [(Double, Str)] -- ^ X axis ticks.
   -> [(Double, Str)] -- ^ Y axis ticks.
-  -> Styled Drawing
+  -> StyledT m Drawing
 ticksNoFilter xt yt = return $ mconcat [xTicks, yTicks]
   where
     xTicks = mconcat $ flip fmap xt $
@@ -484,9 +492,10 @@ barPlotTicks = undefined
 
 -- | Draw X and Y axis.
 labeledAxis
-  :: Str -- ^ X axis label.
+  :: Monad m
+  => Str -- ^ X axis label.
   -> Str -- ^ Y axis label.
-  -> Styled Drawing
+  -> StyledT m Drawing
 labeledAxis labelX labelY = return $ mconcat
   [ scale 300 $ axis
   , translateY (300/2) $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
