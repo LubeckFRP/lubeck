@@ -29,7 +29,6 @@ library
                      , Lubeck.DV.Styling
                      , Lubeck.DV.Animation
                      , Lubeck.DV.Interactive
-                     , Lubeck.DV.Plottable
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI

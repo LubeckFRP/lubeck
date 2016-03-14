@@ -17,7 +17,6 @@ library
                      , Lubeck.DV.Styling
                      , Lubeck.DV.Animation
                      , Lubeck.DV.Interactive
-                     , Lubeck.DV.Plottable
   build-depends:       base
                      , base-prelude
                      , stm
