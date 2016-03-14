@@ -160,7 +160,8 @@ instance Monoid Styling where
   mempty = Styling
     { _dummy                        = mempty
     -- , _renderingRectangle           = V2 300 300
-    , _renderingRectangle           = V2 399 125
+    , _renderingRectangle           = V2 400 300
+    -- , _renderingRectangle           = V2 399 125
 
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5

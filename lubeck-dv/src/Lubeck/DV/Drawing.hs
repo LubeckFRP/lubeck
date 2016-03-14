@@ -492,14 +492,14 @@ ticksNoFilter xt yt = do
             , scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateY (-0.5) verticalLine
             -- bg grid
             , scale y $ strokeColor Colors.grey $ strokeWidth 1.5 $ translateY (0.5) verticalLine
-            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/8) $ textEnd str
+            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/8) $ text_ str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
             , scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine
             , scale x $ strokeColor Colors.grey $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
-            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*0.00001/8) $ textEnd str
+            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*0.00001/8) $ text_ str
             ]
   return $ mconcat [xTicks, yTicks]
   where
@@ -507,6 +507,11 @@ ticksNoFilter xt yt = do
     -- Note: Add infinitesimal slant to non-slanted text to get same anti-aliasing behavior
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
+
+    text_ = textWithOptions $ mempty
+      { textAnchor = TextAnchorEnd
+      , fontFamily = First $ Just "Futura, sans-serif"
+      }
 
 barPlotTicks :: [Str] -> [Str] -> Styled Drawing
 barPlotTicks = undefined
@@ -524,9 +529,15 @@ labeledAxis labelX labelY = do
   let y = style^.renderingRectangle._y
   return $ mconcat
     [ scaleX x $ scaleY y $ axis
-    , translateX (x/2) $ translateY (-50*x/300) $ textMiddle labelX
-    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ textMiddle labelY
+    , translateX (x/2) $ translateY (-50*x/300) $ text_ labelX
+    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ labelY
     ]
+  where
+    text_ = textWithOptions $ mempty
+      { textAnchor = TextAnchorMiddle
+      , fontFamily = First $ Just "Futura, sans-serif"
+      }
+
 
 axis, axisX, axisY :: Drawing
 axis = mconcat [axisY, axisX]
