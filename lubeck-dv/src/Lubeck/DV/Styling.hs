@@ -28,6 +28,10 @@ module Lubeck.DV.Styling
 
   , ratioPlotBackgroundColor
   , ratioPlotForegroundColor
+  , tickTextTurn
+  , basicTickLength
+  , basicTickColor
+  , backgroundTickColor
   , heatMapColour1
   , heatMapColour2
 
@@ -147,6 +151,11 @@ data Styling = Styling
     -- Text rotation
       -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
 
+  , _tickTextTurn                     :: (Angle Double, Angle Double)
+  , _basicTickLength                  :: Double
+  , _basicTickColor                   :: AlphaColour Double
+  , _backgroundTickColor              :: AlphaColour Double
+
   -- Heat maps and related
   , _heatMapColour1                   :: AlphaColour Double
   , _heatMapColour2                   :: AlphaColour Double
@@ -161,7 +170,6 @@ instance Monoid Styling where
     { _dummy                        = mempty
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
-    -- , _renderingRectangle           = V2 399 125
 
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
@@ -191,6 +199,12 @@ instance Monoid Styling where
 
     , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
     , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
+
+    -- , _tickTextTurn                 = (0, 0)
+    , _tickTextTurn                 = (1/8, 0)
+    , _basicTickLength              = 10
+    , _basicTickColor               = Colors.grey       `withOpacity` 1
+    , _backgroundTickColor          = Colors.lightgrey  `withOpacity` 1
 
     , _heatMapColour1               = Colors.red        `withOpacity` 1
     , _heatMapColour2               = Colors.purple     `withOpacity` 1

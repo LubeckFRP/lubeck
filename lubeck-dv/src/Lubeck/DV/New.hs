@@ -418,7 +418,8 @@ visualizeTest2 :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
 visualizeTest2 dat (Geometry geom) aess = do
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
   let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-  let finalD = mconcat [dataD, ticksD, Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"]
+  let axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
+  let finalD = mconcat [dataD, axesD, ticksD]
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
   writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
   return ()

@@ -486,24 +486,31 @@ ticksNoFilter xt yt = do
   style <- ask
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
+  let kBasicTickLength       = style^.basicTickLength
+  let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
+  let basicTickColor_        = style^.basicTickColor
+  let backgroundTickColor_   = style^.backgroundTickColor
+
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
             [ mempty
-            , scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateY (-0.5) verticalLine
+            , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateY (-0.5) verticalLine
             -- bg grid
-            , scale y $ strokeColor Colors.grey $ strokeWidth 1.5 $ translateY (0.5) verticalLine
-            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/8) $ text_ str
+            , scale y $ strokeColorA backgroundTickColor_ $ strokeWidth 1.5 $ translateY (0.5) verticalLine
+            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ text_ str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
-            , scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine
-            , scale x $ strokeColor Colors.grey $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
-            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*0.00001/8) $ text_ str
+            , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine
+            -- bg grid
+            , scale x $ strokeColorA backgroundTickColor_ $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
+            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ text_ str
             ]
   return $ mconcat [xTicks, yTicks]
   where
-    kBasicTickLength = 10
+    -- kBasicTickLength = 10
+
     -- Note: Add infinitesimal slant to non-slanted text to get same anti-aliasing behavior
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
