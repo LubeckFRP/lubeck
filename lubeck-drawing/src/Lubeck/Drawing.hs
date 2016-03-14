@@ -806,16 +806,17 @@ data TextOptions = TextOptions
   { textAnchor        :: TextAnchor
   , alignmentBaseline :: AlignmentBaseline
   , fontStyle         :: FontStyle
+  , fontFamily        :: First Str
   }
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid TextOptions where
   mempty
-    = TextOptions mempty mempty mempty
+    = TextOptions mempty mempty mempty mempty
   mappend
-    (TextOptions x1 x2 x3)
-    (TextOptions y1 y2 y3)
-    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3)
+    (TextOptions x1 x2 x3 x4)
+    (TextOptions y1 y2 y3 y4)
+    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4)
   -- TODO can we derive this?
 
 -- | Text woth options. Idiomatically:
@@ -827,8 +828,11 @@ instance Monoid TextOptions where
 -- @
 --
 textWithOptions :: TextOptions -> Str -> Drawing
-textWithOptions opts = style (mconcat [_fontStyle, _textAnchor, _alignmentBaseline]) . Text
+textWithOptions opts = style (mconcat [_fontFamily, _fontStyle, _textAnchor, _alignmentBaseline]) . Text
   where
+    _fontFamily  = case fontFamily opts of
+      (First (Just v))          -> styleNamed "font-family" v
+      _                         -> styleNamed "font-family" "sans-serif"
     _fontStyle  = case fontStyle opts of
       FontStyleNormal           -> styleNamed "font-style" "normal"
       FontStyleItalic           -> styleNamed "font-style" "italic"
