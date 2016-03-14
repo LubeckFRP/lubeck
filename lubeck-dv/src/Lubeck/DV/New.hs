@@ -94,26 +94,25 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- AESTHETICS
 
-newtype AestheticKey = AestheticKey { getAestheticKey :: Str }
+newtype Key = Key { getKey :: Str }
   deriving (Eq, Ord, IsString)
 
-instance Show AestheticKey where
+instance Show Key where
   -- OK because of the IsString instance
-  show = show . getAestheticKey
+  show = show . getKey
 
 {-|
-An 'Aesthetic' maps a row/tuple/record to a set of '(AestheticKey, Double)' pairs.
+An 'Aesthetic' maps a /row/ (also known as a /tuple/ or /record/) to an aesthetic
+attribute such as a color.
 
-You can think of it as a function @a -> AestheticKey -> Double@, or as a way
-of visualizing some particular aspect of a type.
-
-Or as a pair of a 'Scale' and an 'AestheticKey' as whitnessed by 'customAesthetic'.
+You can think of it as a function @a -> Key -> Maybe Double@, or as a
+pair of a 'Scale' and an 'Key' (as whitnessed by 'customAesthetic').
 -}
 data Aesthetic a = Aesthetic
-  { aestheticMapping       :: [a] -> a -> Map AestheticKey Double
-  , aestheticBounds        :: [a] -> Map AestheticKey (Double, Double)
-  , aestheticGuides        :: [a] -> Map AestheticKey [(Double, Str)]
-  , aestheticScaleBaseName :: [a] -> Map AestheticKey Str -- name of scale used to plot the given aesthetic
+  { aestheticMapping       :: [a] -> a -> Map Key Double
+  , aestheticBounds        :: [a] -> Map Key (Double, Double)
+  , aestheticGuides        :: [a] -> Map Key [(Double, Str)]
+  , aestheticScaleBaseName :: [a] -> Map Key Str -- name of scale used to plot the given aesthetic
   }
 
 -- | The empty 'Aesthetic' does not map anything.
@@ -127,7 +126,7 @@ instance Monoid (Aesthetic a) where
 customAesthetic :: HasScale a => Str -> Aesthetic a
 customAesthetic n2 = Aesthetic convert genBounds genGuides getScaleBaseName
   where
-    n = AestheticKey n2
+    n = Key n2
     convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
     genBounds = \vs -> Data.Map.singleton n $ case vs of
       []    -> (0,0)
@@ -357,10 +356,10 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
   where
     aes = mconcat aess
 
-    guidesM     = aestheticGuides aes dat :: Map AestheticKey [(Double, Str)]
-    boundsM     = aestheticBounds aes dat :: Map AestheticKey (Double, Double)
-    scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey Str
-    mappedData  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
+    guidesM     = aestheticGuides aes dat :: Map Key [(Double, Str)]
+    boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
+    scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
+    mappedData  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
     aKeys       = Data.Map.keys $ mconcat mappedData
 
     tab0 = B.vcat B.left $ map (toBox) dat
@@ -408,31 +407,31 @@ visualizeTest2 dat geom aess = do
   return ()
   where
     aes = mconcat aess
-    boundsM     = aestheticBounds aes dat :: Map AestheticKey (Double, Double)
-    guidesM2    = aestheticGuides aes dat :: Map AestheticKey [(Double, Str)]
+    boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
+    guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
     guidesM = applyScalingToGuides boundsM guidesM2
-    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey Str
-    mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
+    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
+    mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
     mappedAndScaledData = applyScalingToValues boundsM mappedData2
 
 -- TODO
-applyScalingToGuides :: Map AestheticKey (Double,Double)
-  -> Map AestheticKey [(Double, str)]
-  -> Map AestheticKey [(Double, str)]
+applyScalingToGuides :: Map Key (Double,Double)
+  -> Map Key [(Double, str)]
+  -> Map Key [(Double, str)]
 applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (scale (fromMaybe idS $ Data.Map.lookup aesK b) d,s)) dsL) m
   where
     idS = (0,1)
     scale :: (Double, Double) -> Double -> Double
     scale (lb,ub) x = (x - lb) / (ub - lb)
 
-applyScalingToValues :: Map AestheticKey (Double,Double) -> [Map AestheticKey Double] -> [Map AestheticKey Double]
+applyScalingToValues :: Map Key (Double,Double) -> [Map Key Double] -> [Map Key Double]
 applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromMaybe idS $ Data.Map.lookup aesK b) d)) m
   where
     idS = (0,1)
     scale :: (Double, Double) -> Double -> Double
     scale (lb,ub) x = (x - lb) / (ub - lb)
 
-type Geometry m = [Map AestheticKey Double] -> StyledT m Drawing
+type Geometry m = [Map Key Double] -> StyledT m Drawing
 
 (!) :: (Num b, Ord k) => Map k b -> k -> b
 m ! k = maybe 0 id $ Data.Map.lookup k m
