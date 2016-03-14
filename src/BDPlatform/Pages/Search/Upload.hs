@@ -47,9 +47,9 @@ newtype UploadImg = UploadImg UploadFiles
 
 toolbarW :: Widget (Maybe UploadAction) UploadAction
 toolbarW sink action = mconcat
-  [ inlineMessage "Choose location of images:"
-  , toolbar' $ buttonGroup
-      [ button "Computer"  (action ~== FromComputer)  [Ev.click $ \e -> sink FromComputer]
+  [ toolbar' $ buttonGroup
+      [ inlineMessage "Choose location of images:"
+      , button "Computer"  (action ~== FromComputer)  [Ev.click $ \e -> sink FromComputer]
       , button "Facebook"  (action ~== FromFacebook)  [Ev.click $ \e -> sink FromFacebook]
       , button "Instagram" (action ~== FromInstagram) [Ev.click $ \e -> sink FromInstagram]
       , button "Dropbox"   (action ~== FromDropbox)   [Ev.click $ \e -> sink FromDropbox] ]
@@ -73,11 +73,11 @@ layout action toolbar uploadFromComputer  =
              Nothing            -> E.text "Select an option"
 
 uploadPage :: Sink BusyCmd
-                -> Sink (Maybe Notification)
-                -> Sink IPCMessage
-                -> Behavior (Maybe JSString)
-                -> Signal Nav
-                -> IO (Signal Html)
+           -> Sink (Maybe Notification)
+           -> Sink IPCMessage
+           -> Behavior (Maybe JSString)
+           -> Signal Nav
+           -> IO (Signal Html)
 uploadPage busySink notifSink ipcSink usernameB navS = do
   (uploadSink', uploadEvents)  <- newEventOf (undefined                     :: UploadImg)
   let uploadSink               = synchronously . uploadSink'
