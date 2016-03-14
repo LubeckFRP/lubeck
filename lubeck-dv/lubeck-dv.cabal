@@ -19,17 +19,10 @@ library
                      , Lubeck.DV.Interactive
   build-depends:       base
                      , base-prelude
-                     , stm
                      , contravariant
-                     , vector
-                     , profunctors
-                     , text
                      , mtl
                      , transformers
                      , time
-                     , containers
-                     , unordered-containers
-                     , semigroups
                      , lens
                      , colour
                      , linear
