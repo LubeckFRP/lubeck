@@ -187,9 +187,15 @@ class HasScale a where
   scale :: a -> Scale a
 instance HasScale Double where
   scale = const linear
+instance HasScale Integer where
+  scale = const linear
 instance HasScale Int where
   scale = const linear
 instance HasScale Char where
+  scale = const categorical
+instance HasScale Bool where
+  scale = const categorical
+instance HasScale Ordering where
   scale = const categorical
 instance HasScale Name where
   scale = const categorical
