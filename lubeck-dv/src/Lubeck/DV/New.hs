@@ -21,7 +21,7 @@ module Lubeck.DV.New
   -- * Aesthetics
   , x, y, color, size, shape, thickness
   , Aesthetic
-  , defaultAesthetic
+  , customAesthetic
   -- ** Mapping aesthetics
   , (<~)
   , (~>)
@@ -72,11 +72,18 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- AESTHETICS
 
+newtype AestheticKey = AestheticKey { getAestheticKey :: String }
+  deriving (Eq, Ord, IsString)
+
+instance Show AestheticKey where
+  -- OK because of the IsString instance
+  show = show . getAestheticKey
+
 data Aesthetic a = Aesthetic
-  { aesthetic      :: [a] -> a -> Map String Double
-  , aestheticBounds :: [a] -> Map String (Double, Double)
-  , aestheticGuides :: [a] -> Map String [(Double, String)]
-  , aestheticScaleBaseName :: [a] -> Map String String -- name of scale used to plot the given aesthetic
+  { aesthetic              :: [a] -> a -> Map AestheticKey Double
+  , aestheticBounds        :: [a] -> Map AestheticKey (Double, Double)
+  , aestheticGuides        :: [a] -> Map AestheticKey [(Double, String)]
+  , aestheticScaleBaseName :: [a] -> Map AestheticKey String -- name of scale used to plot the given aesthetic
   }
 
 instance Monoid (Aesthetic a) where
@@ -85,9 +92,10 @@ instance Monoid (Aesthetic a) where
 
 
 -- | Make a custom aesthetic attribute.
-defaultAesthetic :: HasScale a => String -> Aesthetic a
-defaultAesthetic n = Aesthetic convert genBounds genGuides getScaleBaseName
+customAesthetic :: HasScale a => String -> Aesthetic a
+customAesthetic n2 = Aesthetic convert genBounds genGuides getScaleBaseName
   where
+    n = AestheticKey n2
     convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
     genBounds = \vs -> Data.Map.singleton n $ case vs of
       []    -> (0,0)
@@ -109,12 +117,12 @@ instance Contravariant Aesthetic where
       (\xs   -> j (fmap f xs))
 
 x, y, color, size, shape, thickness :: HasScale a => Aesthetic a
-x         = defaultAesthetic "x"
-y         = defaultAesthetic "y"
-color     = defaultAesthetic "color"
-size      = defaultAesthetic "size"
-shape     = defaultAesthetic "shape"
-thickness = defaultAesthetic "thickness"
+x         = customAesthetic "x"
+y         = customAesthetic "y"
+color     = customAesthetic "color"
+size      = customAesthetic "size"
+shape     = customAesthetic "shape"
+thickness = customAesthetic "thickness"
 
 
 
@@ -210,7 +218,6 @@ instance HasScale (Scaled a) where
   scale = contramap scaledValue . scaledScale
 
 
--- TODO assure no duplicates
 categorical :: (Ord a, Show a) => Scale a
 categorical = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
@@ -232,7 +239,6 @@ categorical = Scale
 
     sortNub = Data.List.nub . Data.List.sort
 
--- TODO could be written without the asTypeOf using ScopedTypeVariables
 categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
 categoricalEnum = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ fromEnum v
@@ -240,6 +246,7 @@ categoricalEnum = Scale
   , scaleGuides   = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
   , scaleBaseName = "categoricalEnum"
   }
+-- TODO could be written without the asTypeOf using ScopedTypeVariables
 
 linear :: (Real a, Show a) => Scale a
 linear = Scale
@@ -247,7 +254,7 @@ linear = Scale
   -- TODO resize LB to 0?
   , scaleBounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
   -- TODO something nicer
-  , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
+  , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, show v)) $ sortNub vs
   , scaleBaseName = "linear"
   }
   where
@@ -255,6 +262,8 @@ linear = Scale
     safeMin xs = minimum xs
     safeMax [] = 0
     safeMax xs = maximum xs
+
+    sortNub = Data.List.nub . Data.List.sort
 
 logarithmic :: Floating a => Scale a
 timeScale :: Scale UTCTime
@@ -274,23 +283,23 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 (~>) :: Getter s a -> Aesthetic a -> Aesthetic s
 (~>) g a = contramap (^.g) a
 
-visualizeTest' :: [s] -> [Aesthetic s] -> [Map String Double] -- TODO result type
+visualizeTest' :: [s] -> [Aesthetic s] -> [Map AestheticKey Double] -- TODO result type
 visualizeTest' dat aes = fmap ((aesthetic $ mconcat aes) dat) dat
 
 visualizeTest :: [s] -> [Aesthetic s] -> IO () -- TODO result type
 visualizeTest dat aes = do
   putStrLn $ replicate 20 '-'
 
-  putStrLn "Data to plot (column-order):"
+  putStrLn "Data to plot (each line is a column):"
   mapM_ print $ fmap ((aesthetic $ mconcat aes) dat) dat
 
-  putStrLn "Scale base types (row-order):"
+  putStrLn "Scale base types (each line is a row):"
   mapM_ print $ ((aestheticScaleBaseName $ mconcat aes) dat)
 
-  putStrLn "Data bounds (row-order):"
+  putStrLn "Data bounds (each line is a row):"
   mapM_ print $ ((aestheticBounds $ mconcat aes) dat)
 
-  putStrLn "Guides to plot (row-order):"
+  putStrLn "Guides to plot (each line is a row):"
   mapM_ print $ ((aestheticGuides $ mconcat aes) dat)
   putStrLn $ replicate 20 '-'
 
