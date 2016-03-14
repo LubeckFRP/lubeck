@@ -15,7 +15,6 @@ module Lubeck.DV.New
   , categorical
   , categoricalEnum
   , linear
-  , logarithmic
   , timeScale
   , Scale
   , HasScale(..)
@@ -28,7 +27,15 @@ module Lubeck.DV.New
   , scatter
 
   -- * Aesthetics
-  , x, y, color, size, shape, thickness
+  , x
+  , y
+  , color
+  , strokeColor
+  , fillColor
+  , size
+  , shape
+  , thickness
+
   , Key
   , Aesthetic
   , customAesthetic
@@ -158,26 +165,33 @@ instance Contravariant Aesthetic where
       (\xs   -> i (fmap f xs))
       (\xs   -> j (fmap f xs))
 
-x, y, color, size, shape, thickness :: HasScale a => Aesthetic a
+x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX :: HasScale a => Aesthetic a
 
 -- | Map values to the X axis of a plot.
-x         = customAesthetic "x"
+x = customAesthetic "x"
 
 -- | Map values to the Y axis of a plot.
-y         = customAesthetic "y"
+y = customAesthetic "y"
 
 -- | Map values to the color of a plot element.
-color     = customAesthetic "color"
+color = customAesthetic "color"
+
+-- | Map values to the color of a plot element.
+strokeColor = customAesthetic "strokeColor"
+
+-- | Map values to the color of a plot element.
+fillColor = customAesthetic "fillColor"
 
 -- | Map values to the size of a plot element.
-size      = customAesthetic "size"
+size = customAesthetic "size"
 
 -- | Map values to the shape of a plot element.
-shape     = customAesthetic "shape"
+shape = customAesthetic "shape"
 
 -- | Map values to the thickness of a plot element.
 thickness = customAesthetic "thickness"
 
+crossLineX = customAesthetic "crossLineX"
 
 
 -- SCALE
@@ -219,22 +233,31 @@ instance Contravariant Scale where
 --
 class HasScale a where
   scale :: a -> Scale a
+
 instance HasScale Double where
   scale = const linear
+
 instance HasScale Integer where
   scale = const linear
+
 instance HasScale Int where
   scale = const linear
+
 instance HasScale Char where
   scale = const categorical
+
 instance HasScale Bool where
   scale = const categorical
+
 instance HasScale Ordering where
   scale = const categorical
+
 instance HasScale Name where
   scale = const categorical
+
 instance HasScale Gender where
   scale = const categorical
+
 instance HasScale UTCTime where
   scale = const timeScale
 
@@ -249,6 +272,7 @@ data Scaled a = Scaled
   { scaledValue :: a
   , scaledScale :: Scale a
   }
+
 instance HasScale (Scaled a) where
   -- Here 'scaledScale' is used to extract the actual scale, which will be returned
   -- The 'contramap scaledValue' bit is to make sure the returned scale can handle
@@ -318,15 +342,10 @@ linear = Scale
     sortNub = Data.List.nub . Data.List.sort
 
 {-|
-A logarithmic scale.
--}
-logarithmic :: Floating a => Scale a
-
-{-|
 A scale for time values.
 -}
 timeScale :: Scale UTCTime
-[logarithmic, timeScale ] = undefined
+[timeScale ] = undefined
 
 {-| Override the default scale instance.
 
@@ -399,7 +418,7 @@ visualizeTest2 :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
 visualizeTest2 dat (Geometry geom) aess = do
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
   let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-  let finalD = mconcat [ticksD, dataD, Lubeck.DV.Drawing.labeledAxis "" ""]
+  let finalD = mconcat [dataD, ticksD, Lubeck.DV.Drawing.labeledAxis "" ""]
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
   writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
   return ()
@@ -430,6 +449,7 @@ applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromMayb
     scale (lb,ub) x = (x - lb) / (ub - lb)
 
 newtype Geometry = Geometry { getGeometry :: [Map Key Double] -> Styled Drawing }
+  deriving (Monoid)
 
 (!) :: (Num b, Ord k) => Map k b -> k -> b
 m ! k = maybe 0 id $ Data.Map.lookup k m
@@ -443,6 +463,7 @@ line = Geometry $ \ms -> Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x
 
 scatter :: Geometry
 scatter = Geometry $ \ms -> Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+
 
 
 infixl 4 `withScale`
@@ -534,4 +555,4 @@ test6 = do
     [ x <~ to fst
     , y <~ to snd
     ]
-  geom = line
+  geom = line <> scatter
