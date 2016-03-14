@@ -19,9 +19,9 @@ module Lubeck.DV.New
   , withScale
 
   -- * Geometry
-  Geometry,
-  line,
-  scatter,
+  , Geometry
+  , line
+  , scatter
 
   -- * Aesthetics
   , x, y, color, size, shape, thickness
