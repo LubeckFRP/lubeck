@@ -7,18 +7,25 @@
 
 module Lubeck.DV.New
   (
+  -- * Algebra
     blendId
   , blend
   , crossWith
-  , Aes
-  , defaultAes
+  -- * Scales
+  , categorical, categoricalEnum, linear, logarithmic, timeScale
   , Scale(..)
   , HasScale(..)
   , Scaled(..)
-  , x, y, color, size, shape, thickness, categorical, linear, logarithmic, timeScale
   , withScale
+
+  -- * Aesthetics
+  , x, y, color, size, shape, thickness
+  , Aes
+  , defaultAes
+  -- ** Mapping aesthetics
   , (<~)
   , (~>)
+  -- * Top-level
   , visualize
   )
 where
@@ -34,57 +41,7 @@ import Control.Lens.TH
 import qualified Data.List
 import Data.Time(UTCTime)
 
-data Gender = Female | Male deriving (Eq, Ord, Show)
-newtype Name = Name String deriving (Eq, Ord, Show, IsString)
 
-data Person = P { personName :: Name, personAge :: Int, personHeight :: Double }
-  deriving (Eq, Ord, Show)
-
-data Person2 = P2 { person2Name :: Name, person2Age :: Int, person2Height :: Double, person2Gender :: Gender }
-  deriving (Eq, Ord, Show)
-
-$(makeFields ''Person)
-$(makeFields ''Person2)
-
-males, females :: [Person]
-males =
-  [ P (Name "Hans") 28 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
-  , P (Name "Sven") 25 1.15
-  ]
-females =
-  [ P "Elin" 21 1.15
-  , P "Alva" 19 1.15
-  ]
-
-people :: [Person2]
-people = (males `cr` [Male]) <> (females `cr` [Female])
-  where
-    cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
-
-test = mapM_ print people >> visualize people
-  [
-    x     <~ name
-  , y     <~ age `withScale` linear
-  , color <~ height
-  , shape <~ gender
-
-  ]
-test2 = visualize ([(1,2), (3,4)] :: [(Int, Int)])
-  [
-    x <~ to fst
-  , y <~ to snd
-  ]
-test3 = visualize ( [ ] :: [(UTCTime, Int)])
-  [
-    x <~ to fst
-  , y <~ to snd
-  ]
-
-test4 = visualize ("hello world" :: String) [x <~ id]
 
 -- visualize weekDayGros
 --   [ x <~ to fst
@@ -268,6 +225,27 @@ categorical = Scale
 
     sortNub = Data.List.nub . Data.List.sort
 
+-- TODO could be written without the asTypeOf using ScopedTypeVariables
+categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
+categoricalEnum = Scale
+  { runScale = \vs v -> realToFrac $ succ $ fromEnum v
+  , bounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
+  , ticks    = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
+  }
+  where
+    -- >>> findPlaceIn "bce" 'b'
+    -- 0
+    -- >>> findPlaceIn "bce" 'c'
+    -- 1
+    -- >>> findPlaceIn "bce" 'd'
+    -- 2
+    -- >>> findPlaceIn "bce" 'e'
+    -- 2
+    findPlaceIn :: Ord a => [a] -> a -> Int
+    findPlaceIn xs x = length $ takeWhile (< x) xs
+
+    sortNub = Data.List.nub . Data.List.sort
+
 linear :: (Real a, Show a) => Scale a
 linear = Scale
   { runScale = \vs v -> realToFrac v
@@ -310,3 +288,71 @@ visualize dat aes = do
 infixl 4 `withScale`
 infixl 3 <~
 infixl 3 ~>
+
+
+
+
+
+
+
+-- TEST
+
+
+data Gender = Female | Male deriving (Eq, Ord, Show)
+newtype Name = Name String deriving (Eq, Ord, Show, IsString)
+
+data Person = P { personName :: Name, personAge :: Int, personHeight :: Double }
+  deriving (Eq, Ord, Show)
+
+data Person2 = P2 { person2Name :: Name, person2Age :: Int, person2Height :: Double, person2Gender :: Gender }
+  deriving (Eq, Ord, Show)
+
+$(makeFields ''Person)
+$(makeFields ''Person2)
+
+males, females :: [Person]
+males =
+  [ P (Name "Hans") 28 1.15
+  , P (Name "Sven") 25 1.15
+  , P (Name "Sven") 25 1.15
+  , P (Name "Sven") 25 1.15
+  , P (Name "Sven") 25 1.15
+  , P (Name "Sven") 25 1.15
+  ]
+females =
+  [ P "Elin" 21 1.15
+  , P "Alva" 19 1.15
+  ]
+
+people :: [Person2]
+people = (males `cr` [Male]) <> (females `cr` [Female])
+  where
+    cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
+
+test = mapM_ print people >> visualize people
+  [
+    x     <~ name
+  , y     <~ age `withScale` linear
+  , color <~ height
+  , shape <~ gender
+
+  ]
+test2 = visualize ([(1,2), (3,4)] :: [(Int, Int)])
+  [
+    x <~ to fst
+  , y <~ to snd
+  ]
+test3 = visualize ( [ ] :: [(UTCTime, Int)])
+  [
+    x <~ to fst
+  , y <~ to snd
+  ]
+
+test4 = visualize ("hello world" :: String) [x <~ id]
+
+data WD = Mon | Tues | Wed | Thurs | Fri | Sat | Sun deriving (Eq, Ord, Show, Enum, Bounded)
+
+instance HasScale WD where
+  scale = const categoricalEnum
+
+test5 = visualize [(Mon, 100 :: Int), (Sun, 400)] [x <~ to fst, y <~ to snd]
