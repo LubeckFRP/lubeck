@@ -139,7 +139,7 @@ customAesthetic n2 = Aesthetic convert genBounds genGuides getScaleBaseName
       []    -> ""
       (v:_) -> scaleBaseName (scale v)
 
--- | Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger type.
+-- Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger type.
 --
 -- >>> contramap fst :: Aesthetic a -> Aesthetic (a, b)
 -- >>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
@@ -153,11 +153,23 @@ instance Contravariant Aesthetic where
       (\xs   -> j (fmap f xs))
 
 x, y, color, size, shape, thickness :: HasScale a => Aesthetic a
+
+-- | Map values to the X axis of a plot.
 x         = customAesthetic "x"
+
+-- | Map values to the Y axis of a plot.
 y         = customAesthetic "y"
+
+-- | Map values to the color of a plot element.
 color     = customAesthetic "color"
+
+-- | Map values to the size of a plot element.
 size      = customAesthetic "size"
+
+-- | Map values to the shape of a plot element.
 shape     = customAesthetic "shape"
+
+-- | Map values to the thickness of a plot element.
 thickness = customAesthetic "thickness"
 
 
@@ -253,7 +265,12 @@ instance HasScale (Scaled a) where
   -- its input by ignoring the passed scale (looking only at the value).
   scale = contramap scaledValue . scaledScale
 
+{-|
+A scale for unique values out of a set.
 
+Only elements in the data set are included, which may not be what you want
+if your set is small and bounded (i.e. weekdays). Use 'categoricalEnum' for this.
+-}
 categorical :: (Ord a, Show a) => Scale a
 categorical = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
@@ -275,6 +292,12 @@ categorical = Scale
 
     sortNub = Data.List.nub . Data.List.sort
 
+{-|
+A scale for small countable sets.
+
+Guides are generated for all values in the domain, whether they appear in they
+data set or not. Use 'categorical' if this is not desired.
+-}
 categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
 categoricalEnum = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ fromEnum v
@@ -284,6 +307,9 @@ categoricalEnum = Scale
   }
 -- TODO could be written without the asTypeOf using ScopedTypeVariables
 
+{-|
+A linear scale.
+-}
 linear :: (Real a, Show a) => Scale a
 linear = Scale
   { scaleMapping  = \vs v -> realToFrac v
@@ -301,7 +327,14 @@ linear = Scale
 
     sortNub = Data.List.nub . Data.List.sort
 
+{-|
+A logarithmic scale.
+-}
 logarithmic :: Floating a => Scale a
+
+{-|
+A scale for time values.
+-}
 timeScale :: Scale UTCTime
 [logarithmic, timeScale ] = undefined
 
