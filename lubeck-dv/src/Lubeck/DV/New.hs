@@ -315,8 +315,8 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 (~>) :: Getter s a -> Aesthetic a -> Aesthetic s
 (~>) g a = contramap (^.g) a
 
-visualizeTest :: Show s => [s] -> [Aesthetic s] -> IO () -- TODO result type
-visualizeTest dat aess = putStrLn $ B.render $ box
+visualizeTest :: Show s => [s] -> [Aesthetic s] -> geometry -> IO () -- TODO result type
+visualizeTest dat aess _ = putStrLn $ B.render $ box
   where
     aes = mconcat aess
 
@@ -356,24 +356,38 @@ visualizeTest2 dat aess geom = do
   let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
   let finalD = mconcat [ticksD, dataD, Lubeck.DV.Drawing.labeledAxis "" ""]
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
-  writeFile "/root/lubeck/static/tmp/test.svg" svgS
+  writeFile "/root/lubeck/static/tmp/test2.svg" svgS
   return ()
   where
     aes = mconcat aess
-    guidesM     = aestheticGuides aes dat :: Map AestheticKey [(Double, String)]
     boundsM     = aestheticBounds aes dat :: Map AestheticKey (Double, Double)
+    guidesM2    = aestheticGuides aes dat :: Map AestheticKey [(Double, String)]
+    guidesM = applyScalingToGuides boundsM guidesM2
     -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey String
     mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
-    mappedAndScaledData = applyScaling boundsM mappedData2
+    mappedAndScaledData = applyScalingToValues boundsM mappedData2
 
 -- TODO
-applyScaling :: Map AestheticKey (Double,Double) -> [Map AestheticKey Double] -> [Map AestheticKey Double]
-applyScaling b m = m
+applyScalingToGuides :: Map AestheticKey (Double,Double)
+  -> Map AestheticKey [(Double, str)]
+  -> Map AestheticKey [(Double, str)]
+applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (scale (fromJust $ Data.Map.lookup aesK b) d,s)) dsL) m
+  where
+    fromJust (Just x) = x -- TODO
+    scale :: (Double, Double) -> Double -> Double
+    scale (lb,ub) x = (x - lb) / (ub - lb)
+
+applyScalingToValues :: Map AestheticKey (Double,Double) -> [Map AestheticKey Double] -> [Map AestheticKey Double]
+applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromJust $ Data.Map.lookup aesK b) d)) m
+  where
+    fromJust (Just x) = x -- TODO
+    scale :: (Double, Double) -> Double -> Double
+    scale (lb,ub) x = (x - lb) / (ub - lb)
 
 type Geometry m = [Map AestheticKey Double] -> StyledT m Drawing
 
 basicLine :: Monad m => Geometry m
-basicLine ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+basicLine ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 (!) :: (Num b, Ord k) => Map k b -> k -> b
 m ! k = maybe 0 id $ Data.Map.lookup k m
@@ -472,9 +486,22 @@ instance HasScale WD where
 test5 = visualizeTest [(Mon, 100 :: Int), (Sun, 400)] [x <~ to fst, y <~ to snd]
 
 
-test6 = visualizeTest2
-  [ (Tues, 0.2)
-  , (Mon, 0.0)
-  , (Mon, 1.0)
-  , (Mon, 0.3 :: Double)]
-  [x <~ to fst, y <~ to snd] basicLine
+test6 = do
+  -- visualizeTest dat aes geom
+  visualizeTest2 dat aes geom
+ where
+  dat =
+    [ (Mon, 0.0)
+    , (Tues, 0.2)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Wed, 3.0)
+    , (Sun, 0.3 :: Double)]
+  aes = [x <~ to fst, y <~ to snd]
+  geom = basicLine
