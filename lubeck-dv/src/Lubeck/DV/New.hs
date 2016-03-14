@@ -18,6 +18,11 @@ module Lubeck.DV.New
   , Scaled(..)
   , withScale
 
+  -- * Geometry
+  Geometry,
+  line,
+  scatter,
+
   -- * Aesthetics
   , x, y, color, size, shape, thickness
   , Aesthetic
@@ -496,7 +501,7 @@ test6 = do
     -- , (Sat, 3.0)
     , (Sun, 0.3 :: Double)]
   aes =
-    [ x <~ to fst `withScale` categoricalEnum
+    [ x <~ to fst
     , y <~ to snd
     ]
   geom = line
