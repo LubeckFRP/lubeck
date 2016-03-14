@@ -26,7 +26,7 @@ module Lubeck.DV.New
   , (<~)
   , (~>)
   -- * Top-level
-  , visualize
+  , visualizeTest
   )
 where
 
@@ -40,10 +40,12 @@ import Control.Lens.Operators hiding ((<~))
 import Control.Lens.TH
 import qualified Data.List
 import Data.Time(UTCTime)
+import Data.Proxy
 
 
 
--- visualize weekDayGros
+
+-- visualizeTest weekDayGros
 --   [ x <~ to fst
 --   , y <~ to snd
 --   ]
@@ -52,7 +54,7 @@ import Data.Time(UTCTime)
 -- logarithmic :: Real a => Scale a
 -- (y := k)               :: (HasStyle a, Has k s a) => Aesthetic s
 -- (y := k `withStyle` s) :: Has k s a => Aesthetic s
--- visualize' :: s -> [Aesthetic s] -> Drawing
+-- visualizeTest' :: s -> [Aesthetic s] -> Drawing
 
 
 
@@ -84,7 +86,6 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- Scale/Aesthetics:
 
--- TODO pass along ticks/bounds in aesthetic
 
 -- data Aes a
 newtype Aes a = Aes
@@ -92,23 +93,27 @@ newtype Aes a = Aes
     ( [a] -> a -> Map String Double
     , [a] -> Map String (Double, Double)
     , [a] -> Map String [(Double, String)]
+    , [a] -> Map String String -- name of scale used to plot the given aesthetic
     )
   }
   deriving (Monoid)
 
   -- TODO naming
 runAes :: Aes a -> [a] -> a -> Map String Double
-runAes (Aes (convert, _, _)) = convert
+runAes (Aes (convert, _, _, _)) = convert
 
 runAesBounds :: Aes t -> [t] -> Map String (Double, Double)
-runAesBounds (Aes (_, bounds, _)) = bounds
+runAesBounds (Aes (_, bounds, _, _)) = bounds
 
 runAesGuides :: Aes t -> [t] -> Map String [(Double, String)]
-runAesGuides (Aes (_, _, ticks)) = ticks
+runAesGuides (Aes (_, _, ticks, _)) = ticks
+
+runAesScaleBaseName :: Aes t -> [t] -> Map String String
+runAesScaleBaseName (Aes (_, _, _, sbn)) = sbn
 
 -- Anything that is scaled can be maed into an aesthetic.
 defaultAes :: HasScale a => String -> Aes a
-defaultAes n = Aes (convert, genBounds, genTicks)
+defaultAes n = Aes (convert, genBounds, genTicks, getScaleBaseName)
   where
     convert   = \vs v -> Data.Map.singleton n $ runScale (scale v) vs v
     genBounds = \vs -> case vs of
@@ -117,23 +122,29 @@ defaultAes n = Aes (convert, genBounds, genTicks)
     genTicks  = \vs -> case vs of
       []    -> Data.Map.singleton n $ []
       (v:_) -> Data.Map.singleton n $ ticks (scale v) vs
+    getScaleBaseName = \vs -> case vs of
+      []    -> Data.Map.singleton n $ []
+      (v:_) -> Data.Map.singleton n $ scaleBaseName (scale v)
+
 
 instance Contravariant Aes where
-  contramap f (Aes (g, h, i))
+  contramap f (Aes (g, h, i, j))
     = Aes
       ( \xs x -> g (fmap f xs) (f x)
       , \xs   -> h (fmap f xs)
       , \xs   -> i (fmap f xs)
+      , \xs   -> j (fmap f xs)
       )
 
 data Scale a = Scale
-  { runScale :: [a] -> a -> Double
-  , bounds   :: [a] -> (Double, Double)
-  , ticks    :: [a] -> [(Double, String)]
+  { runScale  :: [a] -> a -> Double
+  , bounds    :: [a] -> (Double, Double)
+  , ticks     :: [a] -> [(Double, String)]
+  , scaleBaseName :: String
   }
 
 instance Contravariant Scale where
-  contramap f (Scale r b t) = Scale (\vs v -> r (fmap f vs) (f v)) (b . fmap f) (t . fmap f)
+  contramap f (Scale r b t n) = Scale (\vs v -> r (fmap f vs) (f v)) (b . fmap f) (t . fmap f) n
 
 -- | Types with a default scale.
 --
@@ -210,6 +221,7 @@ categorical = Scale
   { runScale = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
   , bounds   = \vs -> (0, realToFrac $ length (sortNub vs) + 1)
   , ticks    = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] (sortNub vs)
+  , scaleBaseName = "categorical"
   }
   where
     -- >>> findPlaceIn "bce" 'b'
@@ -231,6 +243,7 @@ categoricalEnum = Scale
   { runScale = \vs v -> realToFrac $ succ $ fromEnum v
   , bounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
   , ticks    = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
+  , scaleBaseName = "categoricalEnum"
   }
   where
     -- >>> findPlaceIn "bce" 'b'
@@ -253,6 +266,7 @@ linear = Scale
   , bounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
   -- TODO something nicer
   , ticks    = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
+  , scaleBaseName = "linear"
   }
   where
     safeMin [] = 0
@@ -275,15 +289,25 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 (~>) :: Getter s a -> Aes a -> Aes s
 (~>) g a = contramap (^.g) a
 
--- >>> visualize "hello world" [x <~ id]
-visualize' :: [s] -> [Aes s] -> [Map String Double] -- TODO result type
-visualize' dat aes = fmap ((runAes $ mconcat aes) dat) dat
+visualizeTest' :: [s] -> [Aes s] -> [Map String Double] -- TODO result type
+visualizeTest' dat aes = fmap ((runAes $ mconcat aes) dat) dat
 
-visualize :: [s] -> [Aes s] -> IO () -- TODO result type
-visualize dat aes = do
-  mapM_ print $ fmap ((runAes  $ mconcat aes) dat) dat
+visualizeTest :: [s] -> [Aes s] -> IO () -- TODO result type
+visualizeTest dat aes = do
+  putStrLn $ replicate 20 '-'
+
+  putStrLn "Scale base types:"
+  mapM_ print $ ((runAesScaleBaseName $ mconcat aes) dat)
+
+  putStrLn "Data to plot:"
+  mapM_ print $ fmap ((runAes $ mconcat aes) dat) dat
+
+  putStrLn "Data bounds:"
   mapM_ print $ ((runAesBounds $ mconcat aes) dat)
+
+  putStrLn "Guides to plot:"
   mapM_ print $ ((runAesGuides $ mconcat aes) dat)
+  putStrLn $ replicate 20 '-'
 
 infixl 4 `withScale`
 infixl 3 <~
@@ -329,7 +353,7 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = mapM_ print people >> visualize people
+test = mapM_ print people >> visualizeTest people
   [
     x     <~ name
   , y     <~ age `withScale` linear
@@ -337,22 +361,22 @@ test = mapM_ print people >> visualize people
   , shape <~ gender
 
   ]
-test2 = visualize ([(1,2), (3,4)] :: [(Int, Int)])
+test2 = visualizeTest ([(1,2), (3,4)] :: [(Int, Int)])
   [
     x <~ to fst
   , y <~ to snd
   ]
-test3 = visualize ( [ ] :: [(UTCTime, Int)])
+test3 = visualizeTest ( [ ] :: [(UTCTime, Int)])
   [
     x <~ to fst
   , y <~ to snd
   ]
 
-test4 = visualize ("hello world" :: String) [x <~ id]
+test4 = visualizeTest ("hello world" :: String) [x <~ id]
 
 data WD = Mon | Tues | Wed | Thurs | Fri | Sat | Sun deriving (Eq, Ord, Show, Enum, Bounded)
 
 instance HasScale WD where
   scale = const categoricalEnum
 
-test5 = visualize [(Mon, 100 :: Int), (Sun, 400)] [x <~ to fst, y <~ to snd]
+test5 = visualizeTest [(Mon, 100 :: Int), (Sun, 400)] [x <~ to fst, y <~ to snd]
