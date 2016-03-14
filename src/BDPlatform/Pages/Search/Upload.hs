@@ -1,11 +1,14 @@
-{-# LANGUAGE DeriveDataTypeable   #-}
-{-# LANGUAGE DeriveGeneric        #-}
-{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
 module BDPlatform.Pages.Search.Upload (uploadPage) where
 
 import           Prelude                           hiding (div)
 import qualified Prelude
+
+import           Control.Concurrent                (forkIO)
+import           Control.Monad                     (void)
 
 import qualified Data.List
 import qualified Data.Maybe
@@ -89,7 +92,7 @@ uploadPage busySink notifSink ipcSink usernameB navS = do
   let uploadFromComputer       = fmap (uploadFromComputerW uploadSink) (pure ())
   let toolbarView              = fmap (toolbarW actionsSink) actionsS
 
-  subscribeEvent uploadEvents $ \x -> case x of
+  subscribeEvent uploadEvents $ \x -> void . forkIO $ case x of
     UploadImg formfiles -> do
       mbUsrname <- pollBehavior usernameB
       case mbUsrname of

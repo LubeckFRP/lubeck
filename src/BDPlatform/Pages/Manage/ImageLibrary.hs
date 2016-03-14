@@ -10,8 +10,6 @@ module BDPlatform.Pages.Manage.ImageLibrary
 import           Prelude                        hiding (div)
 import qualified Prelude
 
--- import           JavaScript.Web.XMLHttpRequest  (FormDataVal (..))
-
 import           Control.Applicative
 import qualified Data.List
 import           Data.Maybe                     (fromMaybe)
@@ -48,11 +46,8 @@ import           Lubeck.Util
 import           Lubeck.Types
 
 
--- type UploadFiles = [(JSString, FormDataVal)]
-
 data ImgLibraryActions = ViewPrevImg Im.Image | ViewNextImg Im.Image | ViewGalleryIndex
                        | DeleteImg Im.Image | EnhanceImg Im.Image
-                      --  | UploadImg UploadFiles
                        | ViewImg Im.Image
                        | ReloadLibrary
 
@@ -62,7 +57,6 @@ instance Show ImgLibraryActions where
   show ViewGalleryIndex = "ViewGalleryIndex"
   show (DeleteImg i)    = "DeleteImg "   <> show (Im.id i)
   show (EnhanceImg i)   = "EnhanceImg "  <> show (Im.id i)
-  -- show (UploadImg i)    = "UploadImg"    <> show (fmap fst i)
   show (ViewImg i)      = "ViewImg "     <> show (Im.id i)
   show ReloadLibrary    = "ReloadLibrary"
 
@@ -117,8 +111,7 @@ galleryW _ [] = contentPanel $ text "No images in library"
 galleryW actionsSink ims =
   contentPanel $ div []
     [ div [class_ "btn-toolbar"]
-        [ --filesSelectWidget "images[]" (Just "image/*") True (contramapSink (\x -> UploadImg x) actionsSink) []
-         button [class_ "btn btn-link", click $ \_ -> actionsSink ReloadLibrary]
+        [ button [class_ "btn btn-link", click $ \_ -> actionsSink ReloadLibrary]
             [ E.i [class_ "fa fa-cloud-download", A.style "margin-right: 5px"] []
             , text "Refresh library"]
         ]
@@ -234,21 +227,6 @@ processActions busySink notifSink actionsSink2 imsB accB ReloadLibrary =
 
 processActions busySink notifSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
 
--- processActions busySink notifSink actionsSink2 imsB accB (UploadImg formfiles) = do
---   mbUsr <- pollBehavior accB
---   case mbUsr of
---     Nothing -> do
---       notifSink . Just . blError $ "can't upload an image: no user."
---       return Nothing
---
---     Just acc -> do
---       res <- (withBusy2 busySink uploadImages) acc formfiles
---       case res of
---         Left e      -> notifSink (Just . NError $ e) >> return Nothing
---         Right imgId -> notifSink (Just . NSuccess $ "Image uploaded successfully! :-)")
---                     >> actionsSink2 ReloadLibrary
---                     >> return Nothing
-
 notImp notifSink x = do
   notifSink . Just . notImplError . showJS $ x
   return Nothing
@@ -260,9 +238,6 @@ getImages acc = Im.getAllImagesOrError (Account.username acc)
 
 deleteImage :: Account.Account -> Im.Image -> IO (Either AppError Ok)
 deleteImage acc image = Im.deleteImageOrError (Account.username acc) (Im.id image)
-
--- uploadImages :: Account.Account -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
--- uploadImages acc files = Im.uploadImagesOrError (Account.username acc) files
 
 enhanceImage :: Account.Account -> Im.Image -> IO (Either AppError Ok)
 enhanceImage acc image = Im.enhanceImageOrError (Account.username acc) (Im.id image)
