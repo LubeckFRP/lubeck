@@ -42,6 +42,7 @@ import qualified Data.List
 import Data.Time(UTCTime)
 import Data.Proxy
 
+import qualified Text.PrettyPrint.Boxes as B
 
 
 
@@ -80,7 +81,7 @@ instance Show AestheticKey where
   show = show . getAestheticKey
 
 data Aesthetic a = Aesthetic
-  { aesthetic              :: [a] -> a -> Map AestheticKey Double
+  { aestheticMapping       :: [a] -> a -> Map AestheticKey Double
   , aestheticBounds        :: [a] -> Map AestheticKey (Double, Double)
   , aestheticGuides        :: [a] -> Map AestheticKey [(Double, String)]
   , aestheticScaleBaseName :: [a] -> Map AestheticKey String -- name of scale used to plot the given aesthetic
@@ -89,7 +90,6 @@ data Aesthetic a = Aesthetic
 instance Monoid (Aesthetic a) where
   mempty = Aesthetic mempty mempty mempty mempty
   mappend (Aesthetic a1 a2 a3 a4) (Aesthetic b1 b2 b3 b4) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
-
 
 -- | Make a custom aesthetic attribute.
 customAesthetic :: HasScale a => String -> Aesthetic a
@@ -283,25 +283,50 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 (~>) :: Getter s a -> Aesthetic a -> Aesthetic s
 (~>) g a = contramap (^.g) a
 
-visualizeTest' :: [s] -> [Aesthetic s] -> [Map AestheticKey Double] -- TODO result type
-visualizeTest' dat aes = fmap ((aesthetic $ mconcat aes) dat) dat
+visualizeTest :: Show s => [s] -> [Aesthetic s] -> IO () -- TODO result type
+visualizeTest dat aess = putStrLn $ B.render $ box
+  where
+    aes = mconcat aess
 
-visualizeTest :: [s] -> [Aesthetic s] -> IO () -- TODO result type
-visualizeTest dat aes = do
-  putStrLn $ replicate 20 '-'
+    guidesM     = aestheticGuides aes dat
+    boundsM     = aestheticBounds aes dat
+    scaleBaseNM = aestheticScaleBaseName aes dat
+    mappedData  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
+    aKeys       = Data.Map.keys $ mconcat mappedData
 
-  putStrLn "Data to plot (each line is a column):"
-  mapM_ print $ fmap ((aesthetic $ mconcat aes) dat) dat
+    tab0 = B.vcat B.left $ map (toBox) dat
+    tab1 = makeTable (fmap (toBox) $ aKeys)
+      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
+    tab = makeTable ["Aesthetic", "Scale base", "Bounds", "Guide"]
+      (fmap (\k ->
+        [ toBox k
+        , B.text $ maybe "" show $ Data.Map.lookup k scaleBaseNM
+        , B.text $ maybe "" show $ Data.Map.lookup k boundsM
+        , B.text $ maybe "" show $ Data.Map.lookup k guidesM
+        ]) $ Data.Map.keys guidesM)
 
-  putStrLn "Scale base types (each line is a row):"
-  mapM_ print $ ((aestheticScaleBaseName $ mconcat aes) dat)
+    box = B.vsep 1 B.left
+      [ "Raw data    " B.<+> tab0
+      , "Mapped data " B.<+> tab1
+      , "Aesthetics  " B.<+> tab
+      ]
+    toBox = B.text . show
 
-  putStrLn "Data bounds (each line is a row):"
-  mapM_ print $ ((aestheticBounds $ mconcat aes) dat)
+-- | Make a box table (row-major order).
+makeTableNoHeader :: [[B.Box]] -> B.Box
+makeTableNoHeader x = B.hsep 1 B.center1 $ fmap (B.vsep 0 B.top) $ Data.List.transpose x
 
-  putStrLn "Guides to plot (each line is a row):"
-  mapM_ print $ ((aestheticGuides $ mconcat aes) dat)
-  putStrLn $ replicate 20 '-'
+-- | Make a box table (row-major order), first argument is headers.
+makeTable :: [B.Box] -> [[B.Box]] -> B.Box
+makeTable headers rows = makeTableNoHeader $ headers : belowHeaderLines : rows
+  where
+    longestHeader = maximum $ fmap (length . B.render) headers
+    belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
+
+    -- mapM_ print $ fmap ((aesthetic aes) dat) dat
+    -- mapM_ print $ (aestheticScaleBaseName aes) dat
+    -- mapM_ print $ (aestheticBounds aes) dat
+    -- mapM_ print $ (aestheticGuides aes) dat
 
 infixl 4 `withScale`
 infixl 3 <~
@@ -347,7 +372,7 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = mapM_ print people >> visualizeTest people
+test = visualizeTest people
   [ mempty
   , color <~ height
   , shape <~ gender
