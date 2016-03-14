@@ -120,14 +120,43 @@ instance Contravariant Aes where
       , \xs   -> j (fmap f xs)
       )
 
+x, y, color, size, shape, thickness :: HasScale a => Aes a
+x         = defaultAes "x"
+y         = defaultAes "y"
+color     = defaultAes "color"
+size      = defaultAes "size"
+shape     = defaultAes "shape"
+thickness = defaultAes "thickness"
+
+
 
 -- SCALE
 
 data Scale a = Scale
   { scaleMapping  :: [a] -> a -> Double
+      -- ^ Given dataset @vs@, map single value @v@ into the real domain.
+      --   You can construct a linear scale using @\_ x -> x@.
   , scaleBounds   :: [a] -> (Double, Double)
+      -- ^ Given a data set, return @(min, max)@ values to visualize (assuming.
+      --   the same mapping as 'scaleMapping').
+      --
+      --   If you don't want automatic rescaling, use a constant value.
+      --
+      --   It is fine to provide larger or smaller values than the actual bounds
+      --   of the dataset, but note that values outside the bounds given here may
+      --   not be visible. On the other hand, if the given bounds are too large
+      --   the visualized data may not be intelligeble.
   , scaleTicks    :: [a] -> [(Double, String)]
+      -- ^ Given a data set, return guide labels and positions (assuming.
+      --   the same mapping as 'scaleMapping').
+      --
+      --   If you don't want any guides, just return 'mempty'.
   , scaleBaseName :: String
+      -- ^ A basic name for the scaling (called "basic" as scales may be transformed
+      --   combinatorically, so this name is really just a reminder).
+      --
+      --   For the built-in scales this is the same as the name of the exported
+      --   API value, i.e. @"linear"@, @"categorical"@ etc.
   }
 
 instance Contravariant Scale where
@@ -192,15 +221,6 @@ instance HasScale (Scaled a) where
   -- its input by ignoring the passed scale (looking only at the value).
   scale = contramap scaledValue . scaledScale
 
-
-
-x, y, color, size, shape, thickness :: HasScale a => Aes a
-x = defaultAes "x"
-y = defaultAes "y"
-color = defaultAes "color"
-size = defaultAes "size"
-shape = defaultAes "shape"
-thickness = defaultAes "thickness"
 
 -- TODO assure no duplicates
 categorical :: (Ord a, Show a) => Scale a
@@ -267,6 +287,9 @@ timeScale :: Scale UTCTime
 
 withScale :: Getter s a -> Scale a -> Getter s (Scaled a)
 withScale g s = to $ \x -> flip Scaled s $ x^.g
+
+
+-- TOP-LEVEL
 
 -- Very similar to (>$$<)
 (<~) :: Aes a -> Getter s a -> Aes s
