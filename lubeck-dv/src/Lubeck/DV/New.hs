@@ -90,22 +90,22 @@ runAesBounds :: Aes t -> [t] -> Map String (Double, Double)
 runAesBounds (Aes (_, bounds, _, _)) = bounds
 
 runAesGuides :: Aes t -> [t] -> Map String [(Double, String)]
-runAesGuides (Aes (_, _, ticks, _)) = ticks
+runAesGuides (Aes (_, _, guides, _)) = guides
 
 runAesScaleBaseName :: Aes t -> [t] -> Map String String
 runAesScaleBaseName (Aes (_, _, _, sbn)) = sbn
 
 -- Anything that is scaled can be maed into an aesthetic.
 defaultAes :: HasScale a => String -> Aes a
-defaultAes n = Aes (convert, genBounds, genTicks, getScaleBaseName)
+defaultAes n = Aes (convert, genBounds, genGuides, getScaleBaseName)
   where
     convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
     genBounds = \vs -> case vs of
       []    -> Data.Map.singleton n $ (0,0)
       (v:_) -> Data.Map.singleton n $ scaleBounds (scale v) vs
-    genTicks  = \vs -> case vs of
+    genGuides  = \vs -> case vs of
       []    -> Data.Map.singleton n $ []
-      (v:_) -> Data.Map.singleton n $ scaleTicks (scale v) vs
+      (v:_) -> Data.Map.singleton n $ scaleGuides (scale v) vs
     getScaleBaseName = \vs -> case vs of
       []    -> Data.Map.singleton n $ []
       (v:_) -> Data.Map.singleton n $ scaleBaseName (scale v)
@@ -146,7 +146,7 @@ data Scale a = Scale
       --   of the dataset, but note that values outside the bounds given here may
       --   not be visible. On the other hand, if the given bounds are too large
       --   the visualized data may not be intelligeble.
-  , scaleTicks    :: [a] -> [(Double, String)]
+  , scaleGuides    :: [a] -> [(Double, String)]
       -- ^ Given a data set, return guide labels and positions (assuming.
       --   the same mapping as 'scaleMapping').
       --
@@ -170,9 +170,9 @@ instance Contravariant Scale where
 -- must be defined even though it is not otherwise used in the construction of
 -- the scale.
 --
--- >>> scaleTicks (scale (undefined :: Double)) []
+-- >>> scaleGuides (scale (undefined :: Double)) []
 -- []
--- >>> scaleTicks (scale (undefined :: Scaled Double)) []
+-- >>> scaleGuides (scale (undefined :: Scaled Double)) []
 -- *** Exception: Prelude.undefined
 --
 class HasScale a where
@@ -225,9 +225,9 @@ instance HasScale (Scaled a) where
 -- TODO assure no duplicates
 categorical :: (Ord a, Show a) => Scale a
 categorical = Scale
-  { scaleMapping = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
+  { scaleMapping  = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
   , scaleBounds   = \vs -> (0, realToFrac $ length (sortNub vs) + 1)
-  , scaleTicks    = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] (sortNub vs)
+  , scaleGuides   = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] (sortNub vs)
   , scaleBaseName = "categorical"
   }
   where
@@ -247,32 +247,19 @@ categorical = Scale
 -- TODO could be written without the asTypeOf using ScopedTypeVariables
 categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
 categoricalEnum = Scale
-  { scaleMapping = \vs v -> realToFrac $ succ $ fromEnum v
+  { scaleMapping  = \vs v -> realToFrac $ succ $ fromEnum v
   , scaleBounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
-  , scaleTicks    = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
+  , scaleGuides   = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
   , scaleBaseName = "categoricalEnum"
   }
-  where
-    -- >>> findPlaceIn "bce" 'b'
-    -- 0
-    -- >>> findPlaceIn "bce" 'c'
-    -- 1
-    -- >>> findPlaceIn "bce" 'd'
-    -- 2
-    -- >>> findPlaceIn "bce" 'e'
-    -- 2
-    findPlaceIn :: Ord a => [a] -> a -> Int
-    findPlaceIn xs x = length $ takeWhile (< x) xs
-
-    sortNub = Data.List.nub . Data.List.sort
 
 linear :: (Real a, Show a) => Scale a
 linear = Scale
-  { scaleMapping = \vs v -> realToFrac v
+  { scaleMapping  = \vs v -> realToFrac v
   -- TODO resize LB to 0?
   , scaleBounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
   -- TODO something nicer
-  , scaleTicks    = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
+  , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
   , scaleBaseName = "linear"
   }
   where
@@ -385,6 +372,8 @@ test3 = visualizeTest ( [ ] :: [(UTCTime, Int)])
   ]
 
 test4 = visualizeTest ("hello world" :: String) [x <~ id]
+
+
 
 data WD = Mon | Tues | Wed | Thurs | Fri | Sat | Sun deriving (Eq, Ord, Show, Enum, Bounded)
 
