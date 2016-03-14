@@ -45,21 +45,7 @@ import Data.Proxy
 
 
 
--- visualizeTest weekDayGros
---   [ x <~ to fst
---   , y <~ to snd
---   ]
-
---
--- logarithmic :: Real a => Scale a
--- (y := k)               :: (HasStyle a, Has k s a) => Aesthetic s
--- (y := k `withStyle` s) :: Has k s a => Aesthetic s
--- visualizeTest' :: s -> [Aesthetic s] -> Drawing
-
-
-
-
--- Algebra:
+-- ALGEBRA
 
 -- | A "table" with no columns.
 blendId :: [a]
@@ -84,10 +70,8 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 
 
--- Scale/Aesthetics:
+-- AESTHETICS
 
-
--- data Aes a
 newtype Aes a = Aes
   { getAes ::
     ( [a] -> a -> Map String Double
@@ -115,13 +99,13 @@ runAesScaleBaseName (Aes (_, _, _, sbn)) = sbn
 defaultAes :: HasScale a => String -> Aes a
 defaultAes n = Aes (convert, genBounds, genTicks, getScaleBaseName)
   where
-    convert   = \vs v -> Data.Map.singleton n $ runScale (scale v) vs v
+    convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
     genBounds = \vs -> case vs of
       []    -> Data.Map.singleton n $ (0,0)
-      (v:_) -> Data.Map.singleton n $ bounds (scale v) vs
+      (v:_) -> Data.Map.singleton n $ scaleBounds (scale v) vs
     genTicks  = \vs -> case vs of
       []    -> Data.Map.singleton n $ []
-      (v:_) -> Data.Map.singleton n $ ticks (scale v) vs
+      (v:_) -> Data.Map.singleton n $ scaleTicks (scale v) vs
     getScaleBaseName = \vs -> case vs of
       []    -> Data.Map.singleton n $ []
       (v:_) -> Data.Map.singleton n $ scaleBaseName (scale v)
@@ -136,10 +120,13 @@ instance Contravariant Aes where
       , \xs   -> j (fmap f xs)
       )
 
+
+-- SCALE
+
 data Scale a = Scale
-  { runScale  :: [a] -> a -> Double
-  , bounds    :: [a] -> (Double, Double)
-  , ticks     :: [a] -> [(Double, String)]
+  { scaleMapping  :: [a] -> a -> Double
+  , scaleBounds   :: [a] -> (Double, Double)
+  , scaleTicks    :: [a] -> [(Double, String)]
   , scaleBaseName :: String
   }
 
@@ -154,9 +141,9 @@ instance Contravariant Scale where
 -- must be defined even though it is not otherwise used in the construction of
 -- the scale.
 --
--- >>> ticks (scale (undefined :: Double)) []
+-- >>> scaleTicks (scale (undefined :: Double)) []
 -- []
--- >>> ticks (scale (undefined :: Scaled Double)) []
+-- >>> scaleTicks (scale (undefined :: Scaled Double)) []
 -- *** Exception: Prelude.undefined
 --
 class HasScale a where
@@ -218,9 +205,9 @@ thickness = defaultAes "thickness"
 -- TODO assure no duplicates
 categorical :: (Ord a, Show a) => Scale a
 categorical = Scale
-  { runScale = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
-  , bounds   = \vs -> (0, realToFrac $ length (sortNub vs) + 1)
-  , ticks    = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] (sortNub vs)
+  { scaleMapping = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
+  , scaleBounds   = \vs -> (0, realToFrac $ length (sortNub vs) + 1)
+  , scaleTicks    = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] (sortNub vs)
   , scaleBaseName = "categorical"
   }
   where
@@ -240,9 +227,9 @@ categorical = Scale
 -- TODO could be written without the asTypeOf using ScopedTypeVariables
 categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
 categoricalEnum = Scale
-  { runScale = \vs v -> realToFrac $ succ $ fromEnum v
-  , bounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
-  , ticks    = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
+  { scaleMapping = \vs v -> realToFrac $ succ $ fromEnum v
+  , scaleBounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
+  , scaleTicks    = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
   , scaleBaseName = "categoricalEnum"
   }
   where
@@ -261,11 +248,11 @@ categoricalEnum = Scale
 
 linear :: (Real a, Show a) => Scale a
 linear = Scale
-  { runScale = \vs v -> realToFrac v
+  { scaleMapping = \vs v -> realToFrac v
   -- TODO resize LB to 0?
-  , bounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+  , scaleBounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
   -- TODO something nicer
-  , ticks    = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
+  , scaleTicks    = \vs   -> fmap (\v -> (realToFrac v, show v)) vs
   , scaleBaseName = "linear"
   }
   where
@@ -296,16 +283,16 @@ visualizeTest :: [s] -> [Aes s] -> IO () -- TODO result type
 visualizeTest dat aes = do
   putStrLn $ replicate 20 '-'
 
-  putStrLn "Scale base types:"
-  mapM_ print $ ((runAesScaleBaseName $ mconcat aes) dat)
-
-  putStrLn "Data to plot:"
+  putStrLn "Data to plot (column-order):"
   mapM_ print $ fmap ((runAes $ mconcat aes) dat) dat
 
-  putStrLn "Data bounds:"
+  putStrLn "Scale base types (row-order):"
+  mapM_ print $ ((runAesScaleBaseName $ mconcat aes) dat)
+
+  putStrLn "Data bounds (row-order):"
   mapM_ print $ ((runAesBounds $ mconcat aes) dat)
 
-  putStrLn "Guides to plot:"
+  putStrLn "Guides to plot (row-order):"
   mapM_ print $ ((runAesGuides $ mconcat aes) dat)
   putStrLn $ replicate 20 '-'
 
@@ -313,6 +300,9 @@ infixl 4 `withScale`
 infixl 3 <~
 infixl 3 ~>
 
+-- instance Monoid (Aes a) where
+--   mempty = Aes2 mempty mempty mempty mempty
+--   mappend (Aes2 a1 a2 a3 a4) (Aes2 b1 b2 b3 b4) = Aes2 (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
 
 
 
@@ -354,21 +344,20 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
 test = mapM_ print people >> visualizeTest people
-  [
-    x     <~ name
-  , y     <~ age `withScale` linear
+  [ mempty
   , color <~ height
   , shape <~ gender
-
+  , x     <~ name
+  , y     <~ age `withScale` linear
   ]
 test2 = visualizeTest ([(1,2), (3,4)] :: [(Int, Int)])
-  [
-    x <~ to fst
+  [ mempty
+  , x <~ to fst
   , y <~ to snd
   ]
 test3 = visualizeTest ( [ ] :: [(UTCTime, Int)])
-  [
-    x <~ to fst
+  [ mempty
+  , x <~ to fst
   , y <~ to snd
   ]
 
