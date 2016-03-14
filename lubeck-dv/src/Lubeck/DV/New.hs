@@ -25,6 +25,7 @@ module Lubeck.DV.New
 
   -- * Aesthetics
   , x, y, color, size, shape, thickness
+  , Key
   , Aesthetic
   , customAesthetic
   -- ** Mapping aesthetics
