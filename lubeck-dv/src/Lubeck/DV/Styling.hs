@@ -159,7 +159,8 @@ makeLenses ''Styling
 instance Monoid Styling where
   mempty = Styling
     { _dummy                        = mempty
-    , _renderingRectangle           = V2 300 300
+    -- , _renderingRectangle           = V2 300 300
+    , _renderingRectangle           = V2 399 125
 
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
@@ -168,7 +169,8 @@ instance Monoid Styling where
 
     , _scatterPlotStrokeColor       = Colors.red `withOpacity` 0.6
     , _scatterPlotStrokeWidth       = 1
-    , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
+    -- , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
+    , _scatterPlotFillColor         = Colors.white `withOpacity` 1
     , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
     , _scatterPlotShape             = mempty
 

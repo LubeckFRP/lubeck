@@ -418,7 +418,7 @@ visualizeTest2 :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
 visualizeTest2 dat (Geometry geom) aess = do
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
   let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-  let finalD = mconcat [dataD, ticksD, Lubeck.DV.Drawing.labeledAxis "" ""]
+  let finalD = mconcat [dataD, ticksD, Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"]
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
   writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
   return ()
@@ -532,7 +532,16 @@ test4 = visualizeTest ("hello world" :: String) scatter [x <~ id, y <~ id]
 
 
 
-data WD = Mon | Tues | Wed | Thurs | Fri | Sat | Sun deriving (Eq, Ord, Show, Enum, Bounded)
+data WD = Mon | Tues | Wed | Thurs | Fri | Sat | Sun deriving (Eq, Ord, Enum, Bounded) -- Show,
+instance Show WD where
+  show x = case x of
+    Mon   -> "m"
+    Tues  -> "t"
+    Wed   -> "w"
+    Thurs -> "tr"
+    Fri   -> "f"
+    Sat   -> "sa"
+    Sun   -> "su"
 
 instance HasScale WD where
   scale = const categoricalEnum
@@ -555,4 +564,4 @@ test6 = do
     [ x <~ to fst
     , y <~ to snd
     ]
-  geom = line <> scatter
+  geom = scatter <> line
