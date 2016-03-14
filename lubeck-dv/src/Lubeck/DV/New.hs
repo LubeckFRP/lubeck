@@ -12,10 +12,14 @@ module Lubeck.DV.New
   , blend
   , crossWith
   -- * Scales
-  , categorical, categoricalEnum, linear, logarithmic, timeScale
-  , Scale(..)
+  , categorical
+  , categoricalEnum
+  , linear
+  , logarithmic
+  , timeScale
+  , Scale
   , HasScale(..)
-  , Scaled(..)
+  , Scaled
   , withScale
 
   -- * Geometry
@@ -62,7 +66,7 @@ import qualified Text.PrettyPrint.Boxes as B
 import Lubeck.Drawing (Drawing, Str, toStr, packStr, unpackStr)
 import qualified Lubeck.Drawing
 import Lubeck.DV.Drawing ()
-import Lubeck.DV.Styling (StyledT)
+import Lubeck.DV.Styling (StyledT, Styled)
 import qualified Lubeck.DV.Drawing
 import qualified Lubeck.DV.Styling
 
@@ -103,8 +107,8 @@ instance Show Key where
   show = show . getKey
 
 {-|
-An 'Aesthetic' maps a /row/ (also known as a /tuple/ or /record/) to an aesthetic
-attribute such as a color.
+An 'Aesthetic' maps a /row/ (also known as a /tuple/ or /record/) to a set of aesthetic
+attribute such as position, color or shape.
 
 You can think of it as a function @a -> Key -> Maybe Double@, or as a
 pair of a 'Scale' and an 'Key' (as whitnessed by 'customAesthetic').
@@ -116,18 +120,20 @@ data Aesthetic a = Aesthetic
   , aestheticScaleBaseName :: [a] -> Map Key Str -- name of scale used to plot the given aesthetic
   }
 
--- | The empty 'Aesthetic' does not map anything.
---   Appending aesthetics interleaves their mappings. If bothe aesthetics provide a mapping for the same key
---   (i.e. both provide "color"), the left-most is always chosen.
+{-
+  The empty 'Aesthetic' does not map anything.
+    Appending aesthetics interleaves their mappings. If bothe aesthetics provide a mapping for the same key
+    (i.e. both provide "color"), the left-most is always chosen.
+-}
+
 instance Monoid (Aesthetic a) where
   mempty = Aesthetic mempty mempty mempty mempty
   mappend (Aesthetic a1 a2 a3 a4) (Aesthetic b1 b2 b3 b4) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
 
 -- | Make a custom aesthetic attribute.
-customAesthetic :: HasScale a => Str -> Aesthetic a
-customAesthetic n2 = Aesthetic convert genBounds genGuides getScaleBaseName
+customAesthetic :: HasScale a => Key -> Aesthetic a
+customAesthetic n = Aesthetic convert genBounds genGuides getScaleBaseName
   where
-    n = Key n2
     convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
     genBounds = \vs -> Data.Map.singleton n $ case vs of
       []    -> (0,0)
@@ -209,15 +215,7 @@ instance Contravariant Scale where
 -- | Types with a default scale.
 --
 -- If you're writing an instance you can safely ignore the @a@ argument, however if
--- you are invoking 'scale' you need to pass an actual value. The reason for this
--- is that the 'Scaled' instance will use the scale defined in the value, so this
--- must be defined even though it is not otherwise used in the construction of
--- the scale.
---
--- >>> scaleGuides (scale (undefined :: Double)) []
--- []
--- >>> scaleGuides (scale (undefined :: Scaled Double)) []
--- *** Exception: Prelude.undefined
+-- you are invoking 'scale' you need to pass an actual value.
 --
 class HasScale a where
   scale :: a -> Scale a
@@ -239,22 +237,14 @@ instance HasScale Gender where
   scale = const categorical
 instance HasScale UTCTime where
   scale = const timeScale
--- instance Ord a => HasScale [a] where
-  -- type S UTCTime = UTCTime
-  -- scale = const categorical
 
 -- | A utility for allowing users override the default scale type.
 --
 -- This works by wrapping up the value with a scale, and providing a 'HasScale'
 -- instance that uses this scale, ignoring any other instances for 'a'.
 --
--- Typically used with 'withScale' as follows:
+-- See 'withScale' for details.
 --
--- @
--- [ x <~ name
--- , y <~ age `withScale` linear
--- ]
--- @
 data Scaled a = Scaled
   { scaledValue :: a
   , scaledScale :: Scale a
@@ -338,6 +328,13 @@ A scale for time values.
 timeScale :: Scale UTCTime
 [logarithmic, timeScale ] = undefined
 
+{-| Override the default scale instance.
+
+@
+[ x <~ name
+, y <~ age \`withScale\` linear ]
+@
+-}
 withScale :: Getter s a -> Scale a -> Getter s (Scaled a)
 withScale g s = to $ \x -> flip Scaled s $ x^.g
 
@@ -392,14 +389,14 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
 
-visualizeTest :: Show s => [s] -> Geometry Identity -> [Aesthetic s] -> IO ()
+visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
 visualizeTest dat geom aess = do
   printDebugInfo dat aess
   visualizeTest2 dat geom aess
   return ()
 
-visualizeTest2 :: Show s => [s] -> Geometry Identity -> [Aesthetic s] -> IO ()
-visualizeTest2 dat geom aess = do
+visualizeTest2 :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
+visualizeTest2 dat (Geometry geom) aess = do
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
   let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
   let finalD = mconcat [ticksD, dataD, Lubeck.DV.Drawing.labeledAxis "" ""]
@@ -432,7 +429,7 @@ applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromMayb
     scale :: (Double, Double) -> Double -> Double
     scale (lb,ub) x = (x - lb) / (ub - lb)
 
-type Geometry m = [Map Key Double] -> StyledT m Drawing
+newtype Geometry = Geometry { getGeometry :: [Map Key Double] -> Styled Drawing }
 
 (!) :: (Num b, Ord k) => Map k b -> k -> b
 m ! k = maybe 0 id $ Data.Map.lookup k m
@@ -441,11 +438,11 @@ m ! k = maybe 0 id $ Data.Map.lookup k m
 m ? k = maybe mempty id $ Data.Map.lookup k m
 
 -- TODO remove (~ Identity) restrictions
-line :: (Monad m, m ~ Identity) => Geometry m
-line ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+line :: Geometry
+line = Geometry $ \ms -> Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
-scatter :: (Monad m, m ~ Identity) => Geometry m
-scatter ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+scatter :: Geometry
+scatter = Geometry $ \ms -> Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 
 infixl 4 `withScale`
