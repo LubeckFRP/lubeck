@@ -53,7 +53,7 @@ import Linear.V2
 import Linear.V3
 import Linear.V4
 import qualified Text.PrettyPrint.Boxes as B
-import Lubeck.Drawing (Drawing)
+import Lubeck.Drawing (Drawing, Str, toStr, packStr, unpackStr)
 import qualified Lubeck.Drawing
 import Lubeck.DV.Drawing ()
 import Lubeck.DV.Styling (StyledT)
@@ -89,7 +89,7 @@ crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
 
 -- AESTHETICS
 
-newtype AestheticKey = AestheticKey { getAestheticKey :: String }
+newtype AestheticKey = AestheticKey { getAestheticKey :: Str }
   deriving (Eq, Ord, IsString)
 
 instance Show AestheticKey where
@@ -107,8 +107,8 @@ Or as a pair of a 'Scale' and an 'AestheticKey' as whitnessed by 'customAestheti
 data Aesthetic a = Aesthetic
   { aestheticMapping       :: [a] -> a -> Map AestheticKey Double
   , aestheticBounds        :: [a] -> Map AestheticKey (Double, Double)
-  , aestheticGuides        :: [a] -> Map AestheticKey [(Double, String)]
-  , aestheticScaleBaseName :: [a] -> Map AestheticKey String -- name of scale used to plot the given aesthetic
+  , aestheticGuides        :: [a] -> Map AestheticKey [(Double, Str)]
+  , aestheticScaleBaseName :: [a] -> Map AestheticKey Str -- name of scale used to plot the given aesthetic
   }
 
 -- | The empty 'Aesthetic' does not map anything.
@@ -119,7 +119,7 @@ instance Monoid (Aesthetic a) where
   mappend (Aesthetic a1 a2 a3 a4) (Aesthetic b1 b2 b3 b4) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
 
 -- | Make a custom aesthetic attribute.
-customAesthetic :: HasScale a => String -> Aesthetic a
+customAesthetic :: HasScale a => Str -> Aesthetic a
 customAesthetic n2 = Aesthetic convert genBounds genGuides getScaleBaseName
   where
     n = AestheticKey n2
@@ -131,13 +131,12 @@ customAesthetic n2 = Aesthetic convert genBounds genGuides getScaleBaseName
       []    -> []
       (v:_) -> scaleGuides (scale v) vs
     getScaleBaseName = \vs -> Data.Map.singleton n $ case vs of
-      []    -> []
+      []    -> ""
       (v:_) -> scaleBaseName (scale v)
 
 -- | Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger type.
 --
 -- >>> contramap fst :: Aesthetic a -> Aesthetic (a, b)
--- >>> contramap show :: Show a => Aesthetic String -> Aesthetic a
 -- >>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
 --
 instance Contravariant Aesthetic where
@@ -174,12 +173,12 @@ data Scale a = Scale
       --   of the dataset, but note that values outside the bounds given here may
       --   not be visible. On the other hand, if the given bounds are too large
       --   the visualized data may not be intelligeble.
-  , scaleGuides    :: [a] -> [(Double, String)]
+  , scaleGuides    :: [a] -> [(Double, Str)]
       -- ^ Given a data set, return guide labels and positions (assuming.
       --   the same mapping as 'scaleMapping').
       --
       --   If you don't want any guides, just return 'mempty'.
-  , scaleBaseName :: String
+  , scaleBaseName :: Str
       -- ^ A basic name for the scaling (called "basic" as scales may be transformed
       --   combinatorically, so this name is really just a reminder).
       --
@@ -254,7 +253,7 @@ categorical :: (Ord a, Show a) => Scale a
 categorical = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
   , scaleBounds   = \vs -> (0, realToFrac $ length (sortNub vs) + 1)
-  , scaleGuides   = \vs -> zipWith (\k v -> (realToFrac k, show v)) [1..] (sortNub vs)
+  , scaleGuides   = \vs -> zipWith (\k v -> (realToFrac k, toStr v)) [1..] (sortNub vs)
   , scaleBaseName = "categorical"
   }
   where
@@ -275,7 +274,7 @@ categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
 categoricalEnum = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ fromEnum v
   , scaleBounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
-  , scaleGuides   = \vs -> zipWith (\k v -> (k, show v)) [1..] [minBound..maxBound `asTypeOf` head vs]
+  , scaleGuides   = \vs -> zipWith (\k v -> (k, toStr v)) [1..] [minBound..maxBound `asTypeOf` head vs]
   , scaleBaseName = "categoricalEnum"
   }
 -- TODO could be written without the asTypeOf using ScopedTypeVariables
@@ -286,7 +285,7 @@ linear = Scale
   -- TODO resize LB to 0?
   , scaleBounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
   -- TODO something nicer
-  , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, show v)) $ sortNub vs
+  , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, toStr v)) $ sortNub vs
   , scaleBaseName = "linear"
   }
   where
@@ -320,9 +319,9 @@ visualizeTest dat aess _ = putStrLn $ B.render $ box
   where
     aes = mconcat aess
 
-    guidesM     = aestheticGuides aes dat :: Map AestheticKey [(Double, String)]
+    guidesM     = aestheticGuides aes dat :: Map AestheticKey [(Double, Str)]
     boundsM     = aestheticBounds aes dat :: Map AestheticKey (Double, Double)
-    scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey String
+    scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey Str
     mappedData  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
     aKeys       = Data.Map.keys $ mconcat mappedData
 
@@ -356,14 +355,14 @@ visualizeTest2 dat aess geom = do
   let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
   let finalD = mconcat [ticksD, dataD, Lubeck.DV.Drawing.labeledAxis "" ""]
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
-  writeFile "/root/lubeck/static/tmp/test2.svg" svgS
+  writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
   return ()
   where
     aes = mconcat aess
     boundsM     = aestheticBounds aes dat :: Map AestheticKey (Double, Double)
-    guidesM2    = aestheticGuides aes dat :: Map AestheticKey [(Double, String)]
+    guidesM2    = aestheticGuides aes dat :: Map AestheticKey [(Double, Str)]
     guidesM = applyScalingToGuides boundsM guidesM2
-    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey String
+    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map AestheticKey Str
     mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map AestheticKey Double]
     mappedAndScaledData = applyScalingToValues boundsM mappedData2
 
