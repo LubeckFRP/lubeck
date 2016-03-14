@@ -86,6 +86,10 @@ test3 = visualize ( [ ] :: [(UTCTime, Int)])
 
 test4 = visualize ("hello world" :: String) [x <~ id]
 
+-- visualize weekDayGros
+--   [ x <~ to fst
+--   , y <~ to snd
+--   ]
 
 --
 -- logarithmic :: Real a => Scale a
@@ -135,11 +139,15 @@ newtype Aes a = Aes
   }
   deriving (Monoid)
 
+  -- TODO naming
 runAes :: Aes a -> [a] -> a -> Map String Double
 runAes (Aes (convert, _, _)) = convert
--- TODO naming
-runAesT (Aes (_, ticks, _)) = ticks
-runAesB (Aes (_, _, bounds)) = bounds
+
+runAesBounds :: Aes t -> [t] -> Map String (Double, Double)
+runAesBounds (Aes (_, bounds, _)) = bounds
+
+runAesGuides :: Aes t -> [t] -> Map String [(Double, String)]
+runAesGuides (Aes (_, _, ticks)) = ticks
 
 -- Anything that is scaled can be maed into an aesthetic.
 defaultAes :: HasScale a => String -> Aes a
@@ -296,8 +304,8 @@ visualize' dat aes = fmap ((runAes $ mconcat aes) dat) dat
 visualize :: [s] -> [Aes s] -> IO () -- TODO result type
 visualize dat aes = do
   mapM_ print $ fmap ((runAes  $ mconcat aes) dat) dat
-  mapM_ print $ ((runAesT $ mconcat aes) dat)
-  mapM_ print $ ((runAesB $ mconcat aes) dat)
+  mapM_ print $ ((runAesBounds $ mconcat aes) dat)
+  mapM_ print $ ((runAesGuides $ mconcat aes) dat)
 
 infixl 4 `withScale`
 infixl 3 <~
