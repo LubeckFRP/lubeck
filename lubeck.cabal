@@ -67,6 +67,7 @@ library
                      , Components.BusyIndicator
                      , Components.MainMenu
                      , Components.Map
+                     , Components.Grid
   build-depends:       base
                      , base-prelude
                      , virtual-dom

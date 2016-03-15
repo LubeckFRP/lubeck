@@ -62,6 +62,7 @@ import qualified BD.Query.AccountQuery             as AQ
 import           BD.Types
 
 import           BDPlatform.Types
+import           Components.Grid
 import           Components.BusyIndicator       (BusyCmd (..),
                                                  busyIndicatorComponent,
                                                  withBusy, withBusy2)
@@ -208,7 +209,17 @@ accountSearch busySink notifSink ipcSink mUserNameB navS = do
   let srchResSink                  = synchronously . srchResSink'
   results                          <- stepperS Nothing srchResEvents                                     :: IO (Signal (Maybe [Ac.Account]))
 
-  let gridView                     = fmap ((altW (text "") accountSearchResultW) actionSink) results     :: Signal Html
+  -- gridComponent :: [a] -> Widget a b -> IO (Signal Html, Sink (GridCommand a), Events (GridAction a), Events b)
+
+  (gridView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent [] itemMarkup
+  -- XXX is it too imperative?
+  subscribeEvent srchResEvents $ \x -> case x of
+                                         Nothing -> gridCmdsSink $ Replace []
+                                         Just xs -> gridCmdsSink $ Replace xs
+  subscribeEvent gridItemsE    $ \x -> actionSink x
+  subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
+
+  -- let gridView                     = fmap ((altW (text "") accountSearchResultW) actionSink) results     :: Signal Html
   let detailsView                  = fmap (fmap (detailsW actionSink)) actionsS                          :: Signal (Maybe Html)
   let resultsViewS                 = resultsLayout <$> actionsS <*> gridView <*> detailsView <*> results :: Signal Html
   let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS               :: Signal Html
