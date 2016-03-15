@@ -109,34 +109,33 @@ searchForm hViewModeSink pageActionSink dayNow outputSink (trackedHTs, query) =
       ]
 
 itemMarkup :: Widget Post PageAction
-itemMarkup output post =
-  E.div [ A.class_ "thumbnail custom-thumbnail-1 fit-text" ]
-    [ E.a [ A.target "_blank"
+itemMarkup output post = wireframe output post
+  where
+    wireframe output post =
+      E.div [ A.class_ "thumbnail custom-thumbnail-1 fit-text" ]
+        [ thumbnailLink post
+        , E.p []                        [ usernameLink post ]
+        , E.p [ A.class_ "text-center"] [ likesBadge post, commentsBadge post ]
+        , E.p []                        [ uploadButton output post ] ]
+    thumbnailLink post =
+      E.a [ A.target "_blank"
           , A.href $ fromMaybe (P.url post) (P.ig_web_url post) ]
-          [ E.img [ A.class_ "img-thumbnail", A.src (P.thumbnail_url post)] [] ]
-
-    , E.p [] [ E.a [ A.target "_blank"
-                   , A.href $ "https://www.instagram.com/" <> P.username post]
-                   [ E.text $ "@" <> P.username post] ]
-
-    , E.p [ A.class_ "text-center"]
-            [ E.div [ A.class_ "fa fa-heart badge badge-info"
-                    , A.style "margin: 0 3px;"
-                    , A.title "Likes count" ]
-                    [ E.span [ A.class_ "xbadge"
-                             , A.style "margin-left: 5px;"]
-                             [ E.text $ showIntegerWithThousandSeparators (P.like_count post)] ]
-
-            , E.div [ A.class_ "fa fa-comments-o badge badge-info"
-                    , A.title "Comments count"
-                    , A.style "margin: 0 3px;" ]
-                    [ E.span [ A.class_ "xbadge"
-                             , A.style "margin-left: 5px;"]
-                             [ E.text $ showIntegerWithThousandSeparators (P.comment_count post)] ]
-            ]
-
-    , E.p [] [ buttonIcon_ "btn-link btn-sm btn-block" "Upload" "cloud-upload" False [Ev.click $ \_ -> output (UploadImage post) ] ]
-    ]
+          [ thumbnailImage post ]
+    thumbnailImage post = E.img [ A.class_ "img-thumbnail", A.src (P.thumbnail_url post)] []
+    usernameLink post =
+      E.a [ A.target "_blank"
+          , A.href $ "https://www.instagram.com/" <> P.username post]
+          [ E.text $ "@" <> P.username post]
+    uploadButton output post = buttonIcon_ "btn-link btn-sm btn-block" "Upload" "cloud-upload" False [Ev.click $ \_ -> output (UploadImage post) ]
+    likesBadge    post = badge "heart"      "Likes count"    (showIntegerWithThousandSeparators (P.like_count post))
+    commentsBadge post = badge "comments-o" "Comments count" (showIntegerWithThousandSeparators (P.comment_count post))
+    badge typ title val =
+      E.div [ A.class_ $ "fa fa-" <> typ <> " badge badge-info"
+            , A.title title
+            , A.style "margin: 0 3px;" ]
+            [ E.span [ A.class_ "xbadge"
+                     , A.style "margin-left: 5px;"]
+                     [ E.text val] ]
 
 renderToDOMNode :: Html -> IO DOMNode
 renderToDOMNode n = createElement n -- TODO move to virtual-dom
@@ -223,7 +222,8 @@ layout fViewModeSink viewMode formV resultsV htFormV = case viewMode of
   ViewMode FormHidden  ResultsMap    HTFormVisible -> panel [formPlaceholder fViewModeSink (), resultsV, htFormV]
 
 formPlaceholder :: Widget () FormViewMode
-formPlaceholder fViewModeSink _ = panel' . toolbar' . buttonGroupLeft' $ buttonOk "Edit search" False [Ev.click $ \e -> fViewModeSink FormVisible]
+formPlaceholder fViewModeSink _ = panel' . toolbar' . buttonGroupLeft' $
+  buttonOk "Edit search" False [Ev.click $ \e -> fViewModeSink FormVisible]
 
 searchInstagram :: Sink BusyCmd
                 -> Sink (Maybe Notification)
@@ -272,11 +272,11 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   let fullNavS                     = liftA2 (,) navS rViewModeS                                        :: Signal (Nav, ResultsViewMode)
   let resetMapS                    = fmap mapLifecycle fullNavS                                        :: Signal (Maybe MapCommand)
 
-  subscribeEvent (updates results)   $ showResultsOnMap mapSink pageActionsSink
-  subscribeEvent (updates resetMapS) $ void . forkIO . doResetMap (current results) mapSink pageActionsSink
+  subscribeEvent (updates results)   $ showResultsOnMap                                mapSink pageActionsSink
+  subscribeEvent (updates resetMapS) $ void . forkIO . doResetMap    (current results) mapSink pageActionsSink
   subscribeEvent pageActionsEvents   $ void . forkIO . doPageActions busySink notifSink mUserNameB
-  subscribeEvent createHTagE         $ void . forkIO . doAddHTag busySink notifSink thtsInitSink hViewModeSink
-  subscribeEvent searchRequested     $ void . forkIO . doSearch busySink notifSink srchResSink
+  subscribeEvent createHTagE         $ void . forkIO . doAddHTag     busySink notifSink thtsInitSink hViewModeSink
+  subscribeEvent searchRequested     $ void . forkIO . doSearch      busySink notifSink srchResSink
   subscribeEvent searchRequested     $ \_ -> fViewModeSink FormHidden >> rViewModeSink ResultsGrid
 
   let resultsView                  = resultsLayout rViewModeSink <$> gridView <*> mapView <*> rViewModeS <*> results :: Signal Html
