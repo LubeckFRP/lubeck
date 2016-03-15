@@ -434,13 +434,14 @@ visualizeTest2 dat (Geometry geom) aess = do
     mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
     mappedAndScaledData = applyScalingToValues boundsM mappedData2
 
-visualize :: Show s => [s] -> Geometry -> [Aesthetic s] -> Str
+-- TODO return drawing, not styled drawing
+visualize :: Show s => [s] -> Geometry -> [Aesthetic s] -> Drawing
 visualize dat (Geometry geom) aess =
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
       ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
       axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
       finalD = mconcat [dataD, axesD, ticksD]
-      svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
+      svgS = Lubeck.DV.Styling.withDefaultStyle $ finalD
   in svgS
   where
     aes = mconcat aess
