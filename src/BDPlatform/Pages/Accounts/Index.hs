@@ -61,7 +61,7 @@ accountsIndexPage :: Sink BusyCmd
 accountsIndexPage busySink notifSink ipcSink usernameB navS = do
   (actionsSink', actionEvents) <- newEventOf (undefined                     :: AccountsAction)
   let actionsSink              = synchronously . actionsSink'
-  actionsS                     <- stepperS Nothing (fmap Just actionEvents) :: IO (Signal (Maybe AccountsAction))
+  actionsS                     <- stepperS (Just FindAccounts) (fmap Just actionEvents) :: IO (Signal (Maybe AccountsAction))
 
   accountSearchView            <- accountSearch busySink notifSink ipcSink usernameB navS
   let toolbarView              = fmap (indexW actionsSink) actionsS

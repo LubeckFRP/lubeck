@@ -146,23 +146,6 @@ detailsW sink action = case action of
       , text $ showJS acc]
   _               -> div [] [text "hello"]
 
-accountSearchResultW :: Widget [Ac.Account] Action
-accountSearchResultW outputSink accounts = resultsTable outputSink accounts
-  where
-    resultsTable :: Widget [Ac.Account] Action
-    resultsTable outputSink accounts =
-      E.table [class_ "table"]
-        [E.thead [class_ ""]
-          [E.tr []
-            [ E.th [class_ "acc-pic"] [ text $ "Account" ]
-            , E.th [class_ "acc-username"] [  ]
-            , E.th [class_ "acc-num"] [ text "Posts" ]
-            , E.th [class_ "acc-num"] [ text "Followers" ]
-            , E.th [class_ "acc-num"] [ text "Follows" ]
-            ]]
-        , E.tbody [] (map (itemMarkup outputSink) accounts)
-        ]
-
 resultsLayout :: Maybe Action -> Html -> Maybe Html -> Maybe [Ac.Account] -> Html
 resultsLayout mba resultsV detailsV accounts = case mba of
   Nothing -> resWrapper resultsV accounts
@@ -209,9 +192,7 @@ accountSearch busySink notifSink ipcSink mUserNameB navS = do
   let srchResSink                  = synchronously . srchResSink'
   results                          <- stepperS Nothing srchResEvents                                     :: IO (Signal (Maybe [Ac.Account]))
 
-  -- gridComponent :: [a] -> Widget a b -> IO (Signal Html, Sink (GridCommand a), Events (GridAction a), Events b)
-
-  (gridView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent [] itemMarkup
+  (gridView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent gridOptions initialItems itemMarkup
   -- XXX is it too imperative?
   subscribeEvent srchResEvents $ \x -> case x of
                                          Nothing -> gridCmdsSink $ Replace []
@@ -219,7 +200,6 @@ accountSearch busySink notifSink ipcSink mUserNameB navS = do
   subscribeEvent gridItemsE    $ \x -> actionSink x
   subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
 
-  -- let gridView                     = fmap ((altW (text "") accountSearchResultW) actionSink) results     :: Signal Html
   let detailsView                  = fmap (fmap (detailsW actionSink)) actionsS                          :: Signal (Maybe Html)
   let resultsViewS                 = resultsLayout <$> actionsS <*> gridView <*> detailsView <*> results :: Signal Html
   let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS               :: Signal Html
@@ -239,3 +219,7 @@ accountSearch busySink notifSink ipcSink mUserNameB navS = do
     return ()
 
   return view
+
+  where
+    gridOptions = Just (defaultGridOptions {deleteButton = False, otherButton = False})
+    initialItems = []

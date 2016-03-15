@@ -6,6 +6,8 @@ module Components.Grid
   ( gridComponent
   , GridCommand(..)
   , GridAction(..)
+  , GridOptions(..)
+  , defaultGridOptions
   ) where
 
 import           Prelude                        hiding (div)
@@ -13,6 +15,8 @@ import qualified Prelude
 
 import           Control.Applicative
 import qualified Data.Set as Set
+import           Data.Maybe
+import           Data.Monoid
 
 import           GHCJS.Concurrent               (synchronously)
 
@@ -32,24 +36,29 @@ import           BDPlatform.HTMLCombinators
 data GridAction a = Select [a] | Delete [a] | Other [a] deriving Show
 data GridCommand a = Replace [a]
 
-gridW :: Ord a => (a -> Html) -> Widget ([a], Set.Set a) (GridAction a)
-gridW _     _        ([], _)              = contentPanel $ E.text "No items"
-gridW itemW gridSink (items, selectedSet) = contentPanel $ E.div []
-  [ E.div [A.style "margin-left: -20px;"] (map (itemWrapperW itemW selectedSet gridSink) items) ]
+data GridOptions = GridOptions { deleteButton :: Bool
+                               , selectButton :: Bool
+                               , otherButton  :: Bool }
 
-itemWrapperW :: Ord a => (a -> Html) -> Set.Set a -> Widget a (GridAction a)
-itemWrapperW itemW selectedSet gridSink x =
+defaultGridOptions = GridOptions True True True
+
+gridW :: Ord a => GridOptions -> (a -> Html) -> Widget ([a], Set.Set a) (GridAction a)
+gridW _    _     _        ([], _)              = contentPanel $ E.text "No items"
+gridW opts itemW gridSink (items, selectedSet) = contentPanel $ E.div []
+  [ E.div [A.style "margin-left: -20px;"] (map (itemWrapperW opts itemW selectedSet gridSink) items) ]
+
+itemWrapperW :: Ord a => GridOptions -> (a -> Html) -> Set.Set a -> Widget a (GridAction a)
+itemWrapperW opts itemW selectedSet gridSink x =
   let selIcon = if Set.member x selectedSet then "check-square" else "check-square-o"
 
   in E.div [A.class_ "grid-item-wrapper"]
-      [ buttonIcon_ "btn-link grid-item-delete" "" "trash"          False [Ev.click $ \_ -> gridSink $ Delete [x]]
-      , buttonIcon_ "btn-link grid-item-select" "" selIcon          False [Ev.click $ \_ -> gridSink $ Select [x]]
-      , buttonIcon_ "btn-link grid-item-other"  "" "circle-o"       False [Ev.click $ \_ -> gridSink $ Other  [x]]
-      , itemW x
-      ]
+        ((if deleteButton opts then [buttonIcon_ "btn-link grid-item-delete" "" "trash"    False [Ev.click $ \_ -> gridSink $ Delete [x]]] else [])
+      <> (if selectButton opts then [buttonIcon_ "btn-link grid-item-select" "" selIcon    False [Ev.click $ \_ -> gridSink $ Select [x]]] else [])
+      <> (if otherButton opts  then [buttonIcon_ "btn-link grid-item-other"  "" "circle-o" False [Ev.click $ \_ -> gridSink $ Other  [x]]] else [])
+      <> [itemW x])
 
-gridComponent :: Ord a => [a] -> Widget a b -> IO (Signal Html, Sink (GridCommand a), Events (GridAction a), Events b)
-gridComponent as itemW = do
+gridComponent :: Ord a => Maybe GridOptions -> [a] -> Widget a b -> IO (Signal Html, Sink (GridCommand a), Events (GridAction a), Events b)
+gridComponent mbOpts as itemW = do
   (itemSink', itemEvents)           <- newEventOf (undefined                     :: b)
   (actionsSink', actionsEvents)     <- newEventOf (undefined                     :: (GridAction a))
   (lifecycleSink', lifecycleEvents) <- newEventOf (undefined                     :: (GridCommand a))
@@ -64,7 +73,7 @@ gridComponent as itemW = do
 
   let asAndSelS                     = liftA2 (,) asS selectedS                 --  :: Signal ([a], Set.Set a)
 
-  let view                          = fmap (gridW (itemW itemSink) actionsSink) asAndSelS
+  let view                          = fmap (gridW (fromMaybe defaultGridOptions mbOpts) (itemW itemSink) actionsSink) asAndSelS
 
   return (view, lifecycleSink, actionsEvents, itemEvents) -- TODO need to return selectedS (or beh)
 
