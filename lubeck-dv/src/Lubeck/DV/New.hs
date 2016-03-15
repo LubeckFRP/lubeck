@@ -64,6 +64,7 @@ import qualified Data.Time
 import qualified Data.Time.Format
 import Data.Proxy
 import Data.Functor.Identity
+import qualified Data.Maybe
 
 import Linear.Vector
 import Linear.Affine
@@ -337,9 +338,10 @@ linear :: (Real a, Show a) => Scale a
 linear = Scale
   { scaleMapping  = \vs v -> realToFrac v
   -- TODO resize LB to 0?
-  , scaleBounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
-  -- TODO something nicer
-  , scaleGuides   = \vs -> [(0, "0"), (1, "1")]
+  , scaleBounds   = bounds
+  -- TODO more alternatives
+  , scaleGuides   = guides
+  -- , scaleGuides   = \vs -> [(0, "0"), (1, "1")]
   -- , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, toStr v)) $ sortNub vs
   , scaleBaseName = "linear"
   }
@@ -350,6 +352,36 @@ linear = Scale
     safeMax xs = maximum xs
 
     sortNub = Data.List.nub . Data.List.sort
+
+    bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+    guides vs = fmap (\x -> (x, toStr $ roundTo 5 x)) $ tickCalc 4 (bounds vs)
+
+    -- number of ticks, interval, outpouts ticks
+    tickCalc :: Int -> (Double, Double) -> [Double]
+    tickCalc tickCount (lo, hi) =
+      let range = hi - lo :: Double
+          unroundedTickSize = range/(realToFrac $ tickCount-1)        --  :: Double
+          x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) --  :: Double
+          pow10x = 10**x -- Math.pow(10, x);
+          stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
+          lb = stepSize * realToFrac (floor (lo / stepSize))
+          ub = stepSize * realToFrac (ceiling (hi / stepSize))
+
+      in [lb, lb+stepSize..ub]
+      where
+        exrng = (2.1, 11.5)
+
+    {-|
+    >>> roundTo 5 pi
+    3.14159
+    >>> roundTo 6 pi
+    3.141593
+    >>> roundTo 0 pi
+    3.0
+    -}
+    roundTo :: (Fractional a, RealFrac r) => Int -> r -> a
+    roundTo n f =  (fromInteger $ round $ f * (10^n)) / (10.0^^n)
+
 
 {-|
 A scale for time values.
@@ -431,32 +463,30 @@ visualizeTest dat geom aess = do
   return ()
 
 visualizeTest2 :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
-visualizeTest2 dat (Geometry geom) aess = do
-  let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
-  let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-  let axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
-  let finalD = mconcat [dataD, axesD, ticksD]
+visualizeTest2 dat geom aess = do
+  let finalD = visualizeWithStyle ["FIRST AXIS", "SECOND AXIS"] dat geom aess
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
   writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
   return ()
   where
-    aes = mconcat aess
-    boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
-    guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
-    guidesM = applyScalingToGuides boundsM guidesM2
+    -- aes = mconcat aess
+    -- boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
+    -- guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
+    -- guidesM = applyScalingToGuides boundsM guidesM2
     -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-    mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
-    mappedAndScaledData = applyScalingToValues boundsM mappedData2
+    -- mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
+    -- mappedAndScaledData = applyScalingToValues boundsM mappedData2
 
 -- TODO return drawing, not styled drawing
-visualize :: Show s => [s] -> Geometry -> [Aesthetic s] -> Drawing
-visualize d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle d g a
+visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
+visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
 
-visualizeWithStyle :: Show s => [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
-visualizeWithStyle dat (Geometry geom) aess =
+visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
+visualizeWithStyle axesNames1 dat (Geometry geom) aess =
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
       ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-      axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
+      axesNames = axesNames1 ++ repeat ""
+      axesD  = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
   in mconcat [dataD, axesD, ticksD]
   where
     aes = mconcat aess
@@ -493,16 +523,69 @@ m ! k = maybe 0 id $ Data.Map.lookup k m
 (?) :: (Monoid b, Ord k) => Map k b -> k -> b
 m ? k = maybe mempty id $ Data.Map.lookup k m
 
+(?!) :: (Ord k) => Map k b -> k -> Maybe b
+m ?! k = Data.Map.lookup k m
+
 -- TODO remove (~ Identity) restrictions
 line :: Geometry
-line = Geometry $ \ms -> Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+line = Geometry tot
+  where
+    -- All color values in the dataset or Nothing if there are none
+    colors :: [Map Key Double] -> Maybe [Double]
+    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+      [] -> Nothing
+      xs -> Just $ sortNub xs
+
+    atColor :: Double -> [Map Key Double] -> [Map Key Double]
+    atColor c = filter (\m -> m ?! "color" == Just c)
+
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 fill :: Geometry
-fill = Geometry $ \ms -> Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+fill = Geometry tot
+  where
+    -- All color values in the dataset or Nothing if there are none
+    colors :: [Map Key Double] -> Maybe [Double]
+    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+      [] -> Nothing
+      xs -> Just $ sortNub xs
+
+    atColor :: Double -> [Map Key Double] -> [Map Key Double]
+    atColor c = filter (\m -> m ?! "color" == Just c)
+
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 scatter :: Geometry
-scatter = Geometry $ \ms -> Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+scatter = Geometry tot
+  where
+    -- All color values in the dataset or Nothing if there are none
+    colors :: [Map Key Double] -> Maybe [Double]
+    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+      [] -> Nothing
+      xs -> Just $ sortNub xs
 
+    atColor :: Double -> [Map Key Double] -> [Map Key Double]
+    atColor c = filter (\m -> m ?! "color" == Just c)
+
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+
+-- TODO move
+sortNub = Data.List.nub . Data.List.sort
 
 
 infixl 4 `withScale`
@@ -549,10 +632,10 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = visualizeTest people scatter
+test = visualizeTest people (mconcat [scatter, line, fill])
   [ mempty
-  , color <~ height
-  , shape <~ gender
+  , color <~ gender
+  -- , shape <~ gender
   , x     <~ name
   , y     <~ age `withScale` linear
   ]
@@ -604,3 +687,24 @@ test6 = do
     , y <~ to snd
     ]
   geom = mconcat [scatter, line, fill]
+
+test7 = visualizeTest dat (mconcat [scatter, line, fill])
+  [ mempty
+  , x     <~ to (\(x,_,_) -> x)
+  , y     <~ to (\(_,x,_) -> x)
+  , color <~ to (\(_,_,x) -> x)
+  ]
+  where
+    dat =
+      [ (0::Int, 1::Int, True)
+      , (1, 3, True)
+      , (2, 0, True)
+      , (3, 2, True)
+      , (5, 9, True)
+
+      , (0, 3, False)
+      , (1, 2, False)
+      , (2, 1, False)
+      , (3, 0, False)
+      , (5, 0, False)
+      ]
