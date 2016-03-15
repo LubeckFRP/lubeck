@@ -119,7 +119,7 @@ searchForm pageActionSink dayNow outputSink (trackedHTs, query) =
                 (zip (P.tag <$> trackedHTs) (P.tag <$> trackedHTs)) -- FIXME
                 (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (Data.Maybe.fromMaybe "" $ PQ.trackedHashTag query)
 
-            , HC.buttonIcon "New hashtag" "new" False [click $ \e -> pageActionSink ShowCreateHTagDialog]
+            , HC.buttonIcon "New hashtag" "plus" False [click $ \e -> pageActionSink ShowCreateHTagDialog]
             ]
         ]
 
