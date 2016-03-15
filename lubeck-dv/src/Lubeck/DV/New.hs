@@ -60,6 +60,8 @@ import Control.Lens.Operators hiding ((<~))
 import Control.Lens.TH
 import qualified Data.List
 import Data.Time(UTCTime)
+import qualified Data.Time
+import qualified Data.Time.Format
 import Data.Proxy
 import Data.Functor.Identity
 
@@ -352,7 +354,13 @@ linear = Scale
 A scale for time values.
 -}
 timeScale :: Scale UTCTime
-[timeScale ] = undefined
+timeScale = contramap (`Data.Time.diffUTCTime` refTime) linear
+
+refTime :: UTCTime
+refTime = case Data.Time.Format.parseTimeM True Data.Time.Format.defaultTimeLocale
+  (Data.Time.Format.iso8601DateFormat Nothing) "2000-01-01" of
+    Just t -> t
+    _      -> error "Should not happen"
 
 {-| Override the default scale instance.
 
