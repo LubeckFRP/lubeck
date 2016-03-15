@@ -534,7 +534,7 @@ line = Geometry tot
     colors :: [Map Key Double] -> Maybe [Double]
     colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
       [] -> Nothing
-      xs -> Just xs
+      xs -> Just $ sortNub xs
 
     atColor :: Double -> [Map Key Double] -> [Map Key Double]
     atColor c = filter (\m -> m ?! "color" == Just c)
@@ -553,7 +553,7 @@ fill = Geometry tot
     colors :: [Map Key Double] -> Maybe [Double]
     colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
       [] -> Nothing
-      xs -> Just xs
+      xs -> Just $ sortNub xs
 
     atColor :: Double -> [Map Key Double] -> [Map Key Double]
     atColor c = filter (\m -> m ?! "color" == Just c)
@@ -572,7 +572,7 @@ scatter = Geometry tot
     colors :: [Map Key Double] -> Maybe [Double]
     colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
       [] -> Nothing
-      xs -> Just xs
+      xs -> Just $ sortNub xs
 
     atColor :: Double -> [Map Key Double] -> [Map Key Double]
     atColor c = filter (\m -> m ?! "color" == Just c)
@@ -584,6 +584,8 @@ scatter = Geometry tot
     baseL :: Double -> [Map Key Double] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
+-- TODO move
+sortNub = Data.List.nub . Data.List.sort
 
 
 infixl 4 `withScale`
