@@ -12,7 +12,6 @@ import qualified Data.Maybe
 import           Data.Monoid
 
 import qualified Data.JSString
-import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
 import qualified Web.VirtualDom.Html            as E
@@ -23,7 +22,7 @@ import           Lubeck.App                     (Html, KbdEvents(..))
 import           Lubeck.Forms
 import           Lubeck.Types
 import           Lubeck.FRP
-import           Lubeck.Util                    (contentPanel, newEventOf,
+import           Lubeck.Util                    (contentPanel, newSyncEventOf,
                                                  showJS, withErrorIO)
 
 import           BD.Types
@@ -62,8 +61,7 @@ manageIndexPage :: Sink BusyCmd
                 -> Events Account.Account
                 -> IO (Signal Html, Behavior (Maybe [Im.Image]), Sink KbdEvents)
 manageIndexPage busySink notifSink ipcSink ipcEvents userE = do
-  (actionsSink', actionEvents)       <- newEventOf (undefined                     :: ManageAction)
-  let actionsSink                    = synchronously . actionsSink'
+  (actionsSink, actionEvents)        <- newSyncEventOf (undefined                     :: ManageAction)
   actionsS                           <- stepperS Nothing (fmap Just actionEvents) :: IO (Signal (Maybe ManageAction))
 
   (imageLibView, imsB, imlibKbdSink) <- imageLibrary busySink notifSink ipcSink ipcEvents userE

@@ -15,7 +15,6 @@ import qualified Data.Maybe
 import           Data.Monoid
 
 import qualified Data.JSString
-import           GHCJS.Concurrent                  (synchronously)
 import           GHCJS.Types                       (JSString)
 import           JavaScript.Web.XMLHttpRequest     (FormDataVal (..))
 
@@ -28,7 +27,7 @@ import           Lubeck.Forms
 import           Lubeck.Forms.File
 import           Lubeck.FRP
 import           Lubeck.Types
-import           Lubeck.Util                       (contentPanel, newEventOf,
+import           Lubeck.Util                       (contentPanel, newSyncEventOf,
                                                     showJS, withErrorIO)
 
 import           BD.Api
@@ -82,11 +81,9 @@ uploadPage :: Sink BusyCmd
            -> Signal Nav
            -> IO (Signal Html)
 uploadPage busySink notifSink ipcSink usernameB navS = do
-  (uploadSink', uploadEvents)  <- newEventOf (undefined                     :: UploadImg)
-  let uploadSink               = synchronously . uploadSink'
+  (uploadSink, uploadEvents)   <- newSyncEventOf (undefined                     :: UploadImg)
 
-  (actionsSink', actionEvents) <- newEventOf (undefined                     :: UploadAction)
-  let actionsSink              = synchronously . actionsSink'
+  (actionsSink, actionEvents)  <- newSyncEventOf (undefined                     :: UploadAction)
   actionsS                     <- stepperS Nothing (fmap Just actionEvents) :: IO (Signal (Maybe UploadAction))
 
   let uploadFromComputer       = fmap (uploadFromComputerW uploadSink) (pure ())

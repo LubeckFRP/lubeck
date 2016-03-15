@@ -12,7 +12,6 @@ import           Control.Applicative
 import           Data.Monoid
 import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString, JSVal)
-import           GHCJS.Concurrent               (synchronously)
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -103,11 +102,8 @@ rootLayout goTo menu err busy login {- user ads -} search createAd interactions 
 
 adPlatform :: IO (Signal Html, Maybe (Sink KbdEvents))
 adPlatform = do
-  (kbdSink', kbdEvents)                  <- newEventOf (undefined :: KbdEvents)
-  (ipcSink', ipcEvents)                  <- newEventOf (undefined :: IPCMessage)
-
-  let ipcSink = synchronously . ipcSink'
-  let kbdSink = synchronously . kbdSink'
+  (kbdSink, kbdEvents)                  <- newSyncEventOf (undefined :: KbdEvents)
+  (ipcSink, ipcEvents)                  <- newSyncEventOf (undefined :: IPCMessage)
 
   (notifView, notifSink, notifKbdSink)  <- notificationsComponent []
   (busyView, busySink)                  <- busyIndicatorComponent []
@@ -143,7 +139,7 @@ adPlatform = do
   (menuView, menuNavE)                  <- mainMenuComponent menuItems "BD Platform" firstPage
 
   let postLoginNavE                     = fmap (const firstPage) validUserLoginE --(updates userS)
-  (ipcNavSink, ipcNavEvents)            <- newEventOf (undefined :: Nav)
+  (ipcNavSink, ipcNavEvents)            <- newSyncEventOf (undefined :: Nav)
   navS                                  <- stepperS NavLogin (postLoginNavE <> menuNavE <> ipcNavEvents)
 
   searchIndexView                       <- searchIndexPage      busySink notifSink ipcSink usernameB navS

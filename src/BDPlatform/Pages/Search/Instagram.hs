@@ -28,7 +28,6 @@ import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
 import           Control.Concurrent             (forkIO, threadDelay)
 import qualified Data.JSString
-import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
 import qualified Web.VirtualDom                 as VD
@@ -52,7 +51,7 @@ import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
 import           Lubeck.Util                    (contentPanel, divideFromEnd,
-                                                 newEventOf, showIntegerWithThousandSeparators,
+                                                 newSyncEventOf, showIntegerWithThousandSeparators,
                                                  showJS, which, withErrorIO)
 import           Lubeck.Web.URI                 (getURIParameter)
 
@@ -241,7 +240,7 @@ loadTrackedHashtags notifSink thtsInitSink = do
   z <- P.getTrackedHashtags                                                         :: IO (Either AppError [P.TrackedHashtag])
   case z of
     Left e     -> notifSink . Just . apiError $ "Failed to load tracked hashtags"
-    Right thts -> synchronously . thtsInitSink $ thts
+    Right thts -> thtsInitSink $ thts
 
 validateHTag :: JSString -> FormValid VError
 validateHTag newHTag =
@@ -279,13 +278,13 @@ searchInstagram :: Sink BusyCmd
 searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   let initPostQuery                = defSimplePostQuery
 
-  (viewModeSink, viewModeEvents)   <- newEventOf (undefined                                        :: ResultsViewMode)
+  (viewModeSink, viewModeEvents)   <- newSyncEventOf (undefined                                        :: ResultsViewMode)
   resultsViewModeS                 <- stepperS ResultsGrid viewModeEvents
 
   now                              <- getCurrentTime
 
   -- load tracked hash tags initially (at the very start of the app, before login)
-  (thtsInitSink, thtsInitE)        <- newEventOf (undefined                                        :: [P.TrackedHashtag])
+  (thtsInitSink, thtsInitE)        <- newSyncEventOf (undefined                                        :: [P.TrackedHashtag])
   void . forkIO $ loadTrackedHashtags notifSink thtsInitSink
 
   -- update tracked hash tags heuristics. Better: use websockets and FRP to push updates directly from the server
@@ -293,11 +292,8 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   thtsReloadE                      <- withErrorIO notifSink $ fmap (\_ -> P.getTrackedHashtags) n   :: IO (Events [P.TrackedHashtag])
   thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                        :: IO (Behavior [P.TrackedHashtag])
 
-  (pageActionsSink', pageActionsEvents) <- newEventOf (undefined                                   :: PageAction)
-  (srchResSink', srchResEvents)    <- newEventOf (undefined                                        :: Maybe [Post])
-
-  let pageActionsSink              = synchronously . pageActionsSink'
-  let srchResSink                  = synchronously . srchResSink'
+  (pageActionsSink, pageActionsEvents) <- newSyncEventOf (undefined                                   :: PageAction)
+  (srchResSink, srchResEvents)     <- newSyncEventOf (undefined                                        :: Maybe [Post])
 
   (searchView, searchRequested)    <- formComponentExtra1 thtsB initPostQuery (searchForm pageActionsSink (utctDay now))
 
@@ -312,7 +308,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
                                                                               pageActionsEvents))
 
   let gridView                     = fmap ((altW (text "") postSearchResultW) pageActionsSink) results :: Signal Html
-  let resultsViewS                 = (resultsLayout (synchronously . viewModeSink)) <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
+  let resultsViewS                 = resultsLayout viewModeSink <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
   let view                         = layout <$> createHTagS <*> searchView <*> resultsViewS <*> createHTagView         :: Signal Html
 
   -- This will try to destroy the map on any navigation

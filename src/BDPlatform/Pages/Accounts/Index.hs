@@ -12,7 +12,6 @@ import qualified Data.Maybe
 import           Data.Monoid
 
 import qualified Data.JSString
-import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
 import qualified Web.VirtualDom.Html            as E
@@ -23,7 +22,7 @@ import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.Types
 import           Lubeck.FRP
-import           Lubeck.Util                    (contentPanel, newEventOf,
+import           Lubeck.Util                    (contentPanel, newSyncEventOf,
                                                  showJS, withErrorIO)
 
 import           BD.Types
@@ -59,8 +58,7 @@ accountsIndexPage :: Sink BusyCmd
                   -> Signal Nav
                   -> IO (Signal Html)
 accountsIndexPage busySink notifSink ipcSink usernameB navS = do
-  (actionsSink', actionEvents) <- newEventOf (undefined                     :: AccountsAction)
-  let actionsSink              = synchronously . actionsSink'
+  (actionsSink, actionEvents)  <- newSyncEventOf (undefined                     :: AccountsAction)
   actionsS                     <- stepperS (Just FindAccounts) (fmap Just actionEvents) :: IO (Signal (Maybe AccountsAction))
 
   accountSearchView            <- accountSearch busySink notifSink ipcSink usernameB navS

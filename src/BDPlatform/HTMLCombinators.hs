@@ -31,8 +31,10 @@ panel12' bd = panel12 [bd]
 panel  c = row12' . panel12 $ c
 panel' c = panel [c]
 
-formPanel  x = panel' $ E.div [A.class_ "form-horizontal"] x
-formPanel' x = formPanel [x]
+
+formPanel_ attr x = panel' $ E.div ([A.class_ "form-horizontal"] <> attr) x
+formPanel         = formPanel_ []
+formPanel' x      = formPanel [x]
 
 modalPopup  x = E.div [A.class_ "modal-popup"]
                       [E.div [A.class_ "modal-popup-body"] x]
@@ -45,6 +47,24 @@ formGroup' x = formGroup [x]
 
 formRowWithNoLabel x = formGroup' . (colOffset 2) $ x
 formRowWithNoLabel' x = formRowWithNoLabel [x]
+
+header1  x   = E.div [A.class_ "page-header"] [ E.h1 [] [ E.text x ] ]
+header2  x   = E.div [A.class_ "page-header"] [ E.h2 [] [ E.text x ] ]
+header3  x   = E.div [A.class_ "page-header"] [ E.h3 [] [ E.text x ] ]
+header4  x   = E.div [A.class_ "page-header"] [ E.h4 [] [ E.text x ] ]
+header5  x   = E.div [A.class_ "page-header"] [ E.h5 [] [ E.text x ] ]
+header6  x   = E.div [A.class_ "page-header"] [ E.h6 [] [ E.text x ] ]
+header1' x y = E.div [A.class_ "page-header"] [ E.h1 [] [ E.text x, E.small [] [E.text y] ] ]
+header2' x y = E.div [A.class_ "page-header"] [ E.h2 [] [ E.text x, E.small [] [E.text y] ] ]
+header3' x y = E.div [A.class_ "page-header"] [ E.h3 [] [ E.text x, E.small [] [E.text y] ] ]
+header4' x y = E.div [A.class_ "page-header"] [ E.h4 [] [ E.text x, E.small [] [E.text y] ] ]
+header5' x y = E.div [A.class_ "page-header"] [ E.h5 [] [ E.text x, E.small [] [E.text y] ] ]
+header6' x y = E.div [A.class_ "page-header"] [ E.h6 [] [ E.text x, E.small [] [E.text y] ] ]
+
+formRowWithLabel label x = formGroup
+  [ E.label [A.class_ "control-label col-xs-2"] [E.text label ]
+  , E.div [A.class_ "col-xs-10 form-inline"] x ]
+formRowWithLabel' label x = formRowWithLabel label [x]
 
 mediaGroupLeft media body =
   E.div [A.class_ "media"]
