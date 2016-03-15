@@ -122,20 +122,20 @@ data Action = ViewDetails Ac.Account | ViewAllResults
 
 itemMarkup :: Widget Ac.Account Action
 itemMarkup output account =
-  E.tr [class_ "", click $ \e -> output $ ViewDetails account]
-    [ E.td [class_ "acc-pic"] [ img [A.src (Data.Maybe.fromMaybe "defaultPic" (Ac.profile_picture account))] [] ]
-    , E.td [class_ "acc-username"] [ E.a [ class_ "acc-username"
-                                         , click $ \e -> stopPropagation e
-                                         , A.target "blank_"
-                                         , href ("https://instagram.com/" <> Ac.username account)]
-                                         [text $ "@" <> Ac.username account]
-                                   , E.span [ class_ "acc-fullname"] [text $ Ac.full_name account]
+  E.div [class_ "", click $ \e -> output $ ViewDetails account]
+    [ E.div [class_ "acc-pic"] [ img [A.src (Data.Maybe.fromMaybe "defaultPic" (Ac.profile_picture account))] [] ]
+    , E.div [class_ "acc-username"] [ E.a [ class_ "acc-username"
+                                          , click $ \e -> stopPropagation e
+                                          , A.target "blank_"
+                                          , href ("https://instagram.com/" <> Ac.username account)]
+                                          [text $ "@" <> Ac.username account]
+                                   , E.div [ class_ "acc-fullname"] [text $ Ac.full_name account]
                                    , E.div [ class_ "acc-bio"
                                            , A.style "display: block;"]
                                            [ text $ Data.Maybe.fromMaybe " " (Ac.bio account) ]]
-    , E.td [class_ "acc-num"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.numposts account ]
-    , E.td [class_ "acc-num"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.latest_count account ]
-    , E.td [class_ "acc-num"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.numfollowing account ]
+    , E.div [class_ "acc-num badge badge-info"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.numposts account ]
+    , E.div [class_ "acc-num badge badge-info"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.latest_count account ]
+    , E.div [class_ "acc-num badge badge-info"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.numfollowing account ]
     ]
 
 detailsW :: Widget Action Action
