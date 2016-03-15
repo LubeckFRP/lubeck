@@ -64,8 +64,8 @@ searchIndexPage :: Sink BusyCmd
                 -> Signal Nav
                 -> IO (Signal Html)
 searchIndexPage busySink notifSink ipcSink usernameB navS = do
-  (actionsSink, actionEvents)  <- newSyncEventOf (undefined                     :: SearchAction)
-  actionsS                     <- stepperS Nothing (fmap Just actionEvents) :: IO (Signal (Maybe SearchAction))
+  (actionsSink, actionEvents)  <- newSyncEventOf (undefined                                :: SearchAction)
+  actionsS                     <- stepperS (Just SearchInstagram) (fmap Just actionEvents) :: IO (Signal (Maybe SearchAction))
 
   searchInstagramView          <- searchInstagram busySink notifSink ipcSink usernameB navS
   uploadView                   <- uploadPage      busySink notifSink ipcSink usernameB navS
