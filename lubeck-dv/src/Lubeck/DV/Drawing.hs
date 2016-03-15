@@ -225,9 +225,12 @@ fillData (p:ps) = do
                 -- . strokeWidth   (style^.linePlotStrokeWidth)
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect $ addExtraPoints (p:ps)
+  return $ translate (intoRect pProjX .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect $ addExtraPoints (p:ps)
 
   where
+    -- Because of projection (below!), ignore y value for 1st point
+    pProjX = P (V2 firstPointX 0) where P (V2 firstPointX _) = p
+
     -- Add points from first and last projected on the X axis to make sure space below line is completely filled.
     addExtraPoints ps = [proj $ head ps] ++ ps ++ [proj $ last ps]
       where

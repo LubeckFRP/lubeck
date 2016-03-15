@@ -583,7 +583,7 @@ test6 = do
   visualizeTest dat geom aes
  where
   dat =
-    [ (Mon,   0)
+    [ (Mon,   10)
     , (Tues,  30)
     , (Wed,   3)
     , (Thurs, 3)
