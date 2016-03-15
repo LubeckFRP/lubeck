@@ -24,6 +24,7 @@ module Lubeck.DV.New
   -- * Geometry
   , Geometry
   , line
+  , fill
   , scatter
 
   -- * Aesthetics
@@ -44,6 +45,7 @@ module Lubeck.DV.New
   , (~>)
   -- * Top-level
   , visualizeTest
+  , visualize
   )
 where
 
@@ -423,6 +425,23 @@ visualizeTest2 dat (Geometry geom) aess = do
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
   writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
   return ()
+  where
+    aes = mconcat aess
+    boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
+    guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
+    guidesM = applyScalingToGuides boundsM guidesM2
+    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
+    mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
+    mappedAndScaledData = applyScalingToValues boundsM mappedData2
+
+visualize :: Show s => [s] -> Geometry -> [Aesthetic s] -> Str
+visualize dat (Geometry geom) aess =
+  let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
+      ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
+      axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
+      finalD = mconcat [dataD, axesD, ticksD]
+      svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
+  in svgS
   where
     aes = mconcat aess
     boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
