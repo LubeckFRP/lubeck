@@ -18,7 +18,6 @@ import           Data.Maybe
 import           Data.Monoid
 
 import qualified Data.JSString
-import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
 import qualified Web.VirtualDom                 as VD
@@ -30,7 +29,7 @@ import           Lubeck.App                     (Html, KbdEvents(..))
 import           Lubeck.Forms
 import           Lubeck.Types
 import           Lubeck.FRP
-import           Lubeck.Util                    (contentPanel, newEventOf, eitherToError,
+import           Lubeck.Util                    (contentPanel, newSyncEventOf, eitherToError,
                                                  showJS, withErrorIO)
 
 import           BD.Api
@@ -192,8 +191,7 @@ currentUserIndexPage :: Sink BusyCmd
                      -> Signal (Maybe Auth.AuthInfo)
                      -> IO (Signal Html)
 currentUserIndexPage busySink notifSink ipcSink userS authS = do
-  (actionsSink', actionEvents)       <- newEventOf (undefined                     :: CurrentUserAction)
-  let actionsSink                    = synchronously . actionsSink'
+  (actionsSink, actionEvents)        <- newSyncEventOf (undefined                     :: CurrentUserAction)
 
   let sessionS                       = liftA2 (liftA2 (,)) userS authS            :: Signal (Maybe Session)
   actionsS                           <- stepperS Nothing (fmap Just actionEvents) :: IO (Signal (Maybe CurrentUserAction))

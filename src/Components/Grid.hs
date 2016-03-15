@@ -18,8 +18,6 @@ import qualified Data.Set as Set
 import           Data.Maybe
 import           Data.Monoid
 
-import           GHCJS.Concurrent               (synchronously)
-
 import qualified Web.VirtualDom.Html            as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events     as Ev
@@ -59,12 +57,9 @@ itemWrapperW opts itemW selectedSet gridSink x =
 
 gridComponent :: Ord a => Maybe GridOptions -> [a] -> Widget a b -> IO (Signal Html, Sink (GridCommand a), Events (GridAction a), Events b)
 gridComponent mbOpts as itemW = do
-  (itemSink', itemEvents)           <- newEventOf (undefined                     :: b)
-  (actionsSink', actionsEvents)     <- newEventOf (undefined                     :: (GridAction a))
-  (lifecycleSink', lifecycleEvents) <- newEventOf (undefined                     :: (GridCommand a))
-  let itemSink                      = synchronously . itemSink'
-  let actionsSink                   = synchronously . actionsSink'
-  let lifecycleSink                 = synchronously . lifecycleSink'
+  (itemSink, itemEvents)            <- newSyncEventOf (undefined                     :: b)
+  (actionsSink, actionsEvents)      <- newSyncEventOf (undefined                     :: (GridAction a))
+  (lifecycleSink, lifecycleEvents)  <- newSyncEventOf (undefined                     :: (GridCommand a))
 
   let selE                          = fmap commandToSelection actionsEvents -- :: Events (Set.Set a -> Set.Set a)
   selectedS                         <- accumS (Set.empty :: Set.Set a) selE

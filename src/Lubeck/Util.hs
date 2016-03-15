@@ -17,6 +17,7 @@ module Lubeck.Util
   -- * FRP/Async
   , newEventOf
   , newSyncEvent
+  , newSyncEventOf
   , reactimateIOAsync
   -- * Errors
   , eitherToError
@@ -158,6 +159,11 @@ showIntegerWithThousandSeparators n = Data.JSString.pack $
 -- | Like newEvent with a type hint.
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf _ = newEvent
+
+newSyncEventOf :: a -> IO (Sink a, Events a)
+newSyncEventOf _ = do
+  (s, e) <- newEvent
+  return (synchronously . s, e)
 
 -- XXX this blocks the whole js thread until a user clicks a dialog button
 -- TODO non-blocking confirm dialog

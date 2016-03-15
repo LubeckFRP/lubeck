@@ -20,8 +20,6 @@ import qualified Prelude
 import           Control.Applicative
 import qualified Data.List
 import           Data.Monoid
-import           GHCJS.Concurrent               (synchronously)
-
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -89,14 +87,14 @@ busyW _ bs = infoPanel $ div []
 -- It will keep showing busy indicator until busy stack will be empty.
 busyIndicatorComponent :: BusyStack -> IO (Signal Html, Sink BusyCmd)
 busyIndicatorComponent initialBusyStack = do
-  (externalSink :: Sink BusyCmd, externalEvents    :: Events BusyCmd) <- newEvent
+  (externalSink, externalEvents) <- newSyncEventOf (undefined :: BusyCmd)
 
-  let busyCmds = fmap applyBusyCmd externalEvents  :: Events (BusyStack -> BusyStack)
+  let busyCmds                   = fmap applyBusyCmd externalEvents  :: Events (BusyStack -> BusyStack)
 
-  busyStackS   <- accumS initialBusyStack busyCmds :: IO (Signal BusyStack)
-  let htmlS    = fmap (busyW emptySink) busyStackS
+  busyStackS                     <- accumS initialBusyStack busyCmds :: IO (Signal BusyStack)
+  let htmlS                      = fmap (busyW emptySink) busyStackS
 
-  return (htmlS, (synchronously . externalSink))
+  return (htmlS, externalSink)
 
   where
     applyBusyCmd :: BusyCmd -> (BusyStack -> BusyStack)
