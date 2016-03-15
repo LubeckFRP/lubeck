@@ -339,7 +339,8 @@ linear = Scale
   -- TODO resize LB to 0?
   , scaleBounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
   -- TODO something nicer
-  , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, toStr v)) $ sortNub vs
+  , scaleGuides   = \vs -> [(0, "0"), (1, "1")]
+  -- , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, toStr v)) $ sortNub vs
   , scaleBaseName = "linear"
   }
   where
