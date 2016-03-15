@@ -64,6 +64,7 @@ import qualified Data.Time
 import qualified Data.Time.Format
 import Data.Proxy
 import Data.Functor.Identity
+import qualified Data.Maybe
 
 import Linear.Vector
 import Linear.Affine
@@ -522,15 +523,66 @@ m ! k = maybe 0 id $ Data.Map.lookup k m
 (?) :: (Monoid b, Ord k) => Map k b -> k -> b
 m ? k = maybe mempty id $ Data.Map.lookup k m
 
+(?!) :: (Ord k) => Map k b -> k -> Maybe b
+m ?! k = Data.Map.lookup k m
+
 -- TODO remove (~ Identity) restrictions
 line :: Geometry
-line = Geometry $ \ms -> Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+line = Geometry tot
+  where
+    -- All color values in the dataset or Nothing if there are none
+    colors :: [Map Key Double] -> Maybe [Double]
+    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+      [] -> Nothing
+      xs -> Just xs
+
+    atColor :: Double -> [Map Key Double] -> [Map Key Double]
+    atColor c = filter (\m -> m ?! "color" == Just c)
+
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 fill :: Geometry
-fill = Geometry $ \ms -> Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+fill = Geometry tot
+  where
+    -- All color values in the dataset or Nothing if there are none
+    colors :: [Map Key Double] -> Maybe [Double]
+    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+      [] -> Nothing
+      xs -> Just xs
+
+    atColor :: Double -> [Map Key Double] -> [Map Key Double]
+    atColor c = filter (\m -> m ?! "color" == Just c)
+
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 scatter :: Geometry
-scatter = Geometry $ \ms -> Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+scatter = Geometry tot
+  where
+    -- All color values in the dataset or Nothing if there are none
+    colors :: [Map Key Double] -> Maybe [Double]
+    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+      [] -> Nothing
+      xs -> Just xs
+
+    atColor :: Double -> [Map Key Double] -> [Map Key Double]
+    atColor c = filter (\m -> m ?! "color" == Just c)
+
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
 
 
@@ -578,10 +630,10 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = visualizeTest people scatter
+test = visualizeTest people (mconcat [scatter, line, fill])
   [ mempty
-  , color <~ height
-  , shape <~ gender
+  , color <~ gender
+  -- , shape <~ gender
   , x     <~ name
   , y     <~ age `withScale` linear
   ]
@@ -633,3 +685,24 @@ test6 = do
     , y <~ to snd
     ]
   geom = mconcat [scatter, line, fill]
+
+test7 = visualizeTest dat (mconcat [scatter, line, fill])
+  [ mempty
+  , x     <~ to (\(x,_,_) -> x)
+  , y     <~ to (\(_,x,_) -> x)
+  , color <~ to (\(_,_,x) -> x)
+  ]
+  where
+    dat =
+      [ (0::Int, 1::Int, True)
+      , (1, 3, True)
+      , (2, 0, True)
+      , (3, 2, True)
+      , (5, 9, True)
+
+      , (0, 3, False)
+      , (1, 2, False)
+      , (2, 1, False)
+      , (3, 0, False)
+      , (5, 0, False)
+      ]
