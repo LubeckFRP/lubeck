@@ -44,8 +44,9 @@ module Lubeck.DV.New
   , (<~)
   , (~>)
   -- * Top-level
-  , visualizeTest
   , visualize
+  , visualizeWithStyle
+  , visualizeTest
   )
 where
 
@@ -436,13 +437,14 @@ visualizeTest2 dat (Geometry geom) aess = do
 
 -- TODO return drawing, not styled drawing
 visualize :: Show s => [s] -> Geometry -> [Aesthetic s] -> Drawing
-visualize dat (Geometry geom) aess =
+visualize d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle d g a
+
+visualizeWithStyle :: Show s => [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
+visualizeWithStyle dat (Geometry geom) aess =
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
       ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
       axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
-      finalD = mconcat [dataD, axesD, ticksD]
-      svgS = Lubeck.DV.Styling.withDefaultStyle $ finalD
-  in svgS
+  in mconcat [dataD, axesD, ticksD]
   where
     aes = mconcat aess
     boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
