@@ -56,12 +56,18 @@ import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBus
 
 type Post = SearchPost
 
-data PageAction = UploadImage Post | ShowCreateHTagDialog | HideCreateHTagDialog deriving (Eq)
+data PageAction = UploadImage Post deriving (Eq)
 
-data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
+data ViewMode = ViewMode { form    :: FormViewMode
+                         , results :: ResultsViewMode
+                         , htForm  :: HTFormViewMode }
+data HTFormViewMode  = HTFormVisible | HTFormHidden
+data FormViewMode    = FormVisible | FormHidden
+data ResultsViewMode = ResultsGrid | ResultsMap | ResultsHidden deriving (Show, Eq)
 
-searchForm :: Sink PageAction -> Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
-searchForm pageActionSink dayNow outputSink (trackedHTs, query) =
+
+searchForm :: Sink HTFormViewMode -> Sink PageAction -> Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
+searchForm hViewModeSink pageActionSink dayNow outputSink (trackedHTs, query) =
   panel' $ formPanel_ [Ev.keyup $ \e -> if which e == 13 then outputSink (Submit query) else return () ]  -- event delegation
       [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  outputSink) (PQ.caption query)
       , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  outputSink) (PQ.comment query)
@@ -88,7 +94,7 @@ searchForm pageActionSink dayNow outputSink (trackedHTs, query) =
               (zip (P.tag <$> trackedHTs) (P.tag <$> trackedHTs)) -- FIXME
               (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (fromMaybe "" $ PQ.trackedHashTag query)
 
-          , buttonIcon "New hashtag" "plus" False [Ev.click $ \e -> pageActionSink ShowCreateHTagDialog] ]
+          , buttonIcon "New hashtag" "plus" False [Ev.click $ \e -> hViewModeSink HTFormVisible] ]
 
       , formRowWithLabel "Max number of posts returned"
           [ selectWidget
@@ -132,22 +138,6 @@ itemMarkup output post =
     , E.p [] [ buttonIcon_ "btn-link btn-sm btn-block" "Upload" "cloud-upload" False [Ev.click $ \_ -> output (UploadImage post) ] ]
     ]
 
-resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
-resultsLayout sink gridH mapH mode posts = case mode of
-  ResultsGrid -> wrapper sink gridH True  False posts
-  ResultsMap  -> wrapper sink mapH  False True  posts
-  where
-    wrapper sink x asel bsel posts =
-      let gridTab = if asel then "btn-primary" else "btn-default"
-          mapTab  = if bsel then "btn-primary" else "btn-default"
-      in panel
-        [ header1' "Search Results " (Data.JSString.pack $ "Found " ++ show (fromMaybe 0 (length <$> posts)) ++ " posts")
-        , toolbar' . buttonGroup $ -- TODO tabs widget
-              [ buttonIcon_ gridTab "Grid" "th"    False [Ev.click $ \e -> if asel then return () else sink ResultsGrid]
-              , buttonIcon_ mapTab  "Map"  "map-o" False [Ev.click $ \e -> if bsel then return () else sink ResultsMap] ]
-          , x
-        ]
-
 renderToDOMNode :: Html -> IO DOMNode
 renderToDOMNode n = createElement n -- TODO move to virtual-dom
 
@@ -161,7 +151,7 @@ postToMarkerIO pageActionsSink p = do
   return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
 
 showResultsOnMap mapSink pageActionsSink mbPosts = do
-  mapSink $ ClearMap
+  mapSink ClearMap
   mbms <- mapM (postToMarkerIO pageActionsSink) (fromMaybe [] mbPosts)
   mapSink $ AddClusterLayer $ catMaybes mbms
 
@@ -182,8 +172,8 @@ validateHTag newHTag =
         Success _  -> FormValid
         Failure es -> FormNotValid es
 
-createHTagW :: Sink PageAction -> Widget (FormValid VError, JSString) (Submit JSString)
-createHTagW actionsSink sink (isValid, val) =
+createHTagW :: Sink HTFormViewMode -> Widget (FormValid VError, JSString) (Submit JSString)
+createHTagW hViewModeSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
                                          FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
                                          FormNotValid es -> ([(VD.attribute "disabled") "true"], showValidationErrors es)
@@ -192,15 +182,48 @@ createHTagW actionsSink sink (isValid, val) =
 
       , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
           [ buttonOkIcon "Submit" "hashtag" False canSubmitAttr
-          , button       "Cancel"           False [ Ev.click $ \e -> actionsSink HideCreateHTagDialog ]
+          , button       "Cancel"           False [ Ev.click $ \e -> hViewModeSink HTFormHidden ]
           , inlineMessage cantSubmitMsg ]
       ]
 
 --------------------------------------------------------------------------------
 
-layout :: Bool -> Html -> Html -> Html -> Html
-layout showHT sv rv chtv =
-  E.div [] ([sv, rv] <> (if showHT then [chtv] else []))
+resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
+resultsLayout rViewModeSink gridV mapV mode posts = case mode of
+  ResultsGrid -> wrapper rViewModeSink gridV True  False posts
+  ResultsMap  -> wrapper rViewModeSink mapV  False True  posts
+  where
+    wrapper rViewModeSink x asel bsel posts =
+      let gridTab = if asel then "btn-primary" else "btn-default"
+          mapTab  = if bsel then "btn-primary" else "btn-default"
+          found   = "Found " <> showJS (fromMaybe 0 (length <$> posts)) <> " posts"
+      in panel
+        [ header1' "Search Results " found
+        , toolbar' . buttonGroup $ -- TODO tabs widget
+              [ buttonIcon_ gridTab "Grid" "th"    False [Ev.click $ \e -> if asel then return () else rViewModeSink ResultsGrid]
+              , buttonIcon_ mapTab  "Map"  "map-o" False [Ev.click $ \e -> if bsel then return () else rViewModeSink ResultsMap] ]
+          , x
+        ]
+
+layout fViewModeSink viewMode formV resultsV htFormV = case viewMode of
+  ViewMode FormVisible ResultsHidden HTFormHidden -> panel [formV]
+  ViewMode FormVisible ResultsGrid   HTFormHidden -> panel [formV, resultsV]
+  ViewMode FormVisible ResultsMap    HTFormHidden -> panel [formV, resultsV]
+
+  ViewMode FormHidden  ResultsHidden HTFormHidden -> panel [formPlaceholder fViewModeSink ()]
+  ViewMode FormHidden  ResultsGrid   HTFormHidden -> panel [formPlaceholder fViewModeSink (), resultsV]
+  ViewMode FormHidden  ResultsMap    HTFormHidden -> panel [formPlaceholder fViewModeSink (), resultsV]
+
+  ViewMode FormVisible ResultsHidden HTFormVisible -> panel [formV, htFormV]
+  ViewMode FormVisible ResultsGrid   HTFormVisible -> panel [formV, resultsV, htFormV]
+  ViewMode FormVisible ResultsMap    HTFormVisible -> panel [formV, resultsV, htFormV]
+
+  ViewMode FormHidden  ResultsHidden HTFormVisible -> panel [formPlaceholder fViewModeSink (), htFormV]
+  ViewMode FormHidden  ResultsGrid   HTFormVisible -> panel [formPlaceholder fViewModeSink (), resultsV, htFormV]
+  ViewMode FormHidden  ResultsMap    HTFormVisible -> panel [formPlaceholder fViewModeSink (), resultsV, htFormV]
+
+formPlaceholder :: Widget () FormViewMode
+formPlaceholder fViewModeSink _ = panel' . toolbar' . buttonGroupLeft' $ buttonOk "Edit search" False [Ev.click $ \e -> fViewModeSink FormVisible]
 
 searchInstagram :: Sink BusyCmd
                 -> Sink (Maybe Notification)
@@ -209,12 +232,14 @@ searchInstagram :: Sink BusyCmd
                 -> Signal Nav
                 -> IO (Signal Html)
 searchInstagram busySink notifSink ipcSink mUserNameB navS = do
-  let initPostQuery                = defSimplePostQuery
+  (fViewModeSink, fViewModeEvents) <- newSyncEventOf (undefined                                         :: FormViewMode)
+  (rViewModeSink, rViewModeEvents) <- newSyncEventOf (undefined                                         :: ResultsViewMode)
+  (hViewModeSink, hViewModeEvents) <- newSyncEventOf (undefined                                         :: HTFormViewMode)
 
-  (viewModeSink, viewModeEvents)   <- newSyncEventOf (undefined                                        :: ResultsViewMode)
-  resultsViewModeS                 <- stepperS ResultsGrid viewModeEvents
-
-  now                              <- getCurrentTime
+  fViewModeS                       <- stepperS FormVisible fViewModeEvents                              :: IO (Signal FormViewMode)
+  rViewModeS                       <- stepperS ResultsHidden rViewModeEvents                            :: IO (Signal ResultsViewMode)
+  hViewModeS                       <- stepperS HTFormHidden hViewModeEvents                             :: IO (Signal HTFormViewMode)
+  let viewModeS                    = ViewMode <$> fViewModeS <*> rViewModeS <*> hViewModeS              :: Signal ViewMode
 
   -- load tracked hash tags initially (at the very start of the app, before login)
   (thtsInitSink, thtsInitE)        <- newSyncEventOf (undefined                                        :: [P.TrackedHashtag])
@@ -222,88 +247,88 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
 
   -- update tracked hash tags heuristics. Better: use websockets and FRP to push updates directly from the server
   let n                            = Lubeck.FRP.filter (NavSearch ==) (updates navS)
-  thtsReloadE                      <- withErrorIO notifSink $ fmap (\_ -> P.getTrackedHashtags) n   :: IO (Events [P.TrackedHashtag])
-  thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                        :: IO (Behavior [P.TrackedHashtag])
+  thtsReloadE                      <- withErrorIO notifSink $ fmap (\_ -> P.getTrackedHashtags) n      :: IO (Events [P.TrackedHashtag])
+  thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                            :: IO (Behavior [P.TrackedHashtag])
 
-  (pageActionsSink, pageActionsEvents) <- newSyncEventOf (undefined                                   :: PageAction)
+  (pageActionsSink, pageActionsEvents) <- newSyncEventOf (undefined                                    :: PageAction)
   (srchResSink, srchResEvents)     <- newSyncEventOf (undefined                                        :: Maybe [Post])
 
-  (searchView, searchRequested)    <- formComponentExtra1 thtsB initPostQuery (searchForm pageActionsSink (utctDay now))
+  results                          <- stepperS Nothing srchResEvents                                   :: IO (Signal (Maybe [Post]))
+
+  now                              <- getCurrentTime
+  (formView, searchRequested)      <- formComponentExtra1 thtsB initPostQuery (searchForm hViewModeSink pageActionsSink (utctDay now))
+  (htFormView, createHTagE)        <- formWithValidationComponent validateHTag "" (createHTagW hViewModeSink) :: IO (Signal Html, Events JSString)
 
   (mapView, mapSink, _)            <- mapComponent []
-
-  results                          <- stepperS Nothing srchResEvents                               :: IO (Signal (Maybe [Post]))
-
-  (createHTagView, createHTagE)    <- formWithValidationComponent validateHTag "" (createHTagW pageActionsSink) :: IO (Signal Html, Events JSString)
-  createHTagS                      <- stepperS False (fmap (\x -> if x == ShowCreateHTagDialog then True else False)
-                                                           (Lubeck.FRP.filter (\x -> (x == ShowCreateHTagDialog)
-                                                                                  || (x == HideCreateHTagDialog))
-                                                                              pageActionsEvents))
-
   (gridView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent gridOptions initialItems itemMarkup
+
   subscribeEvent srchResEvents $ gridCmdsSink . Replace . fromMaybe []
   subscribeEvent gridItemsE    pageActionsSink
   subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
 
-  let resultsViewS                 = resultsLayout viewModeSink <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
-  let view                         = layout <$> createHTagS <*> searchView <*> resultsViewS <*> createHTagView         :: Signal Html
-
   -- This will try to destroy the map on any navigation
   -- What we need is to destroy the map just the first time a user navigates out of the search page
   -- TODO history-aware signal
-  let fullNavS                     = liftA2 (,) navS resultsViewModeS                              :: Signal (Nav, ResultsViewMode)
-  let resetMapS                    = fmap mapLifecycle fullNavS                                    :: Signal (Maybe MapCommand)
+  let fullNavS                     = liftA2 (,) navS rViewModeS                                        :: Signal (Nav, ResultsViewMode)
+  let resetMapS                    = fmap mapLifecycle fullNavS                                        :: Signal (Maybe MapCommand)
 
-  subscribeEvent (updates results) (showResultsOnMap mapSink pageActionsSink)
+  subscribeEvent (updates results)   $ showResultsOnMap mapSink pageActionsSink
+  subscribeEvent (updates resetMapS) $ void . forkIO . doResetMap (current results) mapSink pageActionsSink
+  subscribeEvent pageActionsEvents   $ void . forkIO . doPageActions busySink notifSink mUserNameB
+  subscribeEvent createHTagE         $ void . forkIO . doAddHTag busySink notifSink thtsInitSink hViewModeSink
+  subscribeEvent searchRequested     $ void . forkIO . doSearch busySink notifSink srchResSink
+  subscribeEvent searchRequested     $ \_ -> fViewModeSink FormHidden >> rViewModeSink ResultsGrid
 
-  subscribeEvent (updates resetMapS) $ \x -> void . forkIO $ case x of
-    Nothing -> return ()
-    Just x  -> do
-      threadDelay 20000 -- give DOM a litle time?
-      mapSink $ x
+  let resultsView                  = resultsLayout rViewModeSink <$> gridView <*> mapView <*> rViewModeS <*> results :: Signal Html
+  let view                         = layout fViewModeSink <$> viewModeS <*> formView <*> resultsView <*> htFormView  :: Signal Html
 
-      threadDelay 100000 -- give map a little time?
-      curRes <- pollBehavior (current results)
-      showResultsOnMap mapSink pageActionsSink curRes
+  return view
 
-  subscribeEvent pageActionsEvents $ \act -> void . forkIO $ case act of
-    (UploadImage post) -> do
-      mUserName <- pollBehavior mUserNameB
-      case mUserName of
-        Nothing       -> notifSink . Just . blError $ "No account to upload post to"
-        Just userName -> do
-          res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
-          case res of
-            Left e        ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
-            Right (Ok s)  -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (ipcSink ImageLibraryUpdated)
-            Right (Nok s) ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
-    _ -> return ()
+  where
+    initialItems  = []
+    initPostQuery = defSimplePostQuery
+    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
 
-  subscribeEvent createHTagE $ \tag -> void. forkIO $ do
+    doResetMap resultsB mapSink pageActionsSink x = case x of
+      Nothing -> return ()
+      Just x  -> do
+        threadDelay 20000 -- give DOM a litle time?
+        mapSink x
+
+        threadDelay 100000 -- give map a little time?
+        curRes <- pollBehavior resultsB
+        showResultsOnMap mapSink pageActionsSink curRes
+
+    doPageActions busySink notifSink mUserNameB act = case act of
+      (UploadImage post) -> do
+        mUserName <- pollBehavior mUserNameB
+        case mUserName of
+          Nothing       -> notifSink . Just . blError $ "No account to upload post to"
+          Just userName -> do
+            res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+            case res of
+              Left e        ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
+              Right (Ok s)  -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (ipcSink ImageLibraryUpdated)
+              Right (Nok s) ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
+      _ -> return ()
+
+    doAddHTag busySink notifSink thtsInitSink hViewModeSink tag = do
       res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) ("fetch-tag/" <> tag) ()
       case res of
         Left e        ->  notifSink . Just . apiError $ "Failed to submit a new hashtag : " <> showJS e
         Right (Ok s)  -> (notifSink . Just . NSuccess $ "Hashtag added :-) The server will start fetching it within an hour.")
                       >> (void. forkIO $ loadTrackedHashtags notifSink thtsInitSink)
-                      >> (pageActionsSink HideCreateHTagDialog)
+                      >> (hViewModeSink HTFormHidden)
         Right (Nok s) ->  notifSink . Just . apiError $ "Failed to submit a new hashtag : " <> s
 
-  subscribeEvent searchRequested $ \query -> void . forkIO $ do
-    srchResSink $ Nothing -- reset previous search results
-
-    let complexQuery = PostQuery $ complexifyPostQuery query
-    eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
-    case eQueryId of
-      Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
-      Right queryId -> void . forkIO $ do
-        eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
-        case eitherPosts of
-          Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-          Right ps -> srchResSink $ Just ps
-    return ()
-
-  return view
-
-  where
-    initialItems = []
-    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
+    doSearch busySink notifSink srchResSink query = do
+      srchResSink $ Nothing -- reset previous search results
+      let complexQuery = PostQuery $ complexifyPostQuery query
+      eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
+      case eQueryId of
+        Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
+        Right queryId -> void . forkIO $ do
+          eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
+          case eitherPosts of
+            Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
+            Right ps -> srchResSink $ Just ps
