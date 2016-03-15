@@ -1,9 +1,4 @@
-
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TupleSections              #-}
 
 module BDPlatform.Pages.Search.Instagram
   ( searchInstagram
@@ -28,13 +23,8 @@ import           GHCJS.Types                    (JSString)
 
 import qualified Web.VirtualDom                 as VD
 import           Web.VirtualDom                 (createElement, DOMNode)
-import           Web.VirtualDom.Html            (a, button, div, form,
-                                                 h1, img, label, p,
-                                                 text)
 import qualified Web.VirtualDom.Html            as E
-import           Web.VirtualDom.Html.Attributes (class_, href, src, target )
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (click, keyup)
 import qualified Web.VirtualDom.Html.Events     as Ev
 
 import           Lubeck.App                     (Html)
@@ -43,7 +33,7 @@ import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    (contentPanel, newSyncEventOf,
+import           Lubeck.Util                    (newSyncEventOf,
                                                  showIntegerWithThousandSeparators,
                                                  showJS, which, withErrorIO)
 
@@ -54,7 +44,7 @@ import qualified BD.Data.SearchPost             as P
 import           BD.Query.PostQuery
 import qualified BD.Query.PostQuery             as PQ
 import           BD.Types
-import qualified BDPlatform.HTMLCombinators     as HC
+import           BDPlatform.HTMLCombinators
 import           BDPlatform.Validators
 
 
@@ -70,13 +60,9 @@ data PageAction = UploadImage Post | ShowCreateHTagDialog | HideCreateHTagDialog
 
 data ResultsViewMode = ResultsGrid | ResultsMap deriving (Show, Eq)
 
--- TODO finish
 searchForm :: Sink PageAction -> Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
 searchForm pageActionSink dayNow outputSink (trackedHTs, query) =
-  contentPanel $
-    div [ class_ "form-horizontal"
-        , keyup $ \e -> if which e == 13 then outputSink (Submit query) else return ()
-        ]  -- event delegation
+  panel' $ formPanel_ [Ev.keyup $ \e -> if which e == 13 then outputSink (Submit query) else return () ]  -- event delegation
       [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  outputSink) (PQ.caption query)
       , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  outputSink) (PQ.comment query)
       , longStringWidget "Hashtag"   False (contramapSink (\new -> DontSubmit $ query { hashTag = new })  outputSink) (PQ.hashTag query)
@@ -85,88 +71,66 @@ searchForm pageActionSink dayNow outputSink (trackedHTs, query) =
       , integerIntervalWidget "Poster followers"    (contramapSink (\new -> DontSubmit $ query { followers = new }) outputSink) (PQ.followers query)
       , dateIntervalWidget    dayNow "Posting date" (contramapSink (\new -> DontSubmit $ query { date = new }) outputSink)      (PQ.date query)
 
-      , div [ class_ "form-group"  ]
-        [ label [class_ "control-label col-xs-2"] [text "Sort by" ]
-        , div [class_ "col-xs-10 form-inline"]
-            [ selectWidget
-                [ (PostByFollowers, "Poster followers")
-                , (PostByLikes,     "Likes")
-                , (PostByComments,  "Comments")
-                , (PostByCreated,   "Posting time") ]
-                (contramapSink (\new -> DontSubmit $ query { orderBy = new }) outputSink) (PQ.orderBy query)
-            , selectWidget
-                [ (Desc,  "from highest to lowest")
-                , (Asc,   "from lowest to highest") ]
-                (contramapSink (\new -> DontSubmit $ query { direction = new }) outputSink) (PQ.direction query)
-            ]
-        ]
+      , formRowWithLabel "Sort by"
+          [ selectWidget
+              [ (PostByFollowers, "Poster followers")
+              , (PostByLikes,     "Likes")
+              , (PostByComments,  "Comments")
+              , (PostByCreated,   "Posting time") ]
+              (contramapSink (\new -> DontSubmit $ query { orderBy = new }) outputSink) (PQ.orderBy query)
+          , selectWidget
+              [ (Desc,  "from highest to lowest")
+              , (Asc,   "from lowest to highest") ]
+              (contramapSink (\new -> DontSubmit $ query { direction = new }) outputSink) (PQ.direction query) ]
 
-      , div [ class_ "form-group"  ]
-        [ label [class_ "control-label col-xs-2"] [text "Tracked hashtags" ]
-        , div [class_ "col-xs-10 form-inline"]
-            [ selectWithPromptWidget
-                (zip (P.tag <$> trackedHTs) (P.tag <$> trackedHTs)) -- FIXME
-                (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (Data.Maybe.fromMaybe "" $ PQ.trackedHashTag query)
+      , formRowWithLabel "Tracked hashtags"
+          [ selectWithPromptWidget
+              (zip (P.tag <$> trackedHTs) (P.tag <$> trackedHTs)) -- FIXME
+              (contramapSink (\new -> DontSubmit $ query { trackedHashTag = new }) outputSink) (fromMaybe "" $ PQ.trackedHashTag query)
 
-            , HC.buttonIcon "New hashtag" "plus" False [click $ \e -> pageActionSink ShowCreateHTagDialog]
-            ]
-        ]
+          , buttonIcon "New hashtag" "plus" False [Ev.click $ \e -> pageActionSink ShowCreateHTagDialog] ]
 
-      , div [ class_ "form-group"  ]
-        [ label [class_ "control-label col-xs-2"] [text "Max number of posts returned" ]
-        , div [class_ "col-xs-10 form-inline"]
-            [ selectWidget
-                [ (50,  "50")
-                , (100, "100")
-                , (200, "200")
-                , (400, "400") ]
-                (contramapSink (\new -> DontSubmit $ query { limit = new }) outputSink) (PQ.limit query)
-            ]
-        ]
+      , formRowWithLabel "Max number of posts returned"
+          [ selectWidget
+              [ (50,  "50")
+              , (100, "100")
+              , (200, "200")
+              , (400, "400") ]
+              (contramapSink (\new -> DontSubmit $ query { limit = new }) outputSink) (PQ.limit query) ]
 
-      , div [class_ "form-group"]
-          [ div [class_ "col-xs-offset-2 col-xs-10"]
-              [ button [A.class_ "btn btn-success", click $ \e -> outputSink $ Submit query]
-                  [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
-                  , text "Search!"
-                  ] ]
-          ]
+      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
+          [ buttonOkIcon "Search!" "instagram" False [Ev.click $ \e -> outputSink $ Submit query] ]
       ]
 
 itemMarkup :: Widget Post PageAction
 itemMarkup output post =
-  div [ class_ "thumbnail custom-thumbnail-1 fit-text" ]
-    [ a [ target "_blank"
-        , href $ Data.Maybe.fromMaybe (P.url post) (P.ig_web_url post) ]
-        [ imgFromWidthAndUrl (P.thumbnail_url post) [{-fixMissingImage-}] ]
+  E.div [ A.class_ "thumbnail custom-thumbnail-1 fit-text" ]
+    [ E.a [ A.target "_blank"
+          , A.href $ fromMaybe (P.url post) (P.ig_web_url post) ]
+          [ E.img [ A.class_ "img-thumbnail", A.src (P.thumbnail_url post)] [] ]
 
-    , p [] [ a [ target "_blank"
-               , href $ "https://www.instagram.com/" <> P.username post]
-               [text $ "@" <> P.username post] ]
+    , E.p [] [ E.a [ A.target "_blank"
+                   , A.href $ "https://www.instagram.com/" <> P.username post]
+                   [ E.text $ "@" <> P.username post] ]
 
-    , p [class_ "text-center"]
-           [ E.div [ class_ "fa fa-heart badge badge-info"
-                   , A.style "margin: 0 3px;"
-                   , A.title "Likes count" ]
-                   [ E.span [class_ "xbadge"
-                            , A.style "margin-left: 5px;"]
-                            [text $ showIntegerWithThousandSeparators (P.like_count post)] ]
+    , E.p [ A.class_ "text-center"]
+            [ E.div [ A.class_ "fa fa-heart badge badge-info"
+                    , A.style "margin: 0 3px;"
+                    , A.title "Likes count" ]
+                    [ E.span [ A.class_ "xbadge"
+                             , A.style "margin-left: 5px;"]
+                             [ E.text $ showIntegerWithThousandSeparators (P.like_count post)] ]
 
-           , E.div [ class_ "fa fa-comments-o badge badge-info"
-                   , A.title "Comments count"
-                   , A.style "margin: 0 3px;" ]
-                   [ E.span [class_ "xbadge"
-                            , A.style "margin-left: 5px;"]
-                            [text $ showIntegerWithThousandSeparators (P.comment_count post)] ]
-           ]
+            , E.div [ A.class_ "fa fa-comments-o badge badge-info"
+                    , A.title "Comments count"
+                    , A.style "margin: 0 3px;" ]
+                    [ E.span [ A.class_ "xbadge"
+                             , A.style "margin-left: 5px;"]
+                             [ E.text $ showIntegerWithThousandSeparators (P.comment_count post)] ]
+            ]
 
-    , p [] [ button [ A.class_ "btn btn-link btn-sm btn-block"
-                    , click $ \_ -> output (UploadImage post) ]
-                    [ E.i [class_ "fa fa-cloud-upload", A.style "margin-right: 5px;"] []
-                    , text "Upload" ] ]
+    , E.p [] [ buttonIcon_ "btn-link btn-sm btn-block" "Upload" "cloud-upload" False [Ev.click $ \_ -> output (UploadImage post) ] ]
     ]
-  where
-    imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
 resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
 resultsLayout sink gridH mapH mode posts = case mode of
@@ -174,24 +138,15 @@ resultsLayout sink gridH mapH mode posts = case mode of
   ResultsMap  -> wrapper sink mapH  False True  posts
   where
     wrapper sink x asel bsel posts =
-      contentPanel $
-        div []
-          [ div [class_ "page-header"]
-              [ h1 [] [ text "Search Results "
-                      , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (Data.Maybe.fromMaybe 0 (length <$> posts)) ++ " posts"]
-                      ] ]
-          , div [A.style "text-align: center;"]
-              [ div [class_ "btn-group", A.style "margin-bottom: 20px;"]
-                  [ button [ class_ ("btn " <> if asel then "btn-primary" else "btn-default")
-                           , click $ \e -> if asel then return () else sink ResultsGrid]
-                              [ E.i [class_ "fa fa-th", A.style "margin-right: 5px;"] []
-                              , text "Grid"]
-                  , button [ class_ ("btn " <> if bsel then "btn-primary" else "btn-default")
-                           , click $ \e -> if bsel then return () else sink ResultsMap]
-                              [ E.i [class_ "fa fa-map-o", A.style "margin-right: 5px;"] []
-                              , text "Map"] ]
-              , x ]
-          ]
+      let gridTab = if asel then "btn-primary" else "btn-default"
+          mapTab  = if bsel then "btn-primary" else "btn-default"
+      in panel
+        [ header1' "Search Results " (Data.JSString.pack $ "Found " ++ show (fromMaybe 0 (length <$> posts)) ++ " posts")
+        , toolbar' . buttonGroup $ -- TODO tabs widget
+              [ buttonIcon_ gridTab "Grid" "th"    False [Ev.click $ \e -> if asel then return () else sink ResultsGrid]
+              , buttonIcon_ mapTab  "Map"  "map-o" False [Ev.click $ \e -> if bsel then return () else sink ResultsMap] ]
+          , x
+        ]
 
 renderToDOMNode :: Html -> IO DOMNode
 renderToDOMNode n = createElement n -- TODO move to virtual-dom
@@ -207,8 +162,8 @@ postToMarkerIO pageActionsSink p = do
 
 showResultsOnMap mapSink pageActionsSink mbPosts = do
   mapSink $ ClearMap
-  mbms <- mapM (postToMarkerIO pageActionsSink) (Data.Maybe.fromMaybe [] mbPosts)
-  mapSink $ AddClusterLayer $ Data.Maybe.catMaybes mbms
+  mbms <- mapM (postToMarkerIO pageActionsSink) (fromMaybe [] mbPosts)
+  mapSink $ AddClusterLayer $ catMaybes mbms
 
 --------------------------------------------------------------------------------
 
@@ -232,13 +187,13 @@ createHTagW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
                                          FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
                                          FormNotValid es -> ([(VD.attribute "disabled") "true"], showValidationErrors es)
-  in HC.modalPopup' $ HC.formPanel
+  in modalPopup' $ formPanel
       [ longStringWidget "New hashtag" True (contramapSink (\new -> DontSubmit new ) sink) val
 
-      , HC.formRowWithNoLabel' . HC.toolbarLeft' . HC.buttonGroupLeft $
-          [ HC.buttonOkIcon "Submit" "hashtag" False canSubmitAttr
-          , HC.button       "Cancel"           False [ Ev.click $ \e -> actionsSink HideCreateHTagDialog ]
-          , HC.inlineMessage cantSubmitMsg ]
+      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
+          [ buttonOkIcon "Submit" "hashtag" False canSubmitAttr
+          , button       "Cancel"           False [ Ev.click $ \e -> actionsSink HideCreateHTagDialog ]
+          , inlineMessage cantSubmitMsg ]
       ]
 
 --------------------------------------------------------------------------------
