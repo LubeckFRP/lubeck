@@ -1,8 +1,16 @@
 
-{-# LANGUAGE TemplateHaskell, RankNTypes, NoMonomorphismRestriction, MultiParamTypeClasses
-  , FunctionalDependencies, TypeFamilies, GeneralizedNewtypeDeriving, OverloadedStrings
-  , NoImplicitPrelude, TupleSections
+{-# LANGUAGE
+    TemplateHaskell
+  , RankNTypes
+  , NoMonomorphismRestriction
+  , MultiParamTypeClasses
+  , FunctionalDependencies
+  , TypeFamilies
+  , GeneralizedNewtypeDeriving
+  , OverloadedStrings
+  , TupleSections
   , FlexibleContexts
+  , NoImplicitPrelude
   #-}
 
 module Lubeck.DV.New
@@ -51,35 +59,31 @@ module Lubeck.DV.New
 where
 
 import BasePrelude
-import Data.Functor.Contravariant
-import Control.Monad.Zip(mzipWith)
-import Data.Map(Map)
-import qualified Data.Map
 import Control.Lens(Getter, to)
 import Control.Lens.Operators hiding ((<~))
 import Control.Lens.TH
-import qualified Data.List
-import Data.Time(UTCTime)
-import qualified Data.Time
-import qualified Data.Time.Format
-import Data.Proxy
+import Data.Functor.Contravariant
 import Data.Functor.Identity
-import qualified Data.Maybe
-
-import Linear.Vector
+import Data.Map(Map)
+import Data.Proxy
+import Data.Time(UTCTime)
 import Linear.Affine
--- import Linear.Matrix hiding (translation)
--- import Linear.Metric -- Needed?
 import Linear.V0
 import Linear.V1
 import Linear.V2
 import Linear.V3
 import Linear.V4
+import Linear.Vector
+import qualified Data.List
+import qualified Data.Map
+import qualified Data.Maybe
+import qualified Data.Time
+import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
+
 import Lubeck.Drawing (Drawing, Str, toStr, packStr, unpackStr)
-import qualified Lubeck.Drawing
-import Lubeck.DV.Drawing ()
 import Lubeck.DV.Styling (StyledT, Styled)
+import qualified Lubeck.Drawing
 import qualified Lubeck.DV.Drawing
 import qualified Lubeck.DV.Styling
 
@@ -99,14 +103,10 @@ blend = (<>)
 -- so i.e.
 --  cross (1,2) (3,4) => (1,2,3,4)
 --  cross {foo=1, bar=""} {baz=()} => {foo=1, bar="", baz=()}
--- TODO generic long zip! (Traversable, ZipList Applicative?)
 
 -- | Concatenate rows left-to-right. If one row is shorter it is repeated.
 crossWith :: (a -> b -> c) -> [a] -> [b] -> [c]
-crossWith f a b = take (length a `max` length b) $ mzipWith f (cyc a) (cyc b)
-  where
-    cyc = cycle
-    -- cyc xs = xs <> cyc xs
+crossWith f a b = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
 
 
@@ -122,23 +122,35 @@ instance Show Key where
 {-|
 An 'Aesthetic' maps a /row/ (also known as a /tuple/ or /record/) to a set of aesthetic
 attribute such as position, color or shape.
-
-You can think of it as a function @a -> Key -> Maybe Double@, or as a
-pair of a 'Scale' and an 'Key' (as whitnessed by 'customAesthetic').
 -}
 data Aesthetic a = Aesthetic
   { aestheticMapping       :: [a] -> a -> Map Key Double
+      -- ^ Given dataset @vs@, map single value @v@ into the real domain.
+      --
+      --   See also 'scaleMapping'.
   , aestheticBounds        :: [a] -> Map Key (Double, Double)
+      -- ^ Given a data set, return @(min, max)@ values to visualize (assuming
+      --   the same mapping as 'aestheticMapping').
+      --
+      --   See also 'scaleBounds'.
   , aestheticGuides        :: [a] -> Map Key [(Double, Str)]
-  , aestheticScaleBaseName :: [a] -> Map Key Str -- name of scale used to plot the given aesthetic
+      -- ^ Given a data set, return a set of values in the real domain (assuming
+      ---  the same mapping as 'scaleMapping') and their textual representation.
+      --   Typically used for generating ticks and legends.
+      --
+      --   If you don't want any guides, just return 'mempty'.
+      --
+      --   See also 'scaleGuides'.
+  , aestheticScaleBaseName :: [a] -> Map Key Str
+      -- ^ Name of scale used to plot the given aesthetic.
+      --
+      --   See also 'scaleBaseName'.
   }
 
-{-
-  The empty 'Aesthetic' does not map anything.
-    Appending aesthetics interleaves their mappings. If bothe aesthetics provide a mapping for the same key
-    (i.e. both provide "color"), the left-most is always chosen.
+{-|
+  - 'mempty' does not map anything.
+  - 'mappend' interleaves bindings (left-biased).
 -}
-
 instance Monoid (Aesthetic a) where
   mempty = Aesthetic mempty mempty mempty mempty
   mappend (Aesthetic a1 a2 a3 a4) (Aesthetic b1 b2 b3 b4) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
@@ -158,11 +170,12 @@ customAesthetic n = Aesthetic convert genBounds genGuides getScaleBaseName
       []    -> ""
       (v:_) -> scaleBaseName (scale v)
 
--- Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger type.
---
--- >>> contramap fst :: Aesthetic a -> Aesthetic (a, b)
--- >>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
---
+{-
+Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger type.
+
+>>> contramap fst :: Aesthetic a -> Aesthetic (a, b)
+>>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
+-}
 instance Contravariant Aesthetic where
   contramap f (Aesthetic g h i j)
     = Aesthetic
@@ -207,7 +220,7 @@ data Scale a = Scale
       -- ^ Given dataset @vs@, map single value @v@ into the real domain.
       --   You can construct a linear scale using @\_ x -> x@.
   , scaleBounds   :: [a] -> (Double, Double)
-      -- ^ Given a data set, return @(min, max)@ values to visualize (assuming.
+      -- ^ Given a data set, return @(min, max)@ values to visualize (assuming
       --   the same mapping as 'scaleMapping').
       --
       --   If you don't want automatic rescaling, use a constant value.
@@ -217,8 +230,9 @@ data Scale a = Scale
       --   not be visible. On the other hand, if the given bounds are too large
       --   the visualized data may not be intelligeble.
   , scaleGuides    :: [a] -> [(Double, Str)]
-      -- ^ Given a data set, return guide labels and positions (assuming.
-      --   the same mapping as 'scaleMapping').
+      -- ^ Given a data set, return a set of values in the real domain (assuming
+      ---  the same mapping as 'scaleMapping') and their textual representation.
+      --   Typically used for generating ticks and legends.
       --
       --   If you don't want any guides, just return 'mempty'.
   , scaleBaseName :: Str
