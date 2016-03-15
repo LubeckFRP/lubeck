@@ -14,18 +14,11 @@ import           Control.Applicative
 import qualified Data.List
 import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid
-import           Data.String                    (fromString)
 
-import           GHCJS.Types                    (JSString, JSVal)
-import           Web.VirtualDom.Html            (Property, br, button, div,
-                                                 form, h1, hr, img, p, table,
-                                                 tbody, td, text, th, thead, tr)
+import           Web.VirtualDom.Html            (Property)
 import qualified Web.VirtualDom.Html            as E
-import           Web.VirtualDom.Html.Attributes (class_, src, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, keyup,
-                                                 preventDefault,
-                                                 stopPropagation, submit, value)
+import           Web.VirtualDom.Html.Events     (click, keyup, value)
 
 import           Lubeck.App                     (Html, KbdEvents(..))
 import           Lubeck.Forms
@@ -37,11 +30,12 @@ import qualified BD.Data.Account                as Account
 import qualified BD.Data.Image                  as Im
 
 import           BDPlatform.Types
+import           BDPlatform.HTMLCombinators
 import           BD.Api
 import           BD.Types
 import           BD.Utils
-import           Components.BusyIndicator       (BusyCmd (..), withBusy,
-                                                 withBusy2)
+import           Components.Grid
+import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2)
 import           Lubeck.Util
 import           Lubeck.Types
 
@@ -65,38 +59,24 @@ instance Show ImgLibraryActions where
 
 viewImageW :: Widget Im.Image ImgLibraryActions
 viewImageW sink image = do
-  contentPanel $
-    div [ class_ "library-image-view"
-        , keyup handleKeys ]
-      [ div [class_ "btn-toolbar"]
-          [ div [class_ "btn-group"]
-              [ button [class_ "btn btn-link", click $ \_ -> sink $ ViewPrevImg image]
-                  [ E.i [class_ "fa fa-chevron-left", A.style "margin-right: 5px"] []
-                  , text "Prev image" ]
-              , button [class_ "btn btn-link", click $ \_ -> sink $ ViewNextImg image]
-                  [ text "Next image"
-                  , E.i [class_ "fa fa-chevron-right", A.style "margin-left: 5px"] [] ]
-              , button [class_ "btn btn-link", click $ \_ -> sink $ ViewGalleryIndex]
-                  [ E.i [class_ "fa fa-undo", A.style "margin-right: 5px"] []
-                  , text "Back to library"] ]
+  panel' $
+    E.div [ A.class_ "library-image-view" , keyup handleKeys ]
+      [ toolbarLeft
+          [ buttonGroupLeft
+              [ buttonLinkIcon "Prev image"      "chevron-left"  False [click $ \_ -> sink $ ViewPrevImg image]
+              , buttonLinkIcon "Next image"      "chevron-right" False [click $ \_ -> sink $ ViewNextImg image]
+              , buttonLinkIcon "Back to library" "undo"          False [click $ \_ -> sink $ ViewGalleryIndex] ]
 
-          , div [class_ "btn-group"]
-              [ div [class_ "btn"] [ text "Prediction score:" ]
-              , div [class_ "btn image-prediction"]
-                  [showImagePred $ Im.prediction image] ]
+          , buttonGroupLeft
+              [ E.div [A.class_ "btn"] [ E.text "Prediction score:" ]
+              , E.div [A.class_ "btn image-prediction"] [showImagePred $ Im.prediction image] ]
 
-          , div [class_ "btn-group"]
-              [ button [class_ "btn btn-primary", click $ \_ -> sink $ EnhanceImg image]
-                  [ E.i [class_ "fa fa-star", A.style "margin-right: 5px"] []
-                  , text "Enhance"]
-              , button [class_ "btn btn-danger",  click $ \_ -> sink $ DeleteImg  image]
-                  [ E.i [class_ "fa fa-trash-o", A.style "margin-right: 5px"] []
-                  , text "Delete"] ]
+          , buttonGroupLeft
+              [ buttonPrimaryIcon "Enhance" "star"    False [click $ \_ -> sink $ EnhanceImg image]
+              , buttonDangerIcon  "Delete"  "trash-o" False [click $ \_ -> sink $ DeleteImg image] ]
           ]
-
-      , div [class_ "x-media"] [ E.img [src imgUrl, class_ "library-image-view-img"] [] ]
+      , E.div [A.class_ "x-media"] [ E.img [A.src imgUrl, A.class_ "library-image-view-img"] [] ]
       ]
-
   where
     imgUrl = fromMaybe "no url" (Im.fb_image_url image)
 
@@ -105,53 +85,38 @@ viewImageW sink image = do
       39 -> sink $ ViewNextImg image -- ->
       x  -> print $ "Unknown key: " <> showJS x
 
-galleryW :: Widget [Im.Image] ImgLibraryActions
-galleryW _ [] = contentPanel $ text "No images in library"
-
-galleryW actionsSink ims =
-  contentPanel $ div []
-    [ div [class_ "btn-toolbar"]
-        [ button [class_ "btn btn-link", click $ \_ -> actionsSink ReloadLibrary]
-            [ E.i [class_ "fa fa-cloud-download", A.style "margin-right: 5px"] []
-            , text "Refresh library"]
-        ]
-    , div [A.style "margin-left: -20px;"] (map (imageCell actionsSink) ims) ]
-
 imageCell actionsSink image =
-  div [class_ "thumbnail custom-thumbnail-1 fit-text"]
-      [ div [class_ "thumbnail-wrapper"] [ imgWithAttrs actionsSink image [] ]
-      , p [class_ "image-prediction"]    [ showImagePred $ Im.prediction image ] ]
+  E.div [A.class_ "thumbnail custom-thumbnail-1 fit-text"]
+      [ E.div [A.class_ "thumbnail-wrapper"] [ imgWithAttrs actionsSink image [] ]
+      , E.p [A.class_ "image-prediction"]    [ showImagePred $ Im.prediction image ] ]
 
-showImagePred Nothing  = text "No prediction"
+showImagePred Nothing  = E.text "No prediction"
 showImagePred (Just x) = renderScore x
 
 renderScore :: Double -> Html
 renderScore x =
-  div [class_ "score-container badge", A.title $ "Score: " <> showJS x]
-    [ div [class_ "neg-score"] [ (if x < 0 then negativeScore x else negativeScore 0) ]
-    , div [class_ "pos-score"] [ (if x >= 0 then positiveScore x else positiveScore 0) ] ]
+  E.div [A.class_ "score-container badge", A.title $ "Score: " <> showJS x]
+    [ E.div [A.class_ "neg-score"] [ (if x < 0 then negativeScore x else negativeScore 0) ]
+    , E.div [A.class_ "pos-score"] [ (if x >= 0 then positiveScore x else positiveScore 0) ] ]
 
   where
-    positiveScore x = div [ class_ "good-score-bar"
-                          , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px" ] []
-    negativeScore x = div [ class_ "bad-score-bar"
-                          , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px" ] []
+    positiveScore x = E.div [ A.class_ "good-score-bar"
+                            , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px" ] []
+    negativeScore x = E.div [ A.class_ "bad-score-bar"
+                            , A.style $ "width: " <> showJS (calcScoreBarWidthPx x 69 0.2) <> "px" ] []
 
     -- current value, max width in px, max value
     calcScoreBarWidthPx :: Double -> Int -> Double -> Int
     calcScoreBarWidthPx x maxpx maxscale = abs . round $ (fromIntegral maxpx) * x / maxscale
-
-showImageHash Nothing  = [text "No hash"]
-showImageHash (Just x) = [E.span [] [text "Hash: "], E.span [class_ "image-hash-value"] [text x]]
 
 imgWithAttrs :: Sink ImgLibraryActions -> Im.Image -> [Property] -> Html
 imgWithAttrs actionsSink image attrs =
   let imgUrl   = case Im.fb_thumb_url image of
                     Nothing  -> Im.fb_image_url image
                     Just url -> Just url
-  in img ([ class_ "img-thumbnail"
+  in E.img ([ A.class_ "img-thumbnail"
           , click (\_ -> actionsSink (ViewImg image))
-          , src (imgOrDefault imgUrl)] ++ attrs) []
+          , A.src (imgOrDefault imgUrl)] ++ attrs) []
   where
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
@@ -227,10 +192,6 @@ processActions busySink notifSink actionsSink2 imsB accB ReloadLibrary =
 
 processActions busySink notifSink actionsSink2 imsB accB (ViewImg i) = return $ Just i
 
-notImp notifSink x = do
-  notifSink . Just . notImplError . showJS $ x
-  return Nothing
-
 -- backend
 
 getImages :: Account.Account -> IO (Either AppError [Im.Image])
@@ -251,25 +212,29 @@ imageLibrary :: Sink BusyCmd
              -> Events Account.Account
              -> IO (Signal Html, Behavior (Maybe [Im.Image]), Sink KbdEvents)
 imageLibrary busySink notifSink ipcSink ipcEvents userE = do
-  (actionsSink,  actionsE)  <- newEventOf (undefined :: ImgLibraryActions)
-  (actionsSink2, actionsE2) <- newEventOf (undefined :: ImgLibraryActions)
+  (actionsSink,  actionsE)  <- newSyncEventOf (undefined                                           :: ImgLibraryActions)
+  (actionsSink2, actionsE2) <- newSyncEventOf (undefined                                           :: ImgLibraryActions)
 
-  userB           <- stepper Nothing (fmap Just userE)                                :: IO (Behavior (Maybe Account.Account))
+  userB                     <- stepper Nothing (fmap Just userE)                                   :: IO (Behavior (Maybe Account.Account))
 
-  let ipcLoadImgE = filterJust $ sample userB (FRP.filter (== ImageLibraryUpdated) ipcEvents)
-  let localLIE    = filterJust $ sample userB actionsE2
-  let loadImgE    = userE <> ipcLoadImgE <> localLIE
+  let ipcLoadImgE           = filterJust $ sample userB (FRP.filter (== ImageLibraryUpdated) ipcEvents)
+  let localLIE              = filterJust $ sample userB actionsE2
+  let loadImgE              = userE <> ipcLoadImgE <> localLIE
 
-  galleryE        <- withErrorIO notifSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
-  galleryS        <- stepperS Nothing (fmap Just galleryE)                               :: IO (Signal (Maybe [Im.Image]))
+  galleryE                  <- withErrorIO notifSink $ fmap (withBusy busySink getImages) loadImgE :: IO (Events [Im.Image])
+  galleryB                  <- stepper Nothing (fmap Just galleryE)                                :: IO (Behavior (Maybe [Im.Image]))
 
-  imageE          <- reactimateIOAsync $ fmap (processActions busySink notifSink actionsSink2 (current galleryS) userB) actionsE :: IO (Events (Maybe Im.Image))
+  imageE                    <- reactimateIOAsync $ fmap (processActions busySink notifSink actionsSink2 galleryB userB) actionsE :: IO (Events (Maybe Im.Image))
 
-  imageViewS      <- stepperS Nothing imageE                                          :: IO (Signal (Maybe Im.Image))
-  let imageView   = fmap (fmap (viewImageW actionsSink)) imageViewS                   :: Signal (Maybe Html)
-  let galleryView = fmap ((altW mempty galleryW) actionsSink) galleryS                :: Signal Html
+  imageViewS                <- stepperS Nothing imageE                                             :: IO (Signal (Maybe Im.Image))
+  let imageView             = fmap (fmap (viewImageW actionsSink)) imageViewS                      :: Signal (Maybe Html)
+  (galleryView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent gridOptions initialItems imageCell
 
-  (kbdSink, kbdE) <- newEventOf (undefined :: KbdEvents)
+  subscribeEvent galleryE      $ gridCmdsSink . Replace
+  subscribeEvent gridItemsE    actionsSink
+  subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
+
+  (kbdSink, kbdE)           <- newSyncEventOf (undefined                                           :: KbdEvents)
 
   subscribeEvent kbdE $ \e -> do
     curImage <- pollBehavior (current imageViewS)
@@ -283,11 +248,10 @@ imageLibrary busySink notifSink ipcSink ipcEvents userE = do
         Key 38 -> actionsSink $ ViewGalleryIndex  -- up arrow
         _      -> return ()
 
-  return (layout <$> galleryView <*> imageView, current galleryS, kbdSink)
+  return (layout <$> galleryView <*> imageView, galleryB, kbdSink)
 
   where
-    sample = snapshotWith const
-
-    layout indexView imageView = case imageView of
-      Nothing -> indexView
-      Just v  -> v
+    sample                     = snapshotWith const
+    layout indexView imageView = fromMaybe indexView imageView
+    gridOptions                = Just defaultGridOptions
+    initialItems               = []
