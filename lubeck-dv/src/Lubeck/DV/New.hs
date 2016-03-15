@@ -261,6 +261,10 @@ instance HasScale Name where
 instance HasScale Gender where
   scale = const categorical
 
+-- Questionable, but gives us the ability to treat strings as categorical values.
+instance (Ord a, Show a) => HasScale [a] where
+  scale = const categorical
+
 instance HasScale UTCTime where
   scale = const timeScale
 
