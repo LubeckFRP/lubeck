@@ -337,9 +337,10 @@ linear :: (Real a, Show a) => Scale a
 linear = Scale
   { scaleMapping  = \vs v -> realToFrac v
   -- TODO resize LB to 0?
-  , scaleBounds   = \vs   -> (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
-  -- TODO something nicer
-  , scaleGuides   = \vs -> [(0, "0"), (1, "1")]
+  , scaleBounds   = bounds
+  -- TODO more alternatives
+  , scaleGuides   = guides
+  -- , scaleGuides   = \vs -> [(0, "0"), (1, "1")]
   -- , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, toStr v)) $ sortNub vs
   , scaleBaseName = "linear"
   }
@@ -350,6 +351,36 @@ linear = Scale
     safeMax xs = maximum xs
 
     sortNub = Data.List.nub . Data.List.sort
+
+    bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+    guides vs = fmap (\x -> (x, toStr $ roundTo 5 x)) $ tickCalc 4 (bounds vs)
+
+    -- number of ticks, interval, outpouts ticks
+    tickCalc :: Int -> (Double, Double) -> [Double]
+    tickCalc tickCount (lo, hi) =
+      let range = hi - lo :: Double
+          unroundedTickSize = range/(realToFrac $ tickCount-1)        --  :: Double
+          x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) --  :: Double
+          pow10x = 10**x -- Math.pow(10, x);
+          stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
+          lb = stepSize * realToFrac (floor (lo / stepSize))
+          ub = stepSize * realToFrac (ceiling (hi / stepSize))
+
+      in [lb, lb+stepSize..ub]
+      where
+        exrng = (2.1, 11.5)
+
+    {-|
+    >>> roundTo 5 pi
+    3.14159
+    >>> roundTo 6 pi
+    3.141593
+    >>> roundTo 0 pi
+    3.0
+    -}
+    roundTo :: (Fractional a, RealFrac r) => Int -> r -> a
+    roundTo n f =  (fromInteger $ round $ f * (10^n)) / (10.0^^n)
+
 
 {-|
 A scale for time values.
