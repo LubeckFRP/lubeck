@@ -13,16 +13,12 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import           Control.Lens                   (lens, over, set, view)
 import           Control.Monad                  (void)
 import           Data.Either.Validation
 import qualified Data.List
-import           Data.Map                       (Map)
-import qualified Data.Map                       as Map
 import qualified Data.Maybe
+import           Data.Maybe
 import           Data.Monoid
-import           Data.String                    (fromString)
-import qualified Data.Text                      as T
 import           Data.Time.Calendar             (Day (..))
 import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
@@ -31,33 +27,28 @@ import qualified Data.JSString
 import           GHCJS.Types                    (JSString)
 
 import qualified Web.VirtualDom                 as VD
-import           Web.VirtualDom                 (renderToString, createElement, DOMNode)
-import           Web.VirtualDom.Html            (Property, a, button, div, form,
-                                                 h1, hr, img, input, label, p,
-                                                 table, tbody, td, text, th, tr)
+import           Web.VirtualDom                 (createElement, DOMNode)
+import           Web.VirtualDom.Html            (a, button, div, form,
+                                                 h1, img, label, p,
+                                                 text)
 import qualified Web.VirtualDom.Html            as E
-import           Web.VirtualDom.Html.Attributes (class_, href, src, src, target,
-                                                 width, width)
+import           Web.VirtualDom.Html.Attributes (class_, href, src, target )
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, keyup,
-                                                 preventDefault,
-                                                 stopPropagation, submit, value)
+import           Web.VirtualDom.Html.Events     (click, keyup)
 import qualified Web.VirtualDom.Html.Events     as Ev
 
-import           Lubeck.App                     (Html, runAppReactive)
+import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    (contentPanel, divideFromEnd,
-                                                 newSyncEventOf, showIntegerWithThousandSeparators,
+import           Lubeck.Util                    (contentPanel, newSyncEventOf,
+                                                 showIntegerWithThousandSeparators,
                                                  showJS, which, withErrorIO)
-import           Lubeck.Web.URI                 (getURIParameter)
 
 import           BD.Api
 import           BD.Data.Account                (Account)
-import qualified BD.Data.Account                as Ac
 import           BD.Data.SearchPost             (SearchPost)
 import qualified BD.Data.SearchPost             as P
 import           BD.Query.PostQuery
@@ -68,10 +59,9 @@ import           BDPlatform.Validators
 
 
 import           BDPlatform.Types
+import           Components.Grid
 import           Components.Map
-import           Components.BusyIndicator       (BusyCmd (..),
-                                                 busyIndicatorComponent,
-                                                 withBusy, withBusy2)
+import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2)
 
 
 type Post = SearchPost
@@ -178,13 +168,6 @@ itemMarkup output post =
   where
     imgFromWidthAndUrl url attrs = img ([class_ "img-thumbnail", src url] ++ attrs) []
 
-postSearchResultW :: Widget [Post] PageAction
-postSearchResultW output posts = postTable output posts
-  where
-    postTable :: Widget [Post] PageAction
-    postTable output posts =
-      div [] (map (itemMarkup output) posts)
-
 resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
 resultsLayout sink gridH mapH mode posts = case mode of
   ResultsGrid -> wrapper sink gridH True  False posts
@@ -210,9 +193,6 @@ resultsLayout sink gridH mapH mode posts = case mode of
               , x ]
           ]
 
-renderToString' :: Html -> IO JSString
-renderToString' n = renderToString (div [] [n])
-
 renderToDOMNode :: Html -> IO DOMNode
 renderToDOMNode n = createElement n -- TODO move to virtual-dom
 
@@ -222,8 +202,6 @@ mapLifecycle (_, _)                   = Just MapDestroy
 
 postToMarkerIO :: Sink PageAction -> Post -> IO (Maybe Marker)
 postToMarkerIO pageActionsSink p = do
-  -- minfo <- renderToString' $ itemMarkup pageActionsSink p
-  -- return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonString minfo)
   minfo <- renderToDOMNode $ itemMarkup pageActionsSink p
   return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
 
@@ -307,7 +285,11 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
                                                                                   || (x == HideCreateHTagDialog))
                                                                               pageActionsEvents))
 
-  let gridView                     = fmap ((altW (text "") postSearchResultW) pageActionsSink) results :: Signal Html
+  (gridView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent gridOptions initialItems itemMarkup
+  subscribeEvent srchResEvents $ gridCmdsSink . Replace . fromMaybe []
+  subscribeEvent gridItemsE    pageActionsSink
+  subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
+
   let resultsViewS                 = resultsLayout viewModeSink <$> gridView <*> mapView <*> resultsViewModeS <*> results :: Signal Html
   let view                         = layout <$> createHTagS <*> searchView <*> resultsViewS <*> createHTagView         :: Signal Html
 
@@ -366,3 +348,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
     return ()
 
   return view
+
+  where
+    initialItems = []
+    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
