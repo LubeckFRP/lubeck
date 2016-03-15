@@ -462,32 +462,30 @@ visualizeTest dat geom aess = do
   return ()
 
 visualizeTest2 :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
-visualizeTest2 dat (Geometry geom) aess = do
-  let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
-  let ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-  let axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
-  let finalD = mconcat [dataD, axesD, ticksD]
+visualizeTest2 dat geom aess = do
+  let finalD = visualizeWithStyle ["FIRST AXIS", "SECOND AXIS"] dat geom aess
   let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
   writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
   return ()
   where
-    aes = mconcat aess
-    boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
-    guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
-    guidesM = applyScalingToGuides boundsM guidesM2
+    -- aes = mconcat aess
+    -- boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
+    -- guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
+    -- guidesM = applyScalingToGuides boundsM guidesM2
     -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-    mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
-    mappedAndScaledData = applyScalingToValues boundsM mappedData2
+    -- mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
+    -- mappedAndScaledData = applyScalingToValues boundsM mappedData2
 
 -- TODO return drawing, not styled drawing
-visualize :: Show s => [s] -> Geometry -> [Aesthetic s] -> Drawing
-visualize d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle d g a
+visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
+visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
 
-visualizeWithStyle :: Show s => [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
-visualizeWithStyle dat (Geometry geom) aess =
+visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
+visualizeWithStyle axesNames1 dat (Geometry geom) aess =
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
       ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-      axesD  = Lubeck.DV.Drawing.labeledAxis "Foo" "Bar"
+      axesNames = axesNames1 ++ repeat ""
+      axesD  = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
   in mconcat [dataD, axesD, ticksD]
   where
     aes = mconcat aess
