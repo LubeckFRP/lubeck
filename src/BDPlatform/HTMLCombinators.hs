@@ -90,9 +90,12 @@ button_ x title primary attrs = E.button ([A.class_ ("btn " <> x <> " " <> markA
 button = button_ "btn-default"
 button' title primary attrs = button title primary [attrs]
 
-buttonOk     = button_ "btn-success"
-buttonCancel = button_ "btn-danger"
-buttonWarn   = button_ "btn-warning"
+buttonOk      = button_ "btn-success"
+buttonCancel  = button_ "btn-danger"
+buttonWarn    = button_ "btn-warning"
+buttonLink    = button_ "btn-link"
+buttonPrimary = button_ "btn-primary"
+buttonDanger  = button_ "btn-danger"
 
 buttonIcon_ x title icon primary attrs =
   E.button ([A.class_ ("btn " <> x <> " " <> markActive primary)] <> attrs)
@@ -102,9 +105,12 @@ buttonIcon_ x title icon primary attrs =
 buttonIcon = buttonIcon_ "btn-default"
 buttonIcon' title icon primary attrs = buttonIcon title icon primary [attrs]
 
-buttonOkIcon     = buttonIcon_ "btn-success "
-buttonCancelIcon = buttonIcon_ "btn-danger "
-buttonWarnIcon   = buttonIcon_ "btn-warning "
+buttonOkIcon      = buttonIcon_ "btn-success "
+buttonCancelIcon  = buttonIcon_ "btn-danger "
+buttonWarnIcon    = buttonIcon_ "btn-warning "
+buttonLinkIcon    = buttonIcon_ "btn-link "
+buttonPrimaryIcon = buttonIcon_ "btn-primary "
+buttonDangerIcon  = buttonIcon_ "btn-danger "
 
 markActive True  = "btn-primary"
 markActive False = ""

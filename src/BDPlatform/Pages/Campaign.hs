@@ -201,7 +201,7 @@ campaignPage :: Sink BusyCmd
              -> Behavior (Maybe Account.Account)
              -> IO (Signal Html)
 campaignPage busySink notifSink loadAdsE userB = do
-  (actionSink, actionsE) <- newEventOf (undefined                                                   ::     Action)
+  (actionSink, actionsE) <- newSyncEventOf (undefined                                               ::     Action)
 
   secondaryActionsE      <- reactimateIOAsync $ fmap (update busySink notifSink userB) actionsE     :: IO (Events (Maybe SecondaryAction))
   campaignB              <- stepper Nothing (fmap Just loadAdsE)                                    :: IO (Behavior (Maybe AdC.AdCampaign))
