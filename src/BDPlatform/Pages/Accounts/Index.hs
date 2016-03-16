@@ -31,6 +31,7 @@ import           BDPlatform.Types
 import           Components.BusyIndicator       (BusyCmd (..))
 
 import           BDPlatform.Pages.Accounts.Search (accountSearch)
+import           BDPlatform.Pages.Accounts.Manage (manageAccouns)
 import           BDPlatform.HTMLCombinators
 
 data AccountsAction = FindAccounts | MagageGroups
@@ -43,12 +44,12 @@ indexW sink action = mconcat
       , button "Manage groups" (action ~== MagageGroups) [Ev.click $ \e -> sink MagageGroups] ]
   ]
 
-layout action toolbar accountsearch =
+layout action toolbar accountsearch managegroups =
   contentPanel $ mconcat [ toolbar, body ]
   where
     body = case action of
              Just FindAccounts -> accountsearch
-             Just MagageGroups -> E.text "manage groups"
+             Just MagageGroups -> managegroups
              Nothing           -> E.text "Select an option"
 
 accountsIndexPage :: Sink BusyCmd
@@ -58,12 +59,13 @@ accountsIndexPage :: Sink BusyCmd
                   -> Signal Nav
                   -> IO (Signal Html)
 accountsIndexPage busySink notifSink ipcSink usernameB navS = do
-  (actionsSink, actionEvents)  <- newSyncEventOf (undefined                     :: AccountsAction)
+  (actionsSink, actionEvents)  <- newSyncEventOf (undefined                             :: AccountsAction)
   actionsS                     <- stepperS (Just FindAccounts) (fmap Just actionEvents) :: IO (Signal (Maybe AccountsAction))
 
   accountSearchView            <- accountSearch busySink notifSink ipcSink usernameB navS
+  manageAccounsView            <- manageAccouns busySink notifSink ipcSink usernameB navS
   let toolbarView              = fmap (indexW actionsSink) actionsS
 
-  let view                     = layout <$> actionsS <*> toolbarView <*> accountSearchView
+  let view                     = layout <$> actionsS <*> toolbarView <*> accountSearchView <*> manageAccounsView
 
   return view
