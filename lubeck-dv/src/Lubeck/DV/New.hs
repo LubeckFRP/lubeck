@@ -65,9 +65,12 @@ module Lubeck.DV.New
   -- * Scales
   , Scale
   , linear
+  , linearIntegral
   , categorical
   , categoricalEnum
   , timeScale
+  , timeScaleWithOptions
+  , TimeRendering(..)
   -- ** HasScale type class
   , HasScale(..)
   -- ** Overriding scales
@@ -421,7 +424,15 @@ categoricalEnum = Scale
 A linear scale.
 -}
 linear :: (Real a, Show a) => Scale a
-linear = Scale
+linear = linearWithOptions False
+
+{-|
+A linear scale for integral values.
+-}
+linearIntegral :: (Integral a, Show a) => Scale a
+linearIntegral = linearWithOptions True
+
+linearWithOptions useIntegralShow = Scale
   { scaleMapping  = \vs v -> realToFrac v
   -- TODO resize LB to 0?
   , scaleBounds   = bounds
@@ -439,8 +450,12 @@ linear = Scale
 
     sortNub = Data.List.nub . Data.List.sort
 
+    showN x = case useIntegralShow of
+      True  -> toStr $ round x
+      False -> toStr $ roundTo 5 x
+
     bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
-    guides vs = fmap (\x -> (x, toStr $ roundTo 5 x)) $ tickCalc 4 (bounds vs)
+    guides vs = fmap (\x -> (x, showN x)) $ tickCalc 4 (bounds vs)
 
     -- number of ticks, interval, outpouts ticks
     tickCalc :: Int -> (Double, Double) -> [Double]
@@ -473,7 +488,11 @@ linear = Scale
 A scale for time values.
 -}
 timeScale :: Scale UTCTime
-timeScale = Scale
+timeScale = timeScaleWithOptions StandardTR
+
+data TimeRendering = StandardTR | MonthYearTR
+
+timeScaleWithOptions timeRendering = Scale
   { scaleMapping  = mapping
   , scaleBounds   = bounds . fmap toNDiffTime
   , scaleGuides   = guides . fmap toNDiffTime
@@ -487,10 +506,14 @@ timeScale = Scale
 
     sortNub = Data.List.nub . Data.List.sort
 
+    showT t = case timeRendering of
+      StandardTR -> toStr t
+      MonthYearTR -> Data.Time.formatTime Data.Time.defaultTimeLocale "%m-%Y" t
+
     mapping _ v = realToFrac $ toNDiffTime v
     bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
     -- Lots of different possibilities here
-    guides vs = fmap (\x -> (x, toStr $ toUTCTime $ realToFrac x)) $ tickCalc 4 (bounds vs)
+    guides vs = fmap (\x -> (x, showT $ toUTCTime $ realToFrac x)) $ tickCalc 4 (bounds vs)
 
     toNDiffTime = (`Data.Time.diffUTCTime` refTime)
     toUTCTime   = (`Data.Time.addUTCTime` refTime)
