@@ -10,6 +10,8 @@ module Lubeck.DV.Styling
     Styling
   -- TODO exort all lenses here
   , renderingRectangle
+  , axisTextFontSizePx
+
   , linePlotStrokeColor
   , linePlotStrokeWidth
   , linePlotStrokeType
@@ -29,6 +31,7 @@ module Lubeck.DV.Styling
   , ratioPlotBackgroundColor
   , ratioPlotForegroundColor
   , tickTextTurn
+  , tickTextFontSizePx
   , basicTickLength
   , basicTickColor
   , backgroundTickColor
@@ -95,6 +98,8 @@ data Styling = Styling
   -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
   , _renderingRectangle               :: V2 Double
 
+  , _axisTextFontSizePx               :: Double
+
   -- Line plots
   , _linePlotStrokeColor              :: AlphaColour Double
   , _linePlotStrokeWidth              :: Double
@@ -152,6 +157,7 @@ data Styling = Styling
       -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
 
   , _tickTextTurn                     :: (Angle Double, Angle Double)
+  , _tickTextFontSizePx               :: Double
   , _basicTickLength                  :: Double
   , _basicTickColor                   :: AlphaColour Double
   , _backgroundTickColor              :: AlphaColour Double
@@ -170,6 +176,8 @@ instance Monoid Styling where
     { _dummy                        = mempty
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
+
+    , _axisTextFontSizePx           = 12
 
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
@@ -203,6 +211,7 @@ instance Monoid Styling where
 
     -- , _tickTextTurn                 = (0, 0)
     , _tickTextTurn                 = (1/8, 0)
+    , _tickTextFontSizePx           = 12
     , _basicTickLength              = 10
     , _basicTickColor               = Colors.grey       `withOpacity` 1
     , _backgroundTickColor          = Colors.lightgrey  `withOpacity` 1

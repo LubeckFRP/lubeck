@@ -520,7 +520,7 @@ ticksNoFilter xt yt = do
             , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateY (-0.5) verticalLine
             -- bg grid
             , scale y $ strokeColorA backgroundTickColor_ $ strokeWidth 1.5 $ translateY (0.5) verticalLine
-            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ text_ str
+            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ text_ style str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
@@ -528,7 +528,7 @@ ticksNoFilter xt yt = do
             , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine
             -- bg grid
             , scale x $ strokeColorA backgroundTickColor_ $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
-            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ text_ str
+            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ text_ style str
             ]
   return $ mconcat [xTicks, yTicks]
   where
@@ -538,9 +538,10 @@ ticksNoFilter xt yt = do
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
 
-    text_ = textWithOptions $ mempty
+    text_ style = textWithOptions $ mempty
       { textAnchor = TextAnchorEnd
       , fontFamily = First $ Just "Futura, sans-serif"
+      , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
       }
 
 barPlotTicks :: [Str] -> [Str] -> Styled Drawing
@@ -559,13 +560,14 @@ labeledAxis labelX labelY = do
   let y = style^.renderingRectangle._y
   return $ mconcat
     [ scaleX x $ scaleY y $ axis
-    , translateX (x/2) $ translateY (-50*x/300) $ text_ labelX
-    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ labelY
+    , translateX (x/2) $ translateY (-50*x/300) $ text_ style labelX
+    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ style labelY
     ]
   where
-    text_ = textWithOptions $ mempty
+    text_ style= textWithOptions $ mempty
       { textAnchor = TextAnchorMiddle
       , fontFamily = First $ Just "Futura, sans-serif"
+      , fontSize   = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
       }
 
 

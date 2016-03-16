@@ -473,7 +473,48 @@ linear = Scale
 A scale for time values.
 -}
 timeScale :: Scale UTCTime
-timeScale = contramap (`Data.Time.diffUTCTime` refTime) linear
+timeScale = Scale
+  { scaleMapping  = mapping
+  , scaleBounds   = bounds . fmap toNDiffTime
+  , scaleGuides   = guides . fmap toNDiffTime
+  , scaleBaseName = "timeScale"
+  }
+  where
+    safeMin [] = 0
+    safeMin xs = minimum xs
+    safeMax [] = 0
+    safeMax xs = maximum xs
+
+    sortNub = Data.List.nub . Data.List.sort
+
+    mapping _ v = realToFrac $ toNDiffTime v
+    bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+    -- Lots of different possibilities here
+    guides vs = fmap (\x -> (x, toStr $ toUTCTime $ realToFrac x)) $ tickCalc 4 (bounds vs)
+
+    toNDiffTime = (`Data.Time.diffUTCTime` refTime)
+    toUTCTime   = (`Data.Time.addUTCTime` refTime)
+
+    -- number of ticks, interval, outpouts ticks
+    tickCalc :: Int -> (Double, Double) -> [Double]
+    tickCalc tickCount (lo, hi) =
+      let range = hi - lo :: Double
+          unroundedTickSize = range/(realToFrac $ tickCount-1)        --  :: Double
+          x = realToFrac (ceiling (logBase 10 (unroundedTickSize)-1)) --  :: Double
+          pow10x = 10**x -- Math.pow(10, x);
+          stepSize = realToFrac ((ceiling (unroundedTickSize / pow10x))::Int) * pow10x
+          lb = stepSize * realToFrac (floor (lo / stepSize))
+          ub = stepSize * realToFrac (ceiling (hi / stepSize))
+
+      in [lb, lb+stepSize..ub]
+      where
+        exrng = (2.1, 11.5)
+
+    roundTo :: (Fractional a, RealFrac r) => Int -> r -> a
+    roundTo n f =  (fromInteger $ round $ f * (10^n)) / (10.0^^n)
+
+-- timeScale :: Scale UTCTime
+-- timeScale = contramap (`Data.Time.diffUTCTime` refTime) linear
 
 refTime :: UTCTime
 refTime = case Data.Time.Format.parseTimeM True Data.Time.Format.defaultTimeLocale

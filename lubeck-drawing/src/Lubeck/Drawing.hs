@@ -178,6 +178,7 @@ module Lubeck.Drawing
   , TextAnchor(..)
   , AlignmentBaseline(..)
   , FontStyle(..)
+  , FontSize(..)
   , TextOptions(..)
   , textWithOptions
 
@@ -801,22 +802,28 @@ data FontStyle
 instance Monoid FontStyle where
   mappend = const ; mempty = FontStyleInherit
 
+-- Font size
+--
+-- https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/font-size
+type FontSize = Str
+
 -- | Text options. See 'textWithOptions'.
 data TextOptions = TextOptions
   { textAnchor        :: TextAnchor
   , alignmentBaseline :: AlignmentBaseline
   , fontStyle         :: FontStyle
   , fontFamily        :: First Str
+  , fontSize          :: First FontSize
   }
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid TextOptions where
   mempty
-    = TextOptions mempty mempty mempty mempty
+    = TextOptions mempty mempty mempty mempty mempty
   mappend
-    (TextOptions x1 x2 x3 x4)
-    (TextOptions y1 y2 y3 y4)
-    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4)
+    (TextOptions x1 x2 x3 x4 x5)
+    (TextOptions y1 y2 y3 y4 y5)
+    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4) (x5 <> y5)
   -- TODO can we derive this?
 
 -- | Text woth options. Idiomatically:
@@ -828,8 +835,11 @@ instance Monoid TextOptions where
 -- @
 --
 textWithOptions :: TextOptions -> Str -> Drawing
-textWithOptions opts = style (mconcat [_fontFamily, _fontStyle, _textAnchor, _alignmentBaseline]) . Text
+textWithOptions opts = style (mconcat [_fontSize, _fontFamily, _fontStyle, _textAnchor, _alignmentBaseline]) . Text
   where
+    _fontSize = case fontSize opts of
+      (First (Just v))          -> styleNamed "font-size" v
+      _                         -> styleNamed "font-family" "10px"
     _fontFamily  = case fontFamily opts of
       (First (Just v))          -> styleNamed "font-family" v
       _                         -> styleNamed "font-family" "sans-serif"
