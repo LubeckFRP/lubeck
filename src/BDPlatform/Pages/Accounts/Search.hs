@@ -1,9 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TupleSections              #-}
 
 module BDPlatform.Pages.Accounts.Search
   ( accountSearch
@@ -17,6 +13,7 @@ import           Control.Monad                  (void)
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
+import qualified Data.Set as Set
 import           Data.Time.Calendar             (Day (..))
 import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
@@ -24,6 +21,7 @@ import           Control.Concurrent             (forkIO)
 import qualified Data.JSString
 import           GHCJS.Types                    (JSString)
 
+import qualified Web.VirtualDom                 as VD
 import qualified Web.VirtualDom.Html            as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events     as Ev
@@ -50,7 +48,7 @@ import           Components.Grid
 import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2)
 
 
-
+data SearchResults = Pending | Empty | Found [Ac.Account]
 data ViewMode = ViewMode { form :: FormViewMode
                          , results :: ResultsViewMode }
 data FormViewMode = FormVisible | FormHidden
@@ -122,13 +120,32 @@ detailsW sink (ViewMode f r) = case r of
 
   _  -> panel [E.text "No account"]
 
-wrapResults :: Html -> Maybe [Ac.Account] -> Html
-wrapResults resultsV accounts =
-  let found = "Found " <> showJS (Data.Maybe.fromMaybe 0 (length <$> accounts)) <> " accounts"
-  in panel [ header1' "Search Results " found, resultsV ]
+wrapResults :: Html -> SearchResults -> Maybe (Set.Set Ac.Account, GridAction Ac.Account) -> Html
+wrapResults resultsV results sel =
+  let sel'    = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel
+      btnAttr = if Set.size sel' > 0
+                  then [Ev.click $ \e -> addToGroup sel']
+                  else [(VD.attribute "disabled") "true"]
+      msg     = case Set.size sel' of
+                  0 -> ""
+                  1 -> "1 item selected"
+                  x -> showJS x <> " items selected"
+      resultsMsg Pending    = "Search in progress..."
+      resultsMsg Empty      = "Nothing found"
+      resultsMsg (Found xs) = "Found " <> showJS (length xs) <> " accounts"
+
+  in panel [ header1' "Search Results " (resultsMsg results)
+           , toolbarLeft' . buttonGroupLeft $
+               [ buttonOk "Add to group" False btnAttr
+               , inlineMessage msg ]
+           , resultsV ]
+
+addToGroup :: Set.Set Ac.Account -> IO ()
+addToGroup sel = do
+  print $ "Going to add to group " <> showJS (Set.size sel) <> " accounts"
 
 searchRequest busySink notifSink srchResSink query = do
-  srchResSink $ Nothing -- reset previous search results
+  srchResSink Pending -- reset previous search results
 
   let complexQuery = AccountQuery $ complexifyAccountQuery query
   eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
@@ -138,15 +155,15 @@ searchRequest busySink notifSink srchResSink query = do
       eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
       case eitherPosts of
         Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-        Right ps -> srchResSink $ Just ps
+        Right ps -> srchResSink $ Found ps
 
 layout fViewModeSink viewMode formV resultsV detailsV = case viewMode of
   ViewMode FormVisible AllResults      -> panel [formV, resultsV]
   ViewMode FormVisible ResultsHidden   -> panel [formV]
   ViewMode FormVisible (DetailsView _) -> panel [formV, detailsV]
-  ViewMode FormHidden AllResults       -> panel [formPlaceholder fViewModeSink (), resultsV]
-  ViewMode FormHidden ResultsHidden    -> panel [formPlaceholder fViewModeSink ()]
-  ViewMode FormHidden (DetailsView _)  -> panel [formPlaceholder fViewModeSink (), detailsV]
+  ViewMode FormHidden  AllResults      -> panel [formPlaceholder fViewModeSink (), resultsV]
+  ViewMode FormHidden  ResultsHidden   -> panel [formPlaceholder fViewModeSink ()]
+  ViewMode FormHidden  (DetailsView _) -> panel [formPlaceholder fViewModeSink (), detailsV]
 
 accountSearch :: Sink BusyCmd
               -> Sink (Maybe Notification)
@@ -157,7 +174,7 @@ accountSearch :: Sink BusyCmd
 accountSearch busySink notifSink ipcSink mUserNameB navS = do
   (fViewModeSink, fViewModeEvents) <- newSyncEventOf (undefined                                           :: FormViewMode)
   (rViewModeSink, rViewModeEvents) <- newSyncEventOf (undefined                                           :: ResultsViewMode)
-  (srchResSink, srchResEvents)     <- newSyncEventOf (undefined                                           :: Maybe [Ac.Account])
+  (srchResSink, srchResEvents)     <- newSyncEventOf (undefined                                           :: SearchResults)
 
   fViewModeS                       <- stepperS FormVisible fViewModeEvents                                :: IO (Signal FormViewMode)
   rViewModeS                       <- stepperS ResultsHidden rViewModeEvents                              :: IO (Signal ResultsViewMode)
@@ -165,16 +182,18 @@ accountSearch busySink notifSink ipcSink mUserNameB navS = do
 
   now                              <- getCurrentTime
   (formView, searchRequested)      <- formComponent initPostQuery (searchFormW (utctDay now))
-  results                          <- stepperS Nothing srchResEvents                                      :: IO (Signal (Maybe [Ac.Account]))
+  results                          <- stepperS Empty srchResEvents                                        :: IO (Signal SearchResults)
 
-  (gridView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent gridOptions initialItems itemMarkup
+  (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent gridOptions initialItems itemMarkup
   -- XXX is it too imperative?
-  subscribeEvent srchResEvents $ gridCmdsSink . Replace . fromMaybe []
+  subscribeEvent srchResEvents $ gridCmdsSink . searchResultsToGridCmd
   subscribeEvent gridItemsE    rViewModeSink
   subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
 
+  selectionSnapshotS               <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE))       :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
+
   let detailsView                  = fmap (detailsW rViewModeSink) viewModeS                              :: Signal Html
-  let resultsView                  = wrapResults <$> gridView <*> results                                 :: Signal Html
+  let resultsView                  = wrapResults <$> gridView <*> results <*> selectionSnapshotS          :: Signal Html
   let view                         = layout fViewModeSink <$> viewModeS <*> formView <*> resultsView <*> detailsView :: Signal Html
 
   subscribeEvent searchRequested $ void . forkIO . searchRequest busySink notifSink srchResSink
@@ -187,3 +206,6 @@ accountSearch busySink notifSink ipcSink mUserNameB navS = do
     initViewMode  = ViewMode FormVisible ResultsHidden
     gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
     initialItems  = []
+    searchResultsToGridCmd Pending    = Replace []
+    searchResultsToGridCmd Empty      = Replace []
+    searchResultsToGridCmd (Found xs) = Replace xs
