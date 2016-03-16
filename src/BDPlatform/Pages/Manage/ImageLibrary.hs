@@ -228,7 +228,7 @@ imageLibrary busySink notifSink ipcSink ipcEvents userE = do
 
   imageViewS                <- stepperS Nothing imageE                                             :: IO (Signal (Maybe Im.Image))
   let imageView             = fmap (fmap (viewImageW actionsSink)) imageViewS                      :: Signal (Maybe Html)
-  (galleryView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent gridOptions initialItems imageCell
+  (galleryView, gridCmdsSink, gridActionE, gridItemsE, _) <- gridComponent gridOptions initialItems imageCell
 
   subscribeEvent galleryE      $ gridCmdsSink . Replace
   subscribeEvent gridItemsE    actionsSink

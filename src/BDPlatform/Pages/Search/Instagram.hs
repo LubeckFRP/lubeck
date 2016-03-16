@@ -260,7 +260,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   (htFormView, createHTagE)        <- formWithValidationComponent validateHTag "" (createHTagW hViewModeSink) :: IO (Signal Html, Events JSString)
 
   (mapView, mapSink, _)            <- mapComponent []
-  (gridView, gridCmdsSink, gridActionE, gridItemsE) <- gridComponent gridOptions initialItems itemMarkup
+  (gridView, gridCmdsSink, gridActionE, gridItemsE, _) <- gridComponent gridOptions initialItems itemMarkup
 
   subscribeEvent srchResEvents $ gridCmdsSink . Replace . fromMaybe []
   subscribeEvent gridItemsE    pageActionsSink
@@ -287,7 +287,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   where
     initialItems  = []
     initPostQuery = defSimplePostQuery
-    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
+    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False, height = 250})
 
     doResetMap resultsB mapSink pageActionsSink x = case x of
       Nothing -> return ()
