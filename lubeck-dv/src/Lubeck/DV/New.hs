@@ -13,21 +13,69 @@
   , NoImplicitPrelude
   #-}
 
+{-|
+A high-level type safe Data Visualization library.
+
+TODO basic tutorial
+
+Example
+---
+
+@
+newtype Day = Day Int
+  deriving (Eq, Ord, Show, Num, Real, HasScale)
+
+data LikeType = ProjLike | RealLike
+  deriving (Eq, Ord, Show)
+
+instance HasScale LikeType where scale _ = categorical
+
+data LikeCount = LikeCount { _time :: Day, _count :: Int, _likeType :: LikeType }
+  deriving (Eq, Ord, Show)
+
+$(makeLenses ''LikeCount)
+
+likeCounts :: [LikeCount]
+likeCounts =
+  [ LikeCount 0 112000 RealLike
+  , LikeCount 1 115000 RealLike
+  , LikeCount 1 118000 RealLike
+  , LikeCount 0 112000 ProjLike
+  , LikeCount 1 113000 ProjLike
+  , LikeCount 1 114000 ProjLike
+  ]
+
+test = visualizeTest likeCounts fill
+  [ x     <~ time
+  , y     <~ count
+  , color <~ likeType
+  ]
+@
+-}
 module Lubeck.DV.New
   (
+  -- * Data/Variables
+  -- $data
+
   -- * Algebra
     blendId
   , blend
   , crossWith
+
   -- * Scales
+  , Scale
+  , linear
   , categorical
   , categoricalEnum
-  , linear
   , timeScale
-  , Scale
+  -- ** HasScale type class
   , HasScale(..)
+  -- ** Overriding scales
   , Scaled
   , withScale
+
+  -- * Statistics
+  -- $statistics
 
   -- * Geometry
   , Geometry
@@ -35,7 +83,12 @@ module Lubeck.DV.New
   , fill
   , scatter
 
+  -- * Coordinates
+  -- $coordinates
+
   -- * Aesthetics
+  , Key
+  , Aesthetic
   , x
   , y
   , color
@@ -44,13 +97,12 @@ module Lubeck.DV.New
   , size
   , shape
   , thickness
-
-  , Key
-  , Aesthetic
+  -- ** Custom
   , customAesthetic
   -- ** Mapping aesthetics
   , (<~)
-  , (~>)
+
+
   -- * Top-level
   , visualize
   , visualizeWithStyle
@@ -87,24 +139,50 @@ import qualified Lubeck.Drawing
 import qualified Lubeck.DV.Drawing
 import qualified Lubeck.DV.Styling
 
+{-$data
 
+Data is reprented in a tabular format.
+
+A /table/ is a list of tuples or records. Each field in the tuple can be thought
+of as a variable. A /table/ is commonly known as a data frame (in ggplot) or as
+a varset (in Wilkinson).
+-}
+
+{-$statistics
+
+Nothing to see here.
+-}
+
+{-$coordinates
+
+Nothing to see here.
+-}
 
 -- ALGEBRA
 
--- | A "table" with no columns.
+{-| No rows.
+
+This is a synonym for 'mempty'.
+-}
 blendId :: [a]
 blendId = mempty
 
--- | Concatenate columns.
+{-| Concatenate rows.
+
+This is a synonym for '<>'.
+-}
 blend :: [a] -> [a] -> [a]
 blend = (<>)
 
 -- TODO some type class thing here for merging tuples/records
--- so i.e.
---  cross (1,2) (3,4) => (1,2,3,4)
---  cross {foo=1, bar=""} {baz=()} => {foo=1, bar="", baz=()}
 
--- | Concatenate rows left-to-right. If one row is shorter it is repeated.
+{-| Concatenate columns left-to-right. If one column is shorter it is repeated.
+
+>>> crossWith (,) [1..5] ["a", "b"]
+[(1,"a"),(2,"b"),(3,"a"),(4,"b"),(5,"a")]
+
+This is a variant of 'zipWith'.
+-}
 crossWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 crossWith f a b = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
@@ -120,8 +198,8 @@ instance Show Key where
   show = show . getKey
 
 {-|
-An 'Aesthetic' maps a /row/ (also known as a /tuple/ or /record/) to a set of aesthetic
-attribute such as position, color or shape.
+An 'Aesthetic' maps a single tuple or record to a set of aesthetic attributes such
+as position, color or shape.
 -}
 data Aesthetic a = Aesthetic
   { aestheticMapping       :: [a] -> a -> Map Key Double
@@ -272,12 +350,6 @@ instance HasScale Bool where
 instance HasScale Ordering where
   scale = const categorical
 
-instance HasScale Name where
-  scale = const categorical
-
-instance HasScale Gender where
-  scale = const categorical
-
 -- Questionable, but gives us the ability to treat strings as categorical values.
 instance (Ord a, Show a) => HasScale [a] where
   scale = const categorical
@@ -423,6 +495,25 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 -- TOP-LEVEL
 
 -- Very similar to (>$$<)
+
+{-|
+Lifts an aesthetic through a 'Getter' from /lens/.
+
+Idiomatically
+@
+x <~ name
+@
+
+To lift a standard function @s -> a@ instead of a @Getter s a@, you can use 'to',
+or 'contramap'.
+
+@
+x '<~' 'to' getName
+x '>$$<' getName
+x 'contramap' getName
+@
+
+-}
 (<~) :: Aesthetic a -> Getter s a -> Aesthetic s
 (<~) a g = contramap (^.g) a
 
@@ -614,9 +705,47 @@ infixl 3 ~>
 
 -- TEST
 
+newtype Day = Day Int
+  deriving (Eq, Ord, Show, Num, Real, HasScale)
 
-data Gender = Female | Male deriving (Eq, Ord, Show)
+data LikeType = ProjLike | RealLike
+  deriving (Eq, Ord, Show)
+
+instance HasScale LikeType where scale _ = categorical
+
+data LikeCount = LikeCount { _time :: Day, _count :: Int, _likeType :: LikeType }
+  deriving (Eq, Ord, Show)
+
+$(makeLenses ''LikeCount)
+
+likeCounts :: [LikeCount]
+likeCounts =
+  [ LikeCount 0 112000 RealLike
+  , LikeCount 1 115000 RealLike
+  , LikeCount 1 118000 RealLike
+  , LikeCount 0 112000 ProjLike
+  , LikeCount 1 113000 ProjLike
+  , LikeCount 1 114000 ProjLike
+  ]
+
+test0 = visualizeTest likeCounts fill
+  [ x     <~ time
+  , y     <~ count
+  , color <~ likeType
+  ]
+
+
+
+
+
 newtype Name = Name String deriving (Eq, Ord, Show, IsString)
+data Gender = Female | Male deriving (Eq, Ord, Show)
+
+instance HasScale Name where
+  scale = const categorical
+
+instance HasScale Gender where
+  scale = const categorical
 
 data Person = P1 { personName :: Name, personAge :: Int, personHeight :: Double }
   deriving (Eq, Ord, Show)
