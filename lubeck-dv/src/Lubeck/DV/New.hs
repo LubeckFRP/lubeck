@@ -66,6 +66,8 @@ module Lubeck.DV.New
   , Scale
   , linear
   , linearIntegral
+  , LowerBoundSelect(..)
+  , linearWithOptions
   , categorical
   , categoricalEnum
   , timeScale
@@ -424,15 +426,36 @@ categoricalEnum = Scale
 A linear scale.
 -}
 linear :: (Real a, Show a) => Scale a
-linear = linearWithOptions False
+linear = linearWithOptions False LBMin
 
 {-|
 A linear scale for integral values.
 -}
 linearIntegral :: (Integral a, Show a) => Scale a
-linearIntegral = linearWithOptions True
+linearIntegral = linearWithOptions True LBMin
 
-linearWithOptions useIntegralShow = Scale
+{-|
+How to choose lower bound for a scale.
+-}
+data LowerBoundSelect
+  = LBZero                     -- ^ Use zero.
+  | LBInterpZeroAndMin Double  -- ^ Interpolate between zero and minimum value (0.5 for middle).
+  | LBMin                      -- ^ Use minimum value.
+
+
+linearWithOptions :: (Real a, Show a)
+  => Bool
+  -> LowerBoundSelect
+  -> Scale a
+linearWithOptions
+  useIntegralShow
+    -- Display numbers as integers (necessary to avoid integers being displayed as "1.0")
+    -- If false, a hard-coded number of decimal places is used
+  -- integralDiv
+  --   -- If using integral show, divide (using 'div') before showing
+  --   -- Useful for million/thousand scales etc
+  lowerBoundChoice
+  = Scale
   { scaleMapping  = \vs v -> realToFrac v
   -- TODO resize LB to 0?
   , scaleBounds   = bounds
@@ -454,7 +477,12 @@ linearWithOptions useIntegralShow = Scale
       True  -> toStr $ round x
       False -> toStr $ roundTo 5 x
 
-    bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+    chooseLB minVal = case lowerBoundChoice of
+      LBZero               -> 0
+      LBInterpZeroAndMin x -> x * minVal
+      LBMin                -> minVal
+
+    bounds vs = (chooseLB $ realToFrac $ safeMin vs, realToFrac $ safeMax vs)
     guides vs = fmap (\x -> (x, showN x)) $ tickCalc 4 (bounds vs)
 
     -- number of ticks, interval, outpouts ticks
