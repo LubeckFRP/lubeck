@@ -226,6 +226,11 @@ data Aesthetic a = Aesthetic
       --   If you don't want any guides, just return 'mempty'.
       --
       --   See also 'scaleGuides'.
+
+  , aestheticLabels        :: [a] -> Map Key [(Double, Double, Str)]
+      -- ^ Similar to guides, except map into the X-Y coordinates of the underlying plot.
+      --   Mainly used for textural labels.
+
   , aestheticScaleBaseName :: [a] -> Map Key Str
       -- ^ Name of scale used to plot the given aesthetic.
       --
@@ -237,12 +242,12 @@ data Aesthetic a = Aesthetic
   - 'mappend' interleaves bindings (left-biased).
 -}
 instance Monoid (Aesthetic a) where
-  mempty = Aesthetic mempty mempty mempty mempty
-  mappend (Aesthetic a1 a2 a3 a4) (Aesthetic b1 b2 b3 b4) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
+  mempty = Aesthetic mempty mempty mempty mempty mempty
+  mappend (Aesthetic a1 a2 a3 a4 a5) (Aesthetic b1 b2 b3 b4 b5) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)
 
 -- | Make a custom aesthetic attribute.
 customAesthetic :: HasScale a => Key -> Aesthetic a
-customAesthetic n = Aesthetic convert genBounds genGuides getScaleBaseName
+customAesthetic n = Aesthetic convert genBounds genGuides genLabels getScaleBaseName
   where
     convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
     genBounds = \vs -> Data.Map.singleton n $ case vs of
@@ -251,6 +256,7 @@ customAesthetic n = Aesthetic convert genBounds genGuides getScaleBaseName
     genGuides  = \vs -> Data.Map.singleton n $ case vs of
       []    -> []
       (v:_) -> scaleGuides (scale v) vs
+    genLabels = (const mempty)
     getScaleBaseName = \vs -> Data.Map.singleton n $ case vs of
       []    -> ""
       (v:_) -> scaleBaseName (scale v)
@@ -262,12 +268,13 @@ Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger t
 >>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
 -}
 instance Contravariant Aesthetic where
-  contramap f (Aesthetic g h i j)
+  contramap f (Aesthetic g h i j k)
     = Aesthetic
       (\xs x -> g (fmap f xs) (f x))
       (\xs   -> h (fmap f xs))
       (\xs   -> i (fmap f xs))
       (\xs   -> j (fmap f xs))
+      (\xs   -> k (fmap f xs))
 
 x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX :: HasScale a => Aesthetic a
 
