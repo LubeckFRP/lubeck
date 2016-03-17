@@ -604,6 +604,7 @@ refTime = case Data.Time.Format.parseTimeM True Data.Time.Format.defaultTimeLoca
 withScale :: Getter s a -> Scale a -> Getter s (Scaled a)
 withScale g s = to $ \x -> flip Scaled s $ x^.g
 
+infixl 4 `withScale`
 
 -- TOP-LEVEL
 
@@ -630,11 +631,10 @@ x 'contramap' getName
 (<~) :: Aesthetic a -> Getter s a -> Aesthetic s
 (<~) a g = contramap (^.g) a
 
--- Very similar to (>$<)
-(~>) :: Getter s a -> Aesthetic a -> Aesthetic s
-(~>) g a = contramap (^.g) a
+infixl 3 <~
 
-printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO () -- TODO result type
+
+printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO ()
 printDebugInfo dat aess = putStrLn $ B.render $ box
   where
     aes = mconcat aess
@@ -748,15 +748,6 @@ m ?! k = Data.Map.lookup k m
 line :: Geometry
 line = Geometry tot
   where
-    -- All color values in the dataset or Nothing if there are none
-    colors :: [Map Key Double] -> Maybe [Double]
-    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
-      [] -> Nothing
-      xs -> Just $ sortNub xs
-
-    atColor :: Double -> [Map Key Double] -> [Map Key Double]
-    atColor c = filter (\m -> m ?! "color" == Just c)
-
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
@@ -767,15 +758,6 @@ line = Geometry tot
 fill :: Geometry
 fill = Geometry tot
   where
-    -- All color values in the dataset or Nothing if there are none
-    colors :: [Map Key Double] -> Maybe [Double]
-    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
-      [] -> Nothing
-      xs -> Just $ sortNub xs
-
-    atColor :: Double -> [Map Key Double] -> [Map Key Double]
-    atColor c = filter (\m -> m ?! "color" == Just c)
-
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
@@ -786,15 +768,6 @@ fill = Geometry tot
 scatter :: Geometry
 scatter = Geometry tot
   where
-    -- All color values in the dataset or Nothing if there are none
-    colors :: [Map Key Double] -> Maybe [Double]
-    colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
-      [] -> Nothing
-      xs -> Just $ sortNub xs
-
-    atColor :: Double -> [Map Key Double] -> [Map Key Double]
-    atColor c = filter (\m -> m ?! "color" == Just c)
-
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
@@ -802,13 +775,21 @@ scatter = Geometry tot
     baseL :: Double -> [Map Key Double] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
 
--- TODO move
-sortNub = Data.List.nub . Data.List.sort
+
+atColor :: Double -> [Map Key Double] -> [Map Key Double]
+atColor c = filter (\m -> m ?! "color" == Just c)
+
+-- All color values in the dataset or Nothing if there are none
+colors :: [Map Key Double] -> Maybe [Double]
+colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+  [] -> Nothing
+  xs -> Just $ sortNub xs
+  where
+    sortNub = Data.List.nub . Data.List.sort
 
 
-infixl 4 `withScale`
-infixl 3 <~
-infixl 3 ~>
+
+
 
 
 
