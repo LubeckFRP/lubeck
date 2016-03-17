@@ -524,13 +524,13 @@ ticksNoFilter xt yt = do
             [ mempty
             , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateY (-0.5) verticalLine
             -- bg grid
-            , scale y $ strokeColorA backgroundTickStrokeColorX_ $ strokeWidth backgroundTickStrokeWidthX_ $ translateY (0.5) verticalLine
+            , strokeWidth backgroundTickStrokeWidthX_ $ scale y $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
             , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ text_ style str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
-            , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth backgroundTickStrokeWidthY_ $ translateX (-0.5) horizontalLine
+            , strokeWidth backgroundTickStrokeWidthY_ $ scale kBasicTickLength $ strokeColorA basicTickColor_ $ translateX (-0.5) horizontalLine
             -- bg grid
             , scale x $ strokeColorA backgroundTickStrokeColorY_ $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
             , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ text_ style str
