@@ -20,6 +20,7 @@ module Lubeck.DV.Styling
   , linePlotFillColor
 
   , scatterPlotStrokeColor
+  , scatterPlotStrokeWidth
   , scatterPlotFillColor
   , scatterPlotShape
   , scatterPlotSize
