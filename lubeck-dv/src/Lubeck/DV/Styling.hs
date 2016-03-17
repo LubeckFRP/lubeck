@@ -30,8 +30,11 @@ module Lubeck.DV.Styling
 
   , ratioPlotBackgroundColor
   , ratioPlotForegroundColor
+
   , tickTextTurn
   , tickTextFontSizePx
+  , tickTextAnchor
+
   , basicTickLength
   , basicTickColor
 
@@ -163,6 +166,8 @@ data Styling = Styling
 
   , _tickTextTurn                     :: (Angle Double, Angle Double)
   , _tickTextFontSizePx               :: Double
+  , _tickTextAnchor                   :: TextAnchor
+
   , _basicTickLength                  :: Double
   , _basicTickColor                   :: AlphaColour Double
 
@@ -220,6 +225,8 @@ instance Monoid Styling where
 
     , _tickTextTurn                 = (1/8, 0)
     , _tickTextFontSizePx           = 12
+    , _tickTextAnchor               = TextAnchorEnd
+
     , _basicTickLength              = 10
     , _basicTickColor               = Colors.grey       `withOpacity` 1
 

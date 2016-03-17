@@ -544,7 +544,7 @@ ticksNoFilter xt yt = do
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
 
     text_ style = textWithOptions $ mempty
-      { textAnchor = TextAnchorEnd
+      { textAnchor = style^.tickTextAnchor
       , fontFamily = First $ Just "Futura, sans-serif"
       , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
       }
