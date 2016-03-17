@@ -36,6 +36,7 @@ module Lubeck.DV.Styling
   , tickTextAnchor
 
   , basicTickLength
+  , basicTickStrokeWidth
   , basicTickColor
 
   , backgroundTickStrokeWidthX
@@ -169,6 +170,7 @@ data Styling = Styling
   , _tickTextAnchor                   :: TextAnchor
 
   , _basicTickLength                  :: Double
+  , _basicTickStrokeWidth             :: Double
   , _basicTickColor                   :: AlphaColour Double
 
   , _backgroundTickStrokeColorX       :: AlphaColour Double
@@ -228,6 +230,7 @@ instance Monoid Styling where
     , _tickTextAnchor               = TextAnchorEnd
 
     , _basicTickLength              = 10
+    , _basicTickStrokeWidth         = 1
     , _basicTickColor               = Colors.grey       `withOpacity` 1
 
     , _backgroundTickStrokeColorX   = Colors.lightgrey  `withOpacity` 1

@@ -510,6 +510,7 @@ ticksNoFilter xt yt = do
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
 
+  let basicTickStrokeWidth_  = style^.basicTickStrokeWidth
   let kBasicTickLength       = style^.basicTickLength
   let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
   let basicTickColor_        = style^.basicTickColor
@@ -522,17 +523,17 @@ ticksNoFilter xt yt = do
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
             [ mempty
-            , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateY (-0.5) verticalLine
+            , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateY (-0.5) verticalLine
             -- bg grid
-            , strokeWidth backgroundTickStrokeWidthX_ $ scale y $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
+            , scale y $ strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
             , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ text_ style str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
-            , strokeWidth backgroundTickStrokeWidthY_ $ scale kBasicTickLength $ strokeColorA basicTickColor_ $ translateX (-0.5) horizontalLine
+            , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateX (-0.5) horizontalLine
             -- bg grid
-            , scale x $ strokeColorA backgroundTickStrokeColorY_ $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
+            , scale x $ strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ translateX (0.5) horizontalLine
             , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ text_ style str
             ]
   return $ mconcat [xTicks, yTicks]
