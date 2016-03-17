@@ -389,7 +389,7 @@ Only elements in the data set are included, which may not be what you want
 if your set is small and bounded (i.e. weekdays). Use 'categoricalEnum' for this.
 -}
 categorical :: (Ord a, Show a) => Scale a
-categorical = categoricalWithOptions UseDataBounds
+categorical = categoricalWithOptions Standard
 
 {-|
 How to generate bounds for a categorical plot
