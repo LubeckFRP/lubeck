@@ -11,6 +11,8 @@ module Lubeck.DV.Styling
   -- TODO exort all lenses here
   , renderingRectangle
   , axisTextFontSizePx
+  , axisStrokeWidth
+  , axisStrokeColor
 
   , linePlotStrokeColor
   , linePlotStrokeWidth
@@ -108,6 +110,8 @@ data Styling = Styling
   , _renderingRectangle               :: V2 Double
 
   , _axisTextFontSizePx               :: Double
+  , _axisStrokeWidth                  :: (Double, Double)
+  , _axisStrokeColor                  :: (AlphaColour Double, AlphaColour Double)
 
   -- Line plots
   , _linePlotStrokeColor              :: AlphaColour Double
@@ -194,6 +198,8 @@ instance Monoid Styling where
     , _renderingRectangle           = V2 400 300
 
     , _axisTextFontSizePx           = 12
+    , _axisStrokeWidth              = (1.5, 1.5)
+    , _axisStrokeColor              = (Colors.black `withOpacity` 1, Colors.black `withOpacity` 1)
 
     , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5

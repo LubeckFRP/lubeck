@@ -566,6 +566,11 @@ labeledAxis labelX labelY = do
   style <- ask
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
+
+  let axisX = strokeWidth (style^.axisStrokeWidth.to fst) $ strokeColorA (style^.axisStrokeColor.to fst) $ translateX 0.5 horizontalLine
+  let axisY = strokeWidth (style^.axisStrokeWidth.to snd) $ strokeColorA (style^.axisStrokeColor.to snd) $ translateY 0.5 verticalLine
+  let axis = mconcat [axisY, axisX]
+
   return $ mconcat
     [ scaleX x $ scaleY y $ axis
     , translateX (x/2) $ translateY (-50*x/300) $ text_ style labelX
@@ -579,14 +584,9 @@ labeledAxis labelX labelY = do
       }
 
 
-axis, axisX, axisY :: Drawing
-axis = mconcat [axisY, axisX]
-axisX = strokeWidth 1.5 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
-axisY = strokeWidth 1.5 $ strokeColor Colors.black $ translateY 0.5 verticalLine
-
-crossLineX, crossLineY :: Double -> Drawing
-crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
-crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
+    -- crossLineX, crossLineY :: Double -> Drawing
+    -- crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
+    -- crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
 
 
 
