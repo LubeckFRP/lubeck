@@ -234,7 +234,7 @@ instance Monoid Styling where
     , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
     , _scatterPlotShape             = mempty
 
-    , _barPlotBarColors             = fmap (`withOpacity` 0.6) $ cycle
+    , _barPlotBarColors             = fmap (`withOpacity` 0.6) $
                                       [ Colors.red
                                       , Colors.green
                                       , Colors.blue
