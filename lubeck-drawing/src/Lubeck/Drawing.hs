@@ -179,6 +179,7 @@ module Lubeck.Drawing
   , AlignmentBaseline(..)
   , FontStyle(..)
   , FontSize(..)
+  , FontWeight(..)
   , TextOptions(..)
   , textWithOptions
 
@@ -779,7 +780,10 @@ data TextAnchor
   | TextAnchorInherit
   deriving (Eq, Ord, Read, Show)
 instance Monoid TextAnchor where
-  mappend = const ; mempty = TextAnchorInherit
+  mappend x y
+    | y == mempty = x
+    | otherwise   = y
+  mempty = TextAnchorInherit
 
 -- | Text baseline (vertical) alignment.
 --
@@ -791,7 +795,10 @@ data AlignmentBaseline
   | AlignmentBaselineCentral
   deriving (Eq, Ord, Read, Show)
 instance Monoid AlignmentBaseline where
-  mappend = const ; mempty = AlignmentBaselineAuto
+  mappend x y
+    | y == mempty = x
+    | otherwise   = y
+  mempty = AlignmentBaselineAuto
 
 -- | Font style.
 --
@@ -800,7 +807,27 @@ data FontStyle
   = FontStyleNormal | FontStyleItalic | FontStyleOblique | FontStyleInherit
   deriving (Eq, Ord, Read, Show)
 instance Monoid FontStyle where
-  mappend = const ; mempty = FontStyleInherit
+  mappend x y
+    | y == mempty = x
+    | otherwise   = y
+  mempty = FontStyleInherit
+
+-- | Font weight.
+--
+-- https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/font-weight
+data FontWeight
+  = FontWeightNormal
+  | FontWeightBold
+  | FontWeightBolder
+  | FontWeightLighter
+  | FontWeightN Int
+  | FontWeightInherit
+  deriving (Eq, Ord, Read, Show)
+instance Monoid FontWeight where
+  mappend x y
+    | y == mempty = x
+    | otherwise   = y
+  mempty = FontWeightInherit
 
 -- Font size
 --
@@ -814,16 +841,17 @@ data TextOptions = TextOptions
   , fontStyle         :: FontStyle
   , fontFamily        :: First Str
   , fontSize          :: First FontSize
+  , fontWeight        :: FontWeight
   }
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid TextOptions where
   mempty
-    = TextOptions mempty mempty mempty mempty mempty
+    = TextOptions mempty mempty mempty mempty mempty mempty
   mappend
-    (TextOptions x1 x2 x3 x4 x5)
-    (TextOptions y1 y2 y3 y4 y5)
-    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4) (x5 <> y5)
+    (TextOptions x1 x2 x3 x4 x5 x6)
+    (TextOptions y1 y2 y3 y4 y5 y6)
+    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4) (x5 <> y5) (x6 <> y6)
   -- TODO can we derive this?
 
 -- | Text woth options. Idiomatically:
@@ -835,14 +863,30 @@ instance Monoid TextOptions where
 -- @
 --
 textWithOptions :: TextOptions -> Str -> Drawing
-textWithOptions opts = style (mconcat [_fontSize, _fontFamily, _fontStyle, _textAnchor, _alignmentBaseline]) . Text
+textWithOptions opts = style allOfThem . Text
   where
+    allOfThem = mconcat
+      [ _fontWeight, _fontSize, _fontFamily, _fontStyle, _textAnchor
+      , _alignmentBaseline
+      ]
+
+    _fontWeight = case fontWeight opts of
+      FontWeightNormal          -> styleNamed "font-weight" "normal"
+      FontWeightBold            -> styleNamed "font-weight" "bold"
+      FontWeightBolder          -> styleNamed "font-weight" "bolder"
+      FontWeightLighter         -> styleNamed "font-weight" "lighter"
+      FontWeightInherit         -> styleNamed "font-weight" "inherit"
+      FontWeightN n             -> styleNamed "font-weight" (toStr n)
+
+
     _fontSize = case fontSize opts of
       (First (Just v))          -> styleNamed "font-size" v
       _                         -> styleNamed "font-family" "10px"
+
     _fontFamily  = case fontFamily opts of
       (First (Just v))          -> styleNamed "font-family" v
       _                         -> styleNamed "font-family" "sans-serif"
+
     _fontStyle  = case fontStyle opts of
       FontStyleNormal           -> styleNamed "font-style" "normal"
       FontStyleItalic           -> styleNamed "font-style" "italic"

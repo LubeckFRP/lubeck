@@ -549,8 +549,11 @@ ticksNoFilter xt yt = do
     textY = text_ snd
     text_ which style = textWithOptions $ mempty
       { textAnchor = style^.tickTextAnchor.to which
-      , fontFamily = First $ Just "Futura, sans-serif"
+      -- TODO read family from style
+      , fontFamily = style^.tickTextFontFamily
+      , fontStyle  = style^.tickTextFontStyle
       , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
+      , fontWeight = style^.tickTextFontWeight
       }
 
 barPlotTicks :: [Str] -> [Str] -> Styled Drawing

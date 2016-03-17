@@ -10,9 +10,14 @@ module Lubeck.DV.Styling
     Styling
   -- TODO exort all lenses here
   , renderingRectangle
-  , axisTextFontSizePx
+
   , axisStrokeWidth
   , axisStrokeColor
+
+  -- TODO , axisTextFamily
+  -- TODO , axisTextFontStyle
+  -- TODO , axisTextFontWeight
+  , axisTextFontSizePx
 
   , linePlotStrokeColor
   , linePlotStrokeWidth
@@ -35,8 +40,11 @@ module Lubeck.DV.Styling
   , ratioPlotForegroundColor
 
   , tickTextTurn
-  , tickTextFontSizePx
   , tickTextAnchor
+  , tickTextFontFamily
+  , tickTextFontStyle
+  , tickTextFontSizePx
+  , tickTextFontWeight
 
   , basicTickLength
   , basicTickStrokeWidth
@@ -111,6 +119,8 @@ data Styling = Styling
   , _renderingRectangle               :: V2 Double
 
   , _axisTextFontSizePx               :: Double
+  -- _axisTextFontStyle
+  -- _axisTextFontWeight
   , _axisStrokeWidth                  :: (Double, Double)
   , _axisStrokeColor                  :: (AlphaColour Double, AlphaColour Double)
 
@@ -171,8 +181,11 @@ data Styling = Styling
       -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
 
   , _tickTextTurn                     :: (Angle Double, Angle Double)
-  , _tickTextFontSizePx               :: Double
   , _tickTextAnchor                   :: (TextAnchor, TextAnchor)
+  , _tickTextFontFamily               :: First Str
+  , _tickTextFontSizePx               :: Double
+  , _tickTextFontStyle                :: FontStyle
+  , _tickTextFontWeight               :: FontWeight
 
   , _basicTickLength                  :: Double
   , _basicTickStrokeWidth             :: Double
@@ -233,8 +246,11 @@ instance Monoid Styling where
     , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
 
     , _tickTextTurn                 = (1/8, 0)
-    , _tickTextFontSizePx           = 12
     , _tickTextAnchor               = (TextAnchorEnd, TextAnchorEnd)
+    , _tickTextFontFamily           = First $ Just "sans-serif"
+    , _tickTextFontStyle            = mempty
+    , _tickTextFontSizePx           = 12
+    , _tickTextFontWeight           = mempty
 
     , _basicTickLength              = 10
     , _basicTickStrokeWidth         = 1
