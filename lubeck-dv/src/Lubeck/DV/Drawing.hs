@@ -143,6 +143,7 @@ scatterData ps = do
   style <- ask
   let base  = id
             $ fillColorA (style^.scatterPlotFillColor)
+            $ strokeWidth (style^.scatterPlotStrokeWidth)
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
   let origin = P $ V2 0 0
