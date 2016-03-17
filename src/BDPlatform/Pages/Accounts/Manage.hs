@@ -44,65 +44,61 @@ import           BD.Types
 import           BDPlatform.Types
 import           BDPlatform.HTMLCombinators
 import           Components.Grid
-import           Components.BusyIndicator       (BusyCmd (..), withBusy0, withBusy2)
+import           Components.BusyIndicator       (BusyCmd (..), withBusy0, withBusy, withBusy2)
 
 import           BDPlatform.Pages.Accounts.Common
 
+data Action = LoadGroup DG.GroupName | ActionNoop | CreateNewGroup | DeleteGroup DG.Group
 
-data Action = LoadGroup DG.Group | ActionNoop | CreateNewGroup | DeleteGroup DG.Group
-
-itemMarkup' :: Widget DG.Member ()
-itemMarkup' _ val =
-  E.div [A.class_ ""]
-    [ E.div [A.class_ "acc-username"] [ E.a [ A.class_ "acc-username"
-                                            , Ev.click $ \e -> Ev.stopPropagation e
-                                            , A.target "blank_"
-                                            , A.href ("https://instagram.com/" <> val)]
-                                            [E.text $ "@" <> val] ] ]
-
-headerW :: Widget (Maybe DG.GroupsList) Action
+headerW :: Widget (Maybe DG.GroupsNamesList) Action
 headerW actionsSink x = case x of
   Nothing -> go []
-  Just gl -> go gl
+  Just gnl -> go gnl
   where
-    go gl =
+    go gnl =
       panel $
         [ toolbar
             [ buttonGroup' $
                 selectWithPromptWidget
-                  (zip (makeOpts gl) (makeOpts gl))
-                  (contramapSink (g . f gl) actionsSink)
-                  (firstGroupName gl)
+                  (makeOpts gnl)
+                  (contramapSink (g . f gnl) actionsSink)
+                  (firstGroupName gnl)
 
             , buttonGroup' $
                 buttonOkIcon "New group" "plus" False [Ev.click $ \e -> actionsSink CreateNewGroup]
             ]
         ]
 
-    makeOpts gl = fmap DG.name gl
+    makeOpts gnl = zip gnl gnl
 
     f _ Nothing = []
-    f gl (Just grpname) = Data.List.filter (byName grpname) gl
+    f gnl (Just grpname) = Data.List.filter (byName grpname) gnl
 
-    byName name (DG.Group x _) = name == x
+    byName name x = name == x
 
     g []     = ActionNoop
     g [x]    = LoadGroup x
     g (x:xs) = LoadGroup x -- XXX ???
 
     firstGroupName [] = ""
-    firstGroupName xs = DG.name (head xs)
+    firstGroupName xs = head xs
 
 layout header grid = panel [header, grid]
 
 handleActions busySink notifSink gridCmdsSink act = case act of
-  LoadGroup (DG.Group name members) -> gridCmdsSink $ Replace (Set.toList members)
-  _                                 -> print "other act"
+  LoadGroup groupname -> do
+    (group, errors) <- (withBusy busySink DG.loadGroup) groupname
+    mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
+    gridCmdsSink $ Replace (Set.toList (DG.members group))
 
-loadGroups busySink notifSink = do
-  res  <- withBusy0 busySink DG.loadGroups
-  res' <- mapM (eitherToError notifSink) res
-  return $ catMaybes res'
+  _              -> print "other act"
+
+loadGroupsNames busySink notifSink groupsListSink = do
+  -- XXX do not use withBusy here?
+  res  <- withBusy0 busySink DG.loadGroupsNames >>= eitherToError notifSink
+  case res of
+    Nothing -> return ()
+    Just xs -> groupsListSink xs
 
 manageAccouns :: Sink BusyCmd
               -> Sink (Maybe Notification)
@@ -111,13 +107,13 @@ manageAccouns :: Sink BusyCmd
               -> Signal Nav
               -> IO (Signal Html)
 manageAccouns busySink notifSink ipcSink mUserNameB navS = do
-  (groupsListSink, groupsListE)                                <- newSyncEventOf (undefined :: DG.GroupsList)
+  (groupsListSink, groupsListE)                                <- newSyncEventOf (undefined :: DG.GroupsNamesList)
   (actionsSink, actionsE)                                      <- newSyncEventOf (undefined :: Action)
 
-  (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent (Just gridOptions) [] itemMarkup'
+  (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent (Just gridOptions) [] itemMarkup
 
   subscribeEvent actionsE $ void . forkIO . handleActions busySink notifSink gridCmdsSink
-  void . forkIO $ loadGroups busySink notifSink >>= groupsListSink
+  void . forkIO $ loadGroupsNames busySink notifSink groupsListSink
 
   groupsListS                                                  <- stepperS Nothing (fmap Just groupsListE)
   let headerView                                               = fmap (headerW actionsSink) groupsListS
@@ -126,4 +122,4 @@ manageAccouns busySink notifSink ipcSink mUserNameB navS = do
   return view
 
   where
-    gridOptions = defaultGridOptions{height = 40, otherButton = False}
+    gridOptions = defaultGridOptions{otherButton = False}
