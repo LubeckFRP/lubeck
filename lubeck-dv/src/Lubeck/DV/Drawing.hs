@@ -583,7 +583,9 @@ labeledAxis labelX labelY = do
   where
     text_ style= textWithOptions $ mempty
       { textAnchor = TextAnchorMiddle
-      , fontFamily = First $ Just "Futura, sans-serif"
+      , fontFamily = style^.axisTextFontFamily
+      , fontWeight = style^.axisTextFontWeight
+      , fontStyle  = style^.axisTextFontStyle
       , fontSize   = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
       }
 

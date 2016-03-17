@@ -14,9 +14,9 @@ module Lubeck.DV.Styling
   , axisStrokeWidth
   , axisStrokeColor
 
-  -- TODO , axisTextFamily
-  -- TODO , axisTextFontStyle
-  -- TODO , axisTextFontWeight
+  , axisTextFontFamily
+  , axisTextFontWeight
+  , axisTextFontStyle
   , axisTextFontSizePx
 
   , linePlotStrokeColor
@@ -42,9 +42,9 @@ module Lubeck.DV.Styling
   , tickTextTurn
   , tickTextAnchor
   , tickTextFontFamily
+  , tickTextFontWeight
   , tickTextFontStyle
   , tickTextFontSizePx
-  , tickTextFontWeight
 
   , basicTickLength
   , basicTickStrokeWidth
@@ -118,9 +118,11 @@ data Styling = Styling
   -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
   , _renderingRectangle               :: V2 Double
 
+  , _axisTextFontFamily               :: First Str
+  , _axisTextFontWeight               :: FontWeight
+  , _axisTextFontStyle                :: FontStyle
   , _axisTextFontSizePx               :: Double
-  -- _axisTextFontStyle
-  -- _axisTextFontWeight
+
   , _axisStrokeWidth                  :: (Double, Double)
   , _axisStrokeColor                  :: (AlphaColour Double, AlphaColour Double)
 
@@ -183,9 +185,9 @@ data Styling = Styling
   , _tickTextTurn                     :: (Angle Double, Angle Double)
   , _tickTextAnchor                   :: (TextAnchor, TextAnchor)
   , _tickTextFontFamily               :: First Str
-  , _tickTextFontSizePx               :: Double
-  , _tickTextFontStyle                :: FontStyle
   , _tickTextFontWeight               :: FontWeight
+  , _tickTextFontStyle                :: FontStyle
+  , _tickTextFontSizePx               :: Double
 
   , _basicTickLength                  :: Double
   , _basicTickStrokeWidth             :: Double
@@ -211,7 +213,11 @@ instance Monoid Styling where
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
 
+    , _axisTextFontFamily           = mempty
+    , _axisTextFontWeight           = mempty
+    , _axisTextFontStyle            = mempty
     , _axisTextFontSizePx           = 12
+
     , _axisStrokeWidth              = (1.5, 1.5)
     , _axisStrokeColor              = (Colors.black `withOpacity` 1, Colors.black `withOpacity` 1)
 
@@ -219,7 +225,7 @@ instance Monoid Styling where
     , _linePlotStrokeWidth          = 2.5
     , _linePlotStrokeType           = mempty
     -- , _linePlotFillColor            = Colors.black `withOpacity` 0
-    , _linePlotFillColor          = Colors.red `withOpacity` 0.2
+    , _linePlotFillColor            = Colors.red `withOpacity` 0.2
 
     , _scatterPlotStrokeColor       = Colors.red `withOpacity` 0.6
     , _scatterPlotStrokeWidth       = 1
@@ -247,10 +253,10 @@ instance Monoid Styling where
 
     , _tickTextTurn                 = (1/8, 0)
     , _tickTextAnchor               = (TextAnchorEnd, TextAnchorEnd)
-    , _tickTextFontFamily           = First $ Just "sans-serif"
+    , _tickTextFontFamily           = mempty
+    , _tickTextFontWeight           = mempty
     , _tickTextFontStyle            = mempty
     , _tickTextFontSizePx           = 12
-    , _tickTextFontWeight           = mempty
 
     , _basicTickLength              = 10
     , _basicTickStrokeWidth         = 1
