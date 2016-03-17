@@ -66,9 +66,11 @@ module Lubeck.DV.New
   , Scale
   , linear
   , linearIntegral
-  , LowerBoundSelect(..)
+  , IntegralBounds(..)
   , linearWithOptions
   , categorical
+  , CategoricalBounds(..)
+  , categoricalWithOptions
   , categoricalEnum
   , timeScale
   , timeScaleWithOptions
@@ -387,9 +389,21 @@ Only elements in the data set are included, which may not be what you want
 if your set is small and bounded (i.e. weekdays). Use 'categoricalEnum' for this.
 -}
 categorical :: (Ord a, Show a) => Scale a
-categorical = Scale
+categorical = categoricalWithOptions UseDataBounds
+
+{-|
+How to generate bounds for a categorical plot
+-}
+data CategoricalBounds
+  = UseDataBounds             -- ^ Bounds will be @[1..n]@ where n is number of elements
+  | PadDataBounds Int Int     -- ^ Using (AddToDataBounds a b), bounds will be @[1-a..n+b]@ where n is number of elements
+  | Standard                  -- ^ Same as @PadDataBounds 1 1@
+categoricalWithOptions :: (Ord a, Show a)
+  => CategoricalBounds
+  -> Scale a
+categoricalWithOptions categoricalBounds = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
-  , scaleBounds   = \vs -> (0, realToFrac $ length (sortNub vs) + 1)
+  , scaleBounds   = bounds
   , scaleGuides   = \vs -> zipWith (\k v -> (realToFrac k, toStr v)) [1..] (sortNub vs)
   , scaleBaseName = "categorical"
   }
@@ -404,6 +418,13 @@ categorical = Scale
     -- 2
     findPlaceIn :: Ord a => [a] -> a -> Int
     findPlaceIn xs x = length $ takeWhile (< x) xs
+
+    bounds' a b = \vs -> (realToFrac (1 - a), realToFrac (length (sortNub vs) + b))
+    bounds = case categoricalBounds of
+      Standard      -> bounds' 1 1
+      UseDataBounds -> bounds' 0 0
+      (PadDataBounds a b) -> bounds' a b
+
 
     sortNub = Data.List.nub . Data.List.sort
 
@@ -426,26 +447,26 @@ categoricalEnum = Scale
 A linear scale.
 -}
 linear :: (Real a, Show a) => Scale a
-linear = linearWithOptions False LBMin
+linear = linearWithOptions False UseMin
 
 {-|
 A linear scale for integral values.
 -}
 linearIntegral :: (Integral a, Show a) => Scale a
-linearIntegral = linearWithOptions True LBMin
+linearIntegral = linearWithOptions True UseMin
 
 {-|
 How to choose lower bound for a scale.
 -}
-data LowerBoundSelect
-  = LBZero                     -- ^ Use zero.
-  | LBInterpZeroAndMin Double  -- ^ Interpolate between zero and minimum value (0.5 for middle).
-  | LBMin                      -- ^ Use minimum value.
+data IntegralBounds
+  = UseZero                     -- ^ Use zero.
+  | InterpZeroAndMin Double     -- ^ Interpolate between zero and minimum value (0.5 for middle).
+  | UseMin                      -- ^ Use minimum value.
 
 
 linearWithOptions :: (Real a, Show a)
   => Bool
-  -> LowerBoundSelect
+  -> IntegralBounds
   -> Scale a
 linearWithOptions
   useIntegralShow
@@ -478,9 +499,9 @@ linearWithOptions
       False -> toStr $ roundTo 5 x
 
     chooseLB minVal = case lowerBoundChoice of
-      LBZero               -> 0
-      LBInterpZeroAndMin x -> x * minVal
-      LBMin                -> minVal
+      UseZero               -> 0
+      InterpZeroAndMin x -> x * minVal
+      UseMin                -> minVal
 
     bounds vs = (chooseLB $ realToFrac $ safeMin vs, realToFrac $ safeMax vs)
     guides vs = fmap (\x -> (x, showN x)) $ tickCalc 4 (bounds vs)
