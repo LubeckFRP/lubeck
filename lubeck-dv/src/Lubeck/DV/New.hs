@@ -507,8 +507,8 @@ timeScaleWithOptions timeRendering = Scale
     sortNub = Data.List.nub . Data.List.sort
 
     showT t = case timeRendering of
-      StandardTR -> toStr t
-      MonthYearTR -> Data.Time.formatTime Data.Time.defaultTimeLocale "%m-%Y" t
+      StandardTR  -> toStr t
+      MonthYearTR -> packStr $ Data.Time.formatTime Data.Time.defaultTimeLocale "%m-%Y" t
 
     mapping _ v = realToFrac $ toNDiffTime v
     bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
