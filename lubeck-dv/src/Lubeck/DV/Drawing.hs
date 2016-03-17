@@ -104,7 +104,7 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import Control.Applicative
-import Control.Lens ()
+import Control.Lens (to)
 import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
@@ -526,7 +526,7 @@ ticksNoFilter xt yt = do
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateY (-0.5) verticalLine
             -- bg grid
             , scale y $ strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
-            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ text_ style str
+            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ textX style str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
@@ -534,7 +534,7 @@ ticksNoFilter xt yt = do
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateX (-0.5) horizontalLine
             -- bg grid
             , scale x $ strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ translateX (0.5) horizontalLine
-            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ text_ style str
+            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ textY style str
             ]
   return $ mconcat [xTicks, yTicks]
   where
@@ -544,8 +544,10 @@ ticksNoFilter xt yt = do
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
 
-    text_ style = textWithOptions $ mempty
-      { textAnchor = style^.tickTextAnchor
+    textX = text_ fst
+    textY = text_ snd
+    text_ which style = textWithOptions $ mempty
+      { textAnchor = style^.tickTextAnchor.to which
       , fontFamily = First $ Just "Futura, sans-serif"
       , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
       }

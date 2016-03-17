@@ -167,7 +167,7 @@ data Styling = Styling
 
   , _tickTextTurn                     :: (Angle Double, Angle Double)
   , _tickTextFontSizePx               :: Double
-  , _tickTextAnchor                   :: TextAnchor
+  , _tickTextAnchor                   :: (TextAnchor, TextAnchor)
 
   , _basicTickLength                  :: Double
   , _basicTickStrokeWidth             :: Double
@@ -227,7 +227,7 @@ instance Monoid Styling where
 
     , _tickTextTurn                 = (1/8, 0)
     , _tickTextFontSizePx           = 12
-    , _tickTextAnchor               = TextAnchorEnd
+    , _tickTextAnchor               = (TextAnchorEnd, TextAnchorEnd)
 
     , _basicTickLength              = 10
     , _basicTickStrokeWidth         = 1
