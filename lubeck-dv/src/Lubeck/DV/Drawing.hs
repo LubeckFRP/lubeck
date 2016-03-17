@@ -509,26 +509,30 @@ ticksNoFilter xt yt = do
   style <- ask
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
+
   let kBasicTickLength       = style^.basicTickLength
   let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
   let basicTickColor_        = style^.basicTickColor
-  let backgroundTickColorX_   = style^.backgroundTickStrokeColorX
-  let backgroundTickColorY_   = style^.backgroundTickStrokeColorY
+
+  let backgroundTickStrokeWidthX_   = style^.backgroundTickStrokeWidthX
+  let backgroundTickStrokeWidthY_   = style^.backgroundTickStrokeWidthY
+  let backgroundTickStrokeColorX_   = style^.backgroundTickStrokeColorX
+  let backgroundTickStrokeColorY_   = style^.backgroundTickStrokeColorY
 
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
             [ mempty
             , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateY (-0.5) verticalLine
             -- bg grid
-            , scale y $ strokeColorA backgroundTickColorX_ $ strokeWidth 1.5 $ translateY (0.5) verticalLine
+            , scale y $ strokeColorA backgroundTickStrokeColorX_ $ strokeWidth backgroundTickStrokeWidthX_ $ translateY (0.5) verticalLine
             , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ text_ style str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
-            , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine
+            , scale kBasicTickLength $ strokeColorA basicTickColor_ $ strokeWidth backgroundTickStrokeWidthY_ $ translateX (-0.5) horizontalLine
             -- bg grid
-            , scale x $ strokeColorA backgroundTickColorY_ $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
+            , scale x $ strokeColorA backgroundTickStrokeColorY_ $ strokeWidth 1.5 $ translateX (0.5) horizontalLine
             , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ text_ style str
             ]
   return $ mconcat [xTicks, yTicks]
