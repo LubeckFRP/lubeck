@@ -1,10 +1,13 @@
 {-# LANGUAGE OverloadedStrings          #-}
 
 module BD.Data.Group
-    ( Member(..)
-    , Group(..)
+    ( Group(..)
     , GroupsList(..)
-    , loadGroups
+    , GroupName(..)
+    , MemberName(..)
+    , GroupsNamesList(..)
+    , GroupMemberNamesList(..)
+    , loadGroupsNames
     , loadGroup
     ) where
 
@@ -18,31 +21,49 @@ import           GHCJS.Types      (JSString)
 
 import           BD.Api
 import           BD.Types
+import qualified BD.Data.Account                as Ac
 
 
-type Member = JSString
-
-data Group = Group { name :: JSString
-                   , members :: Set.Set Member }
+data Group = Group { name    :: GroupName
+                   , members :: Set.Set Ac.Account }
 
 type GroupsList = [Group]
 
-loadGroups :: IO [Either AppError Group]
-loadGroups = do
-  groupnames <- loadGroupsNames
-  case groupnames of
-    Left e   -> return [Left e]
-    Right xs -> MP.mapM loadGroup xs
+type GroupName            = JSString
+type MemberName           = JSString
+type GroupsNamesList       = [GroupName]
+type GroupMemberNamesList = [MemberName]
 
-loadGroup :: JSString -> IO (Either AppError Group)
-loadGroup gn = do
-  ms <- loadGroupMembers gn
-  case ms of
-    Left e   -> return $ Left e
-    Right ms -> return $ Right $ Group gn (Set.fromList ms)
-
-loadGroupsNames :: IO (Either AppError [JSString])
+loadGroupsNames :: IO (Either AppError GroupsNamesList)
 loadGroupsNames = getAPIEither BD.Api.internalAPI "account-groups" >>= return . bimap ApiError id
 
-loadGroupMembers :: JSString -> IO (Either AppError [JSString])
-loadGroupMembers groupname = getAPIEither BD.Api.internalAPI ("account-groups/" <> groupname <> "/accounts") >>= return . bimap ApiError id
+loadGroupMemberNames :: JSString -> IO (Either AppError GroupMemberNamesList)
+loadGroupMemberNames groupname = getAPIEither BD.Api.internalAPI ("account-groups/" <> groupname <> "/accounts") >>= return . bimap ApiError id
+
+loadGroupAccounts :: GroupMemberNamesList -> IO [Either AppError Ac.Account]
+loadGroupAccounts accs = MP.mapM Ac.getUserOrError accs
+
+loadGroup :: GroupName -> IO (Group, [AppError])
+loadGroup groupname = do
+  res <- loadGroupMemberNames groupname
+  res' <- case res of
+            Left e     -> return [Left e]
+            Right accs -> loadGroupAccounts accs
+
+  return ((group groupname res'), (errors res'))
+
+  where
+    group n r    = Group n (Set.fromList $ accounts r)
+
+    accounts :: [Either AppError Ac.Account] -> [Ac.Account]
+    accounts r   = fromRight <$> filter (not . matchError) r
+
+    errors :: [Either AppError Ac.Account] -> [AppError]
+    errors r     = fromLeft <$> filter matchError r
+
+    fromLeft  (Left  x) = x
+    fromRight (Right x) = x
+
+    matchError x = case x of
+                     (Left _) -> True
+                     _        -> False
