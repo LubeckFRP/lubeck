@@ -755,13 +755,6 @@ geom_violin(stat_ydensity)
 -}
 
 
-
--- TODO geom bar
--- x (req), alpha, colour, fill, linetype, size
-
--- stat_bin2d
--- x (req), y (req), fillcolor
-
 {-| Render a geometry iff a key is set (i.e. present and non-zero). -}
 ifG :: Key -> Geometry -> Geometry
 ifG k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
@@ -777,15 +770,14 @@ ifGTHalf :: Key -> Geometry -> Geometry
 ifGTHalf k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
   where
     truish Nothing  = False
-    truish (Just (Normalized n)) = trace (show n) n > 0.5
+    truish (Just (Normalized n)) = n > 0.5
 
 
-{-# DEPRECATED scatter "Use 'pointG:r" #-}
+{-# DEPRECATED scatter "Use 'pointG" #-}
 scatter :: Geometry
 scatter = pointG
 
-
-    -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
+-- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
 
 pointG :: Geometry
 pointG = Geometry tot
@@ -835,8 +827,14 @@ bars = pointG
 Like 'fill', but renders the area between 'y' and 'yMin' instead of between 'y' and 0.
 -}
 area :: Geometry
-area = fill
--- Note this one doesn't have to perform the color estimation for now.
+area = Geometry tot
+  where
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
@@ -1146,10 +1144,25 @@ test7 = visualizeTest dat (mconcat [scatter, line, fill])
       , (5, 0, False)
       ]
 
-test8 = visualizeTest dat (mconcat [line, fill])
+test8b = visualizeTest dat2 (mconcat [line, fill])
+  [ x     <~ _1
+  , y     <~ _2
+  , color <~ _3
+  ]
+  where
+    dat2 = fmap (\a -> (a^._1, a^._2, False)) dat <> fmap (\a -> (a^._1, a^._3, True)) dat
+    dat =
+     [ (0, 3, 12)
+     , (1, 1, 12)
+     , (2, 1, 16)
+     , (3, 5, 16)
+     , (4, 16, 1) :: (Int, Int, Int)
+     ]
+
+test8 = visualizeTest dat (mconcat [area])
   [ x <~ _1
-  , y <~ _3
   , yMin <~ _2
+  , y <~ _3
   ]
   where
     dat =
@@ -1157,7 +1170,7 @@ test8 = visualizeTest dat (mconcat [line, fill])
      , (1, 1, 12)
      , (2, 1, 16)
      , (3, 5, 16)
-     , (4, 9, 12) :: (Int, Int, Int)
+     , (4, 16, 1) :: (Int, Int, Int)
      ]
 
 -- Cross-lines

@@ -46,6 +46,7 @@ module Lubeck.DV.Drawing
   , lineData
   , lineDataWithColor
   , fillData
+  , areaData
   , stepData
   , linearData
 
@@ -236,6 +237,23 @@ fillData (p:ps) = do
     addExtraPoints ps = [proj $ head ps] ++ ps ++ [proj $ last ps]
       where
         proj (P (V2 x _)) = P (V2 x 0)
+
+areaData :: (Monad m) => [P3 Double] -> StyledT m Drawing
+areaData ps = areaData' $
+  fmap (\p -> P $ V2 (p^._x) (p^._z)) ps
+    <>
+  fmap (\p -> P $ V2 (p^._x) (p^._y)) (reverse ps)
+
+areaData' :: (Monad m) => [P2 Double] -> StyledT m Drawing
+areaData' []     = mempty
+areaData' [_]    = mempty
+areaData' (p:ps) = do
+  style <- ask
+  let lineStyle = id
+                . fillColorA    (style^.linePlotFillColor)
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 -- | Draw a step chart.
 --
