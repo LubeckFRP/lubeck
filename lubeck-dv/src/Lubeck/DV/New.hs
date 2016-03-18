@@ -119,6 +119,7 @@ where
 
 import BasePrelude
 import Control.Lens(Getter, to)
+import Control.Lens(_1, _2, _3) -- TODO debug
 import Control.Lens.Operators hiding ((<~))
 import Control.Lens.TH
 import Data.Functor.Contravariant
@@ -296,6 +297,9 @@ x = customAesthetic "x"
 
 -- | Map values to the Y axis of a plot.
 y = customAesthetic "y"
+
+-- | Map values to the Y axis of a plot.
+yMin = customAesthetic "yMin"
 
 -- | Map values to the color of a plot element.
 color = customAesthetic "color"
@@ -659,7 +663,29 @@ infixl 3 <~
 
 -- GEOMETRY
 
-newtype Geometry = Geometry { getGeometry :: [Map Key (Normalized Double)] -> Styled Drawing }
+{-
+Assuming (Ord k) =>
+
+[a]     ~ (Int, Int -> a)
+Map k v ~ ([k], k -> Maybe v)
+Map k v ~ ([Int], Int -> k, k -> v)  ~  ([Int], Int -> (k, v))  ~ [(k, v)]
+
+
+[Map k v]
+  ~ ([Int], Int -> Map k v)
+  ~ ([Int], Int -> ([k], k -> Maybe v))
+
+
+INTERESTINGLY
+  [Map k v]
+    ~  Map k [Maybe v]
+    ~  ([k], Int, k -> Int -> Maybe v)
+
+-}
+
+type Coord = Normalized Double
+
+newtype Geometry = Geometry { getGeometry :: [Map Key Coord] -> Styled Drawing }
   deriving (Monoid)
 
 geom_blank = mempty
@@ -739,6 +765,24 @@ ifG k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
     truish (Just 0) = False
     truish _        = True
 
+
+{-# DEPRECATED scatter "Use 'pointG:r" #-}
+scatter :: Geometry
+scatter = pointG
+
+
+    -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
+
+pointG :: Geometry
+pointG = Geometry tot
+  where
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+
 line :: Geometry
 line = Geometry tot
   where
@@ -746,7 +790,7 @@ line = Geometry tot
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Normalized Double -> [Map Key (Normalized Double)] -> Styled Drawing
+    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 fill :: Geometry
@@ -756,25 +800,36 @@ fill = Geometry tot
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Normalized Double -> [Map Key (Normalized Double)] -> Styled Drawing
+    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
-scatter :: Geometry
-scatter = Geometry tot
-  where
-    tot ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+{-|
+Like 'point', but renders the set of values between 'y' and 'yMin' instead of 'y'.
 
-    baseL :: Normalized Double -> [Map Key (Normalized Double)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+Dims            x,y   x,0,y x,yMin,y
+Not connected   point bar   interval
+Connected       line  fill  area
+
+-- Wilkinson: Point, Line, Area, Interval, Path, Schema ("box"), Contour
+
+-}
+bars :: Geometry
+bars = pointG
+
+
+{-|
+Like 'fill', but renders the area between 'y' and 'yMin' instead of between 'y' and 0.
+-}
+area :: Geometry
+area = fill
+-- Note this one doesn't have to perform the color estimation for now.
 
 
 atColor :: (Eq b, Ord k, IsString k) => b -> [Map k b] -> [Map k b]
 atColor c = filter (\m -> m ?! "color" == Just c)
 
 -- All color values in the dataset or Nothing if there are none
-colors :: [Map Key (Normalized Double)] -> Maybe [Normalized Double]
+colors :: [Map Key (Coord)] -> Maybe [Coord]
 colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
   [] -> Nothing
   xs -> Just $ sortNub xs
@@ -783,25 +838,23 @@ colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
 
 
 
--- TODO
-applyScalingToGuides :: Map Key (Double,Double)
-  -> Map Key [(Double, a)]
-  -> Map Key [(Normalized Double, a)]
-applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (normalize (fromMaybe idS $ Data.Map.lookup aesK b) d,s)) dsL) m
-  where
-    idS = (0,1)
+normalizeGuides :: Map Key (Double, Double) -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
+normalizeGuides b m = normalizeGuides' b m
 
-applyScalingToValues :: Map Key (Double,Double) -> [Map Key Double] -> [Map Key (Normalized Double)]
-applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> normalize (fromMaybe idS $ Data.Map.lookup aesK b) d)) m
-  where
-    idS = (0,1)
+normalizeData :: Map Key (Double, Double) -> [Map Key Double] -> [Map Key (Coord)]
+normalizeData b m = fmap (normalizeData' b) m
+
+-- TODO nice Identity vs Compose pattern!
+normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
+normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
 
 {-| Tag a value to keep track of the fact that it is /normalized/, i.e. in the unit hypercube. -}
 newtype Normalized a = Normalized { getNormalized :: a }
   deriving (Eq, Ord, Show, Num, Fractional, Real, RealFrac, Floating)
 
-normalize :: (Double, Double) -> Double -> Normalized Double
-normalize (lb,ub) x = Normalized $ (x - lb) / (ub - lb)
+normalize :: Maybe (Double, Double) -> Double -> Coord
+normalize Nothing        x = Normalized x
+normalize (Just (lb,ub)) x = Normalized $ (x - lb) / (ub - lb)
 
 
 
@@ -871,8 +924,16 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
 
+{-| Convenient wrapper for 'visualize' using 'mempty' style. -}
 visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
 visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
+
+
+{-| The main entry-point for the library. -}
+-- data/trans (our [s]),
+-- scale (implied by the aesthetic),
+-- coord (implied by the geometry)
+-- guide/elem (implied by data, geometry and aesthetic)
 
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames1 dat (Geometry geom) aess =
@@ -885,9 +946,9 @@ visualizeWithStyle axesNames1 dat (Geometry geom) aess =
     aes                 = mconcat aess
     boundsM             = aestheticBounds aes dat --  :: Map Key (Double, Double)
     guidesM2            = aestheticGuides aes dat --  :: Map Key [(Double, Str)]
-    guidesM             = applyScalingToGuides boundsM guidesM2 :: Map Key [(Normalized Double, String)]
+    guidesM             = normalizeGuides boundsM guidesM2 :: Map Key [(Coord, String)]
     mappedData2         = fmap (aestheticMapping aes dat) dat --  :: [Map Key Double]
-    mappedAndScaledData = applyScalingToValues boundsM mappedData2 :: [Map Key (Normalized Double)]
+    mappedAndScaledData = normalizeData boundsM mappedData2 :: [Map Key (Coord)]
 
     drawTicks xs ys = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
 
@@ -1044,3 +1105,17 @@ test7 = visualizeTest dat (mconcat [scatter, line, fill])
       , (3, 0, False)
       , (5, 0, False)
       ]
+
+test8 = visualizeTest dat (mconcat [line, fill])
+  [ x <~ _1
+  , y <~ _3
+  , yMin <~ _2
+  ]
+  where
+    dat =
+     [ (0, 3, 12)
+     , (1, 1, 12)
+     , (2, 1, 16)
+     , (3, 5, 16)
+     , (4, 9, 12) :: (Int, Int, Int)
+     ]
