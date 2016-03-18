@@ -158,11 +158,24 @@ a varset (in Wilkinson).
 {-$statistics
 
 Nothing to see here.
+
+Future:
+
+- These should arguably be handled outside 'Lubeck.DV'. Wilkinson makes the argument
+  that statistical transformations has to be applied after scales, how relevant is
+  that in this implementation?
 -}
 
 {-$coordinates
 
 Nothing to see here.
+
+Future:
+
+- Most interesting ones are X/Y flip and map projections.
+
+- Polar is mainly useful for pie charts.
+
 -}
 
 -- ALGEBRA
@@ -641,6 +654,121 @@ x 'contramap' getName
 infixl 3 <~
 
 
+
+
+
+-- GEOMETRY
+
+geom_blank = mempty
+
+
+-- TODO use GG/ggplot terminology, i.e.
+--   point, line, area, interval, path, schema
+
+-- TODO conditional plots (i.e. only show cross line if some "aesthetic" is set)
+
+-- TODO interval/area
+
+-- TODO stacking/dodging/jittering
+
+-- TODO how do we know what aesthetics a certain plot listens to?
+-- Is this all dynamic or is types involved?
+
+
+-- TODO ablines, i.e. intercepting lines
+-- http://docs.ggplot2.org/current/geom_abline.html
+
+
+-- TODO geom bar
+-- x (req), alpha, colour, fill, linetype, size
+
+-- stat_bin2d
+-- x (req), y (req), fillcolor
+
+
+line :: Geometry
+line = Geometry tot
+  where
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+
+fill :: Geometry
+fill = Geometry tot
+  where
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+
+scatter :: Geometry
+scatter = Geometry tot
+  where
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Double -> [Map Key Double] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+
+
+atColor :: Double -> [Map Key Double] -> [Map Key Double]
+atColor c = filter (\m -> m ?! "color" == Just c)
+
+-- All color values in the dataset or Nothing if there are none
+colors :: [Map Key Double] -> Maybe [Double]
+colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+  [] -> Nothing
+  xs -> Just $ sortNub xs
+  where
+    sortNub = Data.List.nub . Data.List.sort
+
+
+
+-- TODO
+applyScalingToGuides :: Map Key (Double,Double)
+  -> Map Key [(Double, str)]
+  -> Map Key [(Double, str)]
+applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (scale (fromMaybe idS $ Data.Map.lookup aesK b) d,s)) dsL) m
+  where
+    idS = (0,1)
+    scale :: (Double, Double) -> Double -> Double
+    scale (lb,ub) x = (x - lb) / (ub - lb)
+
+applyScalingToValues :: Map Key (Double,Double) -> [Map Key Double] -> [Map Key Double]
+applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromMaybe idS $ Data.Map.lookup aesK b) d)) m
+  where
+    idS = (0,1)
+    scale :: (Double, Double) -> Double -> Double
+    scale (lb,ub) x = (x - lb) / (ub - lb)
+
+newtype Geometry = Geometry { getGeometry :: [Map Key Double] -> Styled Drawing }
+  deriving (Monoid)
+
+
+
+(!) :: (Num b, Ord k) => Map k b -> k -> b
+m ! k = maybe 0 id $ Data.Map.lookup k m
+
+(?) :: (Monoid b, Ord k) => Map k b -> k -> b
+m ? k = maybe mempty id $ Data.Map.lookup k m
+
+(?!) :: (Ord k) => Map k b -> k -> Maybe b
+m ?! k = Data.Map.lookup k m
+
+
+
+
+
+
+-- TOP-LEVEL
+
+
 printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO ()
 printDebugInfo dat aess = putStrLn $ B.render $ box
   where
@@ -721,95 +849,6 @@ visualizeWithStyle axesNames1 dat (Geometry geom) aess =
     -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
     mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
     mappedAndScaledData = applyScalingToValues boundsM mappedData2
-
--- TODO
-applyScalingToGuides :: Map Key (Double,Double)
-  -> Map Key [(Double, str)]
-  -> Map Key [(Double, str)]
-applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (scale (fromMaybe idS $ Data.Map.lookup aesK b) d,s)) dsL) m
-  where
-    idS = (0,1)
-    scale :: (Double, Double) -> Double -> Double
-    scale (lb,ub) x = (x - lb) / (ub - lb)
-
-applyScalingToValues :: Map Key (Double,Double) -> [Map Key Double] -> [Map Key Double]
-applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromMaybe idS $ Data.Map.lookup aesK b) d)) m
-  where
-    idS = (0,1)
-    scale :: (Double, Double) -> Double -> Double
-    scale (lb,ub) x = (x - lb) / (ub - lb)
-
-newtype Geometry = Geometry { getGeometry :: [Map Key Double] -> Styled Drawing }
-  deriving (Monoid)
-
-(!) :: (Num b, Ord k) => Map k b -> k -> b
-m ! k = maybe 0 id $ Data.Map.lookup k m
-
-(?) :: (Monoid b, Ord k) => Map k b -> k -> b
-m ? k = maybe mempty id $ Data.Map.lookup k m
-
-(?!) :: (Ord k) => Map k b -> k -> Maybe b
-m ?! k = Data.Map.lookup k m
-
-
--- TODO use GG/ggplot terminology, i.e.
---   point, line, area, interval, path, schema
-
--- TODO conditional plots (i.e. only show cross line if some "aesthetic" is set)
-
--- TODO interval/area
-
--- TODO stacking/dodging/jittering
-
--- TODO how do we know what aesthetics a certain plot listens to?
--- Is this all dynamic or is types involved?
-
-line :: Geometry
-line = Geometry tot
-  where
-    tot ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
-
-    baseL :: Double -> [Map Key Double] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
-
-fill :: Geometry
-fill = Geometry tot
-  where
-    tot ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
-
-    baseL :: Double -> [Map Key Double] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
-
-scatter :: Geometry
-scatter = Geometry tot
-  where
-    tot ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
-
-    baseL :: Double -> [Map Key Double] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
-
-
-atColor :: Double -> [Map Key Double] -> [Map Key Double]
-atColor c = filter (\m -> m ?! "color" == Just c)
-
--- All color values in the dataset or Nothing if there are none
-colors :: [Map Key Double] -> Maybe [Double]
-colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
-
-
-
-
 
 
 
