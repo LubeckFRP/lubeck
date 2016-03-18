@@ -1,5 +1,5 @@
-
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
 
 module Lubeck.Web.URI
   ( encodeURIComponent
@@ -7,9 +7,8 @@ module Lubeck.Web.URI
   , getURIParameter
   ) where
 
-import GHCJS.Types (JSVal)
-import GHCJS.Foreign.QQ (js, js_, jsu_, jsu')
-import GHCJS.Types(JSString, jsval)
+import           GHCJS.Foreign.QQ (js, js_, jsu', jsu_)
+import           GHCJS.Types      (JSVal, JSString, jsval)
 
 -- |
 -- See https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/decodeURIComponent

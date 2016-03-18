@@ -1,8 +1,6 @@
-
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE RankNTypes                #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
 
 {-|
@@ -246,7 +244,7 @@ componentW initialState widget = do
   return (htmlS, internalSink)
 
 componentListen ::  WidgetT r a b -> Signal a -> Signal r
-componentListen widget signal = fmap (widget emptySink) signal
+componentListen widget = fmap (widget emptySink)
 
 repackValue :: (FormValid e, Submit a) -> (FormValid e, a)
 repackValue (x, Submit y)     = (x, y)
@@ -359,8 +357,8 @@ checkboxWidget title focus update value = div
       ]
   ]
   where
-    checked   = if value then [(VD.attribute "checked")   "true"] else []
-    autofocus = if focus then [(VD.attribute "autofocus") "true"] else []
+    checked   = [A.checked True | value]
+    autofocus = [A.autofocus True | focus]
 
 passwordWidget :: JSString -> Bool -> Widget' JSString
 passwordWidget title focus update value = div
@@ -378,7 +376,7 @@ passwordWidget title focus update value = div
       ]
   ]
   where
-    fcs = if focus then [(VD.attribute "autofocus") "true"] else []
+    fcs = [A.autofocus True | focus]
 
 
 longStringWidget :: JSString -> Bool -> Widget' JSString
@@ -397,7 +395,7 @@ longStringWidget title focus update value = div
       ]
   ]
   where
-    fcs = if focus then [(VD.attribute "autofocus") "true"] else []
+    fcs = [A.autofocus True | focus]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
 altW :: Html -> Widget a b -> Widget (Maybe a) b

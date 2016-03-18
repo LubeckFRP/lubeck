@@ -1,8 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
 module Components.Notifications
@@ -38,12 +35,12 @@ notificationW :: Widget [Notification] Int
 notificationW _    []   = mempty
 notificationW sink ns = div [A.class_ "notifPanel"] [ div [] (map (notifItem sink) (zip [0..] ns))]
   where
-    notifItem sink (idx, (NError (ApiError s)))            = nbody idx "danger"  ("API Error: "       <> s)
-    notifItem sink (idx, (NError (BLError s)))             = nbody idx "danger"  ("BL Error: "        <> s)
-    notifItem sink (idx, (NError (NotImplementedError s))) = nbody idx "danger"  ("Not implemented: " <> s)
-    notifItem sink (idx, (NInfo s))                        = nbody idx "info"    s
-    notifItem sink (idx, (NSuccess s))                     = nbody idx "success" s
-    notifItem sink (idx, (NWarning s))                     = nbody idx "warning" s
+    notifItem sink (idx, NError (ApiError s))            = nbody idx "danger"  ("API Error: "       <> s)
+    notifItem sink (idx, NError (BLError s))             = nbody idx "danger"  ("BL Error: "        <> s)
+    notifItem sink (idx, NError (NotImplementedError s)) = nbody idx "danger"  ("Not implemented: " <> s)
+    notifItem sink (idx, NInfo s)                        = nbody idx "info"    s
+    notifItem sink (idx, NSuccess s)                     = nbody idx "success" s
+    notifItem sink (idx, NWarning s)                     = nbody idx "warning" s
 
 
     nbody idx cls msg =
@@ -82,11 +79,11 @@ notificationsComponent initialErrorMessages = do
 
   where
     -- inserts new error into internal errors list
-    externalToInternal :: Maybe a -> ([a] -> [a])
+    externalToInternal :: Maybe a -> [a] -> [a]
     externalToInternal Nothing oldAs = oldAs
     externalToInternal (Just a) oldAs = oldAs <> [a]
 
     -- filters out errors from internal errors list
     filterByIdx :: Int -> [a] -> [a]
     filterByIdx idxToRemove oldAs =
-      fmap fst $ Prelude.filter ((/= idxToRemove) . snd) (zip oldAs [0..])
+      fst <$> Prelude.filter ((/= idxToRemove) . snd) (zip oldAs [0..])

@@ -2,12 +2,12 @@
 
 module BDPlatform.Pages.Accounts.Manage (manageAccouns) where
 
-import qualified Data.Set as Set
 import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
 import           Control.Monad                  (void)
+import           Data.Foldable                  (forM_)
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
@@ -56,7 +56,7 @@ headerW actionsSink x = case x of
   Just gnl -> go gnl
   where
     go gnl =
-      panel $
+      panel
         [ toolbar
             [ buttonGroup' $
                 selectWithPromptWidget
@@ -87,7 +87,7 @@ layout header grid = panel [header, grid]
 
 handleActions busySink notifSink gridCmdsSink act = case act of
   LoadGroup groupname -> do
-    (group, errors) <- (withBusy busySink DG.loadGroup) groupname
+    (group, errors) <- withBusy busySink DG.loadGroup groupname
     mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
     gridCmdsSink $ Replace (Set.toList (DG.members group))
 
@@ -96,9 +96,7 @@ handleActions busySink notifSink gridCmdsSink act = case act of
 loadGroupsNames busySink notifSink groupsListSink = do
   -- XXX do not use withBusy here?
   res  <- withBusy0 busySink DG.loadGroupsNames >>= eitherToError notifSink
-  case res of
-    Nothing -> return ()
-    Just xs -> groupsListSink xs
+  forM_ res groupsListSink
 
 manageAccouns :: Sink BusyCmd
               -> Sink (Maybe Notification)

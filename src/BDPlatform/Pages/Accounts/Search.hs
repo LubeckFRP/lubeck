@@ -9,7 +9,7 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import           Control.Monad                  (void)
+import           Control.Monad                  (void, when)
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
@@ -58,7 +58,7 @@ data FormViewMode = FormVisible | FormHidden
 
 searchFormW :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)
 searchFormW dayNow outputSink query =
-  panel' $ formPanel_ [Ev.keyup $ \e -> if which e == 13 then outputSink (Submit query) else return () ]
+  panel' $ formPanel_ [Ev.keyup $ \e -> when (which e == 13) $ outputSink (Submit query) ]
       [ longStringWidget "Keyword"        True  (contramapSink (\new -> DontSubmit $ query { keyword = new     }) outputSink) (AQ.keyword query)
       , longStringWidget "User name"      False (contramapSink (\new -> DontSubmit $ query { username = new    }) outputSink) (AQ.username query)
       , longStringWidget "Follows"        False (contramapSink (\new -> DontSubmit $ query { follows = new     }) outputSink) (AQ.follows query)
@@ -110,7 +110,7 @@ wrapResults resultsV results sel =
   let sel'    = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel
       btnAttr = if Set.size sel' > 0
                   then [Ev.click $ \e -> addToGroup sel']
-                  else [(VD.attribute "disabled") "true"]
+                  else [A.disabled True]
       msg     = case Set.size sel' of
                   0 -> ""
                   1 -> "1 item selected"
@@ -126,18 +126,17 @@ wrapResults resultsV results sel =
            , resultsV ]
 
 addToGroup :: Set.Set Ac.Account -> IO ()
-addToGroup sel = do
-  print $ "Going to add to group " <> showJS (Set.size sel) <> " accounts"
+addToGroup sel = print $ "Going to add to group " <> showJS (Set.size sel) <> " accounts"
 
 searchRequest busySink notifSink srchResSink query = do
   srchResSink Pending -- reset previous search results
 
   let complexQuery = AccountQuery $ complexifyAccountQuery query
-  eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
+  eQueryId <- withBusy2 busySink (postAPIEither BD.Api.defaultAPI) "internal/queries" complexQuery
   case eQueryId of
     Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
     Right queryId -> void . forkIO $ do
-      eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
+      eitherPosts <- withBusy busySink (getAPIEither BD.Api.defaultAPI) $ "internal/queries/" <> queryId <> "/results"
       case eitherPosts of
         Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
         Right ps -> srchResSink $ Found ps

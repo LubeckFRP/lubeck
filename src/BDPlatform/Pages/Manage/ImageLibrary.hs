@@ -58,14 +58,14 @@ instance Show ImgLibraryActions where
 -- view
 
 viewImageW :: Widget Im.Image ImgLibraryActions
-viewImageW sink image = do
+viewImageW sink image =
   panel' $
     E.div [ A.class_ "library-image-view" , keyup handleKeys ]
       [ toolbarLeft
           [ buttonGroupLeft
               [ buttonLinkIcon "Prev image"      "chevron-left"  False [click $ \_ -> sink $ ViewPrevImg image]
               , buttonLinkIcon "Next image"      "chevron-right" False [click $ \_ -> sink $ ViewNextImg image]
-              , buttonLinkIcon "Back to library" "undo"          False [click $ \_ -> sink $ ViewGalleryIndex] ]
+              , buttonLinkIcon "Back to library" "undo"          False [click $ \_ -> sink   ViewGalleryIndex] ]
 
           , buttonGroupLeft
               [ E.div [A.class_ "btn"] [ E.text "Prediction score:" ]
@@ -96,8 +96,8 @@ showImagePred (Just x) = renderScore x
 renderScore :: Double -> Html
 renderScore x =
   E.div [A.class_ "score-container badge", A.title $ "Score: " <> showJS x]
-    [ E.div [A.class_ "neg-score"] [ (if x < 0 then negativeScore x else negativeScore 0) ]
-    , E.div [A.class_ "pos-score"] [ (if x >= 0 then positiveScore x else positiveScore 0) ] ]
+    [ E.div [A.class_ "neg-score"] [ if x < 0  then negativeScore x else negativeScore 0 ]
+    , E.div [A.class_ "pos-score"] [ if x >= 0 then positiveScore x else positiveScore 0 ] ]
 
   where
     positiveScore x = E.div [ A.class_ "good-score-bar"
@@ -107,7 +107,7 @@ renderScore x =
 
     -- current value, max width in px, max value
     calcScoreBarWidthPx :: Double -> Int -> Double -> Int
-    calcScoreBarWidthPx x maxpx maxscale = abs . round $ (fromIntegral maxpx) * x / maxscale
+    calcScoreBarWidthPx x maxpx maxscale = abs . round $ fromIntegral maxpx * x / maxscale
 
 imgWithAttrs :: Sink ImgLibraryActions -> Im.Image -> [Property] -> Html
 imgWithAttrs actionsSink image attrs =
@@ -137,7 +137,7 @@ processActions busySink notifSink actionsSink2 imsB accB (ViewPrevImg image) = d
                   Nothing -> image
                   Just ims -> case Data.List.findIndex ((Im.id image ==) . Im.id) ims of
                                   Nothing -> image
-                                  Just x  -> ims !! (if x - 1 < 0 then (length ims) - 1 else x - 1)
+                                  Just x  -> ims !! (if x - 1 < 0 then length ims - 1 else x - 1)
   return (Just prevImg)
 
 processActions busySink notifSink actionsSink2 imsB accB (ViewNextImg image) = do
@@ -157,7 +157,7 @@ processActions busySink notifSink actionsSink2 imsB accB x@(EnhanceImg image) = 
       return $ Just image
 
     Just acc -> do
-      res <- (withBusy2 busySink enhanceImage) acc image
+      res <- withBusy2 busySink enhanceImage acc image
       case res of
         Left e        -> notifSink (Just . NError $ e) >> return (Just image)
         Right (Ok _)  -> notifSink (Just . NSuccess $ "Success! The enhanced image will be added to your Image Library automatically soon :-)")
@@ -175,7 +175,7 @@ processActions busySink notifSink actionsSink2 imsB accB (DeleteImg image) = do
       rly <- jsConfirm "Are you sure?"
       case rly of
         1 -> do
-          res <- (withBusy2 busySink deleteImage) acc image
+          res <- withBusy2 busySink deleteImage acc image
           case res of
             Left e        -> notifSink (Just . NError $ e) >> return (Just image)
             Right (Ok _)  -> notifSink (Just . NInfo $ "Image deleted :-(")
@@ -245,7 +245,7 @@ imageLibrary busySink notifSink ipcSink ipcEvents userE = do
         Key 39 -> actionsSink $ ViewNextImg image -- right arrow
         Key 46 -> actionsSink $ DeleteImg image   -- delete
         Key 13 -> actionsSink $ EnhanceImg image  -- enter
-        Key 38 -> actionsSink $ ViewGalleryIndex  -- up arrow
+        Key 38 -> actionsSink   ViewGalleryIndex  -- up arrow
         _      -> return ()
 
   return (layout <$> galleryView <*> imageView, galleryB, kbdSink)

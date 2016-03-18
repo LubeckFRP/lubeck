@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE JavaScriptFFI              #-}
 
@@ -92,7 +91,7 @@ authenticateOrError (unm, psw) = do
 
   where
     api = BD.Api.defaultAPI { headers = [authHeader] }
-    authHeader = ("Authorization", "Basic " <> (base64encode (unm <> ":" <> psw)))
-    base64encode s = btoa s
+    authHeader = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+    base64encode = btoa
 
 foreign import javascript unsafe "btoa($1)" btoa :: JSString -> JSString

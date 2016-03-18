@@ -1,18 +1,20 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, OverloadedStrings, RecordWildCards, FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
 module BD.Data.AdTypes where
 
-import Control.Monad
-import Data.Aeson -- TODO proper
-import Data.Data
-import Data.Time.Clock (UTCTime)
+import           Control.Monad
+import           Data.Aeson
 import qualified Data.Aeson.Types
-import qualified GHC.Generics as GHC
-import Data.Monoid
+import           Data.Data
+import           Data.Monoid
+import           Data.Time.Clock  (UTCTime)
+import qualified GHC.Generics     as GHC
 
-import GHCJS.Types (JSString)
+import           GHCJS.Types      (JSString)
 
-import BD.Api
+import           BD.Api
 
 type USDcents = Int
 

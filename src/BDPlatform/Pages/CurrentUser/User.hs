@@ -47,7 +47,7 @@ userH acc =
   E.li [class_ "list-group-item"]
       [ div [class_ "media"]
           [ div [class_ "media-left"]
-              [ (profilePicture $ Ac.profile_picture acc) ]
+              [ profilePicture $ Ac.profile_picture acc ]
 
           , div [class_ "media-body"]
               [ E.h2 [ class_ "account-username" ] [ text $ Ac.username acc ]
@@ -61,16 +61,16 @@ userH acc =
 
 userPageW :: Widget (Maybe Ac.Account, Maybe Campaigns) AdC.AdCampaign
 userPageW sink (Nothing, _) = mempty
-userPageW sink ((Just acc), Nothing) =
+userPageW sink (Just acc, Nothing) =
   contentPanel $
     E.ul [class_ "list-group"] [ userH acc ]
 
-userPageW sink ((Just acc), (Just camps)) =
+userPageW sink (Just acc, Just camps) =
   contentPanel $
     E.ul [class_ "list-group"]
       [ userH acc
       , E.li [class_ "list-group-item"]
-          [ div [] [text "Latest count: ", text $ fromMaybe "unknown" (fmap showJS $ Ac.latest_count acc) ] ]
+          [ div [] [text "Latest count: ", text $ fromMaybe "unknown" (showJS <$> Ac.latest_count acc) ] ]
       , E.li [class_ "list-group-item"]
           [ div [] [ text "Number of campaigns: ", text $ showJS (length camps) ] ]
       , E.li [class_ "list-group-item"]

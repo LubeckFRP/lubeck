@@ -13,3 +13,4 @@ Vagrantfile
 *.swo
 doc
 static/tmp
+ghc-mod.package-db-stack

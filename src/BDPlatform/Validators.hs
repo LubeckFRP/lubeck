@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
@@ -26,10 +24,10 @@ newtype VError = VError [JSString] deriving (Data.Semigroup.Semigroup)
 data VSuccess = VSuccess
 
 longString :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
-longString fn minl maxl s = runValidation2 <$> (lengthBetween fn minl maxl s) <*> (isAlphanum fn s)
+longString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isAlphanum fn s
 
 passwordString :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
-passwordString fn minl maxl s = runValidation2 <$> (lengthBetween fn minl maxl s) <*> (isPrintable fn s)
+passwordString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isPrintable fn s
 
 notEqualTo :: (Eq a, Show a) => JSString -> a -> a -> Validation VError VSuccess
 notEqualTo fn s pattern = if s /= pattern
@@ -42,30 +40,30 @@ equalTo fn s pattern = if s == pattern
   else Failure . VError $ ["\"" <> fn <> "\" must be equal to " <> showJS pattern]
 
 notEmpty :: JSString -> JSString -> Validation VError VSuccess
-notEmpty fn s = if (Data.JSString.length s) > 0
+notEmpty fn s = if Data.JSString.length s > 0
   then Success VSuccess
   else Failure . VError $ ["\"" <> fn <> "\" must not be empty"]
 
 lengthGT :: JSString -> Int -> JSString -> Validation VError VSuccess
-lengthGT fn n s = if (Data.JSString.length s) > n
+lengthGT fn n s = if Data.JSString.length s > n
   then Success VSuccess
   else Failure . VError $ ["\"" <> fn <> "\" min length must be > " <> showJS n]
 
 lengthLT :: JSString -> Int -> JSString -> Validation VError VSuccess
-lengthLT fn n s = if (Data.JSString.length s) < n
+lengthLT fn n s = if Data.JSString.length s < n
   then Success VSuccess
   else Failure . VError $ ["\"" <> fn <> "\" max length must be < " <> showJS n]
 
 lengthBetween :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
-lengthBetween fn minl maxl s = runValidation2 <$> (lengthGT fn minl s) <*> (lengthLT fn maxl s)
+lengthBetween fn minl maxl s = runValidation2 <$> lengthGT fn minl s <*> lengthLT fn maxl s
 
 isPrintable :: JSString -> JSString -> Validation VError VSuccess
-isPrintable fn s = if (all id $ isPrint <$> (Data.JSString.unpack s))
+isPrintable fn s = if and $ isPrint <$> Data.JSString.unpack s
   then Success VSuccess
   else Failure . VError $ ["\"" <> fn <> "\" must be printable"]
 
 isAlphanum :: JSString -> JSString -> Validation VError VSuccess
-isAlphanum fn s = if (all id $ isAlphaNum <$> (Data.JSString.unpack s))
+isAlphanum fn s = if and $ isAlphaNum <$> Data.JSString.unpack s
   then Success VSuccess
   else Failure . VError $ ["\"" <> fn <> "\" must be alphanum"]
 

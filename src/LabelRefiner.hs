@@ -1,40 +1,45 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, DeriveGeneric, OverloadedStrings, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Main where
 
-import Prelude hiding (div)
+import           Prelude                        hiding (div)
 import qualified Prelude
 
-import Control.Monad
-import Control.Applicative
-import Data.Monoid (mconcat, (<>))
+import           Control.Applicative
+import           Control.Monad
+import           Data.Monoid                    (mconcat, (<>))
 
-import Data.JSString (JSString, pack, unpack)
-import GHCJS.Types (jsval)
-import qualified GHC.Generics as GHC
+import           Data.JSString                  (JSString, pack, unpack)
+import qualified GHC.Generics                   as GHC
+import           GHCJS.Types                    (jsval)
 
-import qualified Web.VirtualDom as V
-import qualified Web.VirtualDom.Html as E
-import qualified Web.VirtualDom.Html.Events as EV
+import qualified Web.VirtualDom                 as V
+import qualified Web.VirtualDom.Html            as E
 import qualified Web.VirtualDom.Html.Attributes as A
+import qualified Web.VirtualDom.Html.Events     as EV
 
-import Lubeck.App (Html, runAppReactive, runAppStatic)
-import Lubeck.Forms
-import Lubeck.Forms.Basic
-import Lubeck.Forms.Button
-import Lubeck.FRP
-import Lubeck.Util (reactimateIOAsync)
+import           Lubeck.App                     (Html, runAppReactive,
+                                                 runAppStatic)
+import           Lubeck.Forms
+import           Lubeck.Forms.Basic
+import           Lubeck.Forms.Button
+import           Lubeck.FRP
+import           Lubeck.Util                    (reactimateIOAsync)
 
-import           Data.Data                            (Data)
-import           Data.Typeable                        (Typeable)
+import           Data.Data                      (Data)
+import           Data.Typeable                  (Typeable)
 
-import Data.Aeson
+import           Data.Aeson
 
-import BD.Api
-import BD.Types
+import           BD.Api
+import           BD.Types
 
-import Data.Bifunctor (first, second, bimap)
-import Data.Int
+import           Data.Bifunctor                 (bimap, first, second)
+import           Data.Int
 
 newtype ImageID = ImgID Int
   deriving (Eq, Read, Show, Data, Typeable, FromJSON)
@@ -43,9 +48,9 @@ newtype ImageSrc = ISrc Int
   deriving (Eq, Read, Show, Data, Typeable, FromJSON)
 
 data LRImage = LRImage
-  { img_id :: ImageID
+  { img_id   :: ImageID
   , filename :: Text
-  , img_src :: ImageSrc
+  , img_src  :: ImageSrc
   } deriving (Eq, GHC.Generic, Show)
 instance FromJSON LRImage
 
@@ -71,7 +76,7 @@ imgGridW sink imgs = E.div [ A.class_ "container" ]
     imgCell imgs actionsSink imgAndState = E.div
       [ A.class_ "col-lg-3 col-md-4 col-xs-6 thumb"]
       [ E.a [ A.class_ "thumbnail"]
-	    [ imgWithAttrs [] (contramapSink (flip updateImage imgs) actionsSink) imgAndState ]
+	    [ imgWithAttrs [] (contramapSink (`updateImage` imgs) actionsSink) imgAndState ]
       ]
 
 imgWithAttrs :: [E.Property] -> Widget' (LRImage, Bool)
@@ -83,7 +88,7 @@ imgWithAttrs attrs actionSink (image, state) = E.img
   where
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
-    highlightStyle = if state then [ A.style "outline: 4px solid black;" ] else []
+    highlightStyle = [ A.style "outline: 4px solid black;" | state ]
 
 highlightImage :: (LRImage, Bool) -> (LRImage,Bool)
 highlightImage = second not

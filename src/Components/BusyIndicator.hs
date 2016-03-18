@@ -1,8 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
 module Components.BusyIndicator
@@ -43,27 +40,27 @@ type BusyStack = [Bool] -- can be Int, for example, but the idea is to save some
 
 -- FIXME what about lazyness etc?
 withBusy0 sink f = do
-  sink $ PushBusy
+  sink PushBusy
   y <- f
-  sink $ PopBusy
+  sink PopBusy
   return y
 
-withBusy sink f = \x -> do
-  sink $ PushBusy
+withBusy sink f x = do
+  sink PushBusy
   y <- f x
-  sink $ PopBusy
+  sink PopBusy
   return y
 
-withBusy2 sink f = \x y -> do
-  sink $ PushBusy
+withBusy2 sink f x y = do
+  sink PushBusy
   z <- f x y
-  sink $ PopBusy
+  sink PopBusy
   return z
 
-withBusy3 sink f = \x y z -> do
-  sink $ PushBusy
+withBusy3 sink f x y z = do
+  sink PushBusy
   r <- f x y z
-  sink $ PopBusy
+  sink PopBusy
   return r
 
 
@@ -97,7 +94,7 @@ busyIndicatorComponent initialBusyStack = do
   return (htmlS, externalSink)
 
   where
-    applyBusyCmd :: BusyCmd -> (BusyStack -> BusyStack)
+    applyBusyCmd :: BusyCmd -> BusyStack -> BusyStack
     applyBusyCmd PushBusy s = s <> [True]
     applyBusyCmd PopBusy [] = [] -- XXX maybe fail here, popping empty busy stack must be a runtime or logical error
     applyBusyCmd PopBusy s  = tail s

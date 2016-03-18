@@ -1,10 +1,5 @@
-
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TupleSections              #-}
 
 module BDPlatform.Pages.CreateAd
   ( createAdPage
@@ -14,6 +9,7 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
+import           Control.Arrow                  ((&&&))
 import           Control.Lens                   (lens, over, set, view)
 import           Control.Monad                  (void)
 
@@ -52,7 +48,6 @@ import           Lubeck.Forms
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    ()
 import           Lubeck.Web.URI                 (getURIParameter)
 
 import           BD.Api
@@ -95,7 +90,7 @@ campaignSelectWidget (Just camps) sink curCamp =
     g Nothing  = invalidCampaignId
 
 makeOptions :: [AdCampaign.AdCampaign] -> [(AdTypes.FBGraphId, JSString)]
-makeOptions = fmap (\c -> (AdCampaign.fbid c, AdCampaign.campaign_name c))
+makeOptions = fmap (AdCampaign.fbid &&& AdCampaign.campaign_name)
 
 imageSelectWidget :: Maybe [Im.Image] -> Widget JSString Im.Image
 imageSelectWidget Nothing _ _ =
@@ -119,11 +114,11 @@ imageH cur_img_hash sink image =
   let imgUrl   = case Im.fb_thumb_url image of
                     Nothing  -> Im.fb_image_url image
                     Just url -> Just url
-  in img ([ class_ $ "img-thumbnail "
-                     <> if cur_img_hash == (Data.Maybe.fromMaybe "" $ Im.fb_image_hash image)
+  in img [ class_ $ "img-thumbnail "
+                     <> if cur_img_hash == Data.Maybe.fromMaybe "" (Im.fb_image_hash image)
                           then " img-select-selected" else ""
-          , click (\_ -> sink image)
-          , src (imgOrDefault imgUrl)]) []
+         , click (\_ -> sink image)
+         , src (imgOrDefault imgUrl)] []
   where
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
@@ -133,8 +128,8 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
   let (canSubmitAttr, cantSubmitMsg) = case canSubmit of
                                         FormValid      -> ([ click $ \e -> outputSink $ Submit newAd
                                                            , A.title "Please fill in required fields" ], "")
-                                        FormNotValid es -> ([ (VD.attribute "disabled") "true" ]
-                                                           , showValidationErrors es)
+                                        FormNotValid es -> ([ A.disabled True ]
+                                                            , showValidationErrors es)
   in contentPanel . formPanel $
       [ longStringWidget "Caption"
                          True
@@ -148,7 +143,7 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
                              (contramapSink (\new -> DontSubmit $ newAd { campaign = new }) outputSink)
                              (campaign newAd)
       , imageSelectWidget mbIms
-                          (contramapSink (\new -> DontSubmit $ newAd { image_hash = (fromMaybe "" $ Im.fb_image_hash new) }) outputSink)
+                          (contramapSink (\new -> DontSubmit $ newAd { image_hash = fromMaybe "" (Im.fb_image_hash new) }) outputSink)
                           (image_hash newAd)
 
       , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
@@ -163,10 +158,10 @@ postNewAd unm newAd = do
   return $ bimap ApiError id res
 
 
-validateCaption fn s   = longString fn 3 30 s
-validateImageHash fn s = notEmpty fn s
-validateCampaign fn s  = notEqualTo fn s invalidCampaignId
-validateLink fn s      = notEmpty fn s
+validateCaption fn    = longString fn 3 30
+validateImageHash     = notEmpty
+validateCampaign fn s = notEqualTo fn s invalidCampaignId
+validateLink          = notEmpty
 
 validate :: NewAd -> FormValid VError
 validate (NewAd caption image_hash campaign click_link) =
@@ -193,7 +188,7 @@ createAdPage busySink notifSink mUserNameB imsB campB = do
     mUserName <- pollBehavior mUserNameB
     case mUserName of
       Just username -> void $ forkIO $ do
-        res <- ((withBusy2 busySink postNewAd) username newAd) >>= (eitherToError notifSink)
+        res <- withBusy2 busySink postNewAd username newAd >>= eitherToError notifSink
         case res of
           Just (Ok s)  -> notifSink . Just . NSuccess $ "Ad created! :-)"
           Just (Nok s) -> notifSink . Just . apiError $ s

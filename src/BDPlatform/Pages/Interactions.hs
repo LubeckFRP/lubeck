@@ -1,7 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 module BDPlatform.Pages.Interactions (interactionsMain) where
 
@@ -82,7 +79,7 @@ render loadInteractsForm displayAccs interaction = contentPanel $
 loadInteractionsW :: Widget TwoAccounts (Submit TwoAccounts)
 loadInteractionsW sink (x,y) =
   div [ class_ "form-horizontal"  ]
-    [ div [ class_ "form-group form-inline" ] $
+    [ div [ class_ "form-group form-inline" ]
       [ label [class_ "control-label col-xs-2"] [text "From"]
       , E.div [class_ "col-xs-10"]
           [ E.input [ class_ "form-control"
@@ -91,7 +88,7 @@ loadInteractionsW sink (x,y) =
                     , change $ \e -> sink (DontSubmit (emptyToN $ value e,y)) ]
                     [] ]
       ]
-    , div [ class_ "form-group form-inline" ] $
+    , div [ class_ "form-group form-inline" ]
       [ label [class_ "control-label col-xs-2"] [text "To"]
       , E.div [class_ "col-xs-10" ]
           [ E.input [ class_ "form-control"
@@ -110,8 +107,8 @@ loadInteractionsW sink (x,y) =
     ]
 
   where
-    _1 f (x,y) = fmap (,y) $ f x
-    _2 f (x,y) = fmap (x,) $ f y
+    _1 f (x,y) = (,y) <$> f x
+    _2 f (x,y) = (x,) <$> f y
     emptyToN "" = Nothing
     emptyToN xs = Just xs
     nToEmpty Nothing   = ""
@@ -121,9 +118,9 @@ displayAccsW :: Widget (InteractionSet SearchPost) ()
 displayAccsW _ interactionSet =
   div [class_ "col-xs-offset-2 col-xs-10"]
     [ text "Showing "
-    , text $ (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: from_account .:? A.username)
+    , text $ maybe "(anyone)" ("@" <>) (interactionSet .: from_account .:? A.username)
     , text " to "
-    , text $ (fromMaybe "(anyone)" $ fmap ("@" <>) $ interactionSet .: to_account .:? A.username)
+    , text $ maybe "(anyone)" ("@" <>) (interactionSet .: to_account .:? A.username)
     ]
 
 prevBtnAction :: Shoutouts -> () -> Shoutouts
@@ -182,7 +179,7 @@ interactionW _ interaction =
           fromIntegral
           round
           [interaction .: interaction_time]
-          (fmap (\c -> (C.count_at c, C.value c)) $ I.target_counts interaction)
+          ((\c -> (C.count_at c, C.value c)) <$> I.target_counts interaction)
 
     caption = case P.description sPost of
       Nothing   -> text ""
@@ -221,7 +218,7 @@ interactionsMain busySink notifSink = do
   (loadInteractionsS, loadInterBtnE) <- formComponent initFormContent loadInteractionsW
   loadInteractionsE                  <- reactimateIOAsync $ fmap (withBusy busySink getShoutouts) loadInterBtnE
   displayAccsS                       <- componentListen displayAccsW <$> stepperS initInteractions loadInteractionsE
-  (interactionBrowserS, _)           <- componentEvent (Data.List.Zipper.empty) interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE
+  (interactionBrowserS, _)           <- componentEvent Data.List.Zipper.empty interactionBrowserW $ fmap (fromList . I.interactions) loadInteractionsE
   let viewS                          =  render <$> loadInteractionsS <*> displayAccsS <*> interactionBrowserS
 
   return viewS

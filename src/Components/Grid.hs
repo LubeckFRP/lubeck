@@ -52,9 +52,9 @@ itemWrapperW opts itemW selectedSet gridSink x =
   let selIcon = if Set.member x selectedSet then "check-square" else "check-square-o"
 
   in E.div [ A.class_ "grid-item-wrapper", A.style $ "width: " <> showJS (width opts) <> "px; height: " <> showJS (height opts) <> "px;"]
-        ((if deleteButton opts then [buttonIcon_ "btn-link grid-item-delete" "" "trash"    False [Ev.click $ \_ -> gridSink $ Delete [x]]] else [])
-      <> (if selectButton opts then [buttonIcon_ "btn-link grid-item-select" "" selIcon    False [Ev.click $ \_ -> gridSink $ Select [x]]] else [])
-      <> (if otherButton opts  then [buttonIcon_ "btn-link grid-item-other"  "" "circle-o" False [Ev.click $ \_ -> gridSink $ Other  [x]]] else [])
+        ([buttonIcon_ "btn-link grid-item-delete" "" "trash"    False [Ev.click $ \_ -> gridSink $ Delete [x]] | deleteButton opts]
+      <> [buttonIcon_ "btn-link grid-item-select" "" selIcon    False [Ev.click $ \_ -> gridSink $ Select [x]] | selectButton opts]
+      <> [buttonIcon_ "btn-link grid-item-other"  "" "circle-o" False [Ev.click $ \_ -> gridSink $ Other  [x]] | otherButton opts]
       <> [itemW x])
 
 gridComponent :: Ord a => Maybe GridOptions               -- custom grid options
@@ -84,7 +84,7 @@ gridComponent mbOpts as itemW = do
   return (view, lifecycleSink, actionsEvents, itemEvents, selectedB)
 
   where
-    commandToSelection :: Ord a => GridAction a -> (Set.Set a -> Set.Set a)
+    commandToSelection :: Ord a => GridAction a -> Set.Set a -> Set.Set a
     commandToSelection (Select y') x = let y = Set.fromList y' in
                                        if Set.null (Set.intersection x y)
                                          then Set.union x y

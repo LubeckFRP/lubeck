@@ -1,10 +1,5 @@
-
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module BD.Data.SearchPost
     ( SearchPost(..)
@@ -25,7 +20,6 @@ import qualified GHC.Generics                  as GHC
 import           Data.Bifunctor                (first)
 import           JavaScript.Web.XMLHttpRequest (FormDataVal (..))
 
-import           BD.Types
 
 data SearchPost = SearchPost
   { post_id        :: Integer

@@ -1,7 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable  #-}
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module BD.Data.AdCampaign where
@@ -44,4 +42,4 @@ getUserCampaigns :: JSString -> IO [AdCampaign]
 getUserCampaigns unm = fmap payload $ unsafeGetAPI BD.Api.defaultAPI $ unm <> "/ad-campaigns"
 
 getUserCampaignsOrError :: JSString -> IO (Either AppError [AdCampaign])
-getUserCampaignsOrError unm = getAPIEither (BD.Api.defaultAPI) (unm <> "/ad-campaigns") >>= return . bimap ApiError payload
+getUserCampaignsOrError unm = getAPIEither BD.Api.defaultAPI (unm <> "/ad-campaigns") >>= return . bimap ApiError payload

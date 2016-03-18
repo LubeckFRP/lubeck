@@ -1,4 +1,3 @@
-
 {-# LANGUAGE NamedFieldPuns, OverloadedStrings #-}
 
 module BD.Query.PostQuery (

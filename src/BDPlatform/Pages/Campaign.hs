@@ -55,10 +55,10 @@ data Action          = Noop | UpdateBudget Ad.Ad AdT.USDcents | UpdateStatus Ad.
 data SecondaryAction = ReloadAds
 data ViewModel       = ViewModel { }
 
-loadAds :: Maybe (Account.Account) -> AdC.AdCampaign -> IO (Either AppError [Ad.Ad])
+loadAds :: Maybe Account.Account -> AdC.AdCampaign -> IO (Either AppError [Ad.Ad])
 loadAds account camp = Ad.getCampaignAdsOrError username campid
   where campid   = showJS $ AdC.fbid camp
-        username = maybe "" Account.username $ account
+        username = maybe "" Account.username account
 
 loadAdInsights :: Behavior (Maybe Account.Account) -> [Ad.Ad] -> IO [Either AppError AdInsights]
 loadAdInsights userB ads = do
@@ -98,7 +98,7 @@ campaignPageW sink (camp, insMap, ads) =
     renderAdList :: Widget (AdInsightMap, Ads) Action
     renderAdList _ (insMap, ads) = table [class_ "table"] [
         tableHeaders ["FB adset id", "Name", "Caption", "Impressions", "Clicks", "Spend, ¢", "Budget, ¢", "Status"]
-      , tbody [] (map (\ad -> adRow sink (ad, (fromMaybe [] (Map.lookup (Ad.fb_adset_id ad) insMap)))) ads)
+      , tbody [] (map (\ad -> adRow sink (ad, fromMaybe [] (Map.lookup (Ad.fb_adset_id ad) insMap))) ads)
       ]
 
     getImpressions = fmap AdIn.unique_impressions
@@ -132,7 +132,7 @@ campaignPageW sink (camp, insMap, ads) =
                   [ (AdT.Paused,   "Paused")
                   , (AdT.Running,  "Running")
                   , (AdT.Archived, "Archived") ]
-                  (contramapSink (\newAdStatus -> UpdateStatus ad newAdStatus) sink)
+                  (contramapSink (UpdateStatus ad) sink)
                   (Ad.status ad)
               ]
       ]
@@ -150,7 +150,7 @@ update busySink notifSink accB (UpdateBudget ad newBudget) = do
     Nothing -> (notifSink . Just . blError $ "can't update budget for an ad: no user.") >> return Nothing
 
     Just acc -> do
-      res <- (withBusy3 busySink updateBudget) acc ad newBudget
+      res <- withBusy3 busySink updateBudget acc ad newBudget
       case res of
         Left e        -> (notifSink . Just . NError $ e)                      >> return Nothing
         Right (Ok _)  -> (notifSink . Just . NSuccess $ "Budget updated")     >> return (Just ReloadAds)
@@ -167,7 +167,7 @@ update busySink notifSink accB (UpdateStatus ad newStatus) = case newStatus of
         Nothing -> (notifSink . Just . blError $ "can't update status for an ad: no user.") >> return Nothing
 
         Just acc -> do
-          res <- (withBusy3 busySink updateStatus) acc ad newStatus
+          res <- withBusy3 busySink updateStatus acc ad newStatus
           case res of
             Left e        -> (notifSink . Just . NError $ e)                  >> return Nothing
             Right (Ok _)  -> (notifSink . Just . NSuccess $ "Status updated") >> return (Just ReloadAds)
@@ -188,7 +188,7 @@ toHash xs = Map.fromList . catMaybes . fmap g $ xs
         g Nothing         = Nothing
         g (Just [])       = Nothing
         g (Just xs)       = Just (adInsightsAdId xs, xs)
-        adInsightsAdId ys = AdIn.fb_adset_id $ ys !! 0
+        adInsightsAdId ys = AdIn.fb_adset_id $ head ys
 
 
 type Ads = [Ad.Ad]
@@ -219,7 +219,7 @@ campaignPage busySink notifSink loadAdsE userB = do
   latestLoadedCampaignS  <- stepperS Nothing (fmap Just loadAdsE)                                    :: IO (Signal (Maybe AdC.AdCampaign))
   let zS                 = liftA3 (liftA3 (,,)) latestLoadedCampaignS adsInsightsMapS adsS           ::     Signal (Maybe (AdC.AdCampaign, AdInsightMap, Ads))
 
-  let adsView            = fmap ((altW mempty campaignPageW) actionSink) zS
+  let adsView            = fmap (altW mempty campaignPageW actionSink) zS
 
   return adsView
 

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
 module BDPlatform.Pages.CurrentUser.Index (currentUserIndexPage) where
@@ -51,24 +49,23 @@ type Session = (Ac.Account, Auth.AuthInfo)
 
 --------------------------------------------------------------------------------
 
-validateUsername fn s = longString fn 3 30 s
-validatePassword fn s = passwordString fn 3 30 s
-validateAccName fn s  = longString fn 3 30 s
+validateUsername fn = longString fn 3 30
+validatePassword fn = passwordString fn 3 30
+validateAccName fn  = longString fn 3 30
 
 --------------------------------------------------------------------------------
 
 toolbarW :: Widget (Maybe Session, Maybe CurrentUserAction) CurrentUserAction
 toolbarW sink (session, action) = mconcat
   [ toolbar' $ buttonGroup
-      ((ifAdmin session [buttonIcon "Create user" "user-plus" (action ~== CreateUser) [Ev.click $ \e -> sink CreateUser]] []) <>
-      [ buttonIcon     "Change password" "key"       (action ~== ChangePassword) [Ev.click $ \e -> sink ChangePassword]
-      , buttonWarnIcon "Logout"          "power-off" (action ~== CUALogout )     [Ev.click $ \e -> sink CUALogout] ])
+      (ifAdmin session [ buttonIcon     "Create user"     "user-plus" (action ~== CreateUser)     [Ev.click $ \e -> sink CreateUser]] []
+                    <> [ buttonIcon     "Change password" "key"       (action ~== ChangePassword) [Ev.click $ \e -> sink ChangePassword]
+                       , buttonWarnIcon "Logout"          "power-off" (action ~== CUALogout )     [Ev.click $ \e -> sink CUALogout] ])
   ]
 
 ifAdmin :: Maybe Session -> a -> a -> a
 ifAdmin Nothing _ y = y
-ifAdmin (Just (acc, (Auth.AuthInfo token s))) x y =
-  if (Auth.is_admin s) then x else y
+ifAdmin (Just (acc, Auth.AuthInfo token s)) x y = if Auth.is_admin s then x else y
 
 --------------------------------------------------------------------------------
 
@@ -87,7 +84,7 @@ createUserW :: Sink CurrentUserAction -> Widget (FormValid VError, Auth.CreateUs
 createUserW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
                                          FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
-                                         FormNotValid es -> ([(VD.attribute "disabled") "true"],   showValidationErrors es)
+                                         FormNotValid es -> ([A.disabled True],   showValidationErrors es)
   in formPanel
       [ longStringWidget "Username"     True  (contramapSink (\new -> DontSubmit $ val { Auth.cu_username  = new }) sink)    (Auth.cu_username val)
       , passwordWidget   "Password"     False (contramapSink (\new -> DontSubmit $ val { Auth.cu_password = new }) sink)     (Auth.cu_password val)
@@ -124,7 +121,7 @@ changePasswordW :: Sink CurrentUserAction -> Widget (FormValid VError, ChangePas
 changePasswordW actionsSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
                                          FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
-                                         FormNotValid es -> ([(VD.attribute "disabled") "true"], showValidationErrors es)
+                                         FormNotValid es -> ([A.disabled True], showValidationErrors es)
   in formPanel
       [ passwordWidget "Old password"        True  (contramapSink (\new -> DontSubmit $ val { oldPassword  = new }) sink) (oldPassword val)
       , passwordWidget "New password"        False (contramapSink (\new -> DontSubmit $ val { newPassword1 = new }) sink) (newPassword1 val)
@@ -165,17 +162,17 @@ layout action toolbar userview changePasswordView createUserView =
              Nothing                 -> mempty
 
 createUser busySink notifSink actionsSink x = do
-  res <- ((withBusy busySink Auth.createUserOrError) x) >>= (eitherToError notifSink)
+  res <- withBusy busySink Auth.createUserOrError x >>= eitherToError notifSink
   case res of
-    Just (Ok s)  -> (notifSink . Just . NSuccess $ "User created :-)") >> (actionsSink HideToolbarActions)
+    Just (Ok s)  -> (notifSink . Just . NSuccess $ "User created :-)") >> actionsSink HideToolbarActions
     Just (Nok s) -> notifSink . Just . apiError $ s
     Nothing      -> print "Errors already should have been reported"
   return ()
 
 changePass busySink notifSink actionsSink x = do
-  res <- ((withBusy busySink Auth.changePasswordOrError) (convertForms x)) >>= (eitherToError notifSink)
+  res <- withBusy busySink Auth.changePasswordOrError (convertForms x) >>= eitherToError notifSink
   case res of
-    Just (Ok s)  -> (notifSink . Just . NSuccess $ "Password changed :-)") >> (actionsSink HideToolbarActions)
+    Just (Ok s)  -> (notifSink . Just . NSuccess $ "Password changed :-)") >> actionsSink HideToolbarActions
     Just (Nok s) -> notifSink . Just . apiError $ s
     Nothing      -> print "Errors already should have been reported"
   return ()

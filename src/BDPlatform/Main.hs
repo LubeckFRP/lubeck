@@ -116,7 +116,7 @@ adPlatform = do
 
   let bypassAuthUserE                   = fmap fst userLoginE
   userE                                 <- withErrorIO notifSink $ fmap (withBusy busySink Account.getUserOrError)
-                                                                        (if useAuth then (filterJust validUserLoginE)
+                                                                        (if useAuth then filterJust validUserLoginE
                                                                                     else bypassAuthUserE)
 
   camapaignsE                           <- withErrorIO notifSink $ fmap (withBusy busySink getCampaigns) userE

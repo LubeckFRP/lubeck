@@ -8,7 +8,7 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import           Control.Monad                  (void)
+import           Control.Monad                  (void, when, unless)
 import           Data.Either.Validation
 import qualified Data.List
 import qualified Data.Maybe
@@ -68,7 +68,7 @@ data ResultsViewMode = ResultsGrid | ResultsMap | ResultsHidden deriving (Show, 
 
 searchForm :: Sink HTFormViewMode -> Sink PageAction -> Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
 searchForm hViewModeSink pageActionSink dayNow outputSink (trackedHTs, query) =
-  panel' $ formPanel_ [Ev.keyup $ \e -> if which e == 13 then outputSink (Submit query) else return () ]  -- event delegation
+  panel' $ formPanel_ [Ev.keyup $ \e -> when (which e == 13) (outputSink $ Submit query) ]  -- event delegation
       [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  outputSink) (PQ.caption query)
       , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  outputSink) (PQ.comment query)
       , longStringWidget "Hashtag"   False (contramapSink (\new -> DontSubmit $ query { hashTag = new })  outputSink) (PQ.hashTag query)
@@ -109,7 +109,7 @@ searchForm hViewModeSink pageActionSink dayNow outputSink (trackedHTs, query) =
       ]
 
 itemMarkup :: Widget Post PageAction
-itemMarkup output post = wireframe output post
+itemMarkup = wireframe
   where
     wireframe output post =
       E.div [ A.class_ "thumbnail custom-thumbnail-1 fit-text" ]
@@ -138,7 +138,7 @@ itemMarkup output post = wireframe output post
                      [ E.text val] ]
 
 renderToDOMNode :: Html -> IO DOMNode
-renderToDOMNode n = createElement n -- TODO move to virtual-dom
+renderToDOMNode = createElement -- TODO move to virtual-dom
 
 mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapCommand
 mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
@@ -147,7 +147,7 @@ mapLifecycle (_, _)                   = Just MapDestroy
 postToMarkerIO :: Sink PageAction -> Post -> IO (Maybe Marker)
 postToMarkerIO pageActionsSink p = do
   minfo <- renderToDOMNode $ itemMarkup pageActionsSink p
-  return $ Marker <$> (Point <$> (P.latitude p) <*> (P.longitude p)) <*> (Just . Just $ BalloonDOMNode minfo)
+  return $ Marker <$> (Point <$> P.latitude p <*> P.longitude p) <*> (Just . Just $ BalloonDOMNode minfo)
 
 showResultsOnMap mapSink pageActionsSink mbPosts = do
   mapSink ClearMap
@@ -162,7 +162,7 @@ loadTrackedHashtags notifSink thtsInitSink = do
   z <- P.getTrackedHashtags                                                         :: IO (Either AppError [P.TrackedHashtag])
   case z of
     Left e     -> notifSink . Just . apiError $ "Failed to load tracked hashtags"
-    Right thts -> thtsInitSink $ thts
+    Right thts -> thtsInitSink thts
 
 validateHTag :: JSString -> FormValid VError
 validateHTag newHTag =
@@ -175,9 +175,9 @@ createHTagW :: Sink HTFormViewMode -> Widget (FormValid VError, JSString) (Submi
 createHTagW hViewModeSink sink (isValid, val) =
   let (canSubmitAttr, cantSubmitMsg) = case isValid of
                                          FormValid       -> ([Ev.click $ \e -> sink $ Submit val], "")
-                                         FormNotValid es -> ([(VD.attribute "disabled") "true"], showValidationErrors es)
+                                         FormNotValid es -> ([A.disabled True], showValidationErrors es)
   in modalPopup' $ formPanel
-      [ longStringWidget "New hashtag" True (contramapSink (\new -> DontSubmit new ) sink) val
+      [ longStringWidget "New hashtag" True (contramapSink DontSubmit sink) val
 
       , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
           [ buttonOkIcon "Submit" "hashtag" False canSubmitAttr
@@ -199,8 +199,8 @@ resultsLayout rViewModeSink gridV mapV mode posts = case mode of
       in panel
         [ header1' "Search Results " found
         , toolbar' . buttonGroup $ -- TODO tabs widget
-              [ buttonIcon_ gridTab "Grid" "th"    False [Ev.click $ \e -> if asel then return () else rViewModeSink ResultsGrid]
-              , buttonIcon_ mapTab  "Map"  "map-o" False [Ev.click $ \e -> if bsel then return () else rViewModeSink ResultsMap] ]
+              [ buttonIcon_ gridTab "Grid" "th"    False [Ev.click $ \e -> unless asel $ rViewModeSink ResultsGrid]
+              , buttonIcon_ mapTab  "Map"  "map-o" False [Ev.click $ \e -> unless bsel $ rViewModeSink ResultsMap] ]
           , x
         ]
 
@@ -247,7 +247,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
 
   -- update tracked hash tags heuristics. Better: use websockets and FRP to push updates directly from the server
   let n                            = Lubeck.FRP.filter (NavSearch ==) (updates navS)
-  thtsReloadE                      <- withErrorIO notifSink $ fmap (\_ -> P.getTrackedHashtags) n      :: IO (Events [P.TrackedHashtag])
+  thtsReloadE                      <- withErrorIO notifSink $ fmap (const P.getTrackedHashtags) n      :: IO (Events [P.TrackedHashtag])
   thtsB                            <- stepper [] (thtsInitE <> thtsReloadE)                            :: IO (Behavior [P.TrackedHashtag])
 
   (pageActionsSink, pageActionsEvents) <- newSyncEventOf (undefined                                    :: PageAction)
@@ -305,30 +305,31 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
         case mUserName of
           Nothing       -> notifSink . Just . blError $ "No account to upload post to"
           Just userName -> do
-            res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
+            res <- withBusy2 busySink (postAPIEither BD.Api.defaultAPI) (userName <> "/upload-igpost-adlibrary/" <> showJS (P.post_id post)) ()
             case res of
               Left e        ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> showJS e
-              Right (Ok s)  -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)") >> (ipcSink ImageLibraryUpdated)
+              Right (Ok s)  -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)")
+                            >>  ipcSink ImageLibraryUpdated
               Right (Nok s) ->  notifSink . Just . apiError $ "Failed to upload post to ad library : " <> s
       _ -> return ()
 
     doAddHTag busySink notifSink thtsInitSink hViewModeSink tag = do
-      res <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) ("fetch-tag/" <> tag) ()
+      res <- withBusy2 busySink (postAPIEither BD.Api.defaultAPI) ("fetch-tag/" <> tag) ()
       case res of
         Left e        ->  notifSink . Just . apiError $ "Failed to submit a new hashtag : " <> showJS e
         Right (Ok s)  -> (notifSink . Just . NSuccess $ "Hashtag added :-) The server will start fetching it within an hour.")
                       >> (void. forkIO $ loadTrackedHashtags notifSink thtsInitSink)
-                      >> (hViewModeSink HTFormHidden)
+                      >>  hViewModeSink HTFormHidden
         Right (Nok s) ->  notifSink . Just . apiError $ "Failed to submit a new hashtag : " <> s
 
     doSearch busySink notifSink srchResSink query = do
-      srchResSink $ Nothing -- reset previous search results
+      srchResSink Nothing -- reset previous search results
       let complexQuery = PostQuery $ complexifyPostQuery query
-      eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
+      eQueryId <- withBusy2 busySink (postAPIEither BD.Api.defaultAPI) "internal/queries" complexQuery
       case eQueryId of
         Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
         Right queryId -> void . forkIO $ do
-          eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
+          eitherPosts <- withBusy busySink (getAPIEither BD.Api.defaultAPI) $ "internal/queries/" <> queryId <> "/results"
           case eitherPosts of
             Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
             Right ps -> srchResSink $ Just ps

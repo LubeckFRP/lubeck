@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
 module BD.Data.Account
@@ -60,4 +59,4 @@ getUser :: JSString -> IO Account
 getUser unm = fmap payload $ unsafeGetAPI BD.Api.defaultAPI $ unm <> "/account"
 
 getUserOrError :: JSString -> IO (Either AppError Account)
-getUserOrError unm = getAPIEither (BD.Api.defaultAPI) (unm <> "/account") >>= return . bimap ApiError payload
+getUserOrError unm = getAPIEither BD.Api.defaultAPI (unm <> "/account") >>= return . bimap ApiError payload

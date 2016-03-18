@@ -41,7 +41,7 @@ loadGroupMemberNames :: JSString -> IO (Either AppError GroupMemberNamesList)
 loadGroupMemberNames groupname = getAPIEither BD.Api.internalAPI ("account-groups/" <> groupname <> "/accounts") >>= return . bimap ApiError id
 
 loadGroupAccounts :: GroupMemberNamesList -> IO [Either AppError Ac.Account]
-loadGroupAccounts accs = MP.mapM Ac.getUserOrError accs
+loadGroupAccounts = MP.mapM Ac.getUserOrError
 
 loadGroup :: GroupName -> IO (Group, [AppError])
 loadGroup groupname = do
@@ -50,7 +50,7 @@ loadGroup groupname = do
             Left e     -> return [Left e]
             Right accs -> loadGroupAccounts accs
 
-  return ((group groupname res'), (errors res'))
+  return (group groupname res', errors res')
 
   where
     group n r    = Group n (Set.fromList $ accounts r)

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
 module BDPlatform.Pages.Search.Upload (uploadPage) where
@@ -59,10 +57,10 @@ toolbarW sink action = mconcat
 
 uploadFromComputerW :: Widget () UploadImg
 uploadFromComputerW sink _ =
-  panel' $ filesSelectWidget "images[]" (Just "image/*") True (contramapSink (\x -> UploadImg x) sink) []
+  panel' $ filesSelectWidget "images[]" (Just "image/*") True (contramapSink UploadImg sink) []
 
 uploadImages :: JSString -> [(JSString, FormDataVal)] -> IO (Either AppError Ok)
-uploadImages usrname files = Im.uploadImagesOrError usrname files
+uploadImages = Im.uploadImagesOrError
 
 layout action toolbar uploadFromComputer  =
   contentPanel $ mconcat [ toolbar, body ]
@@ -95,11 +93,11 @@ uploadPage busySink notifSink ipcSink usernameB navS = do
       case mbUsrname of
         Nothing      -> notifSink . Just . blError $ "can't upload an image: no user."
         Just usrname -> do
-          res <- (withBusy2 busySink uploadImages) usrname formfiles
+          res <- withBusy2 busySink uploadImages usrname formfiles
           case res of
             Left e      ->  notifSink . Just . NError $ e
             Right imgId -> (notifSink . Just . NSuccess $ "Image uploaded successfully! :-)")
-                        >> (ipcSink ImageLibraryUpdated)
+                        >> ipcSink ImageLibraryUpdated
 
     _ -> return ()
 

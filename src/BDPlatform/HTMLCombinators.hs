@@ -15,7 +15,7 @@ import           Lubeck.Util                    (showJS)
 Nothing  ~== _ = False
 (Just x) ~== y = x == y
 
-dialog x = E.div [] x
+dialog    = E.div []
 dialog' x = E.div [] [x]
 
 row12 content = E.div [A.class_ "row"] [ E.div [A.class_ "col-xs-12 col-sm-12 col-md-12 col-lg-12"] content ]
@@ -42,10 +42,10 @@ modalPopup' x = modalPopup [x]
 
 inlineMessage x = E.span [A.class_ "btn", A.style "padding-left: 10px"] [E.text x]
 
-formGroup x = E.div [A.class_ "form-group"] x
+formGroup    = E.div [A.class_ "form-group"]
 formGroup' x = formGroup [x]
 
-formRowWithNoLabel x = formGroup' . (colOffset 2) $ x
+formRowWithNoLabel x = formGroup' . colOffset 2 $ x
 formRowWithNoLabel' x = formRowWithNoLabel [x]
 
 header1  x   = E.div [A.class_ "page-header"] [ E.h1 [] [ E.text x ] ]
@@ -71,19 +71,19 @@ mediaGroupLeft media body =
         [ E.div [A.class_ "media-left"] [ media ]
         , E.div [A.class_ "media-body"] [ body ] ]
 
-colOffset n x      = E.div [A.class_ $ "col-xs-" <> showJS (12 - n) <> " col-xs-offset-" <> showJS n] x
+colOffset n        = E.div [A.class_ $ "col-xs-" <> showJS (12 - n) <> " col-xs-offset-" <> showJS n] 
 colOffset' n x     = colOffset n [x]
 
-toolbarLeft x      = E.div [A.class_ "btn-toolbar"] x
+toolbarLeft        = E.div [A.class_ "btn-toolbar"]
 toolbarLeft' x     = toolbar [x]
 
-toolbar x          = E.div [A.class_ "btn-toolbar", A.style "text-align: center !important"] x
+toolbar            = E.div [A.class_ "btn-toolbar", A.style "text-align : center !important"]
 toolbar' x         = toolbar [x]
 
-buttonGroupLeft x  = E.div [A.class_ "btn-group"] x
+buttonGroupLeft    = E.div [A.class_ "btn-group"]
 buttonGroupLeft' x = buttonGroupLeft [x]
 
-buttonGroup x      = E.div [A.class_ "btn-group", A.style "float: none !important"] x
+buttonGroup        = E.div [A.class_ "btn-group", A.style "float: none !important"]
 buttonGroup' x     = buttonGroup [x]
 
 button_ x title primary attrs = E.button ([A.class_ ("btn " <> x <> " " <> markActive primary)] <> attrs) [E.text title]

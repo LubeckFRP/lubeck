@@ -59,13 +59,13 @@ rangeWidget minBound maxBound step
   , A.max maxBound
   , A.step step
   -- , A.style_ $ if enabled then "" else "visibility:hidden"
-  , Ev.change $ \e -> do
+  , Ev.change $ \e ->
       case Ev.value e of
         "" -> do
           print "Empty value for Int, ignoring."
           return ()
         s -> sink $ read $ unpack $ Ev.value e
-  , Ev.mousemove $ \e -> do
+  , Ev.mousemove $ \e ->
       case Ev.value e of
         "" -> do
           print "Empty value for Int, ignoring."
@@ -82,7 +82,7 @@ integerWidget sink val = E.input
   [ A.class_ "form-control"
   , A.type_ "number"
   -- , A.style_ $ if enabled then "" else "visibility:hidden"
-  , Ev.change $ \e -> do
+  , Ev.change $ \e ->
       case Ev.value e of
         "" -> do
           print "Empty value for Int, ignoring."
@@ -129,4 +129,3 @@ intDisplayWidget _ val = E.div
   [ E.p [ A.class_ "text-center" ]
         [ E.text (pack $ show val) ]
   ]
-
