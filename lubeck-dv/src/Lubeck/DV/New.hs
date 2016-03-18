@@ -118,8 +118,9 @@ module Lubeck.DV.New
 where
 
 import BasePrelude
+import Debug.Trace(trace) -- TODO debug
 import Control.Lens(Getter, to)
-import Control.Lens(_1, _2, _3) -- TODO debug
+import Control.Lens(_1, _2, _3, _4) -- TODO debug
 import Control.Lens.Operators hiding ((<~))
 import Control.Lens.TH
 import Data.Functor.Contravariant
@@ -290,7 +291,7 @@ instance Contravariant Aesthetic where
       (\xs   -> j (fmap f xs))
       (\xs   -> k (fmap f xs))
 
-x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX :: HasScale a => Aesthetic a
+x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
 
 -- | Map values to the X axis of a plot.
 x = customAesthetic "x"
@@ -319,7 +320,11 @@ shape = customAesthetic "shape"
 -- | Map values to the thickness of a plot element.
 thickness = customAesthetic "thickness"
 
+-- | If present and non-zero, show X-intercepting cross-lines.
 crossLineX = customAesthetic "crossLineX"
+
+-- | If present and non-zero, show Y-intercepting cross-lines.
+crossLineY = customAesthetic "crossLineY"
 
 
 -- SCALE
@@ -376,7 +381,7 @@ instance HasScale Char where
   scale = const categorical
 
 instance HasScale Bool where
-  scale = const categorical
+  scale = const categoricalEnum
 
 instance HasScale Ordering where
   scale = const categorical
@@ -765,6 +770,15 @@ ifG k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
     truish (Just 0) = False
     truish _        = True
 
+{-| Render a geometry iff a key is present and > 0.5.
+For use with standard 'Bool' scale.
+-}
+ifGTHalf :: Key -> Geometry -> Geometry
+ifGTHalf k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
+  where
+    truish Nothing  = False
+    truish (Just (Normalized n)) = trace (show n) n > 0.5
+
 
 {-# DEPRECATED scatter "Use 'pointG:r" #-}
 scatter :: Geometry
@@ -825,6 +839,20 @@ area = fill
 -- Note this one doesn't have to perform the color estimation for now.
 
 
+-- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
+xIntercept :: Geometry
+xIntercept = ifGTHalf "crossLineX" (Geometry g)
+  where
+   g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+
+-- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
+yIntercept :: Geometry
+yIntercept = ifGTHalf "crossLineY" (Geometry g)
+  where
+   g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+
+
+
 atColor :: (Eq b, Ord k, IsString k) => b -> [Map k b] -> [Map k b]
 atColor c = filter (\m -> m ?! "color" == Just c)
 
@@ -854,7 +882,15 @@ newtype Normalized a = Normalized { getNormalized :: a }
 
 normalize :: Maybe (Double, Double) -> Double -> Coord
 normalize Nothing        x = Normalized x
-normalize (Just (lb,ub)) x = Normalized $ (x - lb) / (ub - lb)
+normalize (Just (lb,ub)) x
+  -- FIXME div by zero
+  | isNaN ((x - lb) / (ub - lb)) = Normalized x
+  | otherwise                    = Normalized $ (x - lb) / (ub - lb)
+{-
+(x - lb) / (ub - lb)
+
+
+-}
 
 
 
@@ -893,11 +929,14 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
     boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
     scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
     mappedData  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
+    mappedAndScaledData = normalizeData boundsM mappedData :: [Map Key (Coord)]
     aKeys       = Data.Map.keys $ mconcat mappedData
 
     tab0 = B.vcat B.left $ map (toBox) dat
     tab1 = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
+    tab2 = makeTable (fmap (toBox) $ aKeys)
+      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedAndScaledData)
     tab = makeTable ["Aesthetic", "Scale base", "Bounds", "Guide"]
       (fmap (\k ->
         [ toBox k
@@ -909,6 +948,7 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
     box = B.vsep 1 B.left
       [ "Raw data    " B.<+> tab0
       , "Mapped data " B.<+> tab1
+      , "Scaled data " B.<+> tab2
       , "Aesthetics  " B.<+> tab
       ]
     toBox = B.text . show
@@ -1119,3 +1159,16 @@ test8 = visualizeTest dat (mconcat [line, fill])
      , (3, 5, 16)
      , (4, 9, 12) :: (Int, Int, Int)
      ]
+
+-- Cross-lines
+test9 = visualizeTest dat (mconcat [scatter, xIntercept, yIntercept])
+  [ x <~ _1 `withScale` categorical
+  , y <~ _2 `withScale` linearIntegral
+  , crossLineX <~ _3
+  , crossLineY <~ _4
+  ]
+  where
+    dat :: [(Int,Int,Bool,Bool)]
+    dat = zip4
+      [1..4] [1..4]
+      [True,False,False,True] [False,False,True,True]
