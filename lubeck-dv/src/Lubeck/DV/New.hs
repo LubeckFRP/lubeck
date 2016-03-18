@@ -885,7 +885,7 @@ visualizeWithStyle axesNames1 dat (Geometry geom) aess =
     aes                 = mconcat aess
     boundsM             = aestheticBounds aes dat --  :: Map Key (Double, Double)
     guidesM2            = aestheticGuides aes dat --  :: Map Key [(Double, Str)]
-    guidesM             = applyScalingToGuides boundsM guidesM2 :: Map Key [(Normalized Double, String)]
+    guidesM             = applyScalingToGuides boundsM guidesM2 :: Map Key [(Normalized Double, Str)]
     mappedData2         = fmap (aestheticMapping aes dat) dat --  :: [Map Key Double]
     mappedAndScaledData = applyScalingToValues boundsM mappedData2 :: [Map Key (Normalized Double)]
 
