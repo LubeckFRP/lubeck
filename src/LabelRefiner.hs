@@ -95,6 +95,7 @@ updateImage img (curr:imgs)
   | otherwise = curr : updateImage img imgs
 
 main = do
+  -- call getRandomLabel
   testImages <- getImages (pack "")
   case testImages of
     Left (ApiError err) -> print err
