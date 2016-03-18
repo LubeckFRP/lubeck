@@ -90,6 +90,7 @@ module Lubeck.DV.New
   , line
   , fill
   , area
+  , area2
   -- ** Legacy
   , scatter
 
@@ -107,6 +108,10 @@ module Lubeck.DV.New
   , size
   , shape
   , thickness
+  , yMin
+  , bound
+  , crossLineX
+  , crossLineY
   -- ** Custom
   , customAesthetic
   -- ** Mapping aesthetics
@@ -322,6 +327,8 @@ shape = customAesthetic "shape"
 
 -- | Map values to the thickness of a plot element.
 thickness = customAesthetic "thickness"
+
+bound = customAesthetic "bound"
 
 -- | If present and non-zero, show X-intercepting cross-lines.
 crossLineX = customAesthetic "crossLineX"
@@ -758,21 +765,25 @@ geom_violin(stat_ydensity)
 -}
 
 
-{-| Render a geometry iff a key is set (i.e. present and non-zero). -}
-ifG :: Key -> Geometry -> Geometry
-ifG k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
-  where
-    truish Nothing  = False
-    truish (Just 0) = False
-    truish _        = True
+-- {-| Render a geometry iff a key is set (i.e. present and non-zero). -}
+-- ifG :: Key -> Geometry -> Geometry
+-- ifG k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
+--   where
+--     truish Nothing  = False
+--     truish (Just 0) = False
+--     truish _        = True
+
 
 {-| Render a geometry iff a key is present and > 0.5.
 For use with standard 'Bool' scale.
 -}
 ifGTHalf :: Key -> Geometry -> Geometry
-ifGTHalf k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
+ifGTHalf k (Geometry f) = Geometry (f . filterCoords id k)
+
+filterCoords :: (Bool -> Bool) -> Key -> [Map Key Coord] -> [Map Key Coord]
+filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
   where
-    truish Nothing  = False
+    truish Nothing               = False
     truish (Just (Normalized n)) = n > 0.5
 
 
@@ -838,6 +849,29 @@ area = Geometry tot
 
     baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+
+{-|
+Like 'fill', but renders the area between {x, y, bound:False} and {x, y, bound:True}
+-}
+area2 :: Geometry
+area2 = Geometry tot
+  where
+    tot ms = case colors ms of
+      Nothing -> baseL 0 ms
+      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+
+    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.areaData ps
+      where
+        k = "bound"
+        lowMappings  = filterCoords not k ms
+        highMappings = filterCoords id  k ms
+        xs  = fmap (getNormalized . (! "x")) lowMappings -- assume xs in lowMappings are the same as in highMappings
+        ys1 = fmap (getNormalized . (! "y")) lowMappings
+        ys2 = fmap (getNormalized . (! "y")) highMappings
+        ps = zipWith3 (\x y1 y2 -> P (V3 x y1 y2)) xs ys1 ys2
+
+    -- baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
@@ -1161,7 +1195,21 @@ test8b = visualizeTest dat2 (mconcat [line, fill])
      , (3, 5, 16)
      , (4, 16, 1) :: (Int, Int, Int)
      ]
-
+test8c = visualizeTest dat2 (mconcat [area2])
+  [ x     <~ _1
+  , y     <~ _2
+  , bound <~ _3
+  ]
+  where
+    dat2 :: [(Int,Int,Bool)]
+    dat2 = fmap (\a -> (a^._1, a^._2, False)) dat <> fmap (\a -> (a^._1, a^._3, True)) dat
+    dat =
+     [ (0, 3, 12)
+     , (1, 1, 12)
+     , (2, 1, 16)
+     , (3, 5, 16)
+     , (4, 16, 1) :: (Int, Int, Int)
+     ]
 test8 = visualizeTest dat (mconcat [area])
   [ x    <~ _1
   , yMin <~ _2
