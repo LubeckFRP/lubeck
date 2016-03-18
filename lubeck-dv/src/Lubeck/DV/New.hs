@@ -768,7 +768,15 @@ m ?! k = Data.Map.lookup k m
 
 -- TOP-LEVEL
 
+visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
+visualizeTest dat geom aess = do
+  printDebugInfo dat aess
+  let finalD = visualize ["FIRST AXIS", "SECOND AXIS"] dat geom aess
+  let svgS = Lubeck.Drawing.toSvgStr mempty $ finalD
+  writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
+  return ()
 
+{-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
 printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO ()
 printDebugInfo dat aess = putStrLn $ B.render $ box
   where
@@ -809,28 +817,6 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
 
-visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
-visualizeTest dat geom aess = do
-  printDebugInfo dat aess
-  visualizeTest2 dat geom aess
-  return ()
-
-visualizeTest2 :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
-visualizeTest2 dat geom aess = do
-  let finalD = visualizeWithStyle ["FIRST AXIS", "SECOND AXIS"] dat geom aess
-  let svgS = Lubeck.Drawing.toSvgStr mempty $ Lubeck.DV.Styling.withDefaultStyle $ finalD
-  writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
-  return ()
-  where
-    -- aes = mconcat aess
-    -- boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
-    -- guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
-    -- guidesM = applyScalingToGuides boundsM guidesM2
-    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-    -- mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
-    -- mappedAndScaledData = applyScalingToValues boundsM mappedData2
-
--- TODO return drawing, not styled drawing
 visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
 visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
 
@@ -842,12 +828,11 @@ visualizeWithStyle axesNames1 dat (Geometry geom) aess =
       axesD  = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
   in mconcat [dataD, axesD, ticksD]
   where
-    aes = mconcat aess
-    boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
-    guidesM2    = aestheticGuides aes dat :: Map Key [(Double, Str)]
-    guidesM = applyScalingToGuides boundsM guidesM2
-    -- scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-    mappedData2  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
+    aes                 = mconcat aess
+    boundsM             = aestheticBounds aes dat :: Map Key (Double, Double)
+    guidesM2            = aestheticGuides aes dat :: Map Key [(Double, Str)]
+    guidesM             = applyScalingToGuides boundsM guidesM2
+    mappedData2         = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
     mappedAndScaledData = applyScalingToValues boundsM mappedData2
 
 
