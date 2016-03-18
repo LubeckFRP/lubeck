@@ -779,6 +779,7 @@ data TextAnchor
   | TextAnchorEnd
   | TextAnchorInherit
   deriving (Eq, Ord, Read, Show)
+
 instance Monoid TextAnchor where
   mappend x y
     | y == mempty = x
@@ -794,6 +795,7 @@ data AlignmentBaseline
   | AlignmentBaselineMiddle
   | AlignmentBaselineCentral
   deriving (Eq, Ord, Read, Show)
+
 instance Monoid AlignmentBaseline where
   mappend x y
     | y == mempty = x
@@ -806,6 +808,7 @@ instance Monoid AlignmentBaseline where
 data FontStyle
   = FontStyleNormal | FontStyleItalic | FontStyleOblique | FontStyleInherit
   deriving (Eq, Ord, Read, Show)
+
 instance Monoid FontStyle where
   mappend x y
     | y == mempty = x
@@ -823,6 +826,7 @@ data FontWeight
   | FontWeightN Int
   | FontWeightInherit
   deriving (Eq, Ord, Read, Show)
+
 instance Monoid FontWeight where
   mappend x y
     | y == mempty = x

@@ -751,7 +751,19 @@ m ? k = maybe mempty id $ Data.Map.lookup k m
 (?!) :: (Ord k) => Map k b -> k -> Maybe b
 m ?! k = Data.Map.lookup k m
 
--- TODO remove (~ Identity) restrictions
+
+-- TODO use GG/ggplot terminology, i.e.
+--   point, line, area, interval, path, schema
+
+-- TODO conditional plots (i.e. only show cross line if some "aesthetic" is set)
+
+-- TODO interval/area
+
+-- TODO stacking/dodging/jittering
+
+-- TODO how do we know what aesthetics a certain plot listens to?
+-- Is this all dynamic or is types involved?
+
 line :: Geometry
 line = Geometry tot
   where
