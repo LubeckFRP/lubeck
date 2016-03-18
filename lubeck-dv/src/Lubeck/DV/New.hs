@@ -94,6 +94,8 @@ module Lubeck.DV.New
   , area2
   -- ** Legacy
   , scatter
+  , xIntercept
+  , yIntercept
 
   -- * Coordinates
   -- $coordinates
