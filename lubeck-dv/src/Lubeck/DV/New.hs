@@ -86,6 +86,7 @@ module Lubeck.DV.New
 
   -- * Geometry
   , Geometry
+  , ifG
   , pointG
   , line
   , fill
@@ -774,11 +775,12 @@ geom_violin(stat_ydensity)
 --     truish _        = True
 
 
-{-| Render a geometry iff a key is present and > 0.5.
-For use with standard 'Bool' scale.
+{-| Render a geometry iff a key is present and its scaled value > 0.5.
+
+This is convenient to use with standard 'Bool' or 'Integer' scales.
 -}
-ifGTHalf :: Key -> Geometry -> Geometry
-ifGTHalf k (Geometry f) = Geometry (f . filterCoords id k)
+ifG :: Key -> Geometry -> Geometry
+ifG k (Geometry f) = Geometry (f . filterCoords id k)
 
 filterCoords :: (Bool -> Bool) -> Key -> [Map Key Coord] -> [Map Key Coord]
 filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
@@ -876,13 +878,13 @@ area2 = Geometry tot
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 xIntercept :: Geometry
-xIntercept = ifGTHalf "crossLineX" (Geometry g)
+xIntercept = ifG "crossLineX" (Geometry g)
   where
    g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 yIntercept :: Geometry
-yIntercept = ifGTHalf "crossLineY" (Geometry g)
+yIntercept = ifG "crossLineY" (Geometry g)
   where
    g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
