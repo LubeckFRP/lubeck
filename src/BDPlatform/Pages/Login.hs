@@ -95,8 +95,8 @@ type Password = JSString
 
 validate :: Credentials -> FormValid VError
 validate (username, password) =
-  let validationResult = (runValidation2 <$> notEmpty "Username" username
-                                         <*> notEmpty "Password" password) :: V.Validation VError VSuccess
+  let validationResult = (runValidation2 <$> longString     "Username" 1 30 username
+                                         <*> passwordString "Password" 1 30 password) :: V.Validation VError VSuccess
   in case validationResult of
         V.Success _  -> FormValid
         V.Failure es -> FormNotValid es
