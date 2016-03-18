@@ -165,7 +165,7 @@ scatterDataWithColor = undefined
 scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
-  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
+  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   -- draw
@@ -181,7 +181,7 @@ scatterDataX ps = do
 scatterDataY :: (Monad m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
-  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
+  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) (fmap intoRect ps)
