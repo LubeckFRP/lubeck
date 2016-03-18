@@ -12,7 +12,6 @@ import           Control.Applicative
 import           Data.Monoid
 import           Data.String                    (fromString)
 import           GHCJS.Types                    (JSString, JSVal)
-import           GHCJS.Concurrent               (synchronously)
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -28,6 +27,7 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 
 import qualified BD.Data.Account                as Account
+import qualified BD.Data.Auth                   as Auth
 import qualified BD.Data.Ad                     as Ad
 import qualified BD.Data.AdCampaign             as AdCampaign
 import qualified BD.Data.Count                  as C
@@ -66,6 +66,7 @@ menuItems =
   , (NavSearch,      "Search content")
   , (NavManage,      "Manage content")
   , (NavResults,     "Results")
+  , (NavCreateAd,    "Create Ad")
   , (NavCurrentUser, "Current user") -- last item is special in that it will be positioned far right
   ]
 
@@ -101,11 +102,8 @@ rootLayout goTo menu err busy login {- user ads -} search createAd interactions 
 
 adPlatform :: IO (Signal Html, Maybe (Sink KbdEvents))
 adPlatform = do
-  (kbdSink', kbdEvents)                  <- newEventOf (undefined :: KbdEvents)
-  (ipcSink', ipcEvents)                  <- newEventOf (undefined :: IPCMessage)
-
-  let ipcSink = synchronously . ipcSink'
-  let kbdSink = synchronously . kbdSink'
+  (kbdSink, kbdEvents)                  <- newSyncEventOf (undefined :: KbdEvents)
+  (ipcSink, ipcEvents)                  <- newSyncEventOf (undefined :: IPCMessage)
 
   (notifView, notifSink, notifKbdSink)  <- notificationsComponent []
   (busyView, busySink)                  <- busyIndicatorComponent []
@@ -113,24 +111,23 @@ adPlatform = do
   (loginView, userLoginE)               <- loginPage (fromString defaultUsername, fromString defaultPassword)
   userLoginB                            <- stepper Nothing (fmap (Just . fst) userLoginE) :: IO (Behavior (Maybe Username))
 
-  authOk                                <- withErrorIO notifSink $ fmap (withBusy busySink Account.authenticateOrError) userLoginE :: IO (Events Account.AuthToken)
+  authOk                                <- withErrorIO notifSink $ fmap (withBusy busySink Auth.authenticateOrError) userLoginE :: IO (Events Auth.AuthInfo)
   let validUserLoginE                   = sample userLoginB authOk :: Events (Maybe Username)
 
   let bypassAuthUserE                   = fmap fst userLoginE
   userE                                 <- withErrorIO notifSink $ fmap (withBusy busySink Account.getUserOrError)
-                                                                        (if useAuth then (filterJust validUserLoginE)
+                                                                        (if useAuth then filterJust validUserLoginE
                                                                                     else bypassAuthUserE)
 
   camapaignsE                           <- withErrorIO notifSink $ fmap (withBusy busySink getCampaigns) userE
 
+  authS                                 <- stepperS Nothing (fmap Just authOk)  :: IO (Signal (Maybe Auth.AuthInfo))
   userS                                 <- stepperS Nothing (fmap Just userE)
   campaignsS                            <- stepperS Nothing (fmap Just camapaignsE)
 
   let userB                             = current userS
   let usernameB                         = fmap (fmap Account.username) userB
 
-  -- (userView, loadAdsE)                  <- userPage         busySink notifSink                   userB campaignsS
-  -- adsView                               <- campaignPage     busySink notifSink loadAdsE          userB
   (manageIndexView, imsB, manageKbdSink) <- manageIndexPage   busySink notifSink ipcSink ipcEvents userE -- navS
   createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
@@ -142,12 +139,16 @@ adPlatform = do
   (menuView, menuNavE)                  <- mainMenuComponent menuItems "BD Platform" firstPage
 
   let postLoginNavE                     = fmap (const firstPage) validUserLoginE --(updates userS)
-  -- let campaignNavE                      = fmap (const NavCampaign) (updates adsView)
-  navS                                  <- stepperS NavLogin (postLoginNavE {- <> campaignNavE -} <> menuNavE)
+  (ipcNavSink, ipcNavEvents)            <- newSyncEventOf (undefined :: Nav)
+  navS                                  <- stepperS NavLogin (postLoginNavE <> menuNavE <> ipcNavEvents)
 
   searchIndexView                       <- searchIndexPage      busySink notifSink ipcSink usernameB navS
   accountsIndexView                     <- accountsIndexPage    busySink notifSink ipcSink usernameB navS
-  currentUserIndexView                  <- currentUserIndexPage busySink notifSink ipcSink userS
+  currentUserIndexView                  <- currentUserIndexPage busySink notifSink ipcSink userS authS
+
+  subscribeEvent ipcEvents $ \msg -> case msg of
+    Logout -> ipcNavSink NavLogin
+    _      -> return ()
 
   -- composition of keyboard listeners, looks like an inverse to Html signal distribution & flow
   subscribeEvent kbdEvents $ \e -> do

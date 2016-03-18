@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, JavaScriptFFI #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Lubeck.Forms.File
   ( filesSelectWidget
@@ -6,19 +6,19 @@ module Lubeck.Forms.File
 
 import           Data.Monoid
 
-import Lubeck.Forms
+import           Data.JSString                  (JSString, pack, unpack)
 import qualified Data.List
-import Lubeck.Util
 import qualified Data.Map
-import Data.JSString (JSString, pack, unpack)
+import           Lubeck.Forms
+import           Lubeck.Util
 
-import JavaScript.Web.XMLHttpRequest (FormDataVal(..))
-import GHCJS.Types
+import           GHCJS.Types
+import           JavaScript.Web.XMLHttpRequest  (FormDataVal (..))
 
-import qualified Web.VirtualDom as VD
-import qualified Web.VirtualDom.Html as E
+import qualified Web.VirtualDom                 as VD
+import qualified Web.VirtualDom.Html            as E
 import qualified Web.VirtualDom.Html.Attributes as A
-import qualified Web.VirtualDom.Html.Events as Ev
+import qualified Web.VirtualDom.Html.Events     as Ev
 
 buttonCSS = "position: relative;"
 
@@ -39,10 +39,10 @@ filesSelectWidget
   -> Bool                   -- ^ Multiple file selection.
   -> Widget' [(JSString, FormDataVal)]
 filesSelectWidget formFieldName mime multi sink _ =
-  let multiAttr  = if multi then [(VD.attribute "multiple") "true"] else []
+  let multiAttr  = [A.multiple True | multi]
       acceptAttr = case mime of
                      Nothing -> []
-                     Just x  -> [(VD.attribute "accept") x]
+                     Just x  -> [A.accept x]
   in E.div []
     [ E.button
         [ A.class_ "btn btn-link"
@@ -61,5 +61,4 @@ filesSelectWidget formFieldName mime multi sink _ =
 
            ] <> multiAttr <> acceptAttr) []
         ]
-
     ]

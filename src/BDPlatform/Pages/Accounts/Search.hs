@@ -1,9 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TupleSections              #-}
 
 module BDPlatform.Pages.Accounts.Search
   ( accountSearch
@@ -13,66 +9,56 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import           Control.Lens                   (lens, over, set, view)
-import           Control.Monad                  (void)
+import           Control.Monad                  (void, when)
 import qualified Data.List
-import           Data.Map                       (Map)
-import qualified Data.Map                       as Map
-import qualified Data.Maybe
+import           Data.Maybe
 import           Data.Monoid
-import           Data.String                    (fromString)
-import qualified Data.Text                      as T
+import qualified Data.Set as Set
 import           Data.Time.Calendar             (Day (..))
 import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
 
-import           Control.Concurrent             (forkIO, threadDelay)
+import           Control.Concurrent             (forkIO)
 import qualified Data.JSString
-import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
-import           Web.VirtualDom                 (renderToString, createElement, DOMNode)
-import           Web.VirtualDom.Html            (Property, a, button, div, form,
-                                                 h1, hr, img, input, label, p,
-                                                 table, tbody, td, text, th, tr)
+import qualified Web.VirtualDom                 as VD
 import qualified Web.VirtualDom.Html            as E
-import           Web.VirtualDom.Html.Attributes (class_, href, src, src, target,
-                                                 width, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, keyup,
-                                                 preventDefault,
-                                                 stopPropagation, submit, value)
 import qualified Web.VirtualDom.Html.Events     as Ev
 
-import           Lubeck.App                     (Html, runAppReactive)
+import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    (contentPanel, divideFromEnd,
-                                                 newEventOf, showIntegerWithThousandSeparators,
-                                                 showJS, which, withErrorIO)
-import           Lubeck.Web.URI                 (getURIParameter)
+import           Lubeck.Util                    (showIntegerWithThousandSeparators,
+                                                 showJS, which, newSyncEventOf)
 
 import           BD.Api
 import           BD.Data.Account                (Account)
 import qualified BD.Data.Account                as Ac
 import           BD.Query.AccountQuery
-import qualified BD.Query.AccountQuery             as AQ
+import qualified BD.Query.AccountQuery          as AQ
 import           BD.Types
 
 import           BDPlatform.Types
-import           Components.BusyIndicator       (BusyCmd (..),
-                                                 busyIndicatorComponent,
-                                                 withBusy, withBusy2)
+import           BDPlatform.HTMLCombinators
+import           Components.Grid
+import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2)
 
-searchForm :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)
-searchForm dayNow outputSink query =
-  contentPanel $
-    div [ class_ "form-horizontal"
-          -- event delegation
-        , keyup $ \e -> if which e == 13 then outputSink (Submit query) else return () ]
+import           BDPlatform.Pages.Accounts.Common
 
+
+data SearchResults = Pending | Empty | Found [Ac.Account]
+data ViewMode = ViewMode { form :: FormViewMode
+                         , results :: ResultsViewMode }
+data FormViewMode = FormVisible | FormHidden
+
+
+searchFormW :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)
+searchFormW dayNow outputSink query =
+  panel' $ formPanel_ [Ev.keyup $ \e -> when (which e == 13) $ outputSink (Submit query) ]
       [ longStringWidget "Keyword"        True  (contramapSink (\new -> DontSubmit $ query { keyword = new     }) outputSink) (AQ.keyword query)
       , longStringWidget "User name"      False (contramapSink (\new -> DontSubmit $ query { username = new    }) outputSink) (AQ.username query)
       , longStringWidget "Follows"        False (contramapSink (\new -> DontSubmit $ query { follows = new     }) outputSink) (AQ.follows query)
@@ -83,109 +69,85 @@ searchForm dayNow outputSink query =
       , integerIntervalWidget "Number of posts" (contramapSink (\new -> DontSubmit $ query { numPosts = new    }) outputSink) (AQ.numPosts query)
       , integerIntervalWidget "Tracking status" (contramapSink (\new -> DontSubmit $ query { tier = new        }) outputSink) (AQ.tier query)
 
-      , div [ class_ "form-group"  ]
-        [ label [class_ "control-label col-xs-2"] [text "Sort by" ]
-        , div [class_ "col-xs-10 form-inline"]
-            [ selectWidget
-                [ (AccountByFollowers, "Account followers") ]
-                (contramapSink (\new -> DontSubmit $ query { orderBy = new }) outputSink) (AQ.orderBy query)
-            , selectWidget
-                [ (Desc,  "from highest to lowest")
-                , (Asc,   "from lowest to highest") ]
-                (contramapSink (\new -> DontSubmit $ query { direction = new }) outputSink) (AQ.direction query)
-            ]
-        ]
-
-      , div [ class_ "form-group"  ]
-        [ label [class_ "control-label col-xs-2"] [text "Max number of accounts returned" ]
-        , div [class_ "col-xs-10 form-inline"]
-            [ selectWidget
-                [ (50,  "50")
-                , (100, "100")
-                , (200, "200")
-                , (400, "400") ]
-                (contramapSink (\new -> DontSubmit $ query { limit = new }) outputSink) (AQ.limit query)
-            ]
-        ]
-
-      , div [class_ "form-group"]
-          [ div [class_ "col-xs-offset-2 col-xs-10"]
-              [ button [A.class_ "btn btn-success", click $ \e -> outputSink $ Submit query]
-                  [ E.i [class_ "fa fa-instagram", A.style "margin-right: 5px"] []
-                  , text "Search!"
-                  ] ]
+      , formRowWithLabel "Sort by"
+          [ selectWidget
+              [ (AccountByFollowers, "Account followers") ]
+              (contramapSink (\new -> DontSubmit $ query { orderBy = new }) outputSink) (AQ.orderBy query)
+          , selectWidget
+              [ (Desc,  "from highest to lowest")
+              , (Asc,   "from lowest to highest") ]
+              (contramapSink (\new -> DontSubmit $ query { direction = new }) outputSink) (AQ.direction query)
           ]
+
+      , formRowWithLabel "Max number of accounts returned"
+          [ selectWidget
+              [ (50,  "50")
+              , (100, "100")
+              , (200, "200")
+              , (400, "400") ]
+              (contramapSink (\new -> DontSubmit $ query { limit = new }) outputSink) (AQ.limit query)
+          ]
+
+      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
+          [ buttonOkIcon "Search!" "instagram" False [Ev.click $ \e -> outputSink $ Submit query] ]
       ]
 
-data Action = ViewDetails Ac.Account | ViewAllResults
 
-itemMarkup :: Widget Ac.Account Action
-itemMarkup output account =
-  E.tr [class_ "", click $ \e -> output $ ViewDetails account]
-    [ E.td [class_ "acc-pic"] [ img [A.src (Data.Maybe.fromMaybe "defaultPic" (Ac.profile_picture account))] [] ]
-    , E.td [class_ "acc-username"] [ E.a [ class_ "acc-username"
-                                         , click $ \e -> stopPropagation e
-                                         , A.target "blank_"
-                                         , href ("https://instagram.com/" <> Ac.username account)]
-                                         [text $ "@" <> Ac.username account]
-                                   , E.span [ class_ "acc-fullname"] [text $ Ac.full_name account]
-                                   , E.div [ class_ "acc-bio"
-                                           , A.style "display: block;"]
-                                           [ text $ Data.Maybe.fromMaybe " " (Ac.bio account) ]]
-    , E.td [class_ "acc-num"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.numposts account ]
-    , E.td [class_ "acc-num"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.latest_count account ]
-    , E.td [class_ "acc-num"] [ text $ Data.Maybe.fromMaybe "N/A" $ showIntegerWithThousandSeparators <$> Ac.numfollowing account ]
-    ]
+formPlaceholder :: Widget () FormViewMode
+formPlaceholder sink _ = panel' . toolbar' . buttonGroupLeft' $ buttonOk "Edit search" False [Ev.click $ \e -> sink FormVisible]
 
-detailsW :: Widget Action Action
-detailsW sink action = case action of
-  ViewDetails acc ->
-    div []
-      [ button [class_ "btn btn-primary", click $ \e -> sink ViewAllResults ] [text "Back"]
-      , text $ showJS acc]
-  _               -> div [] [text "hello"]
+detailsW :: Widget ViewMode ResultsViewMode
+detailsW sink (ViewMode f r) = case r of
+  DetailsView acc ->
+    panel
+      [ toolbar' . buttonGroupLeft' $ button "Back" True [Ev.click $ \e -> sink AllResults ]
+      , panel [E.text $ showJS acc]]
 
-accountSearchResultW :: Widget [Ac.Account] Action
-accountSearchResultW outputSink accounts = resultsTable outputSink accounts
-  where
-    resultsTable :: Widget [Ac.Account] Action
-    resultsTable outputSink accounts =
-      E.table [class_ "table"]
-        [E.thead [class_ ""]
-          [E.tr []
-            [ E.th [class_ "acc-pic"] [ text $ "Account" ]
-            , E.th [class_ "acc-username"] [  ]
-            , E.th [class_ "acc-num"] [ text "Posts" ]
-            , E.th [class_ "acc-num"] [ text "Followers" ]
-            , E.th [class_ "acc-num"] [ text "Follows" ]
-            ]]
-        , E.tbody [] (map (itemMarkup outputSink) accounts)
-        ]
+  _  -> panel [E.text "No account"]
 
-resultsLayout :: Maybe Action -> Html -> Maybe Html -> Maybe [Ac.Account] -> Html
-resultsLayout mba resultsV detailsV accounts = case mba of
-  Nothing -> resWrapper resultsV accounts
-  Just (ViewDetails x) -> case detailsV of     -- TODO XXX FIXME later
-    Nothing -> resWrapper resultsV accounts    -- two different approaches to switch view modes exist currently
-    Just dv -> detWraper dv                    -- choose one (separate Action from ViewMode?)
-  Just ViewAllResults -> resWrapper resultsV accounts
+wrapResults :: Html -> SearchResults -> Maybe (Set.Set Ac.Account, GridAction Ac.Account) -> Html
+wrapResults resultsV results sel =
+  let sel'    = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel
+      btnAttr = if Set.size sel' > 0
+                  then [Ev.click $ \e -> addToGroup sel']
+                  else [A.disabled True]
+      msg     = case Set.size sel' of
+                  0 -> ""
+                  1 -> "1 item selected"
+                  x -> showJS x <> " items selected"
+      resultsMsg Pending    = "Search in progress..."
+      resultsMsg Empty      = "Nothing found"
+      resultsMsg (Found xs) = "Found " <> showJS (length xs) <> " accounts"
 
-  where
-    detWraper det =
-      contentPanel $
-        div []
-          [ div [class_ "page-header"] [ h1 [] [ text "Details view " ] ]
-          , div [] [ det ] ]
+  in panel [ header1' "Search Results " (resultsMsg results)
+           , toolbarLeft' . buttonGroupLeft $
+               [ buttonOk "Add to group" False btnAttr
+               , inlineMessage msg ]
+           , resultsV ]
 
-    resWrapper x accounts =
-      contentPanel $
-        div []
-          [ div [class_ "page-header"]
-              [ h1 [] [ text "Search Results "
-                      , E.small [] [text $ Data.JSString.pack $ "Found " ++ show (Data.Maybe.fromMaybe 0 (length <$> accounts)) ++ " accounts"]
-                      ] ]
-          , div [A.style "text-align: center;"] [ x ] ]
+addToGroup :: Set.Set Ac.Account -> IO ()
+addToGroup sel = print $ "Going to add to group " <> showJS (Set.size sel) <> " accounts"
 
+searchRequest busySink notifSink srchResSink query = do
+  srchResSink Pending -- reset previous search results
+
+  let complexQuery = AccountQuery $ complexifyAccountQuery query
+  eQueryId <- withBusy2 busySink (postAPIEither BD.Api.defaultAPI) "internal/queries" complexQuery
+  case eQueryId of
+    Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
+    Right queryId -> void . forkIO $ do
+      eitherPosts <- withBusy busySink (getAPIEither BD.Api.defaultAPI) $ "internal/queries/" <> queryId <> "/results"
+      case eitherPosts of
+        Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
+        Right ps -> srchResSink $ Found ps
+
+layout fViewModeSink viewMode formV resultsV detailsV = case viewMode of
+  ViewMode FormVisible AllResults      -> panel [formV, resultsV]
+  ViewMode FormVisible ResultsHidden   -> panel [formV]
+  ViewMode FormVisible (DetailsView _) -> panel [formV, detailsV]
+  ViewMode FormHidden  AllResults      -> panel [formPlaceholder fViewModeSink (), resultsV]
+  ViewMode FormHidden  ResultsHidden   -> panel [formPlaceholder fViewModeSink ()]
+  ViewMode FormHidden  (DetailsView _) -> panel [formPlaceholder fViewModeSink (), detailsV]
 
 accountSearch :: Sink BusyCmd
               -> Sink (Maybe Notification)
@@ -194,37 +156,40 @@ accountSearch :: Sink BusyCmd
               -> Signal Nav
               -> IO (Signal Html)
 accountSearch busySink notifSink ipcSink mUserNameB navS = do
-  let initPostQuery                = defSimpleAccountQuery
+  (fViewModeSink, fViewModeEvents) <- newSyncEventOf (undefined                                           :: FormViewMode)
+  (rViewModeSink, rViewModeEvents) <- newSyncEventOf (undefined                                           :: ResultsViewMode)
+  (srchResSink, srchResEvents)     <- newSyncEventOf (undefined                                           :: SearchResults)
 
-  (actionSink', actionEvents)      <- newEventOf (undefined                                              :: Action)
-  actionsS                         <- stepperS Nothing (fmap Just actionEvents)                          :: IO (Signal (Maybe Action))
-
-  let actionSink                   = synchronously . actionSink'
+  fViewModeS                       <- stepperS FormVisible fViewModeEvents                                :: IO (Signal FormViewMode)
+  rViewModeS                       <- stepperS ResultsHidden rViewModeEvents                              :: IO (Signal ResultsViewMode)
+  let viewModeS                    = ViewMode <$> fViewModeS <*> rViewModeS                               :: Signal ViewMode
 
   now                              <- getCurrentTime
+  (formView, searchRequested)      <- formComponent initPostQuery (searchFormW (utctDay now))
+  results                          <- stepperS Empty srchResEvents                                        :: IO (Signal SearchResults)
 
-  (searchView, searchRequested)    <- formComponent initPostQuery (searchForm (utctDay now))
-  (srchResSink', srchResEvents)    <- newEventOf (undefined                                              :: Maybe [Ac.Account])
-  let srchResSink                  = synchronously . srchResSink'
-  results                          <- stepperS Nothing srchResEvents                                     :: IO (Signal (Maybe [Ac.Account]))
+  (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent gridOptions initialItems itemMarkup
+  -- XXX is it too imperative?
+  subscribeEvent srchResEvents $ gridCmdsSink . searchResultsToGridCmd
+  subscribeEvent gridItemsE    rViewModeSink
+  subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
 
-  let gridView                     = fmap ((altW (text "") accountSearchResultW) actionSink) results     :: Signal Html
-  let detailsView                  = fmap (fmap (detailsW actionSink)) actionsS                          :: Signal (Maybe Html)
-  let resultsViewS                 = resultsLayout <$> actionsS <*> gridView <*> detailsView <*> results :: Signal Html
-  let view                         = liftA2 (\x y -> div [] [x,y]) searchView resultsViewS               :: Signal Html
+  selectionSnapshotS               <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE))       :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
 
-  subscribeEvent searchRequested $ \query -> void . forkIO $ do
-    srchResSink $ Nothing -- reset previous search results
+  let detailsView                  = fmap (detailsW rViewModeSink) viewModeS                              :: Signal Html
+  let resultsView                  = wrapResults <$> gridView <*> results <*> selectionSnapshotS          :: Signal Html
+  let view                         = layout fViewModeSink <$> viewModeS <*> formView <*> resultsView <*> detailsView :: Signal Html
 
-    let complexQuery = AccountQuery $ complexifyAccountQuery query
-    eQueryId <- (withBusy2 busySink (postAPIEither BD.Api.defaultAPI)) "internal/queries" $ complexQuery
-    case eQueryId of
-      Left e        -> notifSink . Just . apiError $ "Failed posting query: " <> showJS e
-      Right queryId -> void . forkIO $ do
-        eitherPosts <- (withBusy busySink (getAPIEither BD.Api.defaultAPI)) $ "internal/queries/" <> queryId <> "/results"
-        case eitherPosts of
-          Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
-          Right ps -> srchResSink $ Just ps
-    return ()
+  subscribeEvent searchRequested $ void . forkIO . searchRequest busySink notifSink srchResSink
+  subscribeEvent searchRequested $ \_ -> fViewModeSink FormHidden >> rViewModeSink AllResults
 
   return view
+
+  where
+    initPostQuery = defSimpleAccountQuery
+    initViewMode  = ViewMode FormVisible ResultsHidden
+    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
+    initialItems  = []
+    searchResultsToGridCmd Pending    = Replace []
+    searchResultsToGridCmd Empty      = Replace []
+    searchResultsToGridCmd (Found xs) = Replace xs

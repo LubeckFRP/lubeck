@@ -1,8 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
 module Components.Notifications
@@ -15,8 +12,6 @@ import qualified Prelude
 import           Control.Applicative
 import qualified Data.List
 import           Data.Monoid
-
-import           GHCJS.Concurrent               (synchronously)
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -40,12 +35,12 @@ notificationW :: Widget [Notification] Int
 notificationW _    []   = mempty
 notificationW sink ns = div [A.class_ "notifPanel"] [ div [] (map (notifItem sink) (zip [0..] ns))]
   where
-    notifItem sink (idx, (NError (ApiError s)))            = nbody idx "danger"  ("API Error: "       <> s)
-    notifItem sink (idx, (NError (BLError s)))             = nbody idx "danger"  ("BL Error: "        <> s)
-    notifItem sink (idx, (NError (NotImplementedError s))) = nbody idx "danger"  ("Not implemented: " <> s)
-    notifItem sink (idx, (NInfo s))                        = nbody idx "info"    s
-    notifItem sink (idx, (NSuccess s))                     = nbody idx "success" s
-    notifItem sink (idx, (NWarning s))                     = nbody idx "warning" s
+    notifItem sink (idx, NError (ApiError s))            = nbody idx "danger"  ("API Error: "       <> s)
+    notifItem sink (idx, NError (BLError s))             = nbody idx "danger"  ("BL Error: "        <> s)
+    notifItem sink (idx, NError (NotImplementedError s)) = nbody idx "danger"  ("Not implemented: " <> s)
+    notifItem sink (idx, NInfo s)                        = nbody idx "info"    s
+    notifItem sink (idx, NSuccess s)                     = nbody idx "success" s
+    notifItem sink (idx, NWarning s)                     = nbody idx "warning" s
 
 
     nbody idx cls msg =
@@ -64,31 +59,31 @@ notificationW sink ns = div [A.class_ "notifPanel"] [ div [] (map (notifItem sin
 -- until the user will dismiss them one by one.
 notificationsComponent :: [Notification] -> IO (Signal Html, Sink (Maybe Notification), Sink KbdEvents)
 notificationsComponent initialErrorMessages = do
-  (internalSink :: Sink Int, internalEvents :: Events Int) <- newEvent
-  (externalSink :: Sink (Maybe Notification), externalEvents :: Events (Maybe Notification)) <- newEvent
+  (internalSink, internalEvents) <- newSyncEventOf (undefined :: Int)
+  (externalSink, externalEvents) <- newSyncEventOf (undefined :: Maybe Notification)
 
-  (kbdSink, kbdE) <- newEventOf (undefined :: KbdEvents)
+  (kbdSink, kbdE)                <- newSyncEventOf (undefined :: KbdEvents)
 
   subscribeEvent kbdE $ \e -> case e of
-    (Key 27) -> synchronously . internalSink $ 0 -- esc: remove top most notification
+    (Key 27) -> internalSink 0 -- esc: remove top most notification
     _        -> return ()
 
-  let inputE    = fmap externalToInternal externalEvents :: Events ([Notification] -> [Notification])
-  let filterE   = fmap filterByIdx internalEvents        :: Events ([Notification] -> [Notification])
-  let allEvents = merge inputE filterE                   :: Events ([Notification] -> [Notification])
+  let inputE                     = fmap externalToInternal externalEvents :: Events ([Notification] -> [Notification])
+  let filterE                    = fmap filterByIdx internalEvents        :: Events ([Notification] -> [Notification])
+  let allEvents                  = merge inputE filterE                   :: Events ([Notification] -> [Notification])
 
-  errorsS       <- accumS initialErrorMessages allEvents :: IO (Signal [Notification])
-  let htmlS     = fmap (notificationW (synchronously . internalSink)) errorsS
+  errorsS                        <- accumS initialErrorMessages allEvents :: IO (Signal [Notification])
+  let htmlS                      = fmap (notificationW internalSink) errorsS
 
-  return (htmlS, (synchronously . externalSink), (synchronously . kbdSink))
+  return (htmlS, externalSink, kbdSink)
 
   where
     -- inserts new error into internal errors list
-    externalToInternal :: Maybe a -> ([a] -> [a])
+    externalToInternal :: Maybe a -> [a] -> [a]
     externalToInternal Nothing oldAs = oldAs
     externalToInternal (Just a) oldAs = oldAs <> [a]
 
     -- filters out errors from internal errors list
     filterByIdx :: Int -> [a] -> [a]
     filterByIdx idxToRemove oldAs =
-      fmap fst $ Prelude.filter ((/= idxToRemove) . snd) (zip oldAs [0..])
+      fst <$> Prelude.filter ((/= idxToRemove) . snd) (zip oldAs [0..])

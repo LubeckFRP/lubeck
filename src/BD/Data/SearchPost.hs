@@ -1,10 +1,5 @@
-
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module BD.Data.SearchPost
     ( SearchPost(..)
@@ -25,7 +20,6 @@ import qualified GHC.Generics                  as GHC
 import           Data.Bifunctor                (first)
 import           JavaScript.Web.XMLHttpRequest (FormDataVal (..))
 
-import           BD.Types
 
 data SearchPost = SearchPost
   { post_id        :: Integer
@@ -43,7 +37,7 @@ data SearchPost = SearchPost
   , ig_web_url     :: Maybe Text
   , latitude       :: Maybe Double
   , longitude      :: Maybe Double
-  } deriving (GHC.Generic)
+  } deriving (GHC.Generic, Eq, Ord, Show)
 
 instance FromJSON SearchPost
 instance ToJSON   SearchPost

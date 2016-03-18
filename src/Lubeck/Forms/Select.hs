@@ -57,7 +57,7 @@ selectEnumBoundedWidget = selectEnumWidget minBound maxBound
 -- See https://developer.mozilla.org/en/docs/Web/HTML/Element/Input
 --
 selectEnumWidget :: (Eq a, Enum a, Show a) => a -> a -> Widget' a
-selectEnumWidget lb ub = selectWidget $ fmap (\n -> (n, pack $ show n)) $ enumFromTo lb ub
+selectEnumWidget lb ub = selectWidget $ (\n -> (n, pack $ show n)) <$> enumFromTo lb ub
 
 -- |
 -- A widget that visualizes a given set of values..
@@ -114,12 +114,11 @@ selectWidget' valuesAndLabels sink curVal =
   E.select
     [ A.class_ "form-control"
     , A.value curVal -- ?
-    , Ev.change (\e -> sink $ Ev.value e)
+    , Ev.change (sink . Ev.value)
     ]
     (fmap (\(v,l) -> E.option
       (optAttrs v curVal)
       [E.text l])
         valuesAndLabels)
   where
-    optAttrs v x = [A.value v] ++ if v == x then [selected "true"]  else []
-    selected = VD.attribute "selected"
+    optAttrs v x = A.value v : [A.selected True | v == x]

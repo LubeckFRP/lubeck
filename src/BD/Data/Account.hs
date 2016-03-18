@@ -1,17 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE JavaScriptFFI              #-}
 
 module BD.Data.Account
     ( Account(..)
-    , AuthToken (..)
     , getUser
     , getUserOrError
-    , authenticateOrError
     ) where
 
 import           Control.Monad
@@ -54,7 +47,7 @@ data Account = Account
   , numfollowing    :: Maybe Int
   , p_is_male       :: Maybe Double
   , latest_count    :: Maybe Int
-  } deriving (GHC.Generic, Show)
+  } deriving (GHC.Generic, Show, Ord, Eq)
 
 instance ToJSON Account where
   toJSON = Data.Aeson.Types.genericToJSON
@@ -66,33 +59,4 @@ getUser :: JSString -> IO Account
 getUser unm = fmap payload $ unsafeGetAPI BD.Api.defaultAPI $ unm <> "/account"
 
 getUserOrError :: JSString -> IO (Either AppError Account)
-getUserOrError unm = getAPIEither (BD.Api.defaultAPI) (unm <> "/account") >>= return . bimap ApiError payload
-
-data AuthToken = AuthToken JSString | NoAuthToken JSString deriving (GHC.Generic, Show, Eq, Data, Typeable)
-
-instance FromJSON AuthToken where
-  parseJSON (Object o) = parseResponse hasToken o
-    where
-      hasToken = H.member "token" o
-
-      parseResponse :: Bool -> Object -> Parser AuthToken
-      parseResponse True  obj = AuthToken <$> obj .: "token"
-      parseResponse False obj = pure $ NoAuthToken "Hmm, access denied."
-
-  parseJSON _ = return $ NoAuthToken "Sorry, access denied."
-
--- FIXME this probably deserves distinct module
-authenticateOrError :: (JSString, JSString) -> IO (Either AppError AuthToken)
-authenticateOrError (unm, psw) = do
-  res <- getAPIEither' api "get-auth-token" :: IO (Either JSString AuthToken)
-  return $ case res of
-    Left a                -> Left . ApiError $ "Sorry, access denied."
-    Right (NoAuthToken s) -> Left . ApiError $ s
-    Right (AuthToken t)   -> Right . AuthToken $ t
-
-  where
-    api = BD.Api.defaultAPI { headers = [authHeader] }  
-    authHeader = ("Authorization", "Basic " <> (base64encode (unm <> ":" <> psw)))
-    base64encode s = btoa s
-
-foreign import javascript unsafe "btoa($1)" btoa :: JSString -> JSString
+getUserOrError unm = getAPIEither BD.Api.defaultAPI (unm <> "/account") >>= return . bimap ApiError payload

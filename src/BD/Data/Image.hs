@@ -1,7 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable  #-}
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module BD.Data.Image where
@@ -34,7 +32,7 @@ data Image = Image
   , localpath     :: Maybe Text
   , prediction    :: Maybe Double
 
-  } deriving (GHC.Generic, Show)
+  } deriving (GHC.Generic, Show, Eq, Ord)
 
 
 showJS :: Show a => a -> JSString

@@ -1,5 +1,5 @@
-
-{-# LANGUAGE CPP, TypeSynonymInstances #-}
+{-# LANGUAGE CPP                  #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 {-|
 Provides a HTML representation. This is just a wrapper around "Web.VirtualDom".
@@ -44,7 +44,7 @@ module Lubeck.Html
   ) where
 
 #ifdef __GHCJS__
-import Web.VirtualDom.Html (Html)
+import           Web.VirtualDom.Html (Html)
 import qualified Web.VirtualDom.Html as E
 
 instance Monoid Html where

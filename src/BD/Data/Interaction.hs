@@ -1,5 +1,7 @@
-
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable, CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE GADTs #-}
 
 module BD.Data.Interaction
     ( loadShoutouts
@@ -37,17 +39,15 @@ TODO
 - Or the other way around, possibly using a servant-generated client
 -}
 type JSString = String
-type Text = String
-data Method = GET
-data ReqData = NoData
-data Request = Request {
-  reqMethod :: Method,
-  reqURI :: String,
-  reqLogin :: (Maybe ()),
-  reqHeaders:: [()],
-  reqWithCredentials :: Bool,
-  reqData :: ReqData
-}
+type Text     = String
+data Method   = GET
+data ReqData  = NoData
+data Request  = Request { reqMethod :: Method
+                        , reqURI             :: String
+                        , reqLogin           :: Maybe ()
+                        , reqHeaders         :: [()]
+                        , reqWithCredentials :: Bool
+                        , reqData            :: ReqData }
 xhrText = undefined
 xhrByteString :: Request -> IO (Response ByteString)
 xhrByteString = undefined
@@ -61,30 +61,30 @@ data Response a = Response { contents              :: Maybe a
 data InteractionSet m = InteractionSet
   {
     from_account :: Maybe Account,
-    to_account :: Maybe Account,
+    to_account   :: Maybe Account,
     interactions :: [Interaction m]
   } deriving (GHC.Generic)
 
 data Interaction m = Interaction
   {
-    target_counts :: [Count], -- the growth
-    target_account :: Account,
+    target_counts    :: [Count], -- the growth
+    target_account   :: Account,
     interaction_time :: UTCTime,
-    medium :: m -- i.e. a post
+    medium           :: m -- i.e. a post
   } deriving (GHC.Generic)
 
 data InteractionMedia m where
   Shoutouts :: InteractionMedia SearchPost
 
-instance ToJSON m => ToJSON (Interaction m)
-instance ToJSON m => ToJSON (InteractionSet m)
+instance ToJSON m   => ToJSON (Interaction m)
+instance ToJSON m   => ToJSON (InteractionSet m)
 instance FromJSON m => FromJSON (Interaction m)
 instance FromJSON m => FromJSON (InteractionSet m)
 
 -- | Monad for backend interaction. Currently same as IO, we should probably do some wrapping eventually.
 
-data ResponseError = NoResponse String 
-                   | ParseError String 
+data ResponseError = NoResponse String
+                   | ParseError String
                   deriving (Show)
 
 type DB = ExceptT ResponseError IO
@@ -99,18 +99,17 @@ loadShoutouts mFrom mTo = do
   case contents r of
     Nothing          -> throwError $ NoResponse "API was unresponsive"
     Just byteString  -> case Data.Aeson.decodeStrict byteString of
-      Nothing -> throwError $ ParseError "Could not decode API response as InteractionSet SearchPost" 
+      Nothing -> throwError $ ParseError "Could not decode API response as InteractionSet SearchPost"
       Just x  -> return x
   where
     fromAccName = fromMaybe "any" mFrom
     toAccName   = fromMaybe "any" mTo
     getFromAPI = xhrByteString r
       where
-        r = Request {
-            reqMethod          = GET
-          , reqURI             = interactionURI fromAccName toAccName
-          , reqLogin           = Nothing
-          , reqHeaders         = []
-          , reqWithCredentials = False
-          , reqData            = NoData
-          }
+        r = Request { reqMethod          = GET
+                    , reqURI             = interactionURI fromAccName toAccName
+                    , reqLogin           = Nothing
+                    , reqHeaders         = []
+                    , reqWithCredentials = False
+                    , reqData            = NoData
+                    }

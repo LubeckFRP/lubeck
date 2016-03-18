@@ -1,8 +1,6 @@
-
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE RankNTypes                #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
 
 {-|
@@ -56,6 +54,8 @@ module Lubeck.Forms
 
   -- * Form helpers
   , longStringWidget
+  , passwordWidget
+  , checkboxWidget
 
 
   ) where
@@ -244,7 +244,7 @@ componentW initialState widget = do
   return (htmlS, internalSink)
 
 componentListen ::  WidgetT r a b -> Signal a -> Signal r
-componentListen widget signal = fmap (widget emptySink) signal
+componentListen widget = fmap (widget emptySink)
 
 repackValue :: (FormValid e, Submit a) -> (FormValid e, a)
 repackValue (x, Submit y)     = (x, y)
@@ -342,6 +342,42 @@ submits = filterJust . fmap g
     g (Submit x) = Just x
     g _          = Nothing
 
+checkboxWidget :: JSString -> Bool -> Widget' Bool
+checkboxWidget title focus update value = div
+  [ class_ "form-group" ]
+  [ label [class_ "control-label col-xs-2"] [text title]
+  , div [class_ "col-xs-10"]
+      [ input
+        ([ A.type_ "checkbox"
+         , A.class_ "form-control"
+         -- , A.value value
+         , change  $ contramapSink Ev.checked update
+         , keyup   $ contramapSink Ev.checked update
+         ] <> autofocus <> checked) []
+      ]
+  ]
+  where
+    checked   = [A.checked True | value]
+    autofocus = [A.autofocus True | focus]
+
+passwordWidget :: JSString -> Bool -> Widget' JSString
+passwordWidget title focus update value = div
+  [ class_ "form-group" ]
+  [ label [class_ "control-label col-xs-2"] [text title]
+  , div [class_ "col-xs-10"]
+      [ input
+        ([ A.type_ "password"
+        -- TODO size, show value
+        , A.class_ "form-control"
+        , A.value value
+        , change  $ contramapSink Ev.value update
+        , keyup   $ contramapSink Ev.value update
+        ] <> fcs) []
+      ]
+  ]
+  where
+    fcs = [A.autofocus True | focus]
+
 
 longStringWidget :: JSString -> Bool -> Widget' JSString
 longStringWidget title focus update value = div
@@ -359,7 +395,7 @@ longStringWidget title focus update value = div
       ]
   ]
   where
-    fcs = if focus then [(VD.attribute "autofocus") "true"] else []
+    fcs = [A.autofocus True | focus]
 
 -- | Modify a widget to accept 'Maybe' and displays the text nothing on 'Nothing'.
 altW :: Html -> Widget a b -> Widget (Maybe a) b

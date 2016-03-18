@@ -38,11 +38,14 @@ module Lubeck.DV.Drawing
 
   -- ** Scatter
   , scatterData
+  , scatterDataWithColor
   , scatterDataX
   , scatterDataY
 
   -- ** Lines
   , lineData
+  , lineDataWithColor
+  , fillData
   , stepData
   , linearData
 
@@ -101,7 +104,7 @@ import Prelude hiding (div)
 import qualified Prelude
 
 import Control.Applicative
-import Control.Lens ()
+import Control.Lens (to)
 import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
@@ -140,11 +143,17 @@ scatterData ps = do
   style <- ask
   let base  = id
             $ fillColorA (style^.scatterPlotFillColor)
+            $ strokeWidth (style^.scatterPlotStrokeWidth)
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  -- draw
   return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
+  -- return ()
+
+scatterDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
+scatterDataWithColor = undefined
 
 -- | Draw data for a scatter plot, ignoring Y values.
 --
@@ -158,7 +167,9 @@ scatterDataX ps = do
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  -- draw
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
+  -- return ()
 
 -- | Draw data for a scatter plot ignoring X values.
 --
@@ -184,12 +195,47 @@ lineData (p:ps) = do
   style <- ask
   let lineStyle = id
                 . strokeColorA  (style^.linePlotStrokeColor)
-                . fillColorA    (style^.linePlotFillColor)
+                . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
+lineDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
+lineDataWithColor []     = mempty
+lineDataWithColor [_]    = mempty
+lineDataWithColor _ = error "TODO"
+-- lineDataWithColor (p:ps) = do
+--   style <- ask
+--   let lineStyle = id
+--                 . strokeColorA  (style^.linePlotStrokeColor)
+--                 . fillColorA    (style^.linePlotFillColor)
+--                 . strokeWidth   (style^.linePlotStrokeWidth)
+--   let origin = P $ V3 0 0 0
+--   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+--   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
+
+fillData :: (Monad m) => [P2 Double] -> StyledT m Drawing
+fillData []     = mempty
+fillData [_]    = mempty
+fillData (p:ps) = do
+  style <- ask
+  let lineStyle = id
+                -- . strokeColorA  (style^.linePlotStrokeColor)
+                . fillColorA    (style^.linePlotFillColor)
+                -- . strokeWidth   (style^.linePlotStrokeWidth)
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  return $ translate (intoRect pProjX .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect $ addExtraPoints (p:ps)
+
+  where
+    -- Because of projection (below!), ignore y value for 1st point
+    pProjX = P (V2 firstPointX 0) where P (V2 firstPointX _) = p
+
+    -- Add points from first and last projected on the X axis to make sure space below line is completely filled.
+    addExtraPoints ps = [proj $ head ps] ++ ps ++ [proj $ last ps]
+      where
+        proj (P (V2 x _)) = P (V2 x 0)
 
 -- | Draw a step chart.
 --
@@ -443,9 +489,10 @@ overlay = undefined
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
 -- Positions outside the normalized range are discarded.
 ticks
-  :: [(Double, Str)] -- ^ X axis ticks.
+  :: Monad m
+  => [(Double, Str)] -- ^ X axis ticks.
   -> [(Double, Str)] -- ^ Y axis ticks.
-  -> Styled Drawing
+  -> StyledT m Drawing
 ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
   where
     filterTicks = filter (withinNormRange . fst)
@@ -455,24 +502,59 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
 -- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
 -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
 ticksNoFilter
-  :: [(Double, Str)] -- ^ X axis ticks.
+  :: Monad m
+  => [(Double, Str)] -- ^ X axis ticks.
   -> [(Double, Str)] -- ^ Y axis ticks.
-  -> Styled Drawing
-ticksNoFilter xt yt = return $ mconcat [xTicks, yTicks]
-  where
-    xTicks = mconcat $ flip fmap xt $
-      \(pos,str) -> translateX (pos * 300) $
-        (scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateY (-0.5) verticalLine)
-          <> (translateY (kBasicTickLength * (-1.5)) .rotate (turn*1/8)) (textEnd str)
-    yTicks = mconcat $ flip fmap yt $
-      \(pos,str) -> translateY (pos * 300) $
-        (scale kBasicTickLength $ strokeColor Colors.black $ strokeWidth 1.5 $ translateX (-0.5) horizontalLine)
-          <> (translateX (kBasicTickLength * (-1.5)) .rotate (turn*0.00001/8)) (textEnd str)
+  -> StyledT m Drawing
+ticksNoFilter xt yt = do
+  style <- ask
+  let x = style^.renderingRectangle._x
+  let y = style^.renderingRectangle._y
 
-    kBasicTickLength = 10
+  let basicTickStrokeWidth_  = style^.basicTickStrokeWidth
+  let kBasicTickLength       = style^.basicTickLength
+  let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
+  let basicTickColor_        = style^.basicTickColor
+
+  let backgroundTickStrokeWidthX_   = style^.backgroundTickStrokeWidthX
+  let backgroundTickStrokeWidthY_   = style^.backgroundTickStrokeWidthY
+  let backgroundTickStrokeColorX_   = style^.backgroundTickStrokeColorX
+  let backgroundTickStrokeColorY_   = style^.backgroundTickStrokeColorY
+
+  let xTicks = mconcat $ flip fmap xt $
+          \(pos,str) -> translateX (pos * x) $ mconcat
+            [ mempty
+            , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateY (-0.5) verticalLine
+            -- bg grid
+            , scale y $ strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
+            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ textX style str
+            ]
+  let yTicks = mconcat $ flip fmap yt $
+          \(pos,str) -> translateY (pos * y) $ mconcat
+            [ mempty
+            , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateX (-0.5) horizontalLine
+            -- bg grid
+            , scale x $ strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ translateX (0.5) horizontalLine
+            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ textY style str
+            ]
+  return $ mconcat [xTicks, yTicks]
+  where
+    -- kBasicTickLength = 10
+
     -- Note: Add infinitesimal slant to non-slanted text to get same anti-aliasing behavior
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
+
+    textX = text_ fst
+    textY = text_ snd
+    text_ which style = textWithOptions $ mempty
+      { textAnchor = style^.tickTextAnchor.to which
+      -- TODO read family from style
+      , fontFamily = style^.tickTextFontFamily
+      , fontStyle  = style^.tickTextFontStyle
+      , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
+      , fontWeight = style^.tickTextFontWeight
+      }
 
 barPlotTicks :: [Str] -> [Str] -> Styled Drawing
 barPlotTicks = undefined
@@ -480,22 +562,37 @@ barPlotTicks = undefined
 
 -- | Draw X and Y axis.
 labeledAxis
-  :: Str -- ^ X axis label.
+  :: Monad m
+  => Str -- ^ X axis label.
   -> Str -- ^ Y axis label.
-  -> Styled Drawing
-labeledAxis labelX labelY = return $ mconcat
-  [ scale 300 $ axis
-  , translateY (300/2) $ translateX (-20) $ rotate (turn/4) $ textMiddle labelY
-  , translateX (300/2) $ translateY (-20) $ textMiddle labelX]
+  -> StyledT m Drawing
+labeledAxis labelX labelY = do
+  style <- ask
+  let x = style^.renderingRectangle._x
+  let y = style^.renderingRectangle._y
 
-axis, axisX, axisY :: Drawing
-axis = mconcat [axisY, axisX]
-axisX = strokeWidth 1.5 $ strokeColor Colors.black $ translateX 0.5 horizontalLine
-axisY = strokeWidth 1.5 $ strokeColor Colors.black $ translateY 0.5 verticalLine
+  let axisX = strokeWidth (style^.axisStrokeWidth.to fst) $ strokeColorA (style^.axisStrokeColor.to fst) $ translateX 0.5 horizontalLine
+  let axisY = strokeWidth (style^.axisStrokeWidth.to snd) $ strokeColorA (style^.axisStrokeColor.to snd) $ translateY 0.5 verticalLine
+  let axis = mconcat [axisY, axisX]
 
-crossLineX, crossLineY :: Double -> Drawing
-crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
-crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
+  return $ mconcat
+    [ scaleX x $ scaleY y $ axis
+    , translateX (x/2) $ translateY (-50*x/300) $ text_ style labelX
+    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ style labelY
+    ]
+  where
+    text_ style= textWithOptions $ mempty
+      { textAnchor = TextAnchorMiddle
+      , fontFamily = style^.axisTextFontFamily
+      , fontWeight = style^.axisTextFontWeight
+      , fontStyle  = style^.axisTextFontStyle
+      , fontSize   = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
+      }
+
+
+    -- crossLineX, crossLineY :: Double -> Drawing
+    -- crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
+    -- crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
 
 
 

@@ -1,8 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
 
 module Components.MainMenu
@@ -57,7 +54,7 @@ menuW menuItems brand sink value =
     [ E.div [class_ "navbar-header"] [ E.a [class_ "navbar-brand"] [ text brand ] ]
     , E.div [class_ "navbar-collapse"]
       [ E.ul [class_ "nav navbar-nav"] (fmap menuItem (init menuItems))
-      , E.ul [class_ "nav navbar-nav navbar-right"] [ (lastMenuItem (last menuItems)) ]
+      , E.ul [class_ "nav navbar-nav navbar-right"] [lastMenuItem (last menuItems)]
       ] ]
 
   where
@@ -66,8 +63,8 @@ menuW menuItems brand sink value =
            , click $ \_ -> sink nav ] [E.a [] [text title]]
 
     lastMenuItem (nav, title) =
-      E.li [ click $ \_ -> sink nav ]
-           [ E.a [] [ E.i [class_ "fa fa-power-off", A.style "color: orange; margin-right: 5px;"] []
+      E.li [ class_ (markActive nav value), click $ \_ -> sink nav ]
+           [ E.a [] [ E.i [class_ "fa fa-user", A.style "color: orange; margin-right: 5px;"] []
                     , text title]]
 
     markActive x v = if x == v then "active" else ""

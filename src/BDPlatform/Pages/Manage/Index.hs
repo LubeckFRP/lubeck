@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
 module BDPlatform.Pages.Manage.Index (manageIndexPage) where
@@ -12,7 +10,6 @@ import qualified Data.Maybe
 import           Data.Monoid
 
 import qualified Data.JSString
-import           GHCJS.Concurrent               (synchronously)
 import           GHCJS.Types                    (JSString)
 
 import qualified Web.VirtualDom.Html            as E
@@ -23,7 +20,7 @@ import           Lubeck.App                     (Html, KbdEvents(..))
 import           Lubeck.Forms
 import           Lubeck.Types
 import           Lubeck.FRP
-import           Lubeck.Util                    (contentPanel, newEventOf,
+import           Lubeck.Util                    (contentPanel, newSyncEventOf,
                                                  showJS, withErrorIO)
 
 import           BD.Types
@@ -42,8 +39,8 @@ data ManageAction = PredictForPagePost | PredictForAd
 indexW :: Widget (Maybe ManageAction) ManageAction
 indexW sink action = mconcat
   [ toolbar' $ buttonGroup
-      [ button "Predict for Page Post" [markActive action PredictForPagePost, Ev.click $ \e -> sink PredictForPagePost]
-      , button "Predict for Ad"        [markActive action PredictForAd,       Ev.click $ \e -> sink PredictForAd] ]
+      [ button "Predict for Page Post" (action ~== PredictForPagePost) [Ev.click $ \e -> sink PredictForPagePost]
+      , button "Predict for Ad"        (action ~== PredictForAd)       [Ev.click $ \e -> sink PredictForAd] ]
   ]
 
 layout action toolbar libview =
@@ -62,8 +59,7 @@ manageIndexPage :: Sink BusyCmd
                 -> Events Account.Account
                 -> IO (Signal Html, Behavior (Maybe [Im.Image]), Sink KbdEvents)
 manageIndexPage busySink notifSink ipcSink ipcEvents userE = do
-  (actionsSink', actionEvents)       <- newEventOf (undefined                     :: ManageAction)
-  let actionsSink                    = synchronously . actionsSink'
+  (actionsSink, actionEvents)        <- newSyncEventOf (undefined                     :: ManageAction)
   actionsS                           <- stepperS Nothing (fmap Just actionEvents) :: IO (Signal (Maybe ManageAction))
 
   (imageLibView, imsB, imlibKbdSink) <- imageLibrary busySink notifSink ipcSink ipcEvents userE

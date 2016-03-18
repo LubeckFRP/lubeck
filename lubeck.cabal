@@ -23,18 +23,20 @@ library
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
                      , Lubeck.DV
+                     , Lubeck.DV.New
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling
                      , Lubeck.DV.Animation
                      , Lubeck.DV.Interactive
-                     , Lubeck.DV.Plottable
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
                      , BD.Api
                      , BD.Types
                      , BD.Data.Account
+                     , BD.Data.Group
+                     , BD.Data.Auth
                      , BD.Data.AdTypes
                      , BD.Data.Ad
                      , BD.Data.AdInsight
@@ -52,18 +54,23 @@ library
                      , BDPlatform.Pages.Interactions
                      , BDPlatform.Pages.Search.Index
                      , BDPlatform.Pages.Search.Instagram
+                     , BDPlatform.Pages.Search.Upload
                      , BDPlatform.Pages.Accounts.Index
                      , BDPlatform.Pages.Accounts.Search
+                     , BDPlatform.Pages.Accounts.Manage
+                     , BDPlatform.Pages.Accounts.Common
                      , BDPlatform.Pages.Manage.Index
                      , BDPlatform.Pages.Manage.ImageLibrary
                      , BDPlatform.Pages.CurrentUser.Index
                      , BDPlatform.Pages.CurrentUser.User
                      , BDPlatform.HTMLCombinators
+                     , BDPlatform.Validators
                      , BDPlatform.Main
                      , Components.Notifications
                      , Components.BusyIndicator
                      , Components.MainMenu
                      , Components.Map
+                     , Components.Grid
   build-depends:       base
                      , base-prelude
                      , virtual-dom
@@ -95,6 +102,8 @@ library
                      , random
                      , ListZipper
                      , split
+                     , either
+                     , boxes
   hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
@@ -244,6 +253,7 @@ executable bd-bdplatform
                      , bytestring
                      , monad-parallel
                      , ListZipper
+                     , either
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
 

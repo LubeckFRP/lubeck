@@ -1,18 +1,19 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module BD.Types where
 
-import Control.Monad
-import Data.Aeson -- TODO proper
-import Data.Data
-import Data.Text(Text)
-import Data.Time.Clock (UTCTime)
+import           Control.Monad
+import           Data.Aeson
 import qualified Data.Aeson.Types
-import qualified GHC.Generics as GHC
-import Data.Monoid
+import           Data.Data
+import           Data.Monoid
+import           Data.Text          (Text)
+import           Data.Time.Clock    (UTCTime)
+import qualified GHC.Generics       as GHC
 
-import GHCJS.Types (JSString)
-import Data.JSString.Text (textFromJSString, textToJSString)
+import           Data.JSString.Text (textFromJSString, textToJSString)
+import           GHCJS.Types        (JSString)
 
 type Text = JSString
 

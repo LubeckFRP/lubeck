@@ -1,16 +1,17 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, QuasiQuotes, OverloadedStrings, GADTs, DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module BD.Data.Count
     ( Count(..)
     ) where
 
-import Control.Monad
-import Data.Aeson -- TODO proper
-import Data.Data
-import Data.Time.Clock (UTCTime)
+import           Control.Monad
+import           Data.Aeson
 import qualified Data.Aeson.Types
-import qualified GHC.Generics as GHC
+import           Data.Data
+import           Data.Time.Clock  (UTCTime)
+import qualified GHC.Generics     as GHC
 
 data Count = Count
   { account_id :: Int

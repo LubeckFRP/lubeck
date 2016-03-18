@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE JavaScriptFFI              #-}
@@ -26,7 +25,6 @@ import qualified Control.Concurrent.STM.TVar as TVar
 import           Control.Monad.STM              (atomically)
 
 import           GHCJS.Types                    (JSVal, JSString, jsval)
-import           GHCJS.Concurrent               (synchronously)
 
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
@@ -156,8 +154,8 @@ addMarkerToCluster lmcg (Marker (Point lat lon) popupContent) = case popupConten
 mapW :: JSString -> Html
 mapW containerId = staticNode "div" [A.id containerId, class_ "map-container"] []
 
-minLat = (-90)
-minLon = (-180)
+minLat = -90
+minLon = -180
 maxLat = 90
 maxLon = 180
 
@@ -180,7 +178,7 @@ calcBounds ms = Bounds x y
     f (sw, ne) m = ( Point (if latM m < lat sw then latM m else lat sw) (if lonM m < lon sw then lonM m else lon sw)
                    , Point (if latM m > lat ne then latM m else lat ne) (if lonM m > lon ne then lonM m else lon ne) )
 
-withMap  mapRef   f = withMap' mapRef (return ()) f
+withMap  mapRef     = withMap' mapRef (return ())
 withMap' mapRef e f = do
   m <- atomically $ TVar.readTVar mapRef
   case m of
@@ -189,12 +187,11 @@ withMap' mapRef e f = do
 
 mapComponent :: [Marker] -> IO (Signal Html, Sink MapCommand, Events MapAction)
 mapComponent z = do
-  (actionsSink, actionsEvents)      <- newEventOf (undefined                     :: MapAction)
-  (lifecycleSink', lifecycleEvents) <- newEventOf (undefined                     :: MapCommand)
-  let lifecycleSink                 = synchronously . lifecycleSink'
+  (actionsSink, actionsEvents)      <- newSyncEventOf (undefined                     :: MapAction)
+  (lifecycleSink, lifecycleEvents)  <- newSyncEventOf (undefined                     :: MapCommand)
 
   g                                 <- getStdGen
-  let mapId                         = fromString . take 10 $ (randomRs ('a', 'z') g)
+  let mapId                         = fromString . take 10 $ randomRs ('a', 'z') g
   let htmlS                         = pure (mapW mapId)                          :: Signal Html
   mapRef                            <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
   lyrRef                            <- TVar.newTVarIO []                         :: IO (TVar.TVar [LMarkerClusterGroup])
@@ -202,8 +199,8 @@ mapComponent z = do
   subscribeEvent lifecycleEvents $ \mapCommand -> case mapCommand of
     ClearMap -> withMap mapRef $ \gmap -> do
       lyrs <- atomically $ TVar.readTVar lyrRef
-      mapM_ (flip removeClusterGroup $ gmap) lyrs
-      atomically $ TVar.modifyTVar' lyrRef (\_ -> [])
+      mapM_ (`removeClusterGroup` gmap) lyrs
+      atomically $ TVar.modifyTVar' lyrRef (const [])
 
     AddClusterLayer ms -> withMap mapRef $ \gmap -> do
       fitMapToLayers gmap ms

@@ -1,6 +1,6 @@
-
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, OverloadedStrings, TupleSections #-}
-{-# LANGUAGE JavaScriptFFI       #-}
+{-# LANGUAGE JavaScriptFFI              #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Lubeck.Util
   (
@@ -17,6 +17,7 @@ module Lubeck.Util
   -- * FRP/Async
   , newEventOf
   , newSyncEvent
+  , newSyncEventOf
   , reactimateIOAsync
   -- * Errors
   , eitherToError
@@ -33,16 +34,16 @@ module Lubeck.Util
   , which
   ) where
 
+import qualified Data.JSString
+import qualified Data.List
 import           Data.Maybe
 import           Data.String                    (fromString)
-import           GHCJS.Types                    (JSString)
-import qualified Data.JSString
-import Data.Time (Day(..), UTCTime(..))
+import           Data.Time                      (Day (..), UTCTime (..))
 import qualified Data.Time.Format
-import qualified Data.List
+import           GHCJS.Types                    (JSString)
 
-import GHCJS.Concurrent                         (synchronously)
-import Control.Concurrent                       (forkIO)
+import           Control.Concurrent             (forkIO)
+import           GHCJS.Concurrent               (synchronously)
 
 import           Web.VirtualDom.Html            (Property, br, button, div,
                                                  form, h1, hr, img, p, table,
@@ -50,11 +51,12 @@ import           Web.VirtualDom.Html            (Property, br, button, div,
 import qualified Web.VirtualDom.Html            as E
 import           Web.VirtualDom.Html.Attributes (class_, src, width)
 import qualified Web.VirtualDom.Html.Attributes as A
-import           Web.VirtualDom.Html.Events     (change, click, preventDefault, Event(),
+import           Web.VirtualDom.Html.Events     (Event (), change, click,
+                                                 preventDefault,
                                                  stopPropagation, submit, value)
 
-import           Lubeck.Html                    (Html)
 import           Lubeck.FRP
+import           Lubeck.Html                    (Html)
 import           Lubeck.Types
 import           Prelude                        hiding (div)
 import qualified Prelude
@@ -158,6 +160,11 @@ showIntegerWithThousandSeparators n = Data.JSString.pack $
 -- | Like newEvent with a type hint.
 newEventOf :: a -> IO (Sink a, Events a)
 newEventOf _ = newEvent
+
+newSyncEventOf :: a -> IO (Sink a, Events a)
+newSyncEventOf _ = do
+  (s, e) <- newEvent
+  return (synchronously . s, e)
 
 -- XXX this blocks the whole js thread until a user clicks a dialog button
 -- TODO non-blocking confirm dialog
