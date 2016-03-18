@@ -662,8 +662,8 @@ infixl 3 <~
 geom_blank = mempty
 
 
--- TODO use GG/ggplot terminology, i.e.
---   point, line, area, interval, path, schema
+-- TODO use GG/ggplot terminology vs Wilkinson
+-- Wilkinson: Point, Line, Area, Interval, Path, Schema ("box"), Contour
 
 -- TODO conditional plots (i.e. only show cross line if some "aesthetic" is set)
 
@@ -674,9 +674,52 @@ geom_blank = mempty
 -- TODO how do we know what aesthetics a certain plot listens to?
 -- Is this all dynamic or is types involved?
 
-
 -- TODO ablines, i.e. intercepting lines
 -- http://docs.ggplot2.org/current/geom_abline.html
+
+
+{-
+TODO
+GGplot geoms with their Wilkinson equivalents
+
+geom_blank
+  mempty
+  Wilkinson: Point
+geom_point
+  Wilkinson: Line, Path
+geom_segment/geom_curve
+  Wilkinson: Line, Path
+geom_path/geom_line/geom_step
+  Wilkinson: Path
+geom_bar
+  Wilkinson: Point, Interval
+  geom_boxplot(stat_boxplot)
+  Wilkinson: Schema
+
+
+geom_abline(geom_hline, geom_vline)
+geom_bin2d(stat_bin2d, stat_bin_2d)
+geom_contour(stat_contour)
+geom_count(stat_sum)
+geom_crossbar(geom_errorbar, geom_linerange, geom_pointrange)
+geom_density(stat_density)
+geom_density_2d(geom_density2d, stat_density2d, stat_density_2d)
+geom_dotplot
+geom_errorbarh
+geom_freqpoly(geom_histogram, stat_bin)
+geom_hex(stat_bin_hex, stat_binhex)
+geom_jitter
+geom_label(geom_text)
+geom_map
+geom_polygon
+geom_quantile(stat_quantile)
+geom_raster(geom_rect, geom_tile)
+geom_ribbon(geom_area)
+geom_rug
+geom_smooth(stat_smooth)
+geom_violin(stat_ydensity)
+-}
+
 
 
 -- TODO geom bar
@@ -685,6 +728,13 @@ geom_blank = mempty
 -- stat_bin2d
 -- x (req), y (req), fillcolor
 
+{-| Render a geometry iff a key is set (i.e. present and non-zero). -}
+ifG :: Key -> Geometry -> Geometry
+ifG k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
+  where
+    truish Nothing  = False
+    truish (Just 0) = False
+    truish _        = True
 
 line :: Geometry
 line = Geometry tot
