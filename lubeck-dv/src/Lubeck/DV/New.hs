@@ -659,6 +659,9 @@ infixl 3 <~
 
 -- GEOMETRY
 
+newtype Geometry = Geometry { getGeometry :: [Map Key (Normalized Double)] -> Styled Drawing }
+  deriving (Monoid)
+
 geom_blank = mempty
 
 
@@ -743,8 +746,8 @@ line = Geometry tot
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Double -> [Map Key Double] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+    baseL :: Normalized Double -> [Map Key (Normalized Double)] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 fill :: Geometry
 fill = Geometry tot
@@ -753,8 +756,8 @@ fill = Geometry tot
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Double -> [Map Key Double] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+    baseL :: Normalized Double -> [Map Key (Normalized Double)] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 scatter :: Geometry
 scatter = Geometry tot
@@ -763,15 +766,15 @@ scatter = Geometry tot
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Double -> [Map Key Double] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (m ! "x") (m ! "y")) ms
+    baseL :: Normalized Double -> [Map Key (Normalized Double)] -> Styled Drawing
+    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 
-atColor :: Double -> [Map Key Double] -> [Map Key Double]
+atColor :: (Eq b, Ord k, IsString k) => b -> [Map k b] -> [Map k b]
 atColor c = filter (\m -> m ?! "color" == Just c)
 
 -- All color values in the dataset or Nothing if there are none
-colors :: [Map Key Double] -> Maybe [Double]
+colors :: [Map Key (Normalized Double)] -> Maybe [Normalized Double]
 colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
   [] -> Nothing
   xs -> Just $ sortNub xs
@@ -782,23 +785,24 @@ colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
 
 -- TODO
 applyScalingToGuides :: Map Key (Double,Double)
-  -> Map Key [(Double, str)]
-  -> Map Key [(Double, str)]
-applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (scale (fromMaybe idS $ Data.Map.lookup aesK b) d,s)) dsL) m
+  -> Map Key [(Double, a)]
+  -> Map Key [(Normalized Double, a)]
+applyScalingToGuides b m = Data.Map.mapWithKey (\aesK dsL -> fmap (\(d,s) -> (normalize (fromMaybe idS $ Data.Map.lookup aesK b) d,s)) dsL) m
   where
     idS = (0,1)
-    scale :: (Double, Double) -> Double -> Double
-    scale (lb,ub) x = (x - lb) / (ub - lb)
 
-applyScalingToValues :: Map Key (Double,Double) -> [Map Key Double] -> [Map Key Double]
-applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> scale (fromMaybe idS $ Data.Map.lookup aesK b) d)) m
+applyScalingToValues :: Map Key (Double,Double) -> [Map Key Double] -> [Map Key (Normalized Double)]
+applyScalingToValues b m = fmap (Data.Map.mapWithKey (\aesK d -> normalize (fromMaybe idS $ Data.Map.lookup aesK b) d)) m
   where
     idS = (0,1)
-    scale :: (Double, Double) -> Double -> Double
-    scale (lb,ub) x = (x - lb) / (ub - lb)
 
-newtype Geometry = Geometry { getGeometry :: [Map Key Double] -> Styled Drawing }
-  deriving (Monoid)
+{-| Tag a value to keep track of the fact that it is /normalized/, i.e. in the unit hypercube. -}
+newtype Normalized a = Normalized { getNormalized :: a }
+  deriving (Eq, Ord, Show, Num, Fractional, Real, RealFrac, Floating)
+
+normalize :: (Double, Double) -> Double -> Normalized Double
+normalize (lb,ub) x = Normalized $ (x - lb) / (ub - lb)
+
 
 
 
@@ -873,17 +877,19 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames1 dat (Geometry geom) aess =
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
-      ticksD = Lubeck.DV.Drawing.ticks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
+      ticksD = drawTicks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
       axesNames = axesNames1 ++ repeat ""
       axesD  = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
   in mconcat [dataD, axesD, ticksD]
   where
     aes                 = mconcat aess
-    boundsM             = aestheticBounds aes dat :: Map Key (Double, Double)
-    guidesM2            = aestheticGuides aes dat :: Map Key [(Double, Str)]
-    guidesM             = applyScalingToGuides boundsM guidesM2
-    mappedData2         = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
-    mappedAndScaledData = applyScalingToValues boundsM mappedData2
+    boundsM             = aestheticBounds aes dat --  :: Map Key (Double, Double)
+    guidesM2            = aestheticGuides aes dat --  :: Map Key [(Double, Str)]
+    guidesM             = applyScalingToGuides boundsM guidesM2 :: Map Key [(Normalized Double, String)]
+    mappedData2         = fmap (aestheticMapping aes dat) dat --  :: [Map Key Double]
+    mappedAndScaledData = applyScalingToValues boundsM mappedData2 :: [Map Key (Normalized Double)]
+
+    drawTicks xs ys = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
 
 
 
