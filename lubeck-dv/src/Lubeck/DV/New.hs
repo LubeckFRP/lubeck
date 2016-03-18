@@ -86,8 +86,11 @@ module Lubeck.DV.New
 
   -- * Geometry
   , Geometry
+  , pointG
   , line
   , fill
+  , area
+  -- ** Legacy
   , scatter
 
   -- * Coordinates
@@ -1160,9 +1163,9 @@ test8b = visualizeTest dat2 (mconcat [line, fill])
      ]
 
 test8 = visualizeTest dat (mconcat [area])
-  [ x <~ _1
+  [ x    <~ _1
   , yMin <~ _2
-  , y <~ _3
+  , y    <~ _3
   ]
   where
     dat =
