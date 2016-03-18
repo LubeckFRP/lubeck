@@ -31,7 +31,8 @@ data Image = Image
   , ig_post_id    :: Maybe Int
   , localpath     :: Maybe Text
   , prediction    :: Maybe Double
-
+  , image_width   :: Maybe Int
+  , image_height  :: Maybe Int
   } deriving (GHC.Generic, Show, Eq, Ord)
 
 
