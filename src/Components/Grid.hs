@@ -43,7 +43,7 @@ data GridOptions = GridOptions { deleteButton :: Bool
 defaultGridOptions = GridOptions True True True 200 200
 
 gridW :: Ord a => GridOptions -> (a -> Html) -> Widget ([a], Set.Set a) (GridAction a)
-gridW _    _     _        ([], _)              = contentPanel $ E.text "No items"
+gridW _    _     _        ([], _)              = contentPanel mempty
 gridW opts itemW gridSink (items, selectedSet) = contentPanel $ E.div []
   [ E.div [A.style "margin-left: -20px;"] (map (itemWrapperW opts itemW selectedSet gridSink) items) ]
 

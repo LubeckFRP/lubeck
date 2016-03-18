@@ -1,50 +1,51 @@
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module BDPlatform.Pages.Accounts.Manage (manageAccouns) where
 
-import           Prelude                        hiding (div)
+import           Prelude                          hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import           Control.Monad                  (void)
-import           Data.Foldable                  (forM_)
+import           Control.Monad                    (void)
+import           Data.Foldable                    (forM_)
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
-import qualified Data.Set as Set
-import           Data.Time.Calendar             (Day (..))
-import           Data.Time.Clock                (UTCTime (..), getCurrentTime)
+import qualified Data.Set                         as Set
+import           Data.Time.Calendar               (Day (..))
+import           Data.Time.Clock                  (UTCTime (..), getCurrentTime)
 
-import           Control.Concurrent             (forkIO)
+import           Control.Concurrent               (forkIO)
 import qualified Data.JSString
-import           GHCJS.Types                    (JSString)
+import           GHCJS.Types                      (JSString)
 
-import qualified Web.VirtualDom                 as VD
-import qualified Web.VirtualDom.Html            as E
-import qualified Web.VirtualDom.Html.Attributes as A
-import qualified Web.VirtualDom.Html.Events     as Ev
+import qualified Web.VirtualDom                   as VD
+import qualified Web.VirtualDom.Html              as E
+import qualified Web.VirtualDom.Html.Attributes   as A
+import qualified Web.VirtualDom.Html.Events       as Ev
 
-import           Lubeck.App                     (Html)
+import           Lubeck.App                       (Html)
 import           Lubeck.Forms
-import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import qualified Lubeck.FRP                     as FRP
+import qualified Lubeck.FRP                       as FRP
+import           Lubeck.Types
 import           Lubeck.Util
 
 import           BD.Api
-import           BD.Data.Account                (Account)
-import qualified BD.Data.Account                as Ac
-import qualified BD.Data.Group                  as DG
+import           BD.Data.Account                  (Account)
+import qualified BD.Data.Account                  as Ac
+import qualified BD.Data.Group                    as DG
 import           BD.Query.AccountQuery
-import qualified BD.Query.AccountQuery          as AQ
+import qualified BD.Query.AccountQuery            as AQ
 import           BD.Types
 
-import           BDPlatform.Types
 import           BDPlatform.HTMLCombinators
+import           BDPlatform.Types
+import           Components.BusyIndicator         (BusyCmd (..), withBusy,
+                                                   withBusy0, withBusy2)
 import           Components.Grid
-import           Components.BusyIndicator       (BusyCmd (..), withBusy0, withBusy, withBusy2)
 
 import           BDPlatform.Pages.Accounts.Common
 
@@ -61,7 +62,7 @@ headerW actionsSink x = case x of
             [ buttonGroup' $
                 selectWithPromptWidget
                   (makeOpts gnl)
-                  (contramapSink (g . f gnl) actionsSink)
+                  (contramapSink (toAction . filterGroup gnl) actionsSink)
                   (firstGroupName gnl)
 
             , buttonGroup' $
@@ -71,14 +72,14 @@ headerW actionsSink x = case x of
 
     makeOpts gnl = zip gnl gnl
 
-    f _ Nothing = []
-    f gnl (Just grpname) = Data.List.filter (byName grpname) gnl
+    filterGroup _ Nothing = []
+    filterGroup gnl (Just grpname) = Data.List.filter (byName grpname) gnl
 
     byName name x = name == x
 
-    g []     = ActionNoop
-    g [x]    = LoadGroup x
-    g (x:xs) = LoadGroup x -- XXX ???
+    toAction []     = ActionNoop
+    toAction [x]    = LoadGroup x
+    toAction (x:xs) = LoadGroup x -- XXX ???
 
     firstGroupName [] = ""
     firstGroupName xs = head xs
@@ -87,6 +88,7 @@ layout header grid = panel [header, grid]
 
 handleActions busySink notifSink gridCmdsSink act = case act of
   LoadGroup groupname -> do
+    gridCmdsSink $ Replace [] -- reset grid
     (group, errors) <- withBusy busySink DG.loadGroup groupname
     mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
     gridCmdsSink $ Replace (Set.toList (DG.members group))
