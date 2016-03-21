@@ -97,8 +97,9 @@ imageSelectWidget Nothing _ _ =
   wrapper "Image" $ text "No images in library"
 
 imageSelectWidget (Just ims) sink cur_img_hash =
-  wrapper "Image" $ div [class_ "form-control  img-select-panel"]
-                        [ div [] (map (imageCell cur_img_hash sink) ims) ]
+  let adImages = Prelude.filter Im.suitableForAd ims
+  in wrapper "Image" $ div [class_ "form-control  img-select-panel"]
+                           [ div [] (map (imageCell cur_img_hash sink) adImages) ]
 
 wrapper title cont =
   div [ class_ "form-group" ]

@@ -56,3 +56,9 @@ uploadImagesOrError unm files = postFileAPIEither BD.Api.defaultAPI (unm <> "/ad
 
 enhanceImageOrError :: Text -> Int -> IO (Either AppError Ok)
 enhanceImageOrError unm imageId = postAPIEither BD.Api.defaultAPI (unm <> "/ad-image/" <> showJS imageId <> "/enhance-async") () >>= return . first ApiError
+
+suitableForAd :: Image -> Bool
+suitableForAd img
+  = case (image_width img, image_height img) of
+      (Just w,Just h) -> w >= h
+      _ -> False
