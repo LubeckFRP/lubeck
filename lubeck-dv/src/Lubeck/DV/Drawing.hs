@@ -46,6 +46,7 @@ module Lubeck.DV.Drawing
   , lineData
   , lineDataWithColor
   , fillData
+  , areaData
   , stepData
   , linearData
 
@@ -164,7 +165,7 @@ scatterDataWithColor = undefined
 scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
-  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateY 0.5 $ verticalLine
+  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   -- draw
@@ -180,7 +181,7 @@ scatterDataX ps = do
 scatterDataY :: (Monad m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
-  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth 1.5 $ translateX 0.5 $ horizontalLine
+  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
   let origin = P $ V2 0 0
   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) (fmap intoRect ps)
@@ -236,6 +237,23 @@ fillData (p:ps) = do
     addExtraPoints ps = [proj $ head ps] ++ ps ++ [proj $ last ps]
       where
         proj (P (V2 x _)) = P (V2 x 0)
+
+areaData :: (Monad m) => [P3 Double] -> StyledT m Drawing
+areaData ps = areaData' $
+  fmap (\p -> P $ V2 (p^._x) (p^._z)) ps
+    <>
+  fmap (\p -> P $ V2 (p^._x) (p^._y)) (reverse ps)
+
+areaData' :: (Monad m) => [P2 Double] -> StyledT m Drawing
+areaData' []     = mempty
+areaData' [_]    = mempty
+areaData' (p:ps) = do
+  style <- ask
+  let lineStyle = id
+                . fillColorA    (style^.linePlotFillColor)
+  let origin = P $ V2 0 0
+  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+  return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 -- | Draw a step chart.
 --
