@@ -42,6 +42,8 @@ library
                      , BD.Data.AdInsight
                      , BD.Data.AdCampaign
                      , BD.Data.Image
+                     , BD.Data.ImageLR
+                     , BD.Data.ImageLabel
                      , BD.Data.Count
                      , BD.Data.Interaction
                      , BD.Data.SearchPost
@@ -267,6 +269,7 @@ executable bd-label-refiner
                      , time
                      , lens
                      , aeson
+                     , text
                      , ghcjs-base
   default-language:    Haskell2010
 

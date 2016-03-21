@@ -7,6 +7,7 @@
 module BD.Api (
   API(..),
   defaultAPI,
+  testAPI,
   internalAPI,
 
   getAPI',
@@ -64,14 +65,19 @@ data API = API {
 }
 
 apiBaseURL :: JSString
---apiBaseURL = "http://localhost:3567/api/v1/"
 apiBaseURL = "https://data.beautifuldestinations.com/api/v1/"
+
+testApiBaseURL:: JSString
+testApiBaseURL = "http://localhost:3567/api/v1/"
 
 internalApiBaseURL :: JSString
 internalApiBaseURL = "https://data.beautifuldestinations.com/api/v1/internal/"
 
 defaultAPI :: API
 defaultAPI = API apiBaseURL []
+
+testAPI :: API
+testAPI = API testApiBaseURL []
 
 internalAPI :: API
 internalAPI = API internalApiBaseURL []
