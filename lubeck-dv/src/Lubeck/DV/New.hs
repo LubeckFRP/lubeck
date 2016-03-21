@@ -703,11 +703,14 @@ INTERESTINGLY
 
 type Coord = Normalized Double
 
-data Geometry = Geometry { getGeometry :: [Map Key Coord] -> Styled Drawing }
+data Geometry = Geometry
+  { getGeometry  :: [Map Key Coord] -> Styled Drawing
+  , geomBaseName :: [String]
+  }
 
 instance Monoid Geometry where
-  mempty = Geometry mempty
-  mappend (Geometry a1) (Geometry b1) = Geometry (a1 <> b1)
+  mempty = Geometry mempty mempty
+  mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
 
 geom_blank = mempty
 
@@ -785,7 +788,7 @@ geom_violin(stat_ydensity)
 This is convenient to use with standard 'Bool' or 'Integer' scales.
 -}
 ifG :: Key -> Geometry -> Geometry
-ifG k (Geometry f) = Geometry (f . filterCoords id k)
+ifG k (Geometry f n) = Geometry (f . filterCoords id k) n
 
 filterCoords :: (Bool -> Bool) -> Key -> [Map Key Coord] -> [Map Key Coord]
 filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
@@ -801,7 +804,7 @@ scatter = pointG
 -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
 
 pointG :: Geometry
-pointG = Geometry tot
+pointG = Geometry tot [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -811,7 +814,7 @@ pointG = Geometry tot
     baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 line :: Geometry
-line = Geometry tot
+line = Geometry tot [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -821,7 +824,7 @@ line = Geometry tot
     baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 fill :: Geometry
-fill = Geometry tot
+fill = Geometry tot [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -848,7 +851,7 @@ bars = pointG
 Like 'fill', but renders the area between 'y' and 'yMin' instead of between 'y' and 0.
 -}
 area :: Geometry
-area = Geometry tot
+area = Geometry tot [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -861,7 +864,7 @@ area = Geometry tot
 Like 'fill', but renders the area between {x, y, bound:False} and {x, y, bound:True}
 -}
 area2 :: Geometry
-area2 = Geometry tot
+area2 = Geometry tot [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -883,13 +886,13 @@ area2 = Geometry tot
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 xIntercept :: Geometry
-xIntercept = ifG "crossLineX" (Geometry g)
+xIntercept = ifG "crossLineX" (Geometry g [""])
   where
    g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 yIntercept :: Geometry
-yIntercept = ifG "crossLineY" (Geometry g)
+yIntercept = ifG "crossLineY" (Geometry g [""])
   where
    g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
@@ -1018,7 +1021,7 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 -- guide/elem (implied by data, geometry and aesthetic)
 
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
-visualizeWithStyle axesNames1 dat (Geometry geom) aess =
+visualizeWithStyle axesNames1 dat (Geometry geom _) aess =
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
       ticksD = drawTicks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
       axesNames = axesNames1 ++ repeat ""
