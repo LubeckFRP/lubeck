@@ -703,8 +703,11 @@ INTERESTINGLY
 
 type Coord = Normalized Double
 
-newtype Geometry = Geometry { getGeometry :: [Map Key Coord] -> Styled Drawing }
-  deriving (Monoid)
+data Geometry = Geometry { getGeometry :: [Map Key Coord] -> Styled Drawing }
+
+instance Monoid Geometry where
+  mempty = Geometry mempty
+  mappend (Geometry a1) (Geometry b1) = Geometry (a1 <> b1)
 
 geom_blank = mempty
 
