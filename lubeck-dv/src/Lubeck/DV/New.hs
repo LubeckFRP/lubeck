@@ -98,11 +98,12 @@ module Lubeck.DV.New
   , fill
   , area
   , area2
-  -- ** Legacy
-  , scatter
   , xIntercept
   , yIntercept
-
+  , labelG
+  , imageG
+  -- ** Legacy
+  , scatter
 
   -- * Coordinates
   -- $coordinates
