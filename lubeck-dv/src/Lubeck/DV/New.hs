@@ -978,8 +978,18 @@ labelG = Geometry g () [""]
         return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
           $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
           -- TODO font
-          $ Lubeck.Drawing.text str
+          $ text_ style str
       _ -> mempty
+
+    text_ style = Lubeck.Drawing.textWithOptions $ mempty
+      {
+      Lubeck.Drawing.textAnchor = style^.Lubeck.DV.Styling.labelTextAnchor
+      -- TODO read family from style
+      , Lubeck.Drawing.fontFamily = style^.Lubeck.DV.Styling.labelTextFontFamily
+      , Lubeck.Drawing.fontStyle  = style^.Lubeck.DV.Styling.labelTextFontStyle
+      , Lubeck.Drawing.fontSize   = First $ Just $ (toStr $ style^.Lubeck.DV.Styling.labelTextFontSizePx) <> "px"
+      , Lubeck.Drawing.fontWeight = style^.Lubeck.DV.Styling.labelTextFontWeight
+      }
 
 atColor :: (Eq b, Ord k, IsString k) => b -> [Map k (b, a)] -> [Map k (b, a)]
 atColor c = filter (\m -> fmap fst (m ?! "color") == Just c)
@@ -1356,7 +1366,7 @@ test9 = visualizeTest dat (mconcat [scatter, xIntercept, yIntercept])
       [1..4] [1..4]
       [True,False,False,True] [False,False,True,True]
 
--- Cross-lines
+-- Labels and custom images
 test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
