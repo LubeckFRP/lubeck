@@ -57,10 +57,12 @@ module Lubeck.DV.New
   -- * Data/Variables
   -- $data
 
+
   -- * Algebra
     blendId
   , blend
   , crossWith
+
 
   -- * Scales
   , Scale
@@ -75,14 +77,18 @@ module Lubeck.DV.New
   , timeScale
   , timeScaleWithOptions
   , TimeRendering(..)
+
   -- ** HasScale type class
   , HasScale(..)
+
   -- ** Overriding scales
   , Scaled
   , withScale
 
+
   -- * Statistics
   -- $statistics
+
 
   -- * Geometry
   , Geometry
@@ -97,8 +103,10 @@ module Lubeck.DV.New
   , xIntercept
   , yIntercept
 
+
   -- * Coordinates
   -- $coordinates
+
 
   -- * Aesthetics
   , Key
@@ -115,10 +123,18 @@ module Lubeck.DV.New
   , bound
   , crossLineX
   , crossLineY
-  -- ** Custom
+
+  -- ** Special
+  , label
+  , image
+
+  -- ** Special
   , customAesthetic
+  , customAesthetic'
+
   -- ** Mapping aesthetics
   , (<~)
+
 
 
   -- * Top-level
@@ -223,12 +239,24 @@ crossWith f a b = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
 -- AESTHETICS
 
+{-|
+Keys used in aesthetic mappings, i.e. @x@, @y@, @color@.
+-}
 newtype Key = Key { getKey :: Str }
   deriving (Eq, Ord, IsString)
 
 instance Show Key where
   -- OK because of the IsString instance
   show = show . getKey
+
+
+{-|
+Special values that can be embed in a visualization.
+Just strings (for labels) and drawings (for embedded images) for now.
+-}
+data Special
+  = SpecialStr Str
+  | SpecialDrawing Drawing
 
 {-|
 An 'Aesthetic' maps a single tuple or record to a set of aesthetic attributes such
@@ -239,6 +267,9 @@ data Aesthetic a = Aesthetic
       -- ^ Given dataset @vs@, map single value @v@ into the real domain.
       --
       --   See also 'scaleMapping'.
+  , aestheticSpecialMapping  :: [a] -> a -> Map Key Special
+      -- ^ Given dataset @vs@, map single value @v@ into the real domain.
+      --   You can construct a linear scale using @\_ x -> x@.
   , aestheticBounds        :: [a] -> Map Key (Double, Double)
       -- ^ Given a data set, return @(min, max)@ values to visualize (assuming
       --   the same mapping as 'aestheticMapping').
@@ -268,21 +299,34 @@ data Aesthetic a = Aesthetic
   - 'mappend' interleaves bindings (left-biased).
 -}
 instance Monoid (Aesthetic a) where
-  mempty = Aesthetic mempty mempty mempty mempty mempty
-  mappend (Aesthetic a1 a2 a3 a4 a5) (Aesthetic b1 b2 b3 b4 b5) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)
+  mempty = Aesthetic mempty mempty mempty mempty mempty mempty
+  mappend (Aesthetic a1 a2 a3 a4 a5 a6) (Aesthetic b1 b2 b3 b4 b5 b6) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)  (a6 <> b6)
 
 -- | Make a custom aesthetic attribute.
 customAesthetic :: HasScale a => Key -> Aesthetic a
-customAesthetic n = Aesthetic convert genBounds genGuides genLabels getScaleBaseName
+customAesthetic = customAesthetic' scale Nothing Nothing
+
+customAesthetic' :: (a -> Scale a) -> Maybe (a -> Str) -> Maybe (a -> Drawing) -> Key -> Aesthetic a
+customAesthetic' scale mToStr mToDrawing n =
+    Aesthetic mapping specialMapping genBounds genGuides genLabels getScaleBaseName
   where
-    convert   = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
+    mapping       = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
+
+    specialMapping = \_  v -> case (mToStr, mToDrawing) of
+      (Nothing, Nothing)    -> mempty
+      (Just toStr, _)       -> Data.Map.singleton n $ SpecialStr $ toStr v
+      (_ , Just toDrawing)  -> Data.Map.singleton n $ SpecialDrawing $ toDrawing v
+
     genBounds = \vs -> Data.Map.singleton n $ case vs of
       []    -> (0,0)
       (v:_) -> scaleBounds (scale v) vs
+
     genGuides  = \vs -> Data.Map.singleton n $ case vs of
       []    -> []
       (v:_) -> scaleGuides (scale v) vs
+
     genLabels = (const mempty)
+
     getScaleBaseName = \vs -> Data.Map.singleton n $ case vs of
       []    -> ""
       (v:_) -> scaleBaseName (scale v)
@@ -294,13 +338,14 @@ Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger t
 >>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
 -}
 instance Contravariant Aesthetic where
-  contramap f (Aesthetic g h i j k)
+  contramap f (Aesthetic g g2 h i j k)
     = Aesthetic
-      (\xs x -> g (fmap f xs) (f x))
-      (\xs   -> h (fmap f xs))
-      (\xs   -> i (fmap f xs))
-      (\xs   -> j (fmap f xs))
-      (\xs   -> k (fmap f xs))
+      (\xs x -> g  (fmap f xs) (f x))
+      (\xs x -> g2 (fmap f xs) (f x))
+      (\xs   -> h  (fmap f xs))
+      (\xs   -> i  (fmap f xs))
+      (\xs   -> j  (fmap f xs))
+      (\xs   -> k  (fmap f xs))
 
 x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
 
@@ -338,6 +383,16 @@ crossLineX = customAesthetic "crossLineX"
 
 -- | If present and non-zero, show Y-intercepting cross-lines.
 crossLineY = customAesthetic "crossLineY"
+
+-- | Map string values.
+label :: Aesthetic Str
+label = customAesthetic' scale (Just id) Nothing "label"
+
+-- | Map arbitrary drawings.
+image :: Aesthetic Drawing
+image = customAesthetic' dummyScale Nothing (Just id) "image"
+  where
+    dummyScale _ = Scale (\_ _ -> 0) (const (0,0)) (const []) "dummy"
 
 
 -- SCALE
@@ -961,7 +1016,7 @@ visualizeTest dat geom aess = do
   printDebugInfo dat aess
   let finalD = visualize ["FIRST AXIS", "SECOND AXIS"] dat geom aess
   let svgS = Lubeck.Drawing.toSvgStr mempty $ finalD
-  writeFile "/root/lubeck/static/tmp/test2.svg" $ unpackStr svgS
+  writeFile "static/tmp/test2.svg" $ unpackStr svgS
   return ()
 
 {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
