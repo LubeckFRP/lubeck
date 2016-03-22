@@ -304,18 +304,19 @@ instance Monoid (Aesthetic a) where
 
 -- | Make a custom aesthetic attribute.
 customAesthetic :: HasScale a => Key -> Aesthetic a
-customAesthetic = customAesthetic' scale Nothing Nothing
+customAesthetic = customAesthetic' scale (const Nothing) (const Nothing)
 
-customAesthetic' :: (a -> Scale a) -> Maybe (a -> Str) -> Maybe (a -> Drawing) -> Key -> Aesthetic a
-customAesthetic' scale mToStr mToDrawing n =
+customAesthetic' :: (a -> Scale a) -> (a -> Maybe Str) -> (a -> Maybe Drawing) -> Key -> Aesthetic a
+customAesthetic' scale toMStr toMDrawing n =
     Aesthetic mapping specialMapping genBounds genGuides genLabels getScaleBaseName
   where
     mapping       = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
 
-    specialMapping = \_  v -> case (mToStr, mToDrawing) of
-      (Nothing, Nothing)    -> mempty
-      (Just toStr, _)       -> Data.Map.singleton n $ SpecialStr $ toStr v
-      (_ , Just toDrawing)  -> Data.Map.singleton n $ SpecialDrawing $ toDrawing v
+    specialMapping = \_  v -> case toMStr v of
+      Just str -> Data.Map.singleton n $ SpecialStr str
+      Nothing -> case toMDrawing v of
+        Just dr -> Data.Map.singleton n $ SpecialDrawing dr
+        Nothing -> mempty
 
     genBounds = \vs -> Data.Map.singleton n $ case vs of
       []    -> (0,0)
@@ -386,11 +387,11 @@ crossLineY = customAesthetic "crossLineY"
 
 -- | Map string values.
 label :: Aesthetic Str
-label = customAesthetic' scale (Just id) Nothing "label"
+label = customAesthetic' scale Just (const Nothing) "label"
 
 -- | Map arbitrary drawings.
 image :: Aesthetic Drawing
-image = customAesthetic' dummyScale Nothing (Just id) "image"
+image = customAesthetic' dummyScale (const Nothing) Just "image"
   where
     dummyScale _ = Scale (\_ _ -> 0) (const (0,0)) (const []) "dummy"
 
@@ -759,13 +760,15 @@ INTERESTINGLY
 type Coord = Normalized Double
 
 data Geometry = Geometry
-  { getGeometry  :: [Map Key Coord] -> Styled Drawing
-  , geomBaseName :: [String]
+  { geomMapping         :: [Map Key Coord] -> Styled Drawing
+  -- , getSpecialGeometry  :: [Map Key Special] -> Styled Drawing
+  , geomDummy :: ()
+  , geomBaseName        :: [String]
   }
 
 instance Monoid Geometry where
-  mempty = Geometry mempty mempty
-  mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
+  mempty = Geometry mempty mempty mempty
+  mappend (Geometry a1 a2 a3) (Geometry b1 b2 b3) = Geometry (a1 <> b1) (a2 <> b2) (a3 <> b3)
 
 geom_blank = mempty
 
@@ -829,21 +832,14 @@ geom_violin(stat_ydensity)
 -}
 
 
--- {-| Render a geometry iff a key is set (i.e. present and non-zero). -}
--- ifG :: Key -> Geometry -> Geometry
--- ifG k (Geometry f) = Geometry (f . filter (\m -> truish $ m ?! k))
---   where
---     truish Nothing  = False
---     truish (Just 0) = False
---     truish _        = True
-
-
 {-| Render a geometry iff a key is present and its scaled value > 0.5.
 
 This is convenient to use with standard 'Bool' or 'Integer' scales.
 -}
 ifG :: Key -> Geometry -> Geometry
-ifG k (Geometry f n) = Geometry (f . filterCoords id k) n
+ifG k (Geometry f g n) = Geometry (f . filterCoords id k) g n
+-- TODO filter special values too!
+-- This is gonna be tricky!
 
 filterCoords :: (Bool -> Bool) -> Key -> [Map Key Coord] -> [Map Key Coord]
 filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
@@ -859,7 +855,7 @@ scatter = pointG
 -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
 
 pointG :: Geometry
-pointG = Geometry tot [""]
+pointG = Geometry tot mempty [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -869,7 +865,7 @@ pointG = Geometry tot [""]
     baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 line :: Geometry
-line = Geometry tot [""]
+line = Geometry tot mempty [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -879,7 +875,7 @@ line = Geometry tot [""]
     baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 fill :: Geometry
-fill = Geometry tot [""]
+fill = Geometry tot mempty [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -906,7 +902,7 @@ bars = pointG
 Like 'fill', but renders the area between 'y' and 'yMin' instead of between 'y' and 0.
 -}
 area :: Geometry
-area = Geometry tot [""]
+area = Geometry tot mempty [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -919,7 +915,7 @@ area = Geometry tot [""]
 Like 'fill', but renders the area between {x, y, bound:False} and {x, y, bound:True}
 -}
 area2 :: Geometry
-area2 = Geometry tot [""]
+area2 = Geometry tot mempty [""]
   where
     tot ms = case colors ms of
       Nothing -> baseL 0 ms
@@ -941,13 +937,13 @@ area2 = Geometry tot [""]
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 xIntercept :: Geometry
-xIntercept = ifG "crossLineX" (Geometry g [""])
+xIntercept = ifG "crossLineX" (Geometry g mempty [""])
   where
    g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 yIntercept :: Geometry
-yIntercept = ifG "crossLineY" (Geometry g [""])
+yIntercept = ifG "crossLineY" (Geometry g mempty [""])
   where
    g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
@@ -1047,7 +1043,7 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
 
     box = B.vsep 1 B.left
       [ "Raw data    " B.<+> tab0
-      , "Mapped data " B.<+> tab1
+      , "Mapped data " B.<+> tab1 -- TODO show "special" data here too!
       , "Scaled data " B.<+> tab2
       , "Aesthetics  " B.<+> tab
       ]
@@ -1076,7 +1072,7 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 -- guide/elem (implied by data, geometry and aesthetic)
 
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
-visualizeWithStyle axesNames1 dat (Geometry geom _) aess =
+visualizeWithStyle axesNames1 dat (Geometry geom geomSpecial _) aess =
   let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
       ticksD = drawTicks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
       axesNames = axesNames1 ++ repeat ""
