@@ -11,6 +11,8 @@
   , TupleSections
   , FlexibleContexts
   , NoImplicitPrelude
+  , CPP
+  , TypeSynonymInstances
   #-}
 
 {-|
