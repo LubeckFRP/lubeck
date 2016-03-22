@@ -71,6 +71,7 @@ library
                      , Components.MainMenu
                      , Components.Map
                      , Components.Grid
+                     , Components.Layout
   build-depends:       base
                      , base-prelude
                      , virtual-dom
