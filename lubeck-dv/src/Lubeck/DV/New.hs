@@ -168,6 +168,8 @@ import qualified Data.Maybe
 import qualified Data.Time
 import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
+import Control.Monad.Reader (ask)
+import qualified Data.Colour.Names as Colors
 
 import Lubeck.Drawing (Drawing, Str, toStr, packStr, unpackStr)
 import Lubeck.DV.Styling (StyledT, Styled)
@@ -948,7 +950,36 @@ yIntercept = ifG "crossLineY" (Geometry g mempty [""])
   where
    g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
+imageG :: Geometry
+imageG = Geometry g () [""]
+  where
+    g ms = mconcat $ fmap singleImage ms
 
+    singleImage :: Map Key (Coord, Maybe Special) -> Styled Drawing
+    singleImage m = case (m ?! "x", m ?! "y", m ?! "image") of
+    -- TODO listen to width etc
+      (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialDrawing dr))) -> do
+        style <- ask
+        return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
+          $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+          $ dr
+      _ -> mempty
+
+labelG :: Geometry
+labelG = Geometry g () [""]
+  where
+    g ms = mconcat $ fmap singleLabel ms
+
+    singleLabel :: Map Key (Coord, Maybe Special) -> Styled Drawing
+    singleLabel m = case (m ?! "x", m ?! "y", m ?! "label") of
+    -- TODO listen to width etc
+      (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialStr str))) -> do
+        style <- ask
+        return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
+          $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+          -- TODO font
+          $ Lubeck.Drawing.text str
+      _ -> mempty
 
 atColor :: (Eq b, Ord k, IsString k) => b -> [Map k (b, a)] -> [Map k (b, a)]
 atColor c = filter (\m -> fmap fst (m ?! "color") == Just c)
@@ -1326,11 +1357,11 @@ test9 = visualizeTest dat (mconcat [scatter, xIntercept, yIntercept])
       [True,False,False,True] [False,False,True,True]
 
 -- Cross-lines
-test10 = visualizeTest dat (mconcat [scatter])
+test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (("value is "<>). toStr) label <~ _1
-  , contramap (const mempty) image <~ _2
+  , contramap (const $ Lubeck.Drawing.fillColor Colors.whitesmoke $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.square) image <~ _2
   ]
   where
     dat :: [(Int,Int)]
