@@ -257,6 +257,9 @@ Just strings (for labels) and drawings (for embedded images) for now.
 data Special
   = SpecialStr Str
   | SpecialDrawing Drawing
+instance Show Special where
+  show (SpecialStr x) = show x
+  show (SpecialDrawing _) = "<drawing>"
 
 {-|
 An 'Aesthetic' maps a single tuple or record to a set of aesthetic attributes such
@@ -1022,13 +1025,22 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
     guidesM     = aestheticGuides aes dat :: Map Key [(Double, Str)]
     boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
     scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-    mappedData  = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
+    mappedData          = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
+    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
+    mappedDataWSpecial  = zipWith mergeMapsL mappedData specialData
+      :: [Map Key (Double, Maybe Special)]
+
     mappedAndScaledData = normalizeData boundsM mappedData :: [Map Key (Coord)]
+    mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
+      :: [Map Key (Coord, Maybe Special)]
+
     aKeys       = Data.Map.keys $ mconcat mappedData
 
     tab0 = B.vcat B.left $ map (toBox) dat
     tab1 = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
+    tab1a = makeTable (fmap (toBox) $ aKeys)
+      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
     tab2 = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedAndScaledData)
     tab = makeTable ["Aesthetic", "Scale base", "Bounds", "Guide"]
@@ -1042,6 +1054,7 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
     box = B.vsep 1 B.left
       [ "Raw data    " B.<+> tab0
       , "Mapped data " B.<+> tab1 -- TODO show "special" data here too!
+      , "Mapped (special) data " B.<+> tab1a-- TODO show "special" data here too!
       , "Scaled data " B.<+> tab2
       , "Aesthetics  " B.<+> tab
       ]
@@ -1057,6 +1070,14 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
       where
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
+
+    mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
+    mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
+      where
+        g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
+          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
+          (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
+          (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
 {-| Convenient wrapper for 'visualize' using 'mempty' style. -}
 visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
@@ -1081,17 +1102,22 @@ visualizeWithStyle axesNames1 dat (Geometry geom geomSpecial _) aess =
     boundsM             = aestheticBounds aes dat --  :: Map Key (Double, Double)
     guidesM2            = aestheticGuides aes dat --  :: Map Key [(Double, Str)]
     guidesM             = normalizeGuides boundsM guidesM2 :: Map Key [(Coord, Str)]
-    mappedData2         = fmap (aestheticMapping aes dat) dat --  :: [Map Key Double]
-    mappedAndScaledData = normalizeData boundsM mappedData2 :: [Map Key (Coord)]
 
-    -- TODO use special data
-    mappedAndScaledDataWSpecial = fmap (fmap (\x -> (x, Nothing))) mappedAndScaledData :: [Map Key (Coord, Maybe Special)]
+    mappedData2         = fmap (aestheticMapping aes dat) dat        :: [Map Key Double]
+    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
+    mappedAndScaledData = normalizeData boundsM mappedData2          :: [Map Key Coord]
+    mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
+      :: [Map Key (Coord, Maybe Special)]
 
     drawTicks xs ys = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
 
-
-
-
+    mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
+    mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
+      where
+        g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
+          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
+          (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
+          (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
 
 -- TEST
@@ -1298,3 +1324,15 @@ test9 = visualizeTest dat (mconcat [scatter, xIntercept, yIntercept])
     dat = zip4
       [1..4] [1..4]
       [True,False,False,True] [False,False,True,True]
+
+-- Cross-lines
+test10 = visualizeTest dat (mconcat [scatter])
+  [ x <~ _1 `withScale` categorical
+  , y <~ _2 `withScale` linearIntegral
+  , contramap (("value is "<>). toStr) label <~ _1
+  , contramap (const mempty) image <~ _2
+  ]
+  where
+    dat :: [(Int,Int)]
+    dat = zip
+      [1..4] [1..4]
