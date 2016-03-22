@@ -1371,9 +1371,12 @@ test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (("value is "<>). toStr) label <~ _1
-  , contramap (const $ Lubeck.Drawing.fillColor Colors.whitesmoke $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.square) image <~ _2
+  , contramap (const customDr) image <~ _2
   ]
   where
+    customDr :: Drawing
+    customDr = Lubeck.Drawing.fillColor Colors.whitesmoke $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.square
+
     dat :: [(Int,Int)]
     dat = zip
       [1..4] [1..4]
