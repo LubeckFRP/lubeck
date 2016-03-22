@@ -33,7 +33,7 @@ import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
-import           Lubeck.Util                    (newSyncEventOf,
+import           Lubeck.Util                    (newSyncEventOf, newSyncEvent,
                                                  showIntegerWithThousandSeparators,
                                                  showJS, which, withErrorIO)
 
@@ -52,15 +52,13 @@ import           BDPlatform.Types
 import           Components.Grid
 import           Components.Map
 import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2)
+import           Components.Layout
 
 
 type Post = SearchPost
 
 data PageAction = UploadImage Post deriving (Eq)
 
-data ViewMode = ViewMode { form    :: FormViewMode
-                         , results :: ResultsViewMode
-                         , htForm  :: HTFormViewMode }
 data HTFormViewMode  = HTFormVisible | HTFormHidden
 data FormViewMode    = FormVisible | FormHidden
 data ResultsViewMode = ResultsGrid | ResultsMap | ResultsHidden deriving (Show, Eq)
@@ -140,10 +138,6 @@ itemMarkup = wireframe
 renderToDOMNode :: Html -> IO DOMNode
 renderToDOMNode = createElement -- TODO move to virtual-dom
 
-mapLifecycle :: (Nav, ResultsViewMode) -> Maybe MapCommand
-mapLifecycle (NavSearch, ResultsMap)  = Just MapInit
-mapLifecycle (_, _)                   = Just MapDestroy
-
 postToMarkerIO :: Sink PageAction -> Post -> IO (Maybe Marker)
 postToMarkerIO pageActionsSink p = do
   minfo <- renderToDOMNode $ itemMarkup pageActionsSink p
@@ -187,43 +181,14 @@ createHTagW hViewModeSink sink (isValid, val) =
 
 --------------------------------------------------------------------------------
 
-resultsLayout :: Sink ResultsViewMode -> Html -> Html -> ResultsViewMode -> Maybe [Post] -> Html
-resultsLayout rViewModeSink gridV mapV mode posts = case mode of
-  ResultsGrid -> wrapper rViewModeSink gridV True  False posts
-  ResultsMap  -> wrapper rViewModeSink mapV  False True  posts
-  where
-    wrapper rViewModeSink x asel bsel posts =
-      let gridTab = if asel then "btn-primary" else "btn-default"
-          mapTab  = if bsel then "btn-primary" else "btn-default"
-          found   = "Found " <> showJS (fromMaybe 0 (length <$> posts)) <> " posts"
-      in panel
-        [ header1' "Search Results " found
-        , toolbar' . buttonGroup $ -- TODO tabs widget
-              [ buttonIcon_ gridTab "Grid" "th"    False [Ev.click $ \e -> unless asel $ rViewModeSink ResultsGrid]
-              , buttonIcon_ mapTab  "Map"  "map-o" False [Ev.click $ \e -> unless bsel $ rViewModeSink ResultsMap] ]
-          , x
-        ]
-
-layout fViewModeSink viewMode formV resultsV htFormV = case viewMode of
-  ViewMode FormVisible ResultsHidden HTFormHidden -> panel [formV]
-  ViewMode FormVisible ResultsGrid   HTFormHidden -> panel [formV, resultsV]
-  ViewMode FormVisible ResultsMap    HTFormHidden -> panel [formV, resultsV]
-
-  ViewMode FormHidden  ResultsHidden HTFormHidden -> panel [formPlaceholder fViewModeSink ()]
-  ViewMode FormHidden  ResultsGrid   HTFormHidden -> panel [formPlaceholder fViewModeSink (), resultsV]
-  ViewMode FormHidden  ResultsMap    HTFormHidden -> panel [formPlaceholder fViewModeSink (), resultsV]
-
-  ViewMode FormVisible ResultsHidden HTFormVisible -> panel [formV, htFormV]
-  ViewMode FormVisible ResultsGrid   HTFormVisible -> panel [formV, resultsV, htFormV]
-  ViewMode FormVisible ResultsMap    HTFormVisible -> panel [formV, resultsV, htFormV]
-
-  ViewMode FormHidden  ResultsHidden HTFormVisible -> panel [formPlaceholder fViewModeSink (), htFormV]
-  ViewMode FormHidden  ResultsGrid   HTFormVisible -> panel [formPlaceholder fViewModeSink (), resultsV, htFormV]
-  ViewMode FormHidden  ResultsMap    HTFormVisible -> panel [formPlaceholder fViewModeSink (), resultsV, htFormV]
-
 formPlaceholder :: Widget () FormViewMode
 formPlaceholder fViewModeSink _ = panel' . toolbar' . buttonGroupLeft' $
   buttonOk "Edit search" False [Ev.click $ \e -> fViewModeSink FormVisible]
+
+newSignalWithDefault x = do
+  (sink, evs) <- newSyncEvent
+  sig         <- stepperS x evs
+  return (sink, sig)
 
 searchInstagram :: Sink BusyCmd
                 -> Sink (Maybe Notification)
@@ -232,14 +197,9 @@ searchInstagram :: Sink BusyCmd
                 -> Signal Nav
                 -> IO (Signal Html)
 searchInstagram busySink notifSink ipcSink mUserNameB navS = do
-  (fViewModeSink, fViewModeEvents) <- newSyncEventOf (undefined                                         :: FormViewMode)
-  (rViewModeSink, rViewModeEvents) <- newSyncEventOf (undefined                                         :: ResultsViewMode)
-  (hViewModeSink, hViewModeEvents) <- newSyncEventOf (undefined                                         :: HTFormViewMode)
-
-  fViewModeS                       <- stepperS FormVisible fViewModeEvents                              :: IO (Signal FormViewMode)
-  rViewModeS                       <- stepperS ResultsHidden rViewModeEvents                            :: IO (Signal ResultsViewMode)
-  hViewModeS                       <- stepperS HTFormHidden hViewModeEvents                             :: IO (Signal HTFormViewMode)
-  let viewModeS                    = ViewMode <$> fViewModeS <*> rViewModeS <*> hViewModeS              :: Signal ViewMode
+  (fViewModeSink, fViewModeS) <- newSignalWithDefault FormVisible
+  (rViewModeSink, rViewModeS) <- newSignalWithDefault ResultsHidden
+  (hViewModeSink, hViewModeS) <- newSignalWithDefault HTFormHidden
 
   -- load tracked hash tags initially (at the very start of the app, before login)
   (thtsInitSink, thtsInitE)        <- newSyncEventOf (undefined                                        :: [P.TrackedHashtag])
@@ -260,44 +220,46 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   (htFormView, createHTagE)        <- formWithValidationComponent validateHTag "" (createHTagW hViewModeSink) :: IO (Signal Html, Events JSString)
 
   (mapView, mapSink, _)            <- mapComponent []
+  mapSink MapInit
   (gridView, gridCmdsSink, gridActionE, gridItemsE, _) <- gridComponent gridOptions initialItems itemMarkup
 
-  subscribeEvent srchResEvents $ gridCmdsSink . Replace . fromMaybe []
-  subscribeEvent gridItemsE    pageActionsSink
-  subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
-
-  -- This will try to destroy the map on any navigation
-  -- What we need is to destroy the map just the first time a user navigates out of the search page
-  -- TODO history-aware signal
-  let fullNavS                     = liftA2 (,) navS rViewModeS                                        :: Signal (Nav, ResultsViewMode)
-  let resetMapS                    = fmap mapLifecycle fullNavS                                        :: Signal (Maybe MapCommand)
-
+  subscribeEvent srchResEvents       $ gridCmdsSink . Replace . fromMaybe []
+  subscribeEvent gridItemsE          pageActionsSink
+  subscribeEvent gridActionE         $ \x -> print $ "Got grid action in parent : " <> showJS x
   subscribeEvent (updates results)   $ showResultsOnMap                                mapSink pageActionsSink
-  subscribeEvent (updates resetMapS) $ void . forkIO . doResetMap    (current results) mapSink pageActionsSink
   subscribeEvent pageActionsEvents   $ void . forkIO . doPageActions busySink notifSink mUserNameB
   subscribeEvent createHTagE         $ void . forkIO . doAddHTag     busySink notifSink thtsInitSink hViewModeSink
   subscribeEvent searchRequested     $ void . forkIO . doSearch      busySink notifSink srchResSink
   subscribeEvent searchRequested     $ \_ -> fViewModeSink FormHidden >> rViewModeSink ResultsGrid
 
-  let resultsView                  = resultsLayout rViewModeSink <$> gridView <*> mapView <*> rViewModeS <*> results :: Signal Html
-  let view                         = layout fViewModeSink <$> viewModeS <*> formView <*> resultsView <*> htFormView  :: Signal Html
+  let editView  = fmap (formPlaceholder fViewModeSink) (pure ())
+
+  formView''    <- popupLayout (fmap htFormViewModeToIdx hViewModeS) ("", formView) ("", htFormView)
+  formView'     <- toggleLayout2 (fmap formViewModeToIdx fViewModeS) ("", formView'') ("", editView)
+
+  resultsView'  <- fullsizeLayout2' (fmap resultsViewModeToIdx rViewModeS) ("Grid", gridView) ("Map", mapView)
+  resultsView'' <- toggleLayout2 (fmap resultsToResultsViewIdx results) ("", resultsView') ("", pure mempty)
+  view          <- verticalStackLayout2 ("", formView') ("", resultsView'')
 
   return view
 
   where
-    initialItems  = []
-    initPostQuery = defSimplePostQuery
-    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False, height = 250})
+    resultsViewModeToIdx ResultsGrid  = 0
+    resultsViewModeToIdx ResultsMap   = 1
+    resultsViewModeToIdx _            = 0
 
-    doResetMap resultsB mapSink pageActionsSink x = case x of
-      Nothing -> return ()
-      Just x  -> do
-        threadDelay 20000 -- give DOM a litle time?
-        mapSink x
+    resultsToResultsViewIdx Nothing   = 1
+    resultsToResultsViewIdx _         = 0
 
-        threadDelay 100000 -- give map a little time?
-        curRes <- pollBehavior resultsB
-        showResultsOnMap mapSink pageActionsSink curRes
+    formViewModeToIdx FormVisible     = 0
+    formViewModeToIdx FormHidden      = 1
+
+    htFormViewModeToIdx HTFormVisible = True
+    htFormViewModeToIdx HTFormHidden  = False
+
+    initialItems                      = []
+    initPostQuery                     = defSimplePostQuery
+    gridOptions                       = Just (defaultGridOptions {deleteButton = False, otherButton = False, height = 250})
 
     doPageActions busySink notifSink mUserNameB act = case act of
       (UploadImage post) -> do
