@@ -760,7 +760,7 @@ INTERESTINGLY
 type Coord = Normalized Double
 
 data Geometry = Geometry
-  { geomMapping         :: [Map Key Coord] -> Styled Drawing
+  { geomMapping         :: [Map Key (Coord, Maybe Special)] -> Styled Drawing
   -- , getSpecialGeometry  :: [Map Key Special] -> Styled Drawing
   , geomDummy :: ()
   , geomBaseName        :: [String]
@@ -838,14 +838,12 @@ This is convenient to use with standard 'Bool' or 'Integer' scales.
 -}
 ifG :: Key -> Geometry -> Geometry
 ifG k (Geometry f g n) = Geometry (f . filterCoords id k) g n
--- TODO filter special values too!
--- This is gonna be tricky!
 
-filterCoords :: (Bool -> Bool) -> Key -> [Map Key Coord] -> [Map Key Coord]
+filterCoords :: (Bool -> Bool) -> Key -> [Map Key (Coord, a)] -> [Map Key (Coord, a)]
 filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
   where
-    truish Nothing               = False
-    truish (Just (Normalized n)) = n > 0.5
+    truish Nothing                  = False
+    truish (Just (Normalized n, _)) = n > 0.5
 
 
 {-# DEPRECATED scatter "Use 'pointG" #-}
@@ -861,7 +859,7 @@ pointG = Geometry tot mempty [""]
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 line :: Geometry
@@ -871,7 +869,7 @@ line = Geometry tot mempty [""]
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 fill :: Geometry
@@ -881,7 +879,7 @@ fill = Geometry tot mempty [""]
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 {-|
@@ -908,7 +906,7 @@ area = Geometry tot mempty [""]
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 {-|
@@ -921,7 +919,7 @@ area2 = Geometry tot mempty [""]
       Nothing -> baseL 0 ms
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
-    baseL :: Coord -> [Map Key (Coord)] -> Styled Drawing
+    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.areaData ps
       where
         k = "bound"
@@ -949,12 +947,12 @@ yIntercept = ifG "crossLineY" (Geometry g mempty [""])
 
 
 
-atColor :: (Eq b, Ord k, IsString k) => b -> [Map k b] -> [Map k b]
-atColor c = filter (\m -> m ?! "color" == Just c)
+atColor :: (Eq b, Ord k, IsString k) => b -> [Map k (b, a)] -> [Map k (b, a)]
+atColor c = filter (\m -> fmap fst (m ?! "color") == Just c)
 
 -- All color values in the dataset or Nothing if there are none
-colors :: [Map Key (Coord)] -> Maybe [Coord]
-colors ms = case Data.Maybe.catMaybes $ fmap (?! "color") ms of
+colors :: [Map Key (Coord, a)] -> Maybe [Coord]
+colors ms = case Data.Maybe.catMaybes $ fmap (fmap fst . (?! "color")) ms of
   [] -> Nothing
   xs -> Just $ sortNub xs
   where
@@ -991,8 +989,8 @@ normalize (Just (lb,ub)) x
 
 
 
-(!) :: (Num b, Ord k) => Map k b -> k -> b
-m ! k = maybe 0 id $ Data.Map.lookup k m
+(!) :: (Num b, Ord k) => Map k (b, a) -> k -> b
+m ! k =  maybe 0 id $ fmap fst $ Data.Map.lookup k m
 
 (?) :: (Monoid b, Ord k) => Map k b -> k -> b
 m ? k = maybe mempty id $ Data.Map.lookup k m
@@ -1073,7 +1071,7 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames1 dat (Geometry geom geomSpecial _) aess =
-  let dataD = geom mappedAndScaledData --  :: StyledT M Drawing
+  let dataD = geom mappedAndScaledDataWSpecial --  :: StyledT M Drawing
       ticksD = drawTicks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
       axesNames = axesNames1 ++ repeat ""
       axesD  = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
@@ -1085,6 +1083,9 @@ visualizeWithStyle axesNames1 dat (Geometry geom geomSpecial _) aess =
     guidesM             = normalizeGuides boundsM guidesM2 :: Map Key [(Coord, Str)]
     mappedData2         = fmap (aestheticMapping aes dat) dat --  :: [Map Key Double]
     mappedAndScaledData = normalizeData boundsM mappedData2 :: [Map Key (Coord)]
+
+    -- TODO use special data
+    mappedAndScaledDataWSpecial = fmap (fmap (\x -> (x, Nothing))) mappedAndScaledData :: [Map Key (Coord, Maybe Special)]
 
     drawTicks xs ys = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
 
