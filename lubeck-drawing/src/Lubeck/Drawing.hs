@@ -592,6 +592,9 @@ envelope x = case x of
   -- No proper text envelopes, fake by using a single rectangles
   -- https://github.com/BeautifulDestinations/lubeck/issues/73
   Text _        -> envelope Rect
+
+  Embed _       -> mempty
+
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
 #ifdef __GHCJS__
@@ -644,6 +647,13 @@ a /// b = a <> juxtapose negDiagonal a b
 -- TODO better text API
 
 {-|
+Embedded SVG node.
+-}
+data Embed
+  = EmbedNode Str [(Str, Str)] [Embed]
+  | EmbedContent Str
+
+{-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
 
   Because the image is infinite, basic images have simple proportions, for example 'circle', 'square',
@@ -665,6 +675,8 @@ data Drawing
   -- to return the original point (i.e. the sum of the vectors does not have to be zeroV).
   | Lines !Bool [V2 Double]
   | Text !Str
+
+  | Embed Embed
 
   | Transf !(Transformation Double) !Drawing
   | Style !Style !Drawing
@@ -1149,6 +1161,9 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
         toJSString = packStr
         pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
 
+    embedToSvg :: Embed -> Svg
+    embedToSvg _ = mempty -- TODO
+
     toSvg1 :: [E.Property] -> Drawing -> [Svg]
     toSvg1 ps x = let
         single x = [x]
@@ -1172,6 +1187,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           Text s -> single $ E.text'
             ([A.x "0", A.y "0"]++ps)
             [E.text s]
+          Embed e -> single $ embedToSvg e
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
@@ -1208,6 +1224,8 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
     (toSvg1 [] $ placeOrigo $ drawing)
   where
+    mkA k v = (k, v)
+
     P (V2 x y) = dimensions
 
     -- svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
@@ -1232,7 +1250,9 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
         toJSString = packStr
         pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
 
-    mkA k v = (k, v)
+    -- embedToSvg :: Embed -> n
+    embedToSvg (EmbedContent x)    = mkT x
+    embedToSvg (EmbedNode n as ns) = mkN n as (fmap embedToSvg ns)
 
     -- toSvg1 :: [(Str, Str)] -> Drawing -> [Svg]
     toSvg1 ps x = let
@@ -1257,6 +1277,7 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Text s -> single $ mkN "text"
             ([mkA "x" "0", mkA "y" "0"]++ps)
             [mkT s]
+          Embed e -> single $ embedToSvg e
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
