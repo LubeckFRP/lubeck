@@ -1,8 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Main where
 
@@ -13,7 +10,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Data.Monoid                    (mconcat, (<>))
 
-import           Data.JSString                  (JSString, pack)
+import           Data.JSString                  (JSString, pack, unpack)
 import qualified GHC.Generics                   as GHC
 import           GHCJS.Types                    (jsval)
 
@@ -30,8 +27,11 @@ import           Lubeck.Forms.Button
 import           Lubeck.FRP
 import           Lubeck.Util                    (reactimateIOAsync)
 
+import           Data.Data                      (Data)
+import           Data.Typeable                  (Typeable)
+
 import           Data.Aeson
-import           Data.Text                      (unpack)
+import qualified Data.Text as T
 
 import           BD.Api
 import           BD.Types
@@ -44,13 +44,13 @@ import           BD.Data.ImageLabel
 
 type ImageGrid = [(Image,Bool)]
 
-getImages :: API -> JSString -> IO (Either AppError [Image])
-getImages api path = getAPIEither api "label-refiner" >>= return . first ApiError
+getImages :: JSString -> IO (Either AppError [Image])
+getImages path = first ApiError <$> getAPIEither testAPI "label-refiner/images/test"
 
 render :: Html -> Html -> Html
-render promptV imageGridV = E.div
+render prompt imageGrid = E.div
   [ A.style "width: 1000px; margin-left: auto; margin-right: auto" ]
-  [ promptV, imageGridV ]
+  [ prompt, imageGrid ]
 
 imgGridW :: Widget' ImageGrid
 imgGridW sink imgs =
@@ -71,10 +71,12 @@ imgWithAttrs :: [E.Property] -> Widget' (Image, Bool)
 imgWithAttrs attrs actionSink (image, state) =
     E.img
       ([ EV.click $ \_ -> actionSink $ highlightImage (image,state)
-       , A.src . pack . unpack $ filename image] ++
+       , A.src $ filename image] ++
          attrs ++ highlightStyle)
       []
   where
+    imgOrDefault Nothing = "No URL"
+    imgOrDefault (Just x) = x
     highlightStyle = [ A.style "outline: 4px solid black;" | state ]
 
 highlightImage :: (Image, Bool) -> (Image,Bool)
@@ -87,26 +89,20 @@ updateImage img (curr:imgs)
   | otherwise = curr : updateImage img imgs
 
 promptW :: Widget' Label
-promptW sink label =
-    E.div [ A.class_ "row" ]
-      [ E.div [ A.class_ "col-xs-6" ]
-          [ E.text prompt ]
-      ]
-  where
-    jslabel = pack . unpack $ name label
-    prompt = "This is label: " <> jslabel
+promptW sink (Label id name)  =
+  E.div [ A.class_ "text-center" ] [ E.text . pack $ T.unpack name ]
 
 main = do
   -- call getRandomLabel
-  testImages <- getImages testAPI (pack "")
   randLabel <- getRandomLabel testAPI
-  case testImages of
+  testImages <- getImages (pack "")
+  case randLabel of
     Left (ApiError err) -> print err
-    Right imgs -> case randLabel of
+    Right label -> case testImages of
       Left (ApiError err) -> print err
-      Right randlabel -> do
+      Right imgs -> do
         let imgStateList = zip imgs $ repeat False
-        -- (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
+        (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
         (imgGridView, imgGridSink) <- componentW imgStateList imgGridW
-        (promptView, _) <- component randlabel promptW
+        (promptView,_) <- componentR label promptW
         runAppReactive $ render <$> promptView <*> imgGridView

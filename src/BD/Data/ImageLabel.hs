@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module BD.Data.ImageLabel where
@@ -17,6 +16,7 @@ import qualified GHC.Generics     as GHC
 import           GHCJS.Types      (JSString)
 
 import           BD.Api
+import           BD.Types hiding (Text)
 
 import           Data.Bifunctor   (first)
 import           Data.Text        (Text)
@@ -40,5 +40,5 @@ instance FromJSON ImageLabel
 instance ToJSON ImageLabel
 
 getRandomLabel :: API -> IO (Either AppError Label)
-getRandomLabel api = getAPIEither api "label-refiner/labels/random" >>= return . first ApiError
+getRandomLabel api = first ApiError <$> getAPIEither api "label-refiner/labels/random"
 
