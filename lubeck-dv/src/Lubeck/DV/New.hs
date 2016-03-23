@@ -983,6 +983,7 @@ labelG = Geometry g () [""]
     singleLabel :: Map Key (Coord, Maybe Special) -> Styled Drawing
     singleLabel m = case (m ?! "x", m ?! "y", m ?! "label") of
     -- TODO listen to width etc
+      (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialStr ""))) -> mempty
       (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialStr str))) -> do
         style <- ask
         return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
