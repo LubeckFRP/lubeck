@@ -2,7 +2,11 @@
 
 module Components.Layout
   ( fullsizeLayout2
+  , fullsizeLayout2'
   , fullsizeLayout4
+  , verticalStackLayout2
+  , toggleLayout2
+  , popupLayout
   ) where
 
 import           Prelude                        hiding (div)
@@ -62,6 +66,8 @@ layout4 tabs action toolbar v1 v2 v3 v4 =
              SwitchView 3 -> v4
              _            -> E.text "Select an option"
 
+
+
 type View      = Signal Html
 type ViewTitle = JSString
 type ViewSpec  = (ViewTitle, View)
@@ -77,6 +83,20 @@ fullsizeLayout2 z v1 v2 = do
 
   return view
 
+fullsizeLayout2' :: Signal Int -> ViewSpec -> ViewSpec -> IO View
+fullsizeLayout2' idxS v1 v2 = do
+  (layoutSink, layoutEvents) <- newSyncEventOf (undefined :: LayoutAction)
+  z                          <- pollBehavior (current idxS)
+  let externalSwitchS        = fmap SwitchView idxS
+  let switchE                = layoutEvents `merge` (updates externalSwitchS)
+  switchS                    <- stepperS (SwitchView z) switchE
+
+  let tabs                   = [v1, v2]
+  let tabsToolbarV           = fmap (tabsW (fmap fst tabs) layoutSink) switchS
+  let view                   = liftA4 (layout2 tabs) switchS tabsToolbarV (snd v1) (snd v2)
+
+  return view
+
 fullsizeLayout4 :: Int -> ViewSpec -> ViewSpec -> ViewSpec -> ViewSpec -> IO View
 fullsizeLayout4 z v1 v2 v3 v4 = do
   (layoutSink, layoutEvents) <- newSyncEventOf (undefined :: LayoutAction)
@@ -86,4 +106,34 @@ fullsizeLayout4 z v1 v2 v3 v4 = do
   let tabsToolbarV           = fmap (tabsW (fmap fst tabs) layoutSink) layoutSig
   let view                   = liftA6 (layout4 tabs) layoutSig tabsToolbarV (snd v1) (snd v2) (snd v3) (snd v4)
 
+  return view
+
+
+layoutVStack v1 v2 = panel [v1, v2]
+
+verticalStackLayout2 :: ViewSpec -> ViewSpec -> IO View
+verticalStackLayout2 v1 v2 = do
+  let view = layoutVStack <$> (snd v1) <*> (snd v2)
+  return view
+
+layoutToggle2 z v1 v2 =
+  panel' body
+  where
+    body = case z of
+             0 -> v1
+             1 -> v2
+             _ -> E.text "Select an option"
+
+toggleLayout2 :: Signal Int -> ViewSpec -> ViewSpec -> IO View
+toggleLayout2 z v1 v2 = do
+  let view = layoutToggle2 <$> z <*> (snd v1) <*> (snd v2)
+  return view
+
+layoutPopup z v1 v2 = panel body
+  where
+    body = if z then [v1, v2] else [v1]
+
+popupLayout :: Signal Bool -> ViewSpec -> ViewSpec -> IO View
+popupLayout z v1 v2 = do
+  let view = layoutPopup <$> z <*> (snd v1) <*> (snd v2)
   return view
