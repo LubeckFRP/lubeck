@@ -747,7 +747,10 @@ data Drawing
 
 instance Monoid Drawing where
   mempty  = transparent
-  mappend = flip Ap
+
+  mappend x Em = x
+  mappend Em y = y
+  mappend x y = Ap y x -- TODO why backwards?
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
