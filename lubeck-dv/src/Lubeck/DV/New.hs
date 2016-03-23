@@ -254,12 +254,13 @@ instance Show Key where
 
 
 {-|
-Special values that can be embed in a visualization.
+Special values that can be embedded in a visualizations.
 Just strings (for labels) and drawings (for embedded images) for now.
 -}
 data Special
   = SpecialStr Str
   | SpecialDrawing Drawing
+
 instance Show Special where
   show (SpecialStr x) = show x
   show (SpecialDrawing _) = "<drawing>"
@@ -274,8 +275,9 @@ data Aesthetic a = Aesthetic
       --
       --   See also 'scaleMapping'.
   , aestheticSpecialMapping  :: [a] -> a -> Map Key Special
-      -- ^ Given dataset @vs@, map single value @v@ into the real domain.
-      --   You can construct a linear scale using @\_ x -> x@.
+      -- ^ Given dataset @vs@, map single value @v@ into a special value.
+      --
+      --   See also 'scaleMapping'.
   , aestheticBounds        :: [a] -> Map Key (Double, Double)
       -- ^ Given a data set, return @(min, max)@ values to visualize (assuming
       --   the same mapping as 'aestheticMapping').
