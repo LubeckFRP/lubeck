@@ -986,7 +986,8 @@ transform s (transform t image) = transform (s <> t) image
 @
  -}
 transform :: Transformation Double -> Drawing -> Drawing
-transform = Transf
+transform _ Em = Em
+transform t dr = Transf t dr
 
 {-| Translates (move) an object. -}
 translation :: Num a => a -> a -> Transformation a
@@ -1122,7 +1123,8 @@ showEnvelope v drawing = case envelopeVMay v drawing of
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
-style = Style
+style _ Em = Em
+style s dr = Style s dr
 
 {-| -}
 fillColor :: Colour Double -> Drawing -> Drawing
