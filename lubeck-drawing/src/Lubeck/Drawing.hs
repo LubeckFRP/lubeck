@@ -1,7 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
   NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving #-}
-{-# LANGUAGE QuasiQuotes #-}
 
 {-|
 
