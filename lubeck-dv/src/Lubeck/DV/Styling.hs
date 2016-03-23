@@ -46,6 +46,13 @@ module Lubeck.DV.Styling
   , tickTextFontStyle
   , tickTextFontSizePx
 
+  , labelTextTurn
+  , labelTextAnchor
+  , labelTextFontFamily
+  , labelTextFontWeight
+  , labelTextFontStyle
+  , labelTextFontSizePx
+
   , basicTickLength
   , basicTickStrokeWidth
   , basicTickColor
@@ -189,6 +196,13 @@ data Styling = Styling
   , _tickTextFontStyle                :: FontStyle
   , _tickTextFontSizePx               :: Double
 
+  , _labelTextTurn                     :: Angle Double
+  , _labelTextAnchor                   :: TextAnchor
+  , _labelTextFontFamily               :: First Str
+  , _labelTextFontWeight               :: FontWeight
+  , _labelTextFontStyle                :: FontStyle
+  , _labelTextFontSizePx               :: Double
+
   , _basicTickLength                  :: Double
   , _basicTickStrokeWidth             :: Double
   , _basicTickColor                   :: AlphaColour Double
@@ -257,6 +271,13 @@ instance Monoid Styling where
     , _tickTextFontWeight           = mempty
     , _tickTextFontStyle            = mempty
     , _tickTextFontSizePx           = 12
+
+    , _labelTextTurn                 = 0
+    , _labelTextAnchor               = TextAnchorMiddle
+    , _labelTextFontFamily           = mempty
+    , _labelTextFontWeight           = mempty
+    , _labelTextFontStyle            = mempty
+    , _labelTextFontSizePx           = 12
 
     , _basicTickLength              = 10
     , _basicTickStrokeWidth         = 1

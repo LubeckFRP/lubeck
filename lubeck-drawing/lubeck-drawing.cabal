@@ -24,6 +24,7 @@ library
                      , xml
                      , containers
                      , split
+                     , neat-interpolation
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes

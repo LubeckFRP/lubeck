@@ -27,33 +27,12 @@ import           BD.Types
 
 import           BDPlatform.Types
 import           Components.BusyIndicator       (BusyCmd (..))
+import           Components.Layout              (fullsizeLayout4)
 
 import           BDPlatform.Pages.Search.Instagram (searchInstagram)
 import           BDPlatform.Pages.Search.Upload (uploadPage)
 import           BDPlatform.HTMLCombinators
 
-data SearchAction = SearchUpload | SearchBDContent | SearchBDCommunity | SearchInstagram
-  deriving (Show, Eq)
-
-indexW :: Widget (Maybe SearchAction) SearchAction
-indexW sink action = mconcat
-  [ toolbar' $ buttonGroup
-      [ button "Upload"       (action ~== SearchUpload)      [Ev.click $ \e -> sink SearchUpload]
-      , button "BD Content"   (action ~== SearchBDContent)   [Ev.click $ \e -> sink SearchBDContent]
-      , button "BD Community" (action ~== SearchBDCommunity) [Ev.click $ \e -> sink SearchBDCommunity]
-      , button "Instagram"    (action ~== SearchInstagram)   [Ev.click $ \e -> sink SearchInstagram] ]
-  ]
-
-
-layout action toolbar instagrambody uploadbody =
-  contentPanel $ mconcat [ toolbar, body ]
-  where
-    body = case action of
-             Just SearchUpload      -> uploadbody
-             Just SearchBDContent   -> E.text "bd content"
-             Just SearchBDCommunity -> E.text "bd community"
-             Just SearchInstagram   -> instagrambody
-             Nothing                -> E.text "Select an option"
 
 searchIndexPage :: Sink BusyCmd
                 -> Sink (Maybe Notification)
@@ -62,13 +41,10 @@ searchIndexPage :: Sink BusyCmd
                 -> Signal Nav
                 -> IO (Signal Html)
 searchIndexPage busySink notifSink ipcSink usernameB navS = do
-  (actionsSink, actionEvents)  <- newSyncEventOf (undefined                                :: SearchAction)
-  actionsS                     <- stepperS (Just SearchInstagram) (fmap Just actionEvents) :: IO (Signal (Maybe SearchAction))
-
-  searchInstagramView          <- searchInstagram busySink notifSink ipcSink usernameB navS
-  uploadView                   <- uploadPage      busySink notifSink ipcSink usernameB navS
-  let toolbarView              = fmap (indexW actionsSink) actionsS
-
-  let view                     = layout <$> actionsS <*> toolbarView <*> searchInstagramView <*> uploadView
-
-  return view
+  searchInstagramView <- searchInstagram busySink notifSink ipcSink usernameB navS
+  uploadView          <- uploadPage      busySink notifSink ipcSink usernameB navS
+  compositeView       <- fullsizeLayout4 3 ("Upload", uploadView)
+                                           ("BD Content",   pure (E.text "Nothing here"))
+                                           ("BD Community", pure (E.text "Nothing here"))
+                                           ("Instagram",    searchInstagramView)
+  return compositeView

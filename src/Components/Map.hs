@@ -35,7 +35,7 @@ import           Web.VirtualDom.Html.Attributes (class_)
 import qualified Web.VirtualDom.Html.Attributes as A
 import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
                                                  stopPropagation, submit, value)
-import           Web.VirtualDom                 (staticNode, DOMNode)
+import           Web.VirtualDom                 (staticNode, DOMNode, createElement)
 import           System.Random
 
 import           Lubeck.App                     (Html)
@@ -64,7 +64,7 @@ newtype LTileLayer = LTileLayer { lTileLayer :: JSVal }
 
 newtype LMarkerClusterGroup = LMarkerClusterGroup { lMarkerClusterGroup :: JSVal }
 
-data MapCommand = MapInit | MapDestroy | AddMarkers [Marker] | AddClusterLayer [Marker] | ClearMap
+data MapCommand = MapInit | MapDestroy | AddMarkers [Marker] | AddClusterLayer [Marker] | ClearMap deriving Show
 
 data MapAction = MapClicked Point
 
@@ -72,7 +72,7 @@ data Bounds = Bounds { sw :: Point, ne :: Point } deriving Show
 
 -- | Leaflet API
 
-foreign import javascript unsafe "(function() {var z = L['map']($1); window.z = z; return z; }())"
+foreign import javascript unsafe "(function() { var z = L['map']($1); window.z = z; return z; }())"
   makeMap_ :: JSString -> IO JSVal
 
 makeMap :: JSString -> IO LMap
@@ -192,6 +192,7 @@ mapComponent z = do
 
   g                                 <- getStdGen
   let mapId                         = fromString . take 10 $ randomRs ('a', 'z') g
+  createElement $ mapW mapId -- force creating a container node before the map could be initialised
   let htmlS                         = pure (mapW mapId)                          :: Signal Html
   mapRef                            <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
   lyrRef                            <- TVar.newTVarIO []                         :: IO (TVar.TVar [LMarkerClusterGroup])
