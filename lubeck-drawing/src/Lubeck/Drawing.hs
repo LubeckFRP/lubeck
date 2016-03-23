@@ -1,6 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
   NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 {-|
 
@@ -135,9 +136,13 @@ module Lubeck.Drawing
   -- *** Applying styles
   , style
 
-
   -- ** Events
   , addProperty
+
+  -- ** Embedded SVG
+  , Embed(..)
+  , addEmbeddedSVG
+  , addEmbeddedSVGFromStr
 
   -- ** Envelopes, Alignment, Juxtaposition
   , Envelope
@@ -230,6 +235,9 @@ import qualified Linear.V3
 import qualified Linear.V4
 
 import qualified Data.List.Split
+
+import qualified Text.XML.Light
+import qualified Text.XML.Light as X
 
 #if MIN_VERSION_linear(1,20,0)
 #else
@@ -652,6 +660,41 @@ Embedded SVG node.
 data Embed
   = EmbedNode Str [(Str, Str)] [Embed]
   | EmbedContent Str
+  deriving (Eq, Show)
+
+{-|
+Embed arbitrary SVG markup in a drawing.
+-}
+addEmbeddedSVG :: Embed -> Drawing
+addEmbeddedSVG = Embed
+
+{-|
+Embed arbitrary SVG markup in a drawing.
+
+Argument must be a valid SVG string, or @Nothing@ is returned.
+-}
+addEmbeddedSVGFromStr :: Str -> Maybe Drawing
+addEmbeddedSVGFromStr x = fmap addEmbeddedSVGFromXmlLight $ Text.XML.Light.parseXMLDoc $ unpackStr x
+
+addEmbeddedSVGFromXmlLight :: Text.XML.Light.Element -> Drawing
+addEmbeddedSVGFromXmlLight = addEmbeddedSVG . textXmlLightElementToEmbed
+
+textXmlLightElementToEmbed :: Text.XML.Light.Element -> Embed
+textXmlLightElementToEmbed = unE
+  where
+    unE :: Text.XML.Light.Element -> Embed
+    unE (X.Element (X.QName k _ _) as ns _) = EmbedNode (packStr k) (fmap unA as) (fmap unC ns)
+    -- Ignore namespace/prefix
+
+    unC :: Text.XML.Light.Content -> Embed
+    unC (X.Elem x) = unE x
+    unC (X.Text (X.CData _ x _)) = EmbedContent (packStr x)
+    unC (X.CRef _) = error ""
+    -- Ignore cdata/raw, assume CDataText
+
+    unA :: Text.XML.Light.Attr -> (Str, Str)
+    unA (X.Attr (X.QName k _ _) v) = (packStr k, packStr v)
+    -- Ignore namespace/prefix
 
 {-|
   A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
