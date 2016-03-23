@@ -2,18 +2,29 @@
 
 module Components.Layout
   ( fullsizeLayout2
-  , fullsizeLayout2'
   , fullsizeLayout4
   , verticalStackLayout2
   , toggleLayout2
-  , popupLayout
+  , overlayLayout
+  , Layout(..)
+  , view
+  , name
+
+  , mkLayoutFullsize2
+  , mkLayoutFullsize4
+  , mkLayoutVerticalStack
+  , mkLayoutToggle
+  , mkLayoutOverlay
+  , mkLayoutPure
+  , mkLayoutPure'
+
   ) where
 
 import           Prelude                        hiding (div)
 import qualified Prelude
 
 import qualified Data.List
-import qualified Data.Maybe
+import           Data.Maybe
 import           Data.Monoid
 
 import qualified Data.JSString
@@ -27,7 +38,7 @@ import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.Types
 import           Lubeck.FRP
-import           Lubeck.Util                    (newSyncEventOf)
+import           Lubeck.Util                    (newSyncEventOf, showJS)
 
 import           BD.Types
 import           BDPlatform.Types
@@ -37,103 +48,140 @@ import           BDPlatform.HTMLCombinators
 data LayoutAction = SwitchView Int
   deriving (Show, Eq)
 
+
+type View     = Signal Html
+type ViewName = JSString
+data LayoutSpec a = LayoutSpec { _lView :: View
+                               , _lActiveView :: Maybe (Signal a)
+                               , _lName :: Maybe ViewName
+                               }
+
+data Layout = LayoutFullsize2 (LayoutSpec Int)
+            | LayoutFullsize4 (LayoutSpec Int)
+            | LayoutVerticalStack (LayoutSpec Int)
+            | LayoutToggle (LayoutSpec Int) -- TODO better name
+            | LayoutOverlay (LayoutSpec Bool)
+            | LayoutPure (LayoutSpec ())
+-- TODO instances
+
+mkLayoutFullsize2 a b c     = LayoutFullsize2 $ LayoutSpec a b c
+mkLayoutFullsize4 a b c     = LayoutFullsize4 $ LayoutSpec a b c
+mkLayoutVerticalStack a b c = LayoutVerticalStack $ LayoutSpec a b c
+mkLayoutToggle a b c        = LayoutToggle $ LayoutSpec a b c
+mkLayoutOverlay a b c       = LayoutOverlay $ LayoutSpec a b c
+mkLayoutPure a              = LayoutPure $ LayoutSpec a Nothing Nothing
+mkLayoutPure' a b           = LayoutPure $ LayoutSpec a Nothing (Just b)
+
+view :: Layout -> View
+view (LayoutFullsize2 x)     = _lView x
+view (LayoutFullsize4 x)     = _lView x
+view (LayoutVerticalStack x) = _lView x
+view (LayoutToggle x)        = _lView x
+view (LayoutOverlay x)       = _lView x
+view (LayoutPure x)          = _lView x
+
+name :: Layout -> Maybe ViewName
+name (LayoutFullsize2 x)     = _lName x
+name (LayoutFullsize4 x)     = _lName x
+name (LayoutVerticalStack x) = _lName x
+name (LayoutToggle x)        = _lName x
+name (LayoutOverlay x)       = _lName x
+name (LayoutPure x)          = _lName x
+
 liftA4 :: Applicative f => (a -> b -> c -> d -> e) -> (f a -> f b -> f c -> f d -> f e)
 liftA4 f a b c d = f <$> a <*> b <*> c <*> d
 liftA6 :: Applicative f => (a -> b -> c -> d -> e -> g -> h) -> f a -> f b -> f c -> f d -> f e -> f g -> f h
 liftA6 f a b c d e g = f <$> a <*> b <*> c <*> d <*> e <*> g
 
-tabsW :: [ViewTitle] -> Widget LayoutAction LayoutAction
+tabsW :: [Maybe ViewName] -> Widget LayoutAction LayoutAction
 tabsW vts sink action = mconcat
   [ toolbar' $ buttonGroup $ fmap tabButton (zip [0..] vts) ]
   where
-    tabButton (idx, title) = button title (action == SwitchView idx) [Ev.click $ \e -> sink $ SwitchView idx]
+    tabButton (idx, title) = button (fromMaybe ("Tab " <> showJS idx) title) (action == SwitchView idx) [Ev.click $ \e -> sink $ SwitchView idx]
 
-layout2 tabs action toolbar v1 v2 =
+--------------------------------------------------------------------------------
+
+layout2 tabs action toolbar l1 l2 =
   panel [ toolbar, body ]
   where
     body = case action of
-             SwitchView 0 -> v1
-             SwitchView 1 -> v2
+             SwitchView 0 -> l1
+             SwitchView 1 -> l2
              _            -> E.text "Select an option"
 
-layout4 tabs action toolbar v1 v2 v3 v4 =
-  panel [ toolbar, body ]
-  where
-    body = case action of
-             SwitchView 0 -> v1
-             SwitchView 1 -> v2
-             SwitchView 2 -> v3
-             SwitchView 3 -> v4
-             _            -> E.text "Select an option"
-
-
-
-type View      = Signal Html
-type ViewTitle = JSString
-type ViewSpec  = (ViewTitle, View)
-
-fullsizeLayout2 :: Int -> ViewSpec -> ViewSpec -> IO View
-fullsizeLayout2 z v1 v2 = do
-  (layoutSink, layoutEvents) <- newSyncEventOf (undefined :: LayoutAction)
-  layoutSig                  <- stepperS (SwitchView z) layoutEvents
-
-  let tabs                   = [v1, v2]
-  let tabsToolbarV           = fmap (tabsW (fmap fst tabs) layoutSink) layoutSig
-  let view                   = liftA4 (layout2 tabs) layoutSig tabsToolbarV (snd v1) (snd v2)
-
-  return view
-
-fullsizeLayout2' :: Signal Int -> ViewSpec -> ViewSpec -> IO View
-fullsizeLayout2' idxS v1 v2 = do
+fullsizeLayout2 :: Signal Int -> Layout -> Layout -> IO Layout
+fullsizeLayout2 idxS l1 l2 = do
   (layoutSink, layoutEvents) <- newSyncEventOf (undefined :: LayoutAction)
   z                          <- pollBehavior (current idxS)
   let externalSwitchS        = fmap SwitchView idxS
   let switchE                = layoutEvents `merge` (updates externalSwitchS)
   switchS                    <- stepperS (SwitchView z) switchE
 
-  let tabs                   = [v1, v2]
-  let tabsToolbarV           = fmap (tabsW (fmap fst tabs) layoutSink) switchS
-  let view                   = liftA4 (layout2 tabs) switchS tabsToolbarV (snd v1) (snd v2)
+  let tabs                   = [l1, l2]
+  let tabsToolbarV           = fmap (tabsW (fmap name tabs) layoutSink) switchS
+  let topV                   = liftA4 (layout2 tabs) switchS tabsToolbarV (view l1) (view l2)
 
-  return view
+  return $ mkLayoutFullsize2 topV (Just (fmap toIdx switchS)) Nothing
 
-fullsizeLayout4 :: Int -> ViewSpec -> ViewSpec -> ViewSpec -> ViewSpec -> IO View
-fullsizeLayout4 z v1 v2 v3 v4 = do
+--------------------------------------------------------------------------------
+
+layout4 tabs action toolbar l1 l2 l3 l4 =
+  panel [ toolbar, body ]
+  where
+    body = case action of
+             SwitchView 0 -> l1
+             SwitchView 1 -> l2
+             SwitchView 2 -> l3
+             SwitchView 3 -> l4
+             _            -> E.text "Select an option"
+
+fullsizeLayout4 :: Signal Int -> Layout -> Layout -> Layout -> Layout -> IO Layout
+fullsizeLayout4 idxS l1 l2 l3 l4 = do
   (layoutSink, layoutEvents) <- newSyncEventOf (undefined :: LayoutAction)
-  layoutSig                  <- stepperS (SwitchView z) layoutEvents
+  z                          <- pollBehavior (current idxS)
+  let externalSwitchS        = fmap SwitchView idxS
+  let switchE                = layoutEvents `merge` (updates externalSwitchS)
+  switchS                    <- stepperS (SwitchView z) switchE
 
-  let tabs                   = [v1, v2, v3, v4]
-  let tabsToolbarV           = fmap (tabsW (fmap fst tabs) layoutSink) layoutSig
-  let view                   = liftA6 (layout4 tabs) layoutSig tabsToolbarV (snd v1) (snd v2) (snd v3) (snd v4)
+  let tabs                   = [l1, l2, l3, l4]
+  let tabsToolbarV           = fmap (tabsW (fmap name tabs) layoutSink) switchS
+  let topV                   = liftA6 (layout4 tabs) switchS tabsToolbarV (view l1) (view l2) (view l3) (view l4)
 
-  return view
+  return $ mkLayoutFullsize4 topV (Just (fmap toIdx switchS)) Nothing
 
+toIdx (SwitchView n) = n
 
-layoutVStack v1 v2 = panel [v1, v2]
+--------------------------------------------------------------------------------
 
-verticalStackLayout2 :: ViewSpec -> ViewSpec -> IO View
-verticalStackLayout2 v1 v2 = do
-  let view = layoutVStack <$> (snd v1) <*> (snd v2)
-  return view
+layoutVStack l1 l2 = panel [l1, l2]
 
-layoutToggle2 z v1 v2 =
+verticalStackLayout2 :: Layout -> Layout -> IO Layout
+verticalStackLayout2 l1 l2 = do
+  let topV = layoutVStack <$> (view l1) <*> (view l2)
+  return $ mkLayoutVerticalStack topV Nothing Nothing
+
+--------------------------------------------------------------------------------
+
+layoutToggle2 z l1 l2 =
   panel' body
   where
     body = case z of
-             0 -> v1
-             1 -> v2
+             0 -> l1
+             1 -> l2
              _ -> E.text "Select an option"
 
-toggleLayout2 :: Signal Int -> ViewSpec -> ViewSpec -> IO View
-toggleLayout2 z v1 v2 = do
-  let view = layoutToggle2 <$> z <*> (snd v1) <*> (snd v2)
-  return view
+toggleLayout2 :: Signal Int -> Layout -> Layout -> IO Layout
+toggleLayout2 z l1 l2 = do
+  let topV = layoutToggle2 <$> z <*> (view l1) <*> (view l2)
+  return $ mkLayoutToggle topV (Just z) Nothing
 
-layoutPopup z v1 v2 = panel body
+--------------------------------------------------------------------------------
+
+layoutPopup z l1 l2 = panel body
   where
-    body = if z then [v1, v2] else [v1]
+    body = if z then [l1, l2] else [l1]
 
-popupLayout :: Signal Bool -> ViewSpec -> ViewSpec -> IO View
-popupLayout z v1 v2 = do
-  let view = layoutPopup <$> z <*> (snd v1) <*> (snd v2)
-  return view
+overlayLayout :: Signal Bool -> Layout -> Layout -> IO Layout
+overlayLayout z l1 l2 = do
+  let topV = layoutPopup <$> z <*> (view l1) <*> (view l2)
+  return $ mkLayoutOverlay topV (Just z) Nothing

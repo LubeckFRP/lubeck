@@ -25,7 +25,7 @@ import           BD.Types
 
 import           BDPlatform.Types
 import           Components.BusyIndicator       (BusyCmd (..))
-import           Components.Layout              (fullsizeLayout2)
+import           Components.Layout
 
 import           BDPlatform.Pages.Accounts.Search (accountSearch)
 import           BDPlatform.Pages.Accounts.Manage (manageAccouns)
@@ -41,6 +41,8 @@ accountsIndexPage :: Sink BusyCmd
 accountsIndexPage busySink notifSink ipcSink usernameB navS = do
   accountSearchView <- accountSearch busySink notifSink ipcSink usernameB navS
   manageAccounsView <- manageAccouns busySink notifSink ipcSink usernameB navS
-  compositeView     <- fullsizeLayout2 0 ("Find accounts", accountSearchView) ("Manage groups", manageAccounsView)
+  compositeL        <- fullsizeLayout2 (pure 0)
+                                       (mkLayoutPure' accountSearchView "Find accounts")
+                                       (mkLayoutPure' manageAccounsView "Manage groups")
 
-  return compositeView
+  return $ view compositeL

@@ -27,7 +27,7 @@ import           BD.Types
 
 import           BDPlatform.Types
 import           Components.BusyIndicator       (BusyCmd (..))
-import           Components.Layout              (fullsizeLayout4)
+import           Components.Layout
 
 import           BDPlatform.Pages.Search.Instagram (searchInstagram)
 import           BDPlatform.Pages.Search.Upload (uploadPage)
@@ -43,8 +43,9 @@ searchIndexPage :: Sink BusyCmd
 searchIndexPage busySink notifSink ipcSink usernameB navS = do
   searchInstagramView <- searchInstagram busySink notifSink ipcSink usernameB navS
   uploadView          <- uploadPage      busySink notifSink ipcSink usernameB navS
-  compositeView       <- fullsizeLayout4 3 ("Upload", uploadView)
-                                           ("BD Content",   pure (E.text "Nothing here"))
-                                           ("BD Community", pure (E.text "Nothing here"))
-                                           ("Instagram",    searchInstagramView)
-  return compositeView
+  compositeL          <- fullsizeLayout4 (pure 3)
+                                         (mkLayoutPure' uploadView                     "Upload")
+                                         (mkLayoutPure' (pure (E.text "Nothing here")) "BD Content")
+                                         (mkLayoutPure' (pure (E.text "Nothing here")) "BD Community")
+                                         (mkLayoutPure' searchInstagramView            "Instagram")
+  return $ view compositeL
