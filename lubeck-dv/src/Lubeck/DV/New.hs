@@ -935,15 +935,24 @@ area2 = Geometry tot mempty [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.areaData ps
+    baseL _ ms = Lubeck.DV.Drawing.areaData' (ps1 <> reverse ps2)
       where
         k = "bound"
         lowMappings  = filterCoords not k ms
         highMappings = filterCoords id  k ms
-        xs  = fmap (getNormalized . (! "x")) lowMappings -- assume xs in lowMappings are the same as in highMappings
+
+        xs1 = fmap (getNormalized . (! "x")) lowMappings
         ys1 = fmap (getNormalized . (! "y")) lowMappings
+        ps1 = zipWith (\x y -> P (V2 x y)) xs1 ys1
+
+        xs2 = fmap (getNormalized . (! "x")) highMappings
         ys2 = fmap (getNormalized . (! "y")) highMappings
-        ps = zipWith3 (\x y1 y2 -> P (V3 x y1 y2)) xs ys1 ys2
+        ps2 = zipWith (\x y -> P (V2 x y)) xs2 ys2
+
+        -- xs  = fmap (getNormalized . (! "x")) lowMappings -- assume xs in lowMappings are the same as in highMappings
+        -- ys1 = fmap (getNormalized . (! "y")) lowMappings
+        -- ys2 = fmap (getNormalized . (! "y")) highMappings
+        -- ps = zipWith3 (\x y1 y2 -> P (V3 x y1 y2)) xs ys1 ys2
 
     -- baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
@@ -1329,7 +1338,12 @@ test7 = visualizeTest dat (mconcat [scatter, line, fill])
       , (5, 0, False)
       ]
 
-test8b = visualizeTest dat2 (mconcat [line, fill])
+
+-- test8
+-- The same data plotted in 3 different ways:
+
+-- Version I: Cross with True/False and plot 2 overlapping lines/areas
+test8a = visualizeTest dat2 (mconcat [line, fill])
   [ x     <~ _1
   , y     <~ _2
   , color <~ _3
@@ -1343,7 +1357,8 @@ test8b = visualizeTest dat2 (mconcat [line, fill])
      , (3, 5, 16)
      , (4, 16, 1) :: (Int, Int, Int)
      ]
-test8c = visualizeTest dat2 (mconcat [area2])
+-- Version II: Cross with True/False use area plot with bound aesthetic (lower/upper)
+test8b = visualizeTest dat2 (mconcat [area2])
   [ x     <~ _1
   , y     <~ _2
   , bound <~ _3
@@ -1358,7 +1373,9 @@ test8c = visualizeTest dat2 (mconcat [area2])
      , (3, 5, 16)
      , (4, 16, 1) :: (Int, Int, Int)
      ]
-test8 = visualizeTest dat (mconcat [area])
+-- Version III: Use are a plot with "two y values" (questionable).
+-- Note that y and yMin needs to have the same bounds for this to work (here [1..16])
+test8c = visualizeTest dat (mconcat [area])
   [ x    <~ _1
   , yMin <~ _2
   , y    <~ _3

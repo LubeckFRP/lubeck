@@ -47,6 +47,7 @@ module Lubeck.DV.Drawing
   , lineDataWithColor
   , fillData
   , areaData
+  , areaData'
   , stepData
   , linearData
 
