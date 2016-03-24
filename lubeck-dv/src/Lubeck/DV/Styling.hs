@@ -41,11 +41,13 @@ module Lubeck.DV.Styling
 
   , tickTextTurn
   , tickTextAnchor
+  , tickTextAlignmentBaseline
   , tickTextFontFamily
   , tickTextFontWeight
   , tickTextFontStyle
   , tickTextFontSizePx
 
+  , labelTextAbsOffset
   , labelTextTurn
   , labelTextAnchor
   , labelTextFontFamily
@@ -191,17 +193,19 @@ data Styling = Styling
 
   , _tickTextTurn                     :: (Angle Double, Angle Double)
   , _tickTextAnchor                   :: (TextAnchor, TextAnchor)
+  , _tickTextAlignmentBaseline        :: (AlignmentBaseline, AlignmentBaseline)
   , _tickTextFontFamily               :: First Str
   , _tickTextFontWeight               :: FontWeight
   , _tickTextFontStyle                :: FontStyle
   , _tickTextFontSizePx               :: Double
 
-  , _labelTextTurn                     :: Angle Double
-  , _labelTextAnchor                   :: TextAnchor
-  , _labelTextFontFamily               :: First Str
-  , _labelTextFontWeight               :: FontWeight
-  , _labelTextFontStyle                :: FontStyle
-  , _labelTextFontSizePx               :: Double
+  , _labelTextAbsOffset               :: V2 Double
+  , _labelTextTurn                    :: Angle Double
+  , _labelTextAnchor                  :: TextAnchor
+  , _labelTextFontFamily              :: First Str
+  , _labelTextFontWeight              :: FontWeight
+  , _labelTextFontStyle               :: FontStyle
+  , _labelTextFontSizePx              :: Double
 
   , _basicTickLength                  :: Double
   , _basicTickStrokeWidth             :: Double
@@ -265,13 +269,15 @@ instance Monoid Styling where
     , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
     , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
 
-    , _tickTextTurn                 = (1/8, 0)
-    , _tickTextAnchor               = (TextAnchorEnd, TextAnchorEnd)
+    , _tickTextTurn                 = (0/8, 0)
+    , _tickTextAnchor               = (TextAnchorMiddle, TextAnchorEnd)
+    , _tickTextAlignmentBaseline    = (AlignmentBaselineHanging, AlignmentBaselineAuto)
     , _tickTextFontFamily           = mempty
     , _tickTextFontWeight           = mempty
     , _tickTextFontStyle            = mempty
     , _tickTextFontSizePx           = 12
 
+    , _labelTextAbsOffset            = V2 0 0
     , _labelTextTurn                 = 0
     , _labelTextAnchor               = TextAnchorMiddle
     , _labelTextFontFamily           = mempty

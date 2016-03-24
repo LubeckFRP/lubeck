@@ -140,7 +140,7 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
   where
     drawing = withDefaultStyle $ mconcat
       [ lineData points
-      , ticks (zip tickOffsetsA tickLabelsA) (zip tickOffsetsB tickLabelsB)
+      , ticks (zip tickOffsetsA (fmap Just tickLabelsA)) (zip tickOffsetsB (fmap Just tickLabelsB))
       , labeledAxis "" ""
       -- , scale 100 smokeBackground
       ]
