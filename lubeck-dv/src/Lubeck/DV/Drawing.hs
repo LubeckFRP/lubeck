@@ -553,7 +553,7 @@ ticksNoFilter xt yt = do
             -- Outside quadrant tick
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateY (-0.5) verticalLine
             -- Inside quadrant (background) grid
-            , scale y $ strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
+            , strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ scale y $ translateY (0.5) verticalLine
             -- Text
             , maybe mempty id $ fmap (\str -> translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ textX style str) $ str
             ]
@@ -563,7 +563,7 @@ ticksNoFilter xt yt = do
             -- Outside quadrant tick
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateX (-0.5) horizontalLine
             -- Inside quadrant (background) grid
-            , scale x $ strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ translateX (0.5) horizontalLine
+            , strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ scale x $ translateX (0.5) horizontalLine
             -- Text
             , maybe mempty id $ fmap (\str -> translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ textY style str) $ str
             ]
