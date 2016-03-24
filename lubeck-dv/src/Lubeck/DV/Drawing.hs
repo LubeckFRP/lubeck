@@ -504,8 +504,8 @@ overlay = undefined
 -- https://knowledge.infogr.am/featured
 
 -- | Draw ticks.
--- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
--- Positions outside the normalized range are discarded.
+--
+-- Same as 'ticksNoFilter' with a sanity check to remove ticks outside of quadrant.
 ticks
   :: Monad m
   => [(Double, Maybe Str)] -- ^ X axis ticks.
@@ -517,7 +517,14 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
     withinNormRange x = 0 <= x && x <= 1
 
 -- | Draw ticks.
--- Each argument is a list of tick positions (normalized to [0,1]) and an optional tick label.
+--
+-- Each argument is a list of tick positions (normalized to [0,1]) and label.
+-- If the label is @Nothing@ this is rendered as a minor tick, which often
+-- implies a less pronounced styling compared to major ticks (typically:
+-- shorter tick lines, lighter colours).
+--
+-- To render a major tick without label, use @Just mempty@.
+--
 -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
 ticksNoFilter
   :: Monad m
@@ -526,6 +533,7 @@ ticksNoFilter
   -> StyledT m Drawing
 ticksNoFilter xt yt = do
   style <- ask
+
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
 
@@ -542,17 +550,21 @@ ticksNoFilter xt yt = do
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
             [ mempty
+            -- Outside quadrant tick
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateY (-0.5) verticalLine
-            -- bg grid
+            -- Inside quadrant (background) grid
             , scale y $ strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
+            -- Text
             , maybe mempty id $ fmap (\str -> translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ textX style str) $ str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
+            -- Outside quadrant tick
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateX (-0.5) horizontalLine
-            -- bg grid
+            -- Inside quadrant (background) grid
             , scale x $ strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ translateX (0.5) horizontalLine
+            -- Text
             , maybe mempty id $ fmap (\str -> translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ textY style str) $ str
             ]
   return $ mconcat [xTicks, yTicks]
