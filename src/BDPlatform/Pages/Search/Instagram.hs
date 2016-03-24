@@ -220,28 +220,28 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   (htFormView, createHTagE)        <- formWithValidationComponent validateHTag "" (createHTagW hViewModeSink) :: IO (Signal Html, Events JSString)
 
   (mapView, mapSink, _)            <- mapComponent []
-  mapSink MapInit
+  -- mapSink MapInit
   (gridView, gridCmdsSink, gridActionE, gridItemsE, _) <- gridComponent gridOptions initialItems itemMarkup
 
-  subscribeEvent srchResEvents       $ gridCmdsSink . Replace . fromMaybe []
-  subscribeEvent gridItemsE          pageActionsSink
-  subscribeEvent gridActionE         $ \x -> print $ "Got grid action in parent : " <> showJS x
-  subscribeEvent (updates results)   $ showResultsOnMap                                mapSink pageActionsSink
-  subscribeEvent pageActionsEvents   $ void . forkIO . doPageActions busySink notifSink mUserNameB
-  subscribeEvent createHTagE         $ void . forkIO . doAddHTag     busySink notifSink thtsInitSink hViewModeSink
-  subscribeEvent searchRequested     $ void . forkIO . doSearch      busySink notifSink srchResSink
-  subscribeEvent searchRequested     $ \_ -> fViewModeSink FormHidden >> rViewModeSink ResultsGrid
+  subscribeEvent srchResEvents        $ gridCmdsSink . Replace . fromMaybe []
+  subscribeEvent gridItemsE           pageActionsSink
+  subscribeEvent gridActionE          $ \x -> print $ "Got grid action in parent : " <> showJS x
+  subscribeEvent (updates results)    $ showResultsOnMap                                mapSink pageActionsSink
+  subscribeEvent pageActionsEvents    $ void . forkIO . doPageActions busySink notifSink mUserNameB
+  subscribeEvent createHTagE          $ void . forkIO . doAddHTag     busySink notifSink thtsInitSink hViewModeSink
+  subscribeEvent searchRequested      $ void . forkIO . doSearch      busySink notifSink srchResSink
+  subscribeEvent searchRequested      $ \_ -> fViewModeSink FormHidden >> rViewModeSink ResultsGrid
 
   let editView  = fmap (formPlaceholder fViewModeSink) (pure ())
 
-  formView''    <- popupLayout (fmap htFormViewModeToIdx hViewModeS) ("", formView) ("", htFormView)
-  formView'     <- toggleLayout2 (fmap formViewModeToIdx fViewModeS) ("", formView'') ("", editView)
+  formView''    <- overlayLayout (fmap htFormViewModeToIdx hViewModeS) (mkLayoutPure formView)   (mkLayoutPure htFormView)
+  formView'     <- toggleLayout2 (fmap formViewModeToIdx fViewModeS)   formView'' (mkLayoutPure editView)
 
-  resultsView'  <- fullsizeLayout2' (fmap resultsViewModeToIdx rViewModeS) ("Grid", gridView) ("Map", mapView)
-  resultsView'' <- toggleLayout2 (fmap resultsToResultsViewIdx results) ("", resultsView') ("", pure mempty)
-  view          <- verticalStackLayout2 ("", formView') ("", resultsView'')
+  resultsView'  <- fullsizeLayout2 (fmap resultsViewModeToIdx rViewModeS) (mkLayoutPure' gridView "Grid") (mkLayoutPure' mapView "Map")
+  resultsView'' <- toggleLayout2   (fmap resultsToResultsViewIdx results) resultsView' (mkLayoutPure (pure mempty))
+  topL          <- verticalStackLayout2 formView' resultsView''
 
-  return view
+  return (view topL)
 
   where
     resultsViewModeToIdx ResultsGrid  = 0

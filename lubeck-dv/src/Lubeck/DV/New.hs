@@ -983,6 +983,7 @@ labelG = Geometry g () [""]
     singleLabel :: Map Key (Coord, Maybe Special) -> Styled Drawing
     singleLabel m = case (m ?! "x", m ?! "y", m ?! "label") of
     -- TODO listen to width etc
+      (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialStr ""))) -> mempty
       (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialStr str))) -> do
         style <- ask
         return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
@@ -1026,7 +1027,11 @@ normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (D
 
 {-| Tag a value to keep track of the fact that it is /normalized/, i.e. in the unit hypercube. -}
 newtype Normalized a = Normalized { getNormalized :: a }
-  deriving (Eq, Ord, Show, Num, Fractional, Real, RealFrac, Floating)
+  deriving (Eq, Ord, Num, Fractional, Real, RealFrac, Floating)
+
+instance Show a => Show (Normalized a) where
+  -- OK because of overloaded literal
+  show (Normalized x) = show x
 
 normalize :: Maybe (Double, Double) -> Double -> Coord
 normalize Nothing        x = Normalized x

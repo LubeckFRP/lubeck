@@ -53,7 +53,6 @@ library
                      , BDPlatform.Pages.CreateAd
                      , BDPlatform.Pages.Login
                      , BDPlatform.Pages.Campaign
-                     , BDPlatform.Pages.Interactions
                      , BDPlatform.Pages.Search.Index
                      , BDPlatform.Pages.Search.Instagram
                      , BDPlatform.Pages.Search.Upload
@@ -65,6 +64,8 @@ library
                      , BDPlatform.Pages.Manage.ImageLibrary
                      , BDPlatform.Pages.CurrentUser.Index
                      , BDPlatform.Pages.CurrentUser.User
+                     , BDPlatform.Pages.Results.Index
+                     , BDPlatform.Pages.Results.Interactions
                      , BDPlatform.HTMLCombinators
                      , BDPlatform.Validators
                      , BDPlatform.Main

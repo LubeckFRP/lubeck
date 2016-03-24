@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TupleSections              #-}
-module BDPlatform.Pages.Interactions (interactionsMain) where
+module BDPlatform.Pages.Results.Interactions (interactionsPage) where
 
 import           Prelude                        hiding (div)
 import qualified Prelude
@@ -210,8 +210,8 @@ getShoutouts accs = do
     Left err -> return $ InteractionSet Nothing Nothing []
     Right interactionSet -> return interactionSet
 
-interactionsMain :: Sink BusyCmd -> Sink (Maybe Notification) -> IO (Signal Html)
-interactionsMain busySink notifSink = do
+interactionsPage :: Sink BusyCmd -> Sink (Maybe Notification) -> IO (Signal Html)
+interactionsPage busySink notifSink = do
   let initInteractions = InteractionSet Nothing Nothing []
       initFormContent  = (Just $ pack "beautifuldestinations", Just $ pack "forbestravelguide")
 

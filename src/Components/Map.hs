@@ -64,7 +64,12 @@ newtype LTileLayer = LTileLayer { lTileLayer :: JSVal }
 
 newtype LMarkerClusterGroup = LMarkerClusterGroup { lMarkerClusterGroup :: JSVal }
 
-data MapCommand = MapInit | MapDestroy | AddMarkers [Marker] | AddClusterLayer [Marker] | ClearMap deriving Show
+data MapCommand = MapInit
+                | MapDestroy
+                | AddMarkers [Marker]
+                | AddClusterLayer [Marker]
+                | InvalidateSize
+                | ClearMap deriving Show
 
 data MapAction = MapClicked Point
 
@@ -83,6 +88,12 @@ foreign import javascript unsafe "$1.fitWorld()"
 
 fitWorld :: LMap -> IO ()
 fitWorld lm = fitWorld_ (lMap lm)
+
+foreign import javascript unsafe "$1.invalidateSize(true)"
+  invalidateSize_ :: JSVal -> IO ()
+
+invalidateSize :: LMap -> IO ()
+invalidateSize lm = invalidateSize_ (lMap lm)
 
 foreign import javascript unsafe "$1.fitBounds([[$2, $3], [$4, $5]])"
   fitBounds_ :: JSVal -> Double -> Double -> Double -> Double -> IO ()
@@ -192,12 +203,17 @@ mapComponent z = do
 
   g                                 <- getStdGen
   let mapId                         = fromString . take 10 $ randomRs ('a', 'z') g
-  createElement $ mapW mapId -- force creating a container node before the map could be initialised
+  -- createElement $ mapW mapId -- force creating a container node before the map could be initialised
+
   let htmlS                         = pure (mapW mapId)                          :: Signal Html
   mapRef                            <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
   lyrRef                            <- TVar.newTVarIO []                         :: IO (TVar.TVar [LMarkerClusterGroup])
 
   subscribeEvent lifecycleEvents $ \mapCommand -> case mapCommand of
+    InvalidateSize -> withMap mapRef $ \gmap -> do
+      print "invalidateSize map"
+      invalidateSize gmap
+
     ClearMap -> withMap mapRef $ \gmap -> do
       lyrs <- atomically $ TVar.readTVar lyrRef
       mapM_ (`removeClusterGroup` gmap) lyrs

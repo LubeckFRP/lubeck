@@ -34,7 +34,7 @@ import           BD.Types
 
 import           BDPlatform.Types
 import           Components.BusyIndicator          (BusyCmd (..), withBusy2)
-import           Components.Layout              (fullsizeLayout4)
+import           Components.Layout
 
 import           BDPlatform.HTMLCombinators
 import           BDPlatform.Pages.Search.Instagram (searchInstagram)
@@ -72,8 +72,9 @@ uploadPage busySink notifSink ipcSink usernameB navS = do
 
   subscribeEvent uploadEvents $ void . forkIO . handleUpload busySink notifSink ipcSink usernameB
 
-  compositeView <- fullsizeLayout4 3 ("Computer",  uploadFromComputer)
-                                     ("Facebook",  pure (E.text "Upload from Facebook here"))
-                                     ("Instagram", pure (E.text "Upload from Instagram here"))
-                                     ("Dropbox",   pure (E.text "Upload from Dropbox here"))
-  return compositeView
+  compositeL <- fullsizeLayout4 (pure 3)
+                                (mkLayoutPure' uploadFromComputer                           "Computer")
+                                (mkLayoutPure' (pure (E.text "Upload from Facebook here"))  "Facebook")
+                                (mkLayoutPure' (pure (E.text "Upload from Instagram here")) "Instagram")
+                                (mkLayoutPure' (pure (E.text "Upload from Dropbox here"))   "Dropbox")
+  return $ view compositeL

@@ -42,12 +42,11 @@ import           BD.Api
 import           BDPlatform.Pages.Campaign      (campaignPage, getCampaigns)
 import           BDPlatform.Pages.CreateAd      (createAdPage)
 import           BDPlatform.Pages.Login         (loginPage, Username)
--- import           BDPlatform.Pages.User          (userPage)
-import           BDPlatform.Pages.Interactions  (interactionsMain)
 import           BDPlatform.Pages.Search.Index  (searchIndexPage)
 import           BDPlatform.Pages.Accounts.Index (accountsIndexPage)
 import           BDPlatform.Pages.Manage.Index  (manageIndexPage)
 import           BDPlatform.Pages.CurrentUser.Index (currentUserIndexPage)
+import           BDPlatform.Pages.Results.Index (resultsIndexPage)
 
 import           Components.BusyIndicator       (BusyCmd (..), withBusy,
                                                  busyIndicatorComponent)
@@ -70,16 +69,16 @@ menuItems =
   , (NavCurrentUser, "Current user") -- last item is special in that it will be positioned far right
   ]
 
-rootLayout goTo menu err busy login {- user ads -} search createAd interactions accountsIndexView manageIndexView currentUserIndexView = case goTo of
+rootLayout goTo menu err busy login search createAd accountsIndexView manageIndexView currentUserIndexView resultsIV = case goTo of
   NavLogin         -> layoutLogin busy err login
   -- NavUser          -> layout menu busy err user
   -- NavCampaign      -> layout menu busy err ads
   NavSearch        -> layout menu busy err search
   NavCreateAd      -> layout menu busy err createAd
-  NavInteractions  -> layout menu busy err interactions
   NavAccounts      -> layout menu busy err accountsIndexView
   NavManage        -> layout menu busy err manageIndexView
   NavCurrentUser   -> layout menu busy err currentUserIndexView
+  NavResults       -> layout menu busy err resultsIV
 
   where
     layoutLogin busy err page =
@@ -131,8 +130,6 @@ adPlatform = do
   (manageIndexView, imsB, manageKbdSink) <- manageIndexPage   busySink notifSink ipcSink ipcEvents userE -- navS
   createAdView                          <- createAdPage     busySink notifSink                   usernameB imsB (current campaignsS)
 
-  interactionsView                      <- interactionsMain busySink notifSink
-
   let firstPage                         = NavAccounts
 
   -- first time menu gets rendered with initial state argument
@@ -145,6 +142,7 @@ adPlatform = do
   searchIndexView                       <- searchIndexPage      busySink notifSink ipcSink usernameB navS
   accountsIndexView                     <- accountsIndexPage    busySink notifSink ipcSink usernameB navS
   currentUserIndexView                  <- currentUserIndexPage busySink notifSink ipcSink userS authS
+  resultsIndexView                      <- resultsIndexPage     busySink notifSink ipcSink usernameB navS
 
   subscribeEvent ipcEvents $ \msg -> case msg of
     Logout -> ipcNavSink NavLogin
@@ -170,14 +168,12 @@ adPlatform = do
                             <*> notifView
                             <*> busyView
                             <*> loginView
-                            -- <*> userView
-                            -- <*> adsView
                             <*> searchIndexView
                             <*> createAdView
-                            <*> interactionsView
                             <*> accountsIndexView
                             <*> manageIndexView
                             <*> currentUserIndexView
+                            <*> resultsIndexView
 
   return (mainView, Just kbdSink)
   where
