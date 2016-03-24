@@ -1165,7 +1165,11 @@ visualizeWithStyle axesNames1 dat (Geometry geom geomSpecial _) aess =
     mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
       :: [Map Key (Coord, Maybe Special)]
 
-    drawTicks xs ys = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+    -- drawTicks :: [(Normalized Double, Str)] -> [(Normalized Double, Str)] -> StyledT m1 Drawing
+    drawTicks xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+      where
+        xs = fmap (second Just) xs2
+        ys = fmap (second Just) ys2
 
     mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
     mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)

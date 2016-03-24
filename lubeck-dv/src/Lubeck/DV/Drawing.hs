@@ -508,8 +508,8 @@ overlay = undefined
 -- Positions outside the normalized range are discarded.
 ticks
   :: Monad m
-  => [(Double, Str)] -- ^ X axis ticks.
-  -> [(Double, Str)] -- ^ Y axis ticks.
+  => [(Double, Maybe Str)] -- ^ X axis ticks.
+  -> [(Double, Maybe Str)] -- ^ Y axis ticks.
   -> StyledT m Drawing
 ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
   where
@@ -521,8 +521,8 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
 -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
 ticksNoFilter
   :: Monad m
-  => [(Double, Str)] -- ^ X axis ticks.
-  -> [(Double, Str)] -- ^ Y axis ticks.
+  => [(Double, Maybe Str)] -- ^ X axis ticks.
+  -> [(Double, Maybe Str)] -- ^ Y axis ticks.
   -> StyledT m Drawing
 ticksNoFilter xt yt = do
   style <- ask
@@ -545,7 +545,7 @@ ticksNoFilter xt yt = do
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateY (-0.5) verticalLine
             -- bg grid
             , scale y $ strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ translateY (0.5) verticalLine
-            , translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ textX style str
+            , maybe mempty id $ fmap (\str -> translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ textX style str) $ str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
@@ -553,7 +553,7 @@ ticksNoFilter xt yt = do
             , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateX (-0.5) horizontalLine
             -- bg grid
             , scale x $ strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ translateX (0.5) horizontalLine
-            , translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ textY style str
+            , maybe mempty id $ fmap (\str -> translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ textY style str) $ str
             ]
   return $ mconcat [xTicks, yTicks]
   where
