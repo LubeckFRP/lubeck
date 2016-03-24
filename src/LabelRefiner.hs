@@ -49,20 +49,30 @@ getImages path = first ApiError <$> getAPIEither testAPI "label-refiner/images/t
 
 render :: Html -> Html -> Html
 render prompt imageGrid = E.div
-  [ A.style "width: 1000px; margin-left: auto; margin-right: auto" ]
+  [ A.class_ "container"
+  , A.style "width: 1000px; margin-left: auto; margin-right: auto" ]
   [ prompt, imageGrid ]
+
+chunksOf :: Int -> ImageGrid -> [ImageGrid]
+chunksOf _ [] = []
+chunksOf 0 xs = [xs]
+chunksOf n xs = front : chunksOf n back
+  where
+    (front,back) = splitAt n xs
 
 imgGridW :: Widget' ImageGrid
 imgGridW sink imgs =
-    E.div [ A.class_ "container" ]
-      [ E.div
-        [ A.class_ "row" ] $
-        map (imgCell imgs sink) imgs
-      ]
+    E.div
+      [ A.class_ "row" ] $
+      map (E.div [ A.class_ "row" ] . imgRowW sink) $ chunksOf 3 imgs
+
+imgRowW :: Widget' ImageGrid
+imgRowW sink imgs = E.div
+    map (imgCell imgs sink) imgs
   where
     imgCell :: ImageGrid ->  Widget (Image, Bool) ImageGrid
     imgCell imgs actionsSink imgAndState = E.div
-      [ A.class_ "col-lg-3 col-md-4 col-xs-6 thumb"]
+      [ A.class_ "col-md-4 thumb"]
       [ E.a [ A.class_ "thumbnail"]
 	    [ imgWithAttrs [] (contramapSink (`updateImage` imgs) actionsSink) imgAndState ]
       ]
@@ -70,9 +80,10 @@ imgGridW sink imgs =
 imgWithAttrs :: [E.Property] -> Widget' (Image, Bool)
 imgWithAttrs attrs actionSink (image, state) =
     E.img
-      ([ EV.click $ \_ -> actionSink $ highlightImage (image,state)
-       , A.src $ filename image] ++
-         attrs ++ highlightStyle)
+      ([ A.class_ "img-responsive"
+       , EV.click $ \_ -> actionSink $ highlightImage (image,state)
+       , A.src $ img_url image
+       ] ++ attrs ++ highlightStyle)
       []
   where
     imgOrDefault Nothing = "No URL"
@@ -90,19 +101,30 @@ updateImage img (curr:imgs)
 
 promptW :: Widget' Label
 promptW sink (Label id name)  =
-  E.div [ A.class_ "text-center" ] [ E.text . pack $ T.unpack name ]
+  E.div [ A.class_ "text-center" ]
+        [ E.text $
+            "Select the images that represent the label: " <>
+            pack (T.unpack name)
+        ]
+
+submitBtnW :: Widget' ()
+submitBtnW = E.div
+  [ A.class_ "offset10 span2" ]
+  [ buttonWidget "Submit" ]
 
 main = do
-  -- call getRandomLabel
+  -- add button to change label
+  -- change to reactimateIO and make image grid listen to promptW
   randLabel <- getRandomLabel testAPI
-  testImages <- getImages (pack "")
   case randLabel of
     Left (ApiError err) -> print err
-    Right label -> case testImages of
-      Left (ApiError err) -> print err
-      Right imgs -> do
-        let imgStateList = zip imgs $ repeat False
-        (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
-        (imgGridView, imgGridSink) <- componentW imgStateList imgGridW
-        (promptView,_) <- componentR label promptW
-        runAppReactive $ render <$> promptView <*> imgGridView
+    Right label -> do
+      images <- getNimagesWithLabel testAPI 9 label
+      case images of
+        Left (ApiError err) -> print err
+        Right imgs -> do
+          let imgStateList = zip imgs $ repeat False
+          (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
+          (imgGridView, imgGridSink) <- componentW imgStateList imgGridW
+          (promptView,_) <- componentR label promptW
+          runAppReactive $ render <$> promptView <*> imgGridView
