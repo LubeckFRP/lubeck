@@ -537,35 +537,35 @@ ticksNoFilter xt yt = do
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
 
-  let basicTickStrokeWidth_  = style^.basicTickStrokeWidth
-  let kBasicTickLength       = style^.basicTickLength
+  let widthFgB  = style^.basicTickStrokeWidth
+  let tl        = style^.basicTickLength
   let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
-  let basicTickColor_        = style^.basicTickColor
+  let colFgB    = style^.basicTickColor
 
-  let backgroundTickStrokeWidthX_   = style^.backgroundTickStrokeWidthX
-  let backgroundTickStrokeWidthY_   = style^.backgroundTickStrokeWidthY
-  let backgroundTickStrokeColorX_   = style^.backgroundTickStrokeColorX
-  let backgroundTickStrokeColorY_   = style^.backgroundTickStrokeColorY
+  let widthBgX   = style^.backgroundTickStrokeWidthX
+  let widthBgY   = style^.backgroundTickStrokeWidthY
+  let colBgX     = style^.backgroundTickStrokeColorX
+  let colBgY     = style^.backgroundTickStrokeColorY
 
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
             [ mempty
-            -- Outside quadrant tick
-            , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateY (-0.5) verticalLine
             -- Inside quadrant (background) grid
-            , strokeWidth backgroundTickStrokeWidthX_ $ strokeColorA backgroundTickStrokeColorX_ $ scale y $ translateY (0.5) verticalLine
+            , strokeWidth widthBgX $ strokeColorA colBgX $ scale y $ translateY (0.5) verticalLine
+            -- Outside quadrant tick
+            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
             -- Text
-            , maybe mempty id $ fmap (\str -> translateY (kBasicTickLength * (-1.5)) .rotate (turn*xTickTurn) $ textX style str) $ str
+            , maybe mempty id $ fmap (\str -> translateY (tl * (-1.5)) .rotate (turn*xTickTurn) $ textX style str) $ str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
-            -- Outside quadrant tick
-            , strokeWidth basicTickStrokeWidth_ $ strokeColorA basicTickColor_ $ scale kBasicTickLength $ translateX (-0.5) horizontalLine
             -- Inside quadrant (background) grid
-            , strokeWidth backgroundTickStrokeWidthY_ $ strokeColorA backgroundTickStrokeColorY_ $ scale x $ translateX (0.5) horizontalLine
+            , strokeWidth widthBgY $ strokeColorA colBgY $ scale x $ translateX (0.5) horizontalLine
+            -- Outside quadrant tick
+            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
             -- Text
-            , maybe mempty id $ fmap (\str -> translateX (kBasicTickLength * (-1.5)) .rotate (turn*yTickTurn) $ textY style str) $ str
+            , maybe mempty id $ fmap (\str -> translateX (tl * (-1.5)) .rotate (turn*yTickTurn) $ textY style str) $ str
             ]
   return $ mconcat [xTicks, yTicks]
   where
@@ -575,10 +575,11 @@ ticksNoFilter xt yt = do
     -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
     -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
 
-    textX = text_ fst
-    textY = text_ snd
-    text_ which style = textWithOptions $ mempty
-      { textAnchor = style^.tickTextAnchor.to which
+    textX = text_ fst fst
+    textY = text_ snd snd
+    text_ which which2 style = textWithOptions $ mempty
+      { textAnchor        = style^.tickTextAnchor.to which
+      , alignmentBaseline = style^.tickTextAlignmentBaseline.to which2
       -- TODO read family from style
       , fontFamily = style^.tickTextFontFamily
       , fontStyle  = style^.tickTextFontStyle

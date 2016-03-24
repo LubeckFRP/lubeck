@@ -41,6 +41,7 @@ module Lubeck.DV.Styling
 
   , tickTextTurn
   , tickTextAnchor
+  , tickTextAlignmentBaseline
   , tickTextFontFamily
   , tickTextFontWeight
   , tickTextFontStyle
@@ -191,6 +192,7 @@ data Styling = Styling
 
   , _tickTextTurn                     :: (Angle Double, Angle Double)
   , _tickTextAnchor                   :: (TextAnchor, TextAnchor)
+  , _tickTextAlignmentBaseline        :: (AlignmentBaseline, AlignmentBaseline)
   , _tickTextFontFamily               :: First Str
   , _tickTextFontWeight               :: FontWeight
   , _tickTextFontStyle                :: FontStyle
@@ -265,8 +267,9 @@ instance Monoid Styling where
     , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
     , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
 
-    , _tickTextTurn                 = (1/8, 0)
-    , _tickTextAnchor               = (TextAnchorEnd, TextAnchorEnd)
+    , _tickTextTurn                 = (0/8, 0)
+    , _tickTextAnchor               = (TextAnchorMiddle, TextAnchorEnd)
+    , _tickTextAlignmentBaseline    = (AlignmentBaselineHanging, AlignmentBaselineAuto)
     , _tickTextFontFamily           = mempty
     , _tickTextFontWeight           = mempty
     , _tickTextFontStyle            = mempty
