@@ -1,8 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Main where
 
@@ -34,6 +31,7 @@ import           Data.Data                      (Data)
 import           Data.Typeable                  (Typeable)
 
 import           Data.Aeson
+import qualified Data.Text as T
 
 import           BD.Api
 import           BD.Types
@@ -41,70 +39,70 @@ import           BD.Types
 import           Data.Bifunctor                 (bimap, first, second)
 import           Data.Int
 
-newtype ImageID = ImgID Int
-  deriving (Eq, Read, Show, Data, Typeable, FromJSON)
+import           BD.Data.ImageLR
+import           BD.Data.ImageLabel
 
-newtype ImageSrc = ISrc Int
-  deriving (Eq, Read, Show, Data, Typeable, FromJSON)
+type ImageGrid = [(Image,Bool)]
 
-data LRImage = LRImage
-  { img_id   :: ImageID
-  , filename :: Text
-  , img_src  :: ImageSrc
-  } deriving (Eq, GHC.Generic, Show)
-instance FromJSON LRImage
+getImages :: JSString -> IO (Either AppError [Image])
+getImages path = first ApiError <$> getAPIEither testAPI "label-refiner/images/test"
 
-type ImageGrid = [(LRImage,Bool)]
-
-getImages :: JSString -> IO (Either AppError [LRImage])
-getImages path = getAPIEither testAPI "label-refiner" >>= return . first ApiError
-  where testAPI = defaultAPI { baseURL = "http://localhost:3567/api/v1/" }
-
-render :: Html -> Html
-render imageGrid = E.div
+render :: Html -> Html -> Html
+render prompt imageGrid = E.div
   [ A.style "width: 1000px; margin-left: auto; margin-right: auto" ]
-  [ imageGrid ]
+  [ prompt, imageGrid ]
 
 imgGridW :: Widget' ImageGrid
-imgGridW sink imgs = E.div [ A.class_ "container" ]
-    [ E.div
-      [ A.class_ "row" ] $
-      map (imgCell imgs sink) imgs
-    ]
+imgGridW sink imgs =
+    E.div [ A.class_ "container" ]
+      [ E.div
+        [ A.class_ "row" ] $
+        map (imgCell imgs sink) imgs
+      ]
   where
-    imgCell :: ImageGrid ->  Widget (LRImage, Bool) ImageGrid
+    imgCell :: ImageGrid ->  Widget (Image, Bool) ImageGrid
     imgCell imgs actionsSink imgAndState = E.div
       [ A.class_ "col-lg-3 col-md-4 col-xs-6 thumb"]
       [ E.a [ A.class_ "thumbnail"]
 	    [ imgWithAttrs [] (contramapSink (`updateImage` imgs) actionsSink) imgAndState ]
       ]
 
-imgWithAttrs :: [E.Property] -> Widget' (LRImage, Bool)
-imgWithAttrs attrs actionSink (image, state) = E.img
-   ([ EV.click $ \_ -> actionSink $ highlightImage (image,state)
-    , A.src $ filename image
-    ] ++ attrs ++ highlightStyle)
-  []
+imgWithAttrs :: [E.Property] -> Widget' (Image, Bool)
+imgWithAttrs attrs actionSink (image, state) =
+    E.img
+      ([ EV.click $ \_ -> actionSink $ highlightImage (image,state)
+       , A.src $ filename image] ++
+         attrs ++ highlightStyle)
+      []
   where
     imgOrDefault Nothing = "No URL"
     imgOrDefault (Just x) = x
     highlightStyle = [ A.style "outline: 4px solid black;" | state ]
 
-highlightImage :: (LRImage, Bool) -> (LRImage,Bool)
+highlightImage :: (Image, Bool) -> (Image,Bool)
 highlightImage = second not
 
-updateImage :: (LRImage,Bool) -> ImageGrid -> ImageGrid
+updateImage :: (Image,Bool) -> ImageGrid -> ImageGrid
 updateImage img [] = []
 updateImage img (curr:imgs)
   | fst img == fst curr = img : imgs
   | otherwise = curr : updateImage img imgs
 
+promptW :: Widget' Label
+promptW sink (Label id name)  =
+  E.div [ A.class_ "text-center" ] [ E.text . pack $ T.unpack name ]
+
 main = do
+  -- call getRandomLabel
+  randLabel <- getRandomLabel testAPI
   testImages <- getImages (pack "")
-  case testImages of
+  case randLabel of
     Left (ApiError err) -> print err
-    Right imgs -> do
-      let imgStateList = zip imgs $ repeat False
-      (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
-      (imgGridView, imgGridSink) <- componentW imgStateList imgGridW
-      runAppReactive $ render <$> imgGridView
+    Right label -> case testImages of
+      Left (ApiError err) -> print err
+      Right imgs -> do
+        let imgStateList = zip imgs $ repeat False
+        (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
+        (imgGridView, imgGridSink) <- componentW imgStateList imgGridW
+        (promptView,_) <- componentR label promptW
+        runAppReactive $ render <$> promptView <*> imgGridView
