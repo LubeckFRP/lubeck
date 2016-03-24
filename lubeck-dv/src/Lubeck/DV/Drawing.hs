@@ -537,15 +537,24 @@ ticksNoFilter xt yt = do
   let x = style^.renderingRectangle._x
   let y = style^.renderingRectangle._y
 
-  let widthFgB  = style^.basicTickStrokeWidth
-  let tl        = style^.basicTickLength
   let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
-  let colFgB    = style^.basicTickColor
 
+  let tl         = style^.basicTickLength
+  let widthFgB   = style^.basicTickStrokeWidth
   let widthBgX   = style^.backgroundTickStrokeWidthX
   let widthBgY   = style^.backgroundTickStrokeWidthY
+  let colFgB     = style^.basicTickColor
   let colBgX     = style^.backgroundTickStrokeColorX
   let colBgY     = style^.backgroundTickStrokeColorY
+
+  -- TODO derive properly
+  -- let tlMin      = style^.basicTickLength
+  -- let widthFgBMin   = style^.basicTickStrokeWidth
+  -- let widthBgXMin   = style^.backgroundTickStrokeWidthX
+  -- let widthBgYMin   = style^.backgroundTickStrokeWidthY
+  -- let colFgBMin     = style^.basicTickColor
+  -- let colBgXMin     = style^.backgroundTickStrokeColorX
+  -- let colBgYMin     = style^.backgroundTickStrokeColorY
 
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
