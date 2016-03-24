@@ -1001,7 +1001,7 @@ labelG = Geometry g () [""]
           $ text_ style str
       _ -> mempty
 
-    text_ style = Lubeck.Drawing.textWithOptions $ mempty
+    text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
       {
       Lubeck.Drawing.textAnchor = style^.Lubeck.DV.Styling.labelTextAnchor
       -- TODO read family from style
@@ -1010,6 +1010,8 @@ labelG = Geometry g () [""]
       , Lubeck.Drawing.fontSize   = First $ Just $ (toStr $ style^.Lubeck.DV.Styling.labelTextFontSizePx) <> "px"
       , Lubeck.Drawing.fontWeight = style^.Lubeck.DV.Styling.labelTextFontWeight
       }
+      where
+        absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
 
 atColor :: (Eq b, Ord k, IsString k) => b -> [Map k (b, a)] -> [Map k (b, a)]
 atColor c = filter (\m -> fmap fst (m ?! "color") == Just c)
