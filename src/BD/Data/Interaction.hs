@@ -70,6 +70,7 @@ data Interaction m = Interaction
     target_counts    :: [Count], -- the growth
     target_account   :: Account,
     interaction_time :: UTCTime,
+    impact_estimate  :: Maybe Double,
     medium           :: m -- i.e. a post
   } deriving (GHC.Generic)
 
