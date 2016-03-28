@@ -187,7 +187,7 @@ interactionW _ interaction =
       Just desc -> text desc
 
     impact = case impact_estimate interaction of
-      Nothing -> text ""
+      Nothing -> text "No impact estimate"
       Just x -> text $ "Impact estimate: "<> fromString (show $ round x)
 
     displayImage :: Maybe Html -> Html
