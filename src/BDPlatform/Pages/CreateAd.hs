@@ -217,7 +217,7 @@ postNewAd unm newAd = do
 validateCaption fn    = longString fn 3 30
 validateImageHash     = notEmpty
 validateCampaign fn s = notEqualTo fn s invalidCampaignId
-validateLink          = notEmpty
+validateLink          = validURL
 
 validate :: NewAd -> FormValid VError
 validate (NewAd caption image_hash campaign click_link _ _ _) =

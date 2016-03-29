@@ -108,6 +108,7 @@ library
                      , split
                      , either
                      , boxes
+                     , network-uri
   hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
@@ -258,6 +259,7 @@ executable bd-bdplatform
                      , monad-parallel
                      , ListZipper
                      , either
+                     , network-uri
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
 
