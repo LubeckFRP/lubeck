@@ -75,7 +75,7 @@ instance Monoid Age where
   mappend = (+)
 
 data Gender = Male | Female
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 instance ToJSON Age where
   toJSON (Age x) = toJSON x
@@ -173,6 +173,18 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
                          False
                          (contramapSink (\new -> DontSubmit $ newAd { click_link = new }) outputSink)
                          (click_link newAd)
+
+      , longStringWidget "Geography"
+                         False
+                         (contramapSink (\new -> DontSubmit $ newAd { geography = new }) outputSink)
+                         (geography newAd)
+      , (dimapWidget (mapI fromIntegral) (mapI fromIntegral) $ integerIntervalWidget "Age")
+                         (contramapSink (\new -> DontSubmit $ newAd { age = new }) outputSink)
+                         (age newAd)
+      , (maybeW (text "(No gender)") selectEnumBoundedWidget) --"Gender"
+                         (contramapSink (\new -> DontSubmit $ newAd { gender = new }) outputSink)
+                         (gender newAd)
+
       , campaignSelectWidget mbAc
                              (contramapSink (\new -> DontSubmit $ newAd { campaign = new }) outputSink)
                              (campaign newAd)
@@ -185,6 +197,9 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
           , inlineMessage cantSubmitMsg ]
 
       ]
+    where
+      mapI :: (a -> b) -> Interval a -> Interval b
+      mapI = undefined
 
 postNewAd :: JSString -> NewAd -> IO (Either AppError Ok)
 postNewAd unm newAd = do
