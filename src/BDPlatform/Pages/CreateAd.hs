@@ -26,7 +26,9 @@ import qualified Data.Map                       as Map
 import           Data.Maybe
 import           Data.Monoid
 import qualified GHC.Generics                   as GHC
-import           Data.Interval                  (Interval, interval, Extended(..), lowerBound, upperBound, whole)
+import           Data.Interval                  (Interval, interval, Extended(..),
+                                                 lowerBound, upperBound, whole)
+import qualified Data.Interval as I
 
 import qualified BD.Data.Image                  as Im
 
@@ -198,8 +200,12 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
 
       ]
     where
-      mapI :: (a -> b) -> Interval a -> Interval b
-      mapI = undefined
+      mapI :: (Ord a, Ord b) => (a -> b) -> Interval a -> Interval b
+      mapI f i = I.interval (mapE f ae,ai) (mapE f be,bi)
+        where ((ae,ai),(be,bi)) = (I.lowerBound' i, I.upperBound' i)
+          mapE f I.NegInf     = I.NegInf
+          mapE f (I.Finite x) = I.Finite (f x)
+          mapE f I.PosInf     = I.PosInf
 
 postNewAd :: JSString -> NewAd -> IO (Either AppError Ok)
 postNewAd unm newAd = do
