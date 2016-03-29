@@ -183,9 +183,10 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
       , (dimapWidget (mapI fromIntegral) (mapI fromIntegral) $ integerIntervalWidget "Age")
                          (contramapSink (\new -> DontSubmit $ newAd { age = new }) outputSink)
                          (age newAd)
-      , (maybeW (text "(No gender)") selectEnumBoundedWidget) --"Gender"
+      , formRowWithLabel "Gender"
+        [ selectWidget [(Nothing, "Unspecified"), (Just Female, "Female"), (Just Male, "Male")]
                          (contramapSink (\new -> DontSubmit $ newAd { gender = new }) outputSink)
-                         (gender newAd)
+                         (gender newAd) ]
 
       , campaignSelectWidget mbAc
                              (contramapSink (\new -> DontSubmit $ newAd { campaign = new }) outputSink)
@@ -197,12 +198,12 @@ createAdForm outputSink (canSubmit, (mbAc, (mbIms, newAd))) =
       , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
           [ buttonOkIcon "Create Ad" "thumbs-o-up" False canSubmitAttr
           , inlineMessage cantSubmitMsg ]
-
       ]
     where
       mapI :: (Ord a, Ord b) => (a -> b) -> Interval a -> Interval b
       mapI f i = I.interval (mapE f ae,ai) (mapE f be,bi)
-        where ((ae,ai),(be,bi)) = (I.lowerBound' i, I.upperBound' i)
+        where
+          ((ae,ai),(be,bi)) = (I.lowerBound' i, I.upperBound' i)
           mapE f I.NegInf     = I.NegInf
           mapE f (I.Finite x) = I.Finite (f x)
           mapE f I.PosInf     = I.PosInf
