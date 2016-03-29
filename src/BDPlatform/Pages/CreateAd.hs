@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 
 module BDPlatform.Pages.CreateAd
   ( createAdPage
@@ -24,6 +26,7 @@ import qualified Data.Map                       as Map
 import           Data.Maybe
 import           Data.Monoid
 import qualified GHC.Generics                   as GHC
+import           Data.Interval                  (Interval, interval, Extended(..), lowerBound, upperBound, whole)
 
 import qualified BD.Data.Image                  as Im
 
@@ -64,13 +67,43 @@ import           Components.BusyIndicator       (BusyCmd (..), withBusy2)
 import           Lubeck.Util
 import           Lubeck.Types
 
+
+newtype Age = Age Int
+  deriving (Eq, Ord, Show, Enum, Integral, Real, Num)
+instance Monoid Age where
+  mempty = 0
+  mappend = (+)
+
+data Gender = Male | Female
+  deriving (Eq, Ord, Show)
+
+instance ToJSON Age where
+  toJSON (Age x) = toJSON x
+
+instance ToJSON Gender where
+  toJSON Male   = toJSON ("male" :: JSString)
+  toJSON Female = toJSON ("female" :: JSString)
+
+
 data NewAd = NewAd { caption    :: JSString,
                      image_hash :: JSString,
                      campaign   :: AdTypes.FBGraphId,
-                     click_link :: JSString } deriving (GHC.Generic)
+                     click_link :: JSString,
+                     geography :: JSString,
+                     age :: Interval Age,
+                     gender :: Maybe Gender } deriving (GHC.Generic)
 
 instance ToJSON NewAd
-instance FromJSON NewAd
+-- instance FromJSON NewAd
+
+-- TODO orphan
+instance ToJSON Ordering where
+  toJSON LT = toJSON ("<" :: JSString)
+  toJSON EQ = toJSON ("=" :: JSString)
+  toJSON GT = toJSON (">" :: JSString)
+
+instance (Monoid a, ToJSON a) => ToJSON (Interval a) where
+  toJSON i = toJSON $ intervalToOrderings mempty i
 
 invalidCampaignId = 0
 
@@ -165,7 +198,7 @@ validateCampaign fn s = notEqualTo fn s invalidCampaignId
 validateLink          = notEmpty
 
 validate :: NewAd -> FormValid VError
-validate (NewAd caption image_hash campaign click_link) =
+validate (NewAd caption image_hash campaign click_link _ _ _) =
   let validationResult = (runValidation4 <$> validateCaption "Caption" caption
                                          <*> validateImageHash "Image" image_hash
                                          <*> validateCampaign "Campaign" campaign
@@ -181,7 +214,7 @@ createAdPage :: Sink BusyCmd
              -> Behavior (Maybe [AdCampaign.AdCampaign])
              -> IO (Signal Html)
 createAdPage busySink notifSink mUserNameB imsB campB = do
-  let initNewAd = NewAd "" "" invalidCampaignId ""
+  let initNewAd = NewAd "" "" invalidCampaignId "" "" whole Nothing
 
   (view, adCreated) <- formWithValidationComponentExtra2 imsB campB validate initNewAd createAdForm
 
