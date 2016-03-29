@@ -570,24 +570,26 @@ linearIntegral = linearWithOptions True UseMin
 
 {-|
 How to choose lower bound for a scale.
+
+TODO should really be called 'LinearBounds'.
 -}
 data IntegralBounds
   = UseZero                     -- ^ Use zero.
   | InterpZeroAndMin Double     -- ^ Interpolate between zero and minimum value (0.5 for middle).
   | UseMin                      -- ^ Use minimum value.
 
-
+{-|
+A linear scale with options.
+-}
 linearWithOptions :: (Real a, Show a)
   => Bool
+    -- ^ If true, use the integral version of show (i.e. no decimals).
+    --   If false, a predefined number of decimal places is used
   -> IntegralBounds
+    -- ^ How to deterine bounds .
   -> Scale a
 linearWithOptions
   useIntegralShow
-    -- Display numbers as integers (necessary to avoid integers being displayed as "1.0")
-    -- If false, a hard-coded number of decimal places is used
-  -- integralDiv
-  --   -- If using integral show, divide (using 'div') before showing
-  --   -- Useful for million/thousand scales etc
   lowerBoundChoice
   = Scale
   { scaleMapping  = \vs v -> realToFrac v
@@ -1272,7 +1274,7 @@ test = visualizeTest people (mconcat [scatter, line, fill])
   ]
 test2 = visualizeTest ([(1,2), (3,4)] :: [(Int, Int)]) line
   [ mempty
-  , x <~ to fst
+  , x <~ _1
   , y <~ to snd
   ]
 test3 = visualizeTest ( [ ] :: [(UTCTime, Int)]) line
