@@ -19,8 +19,9 @@ import           Prelude hiding   (id)
 
 import qualified GHC.Generics     as GHC
 
+import           Lubeck.Util      (showJS)
 import           BD.Api
-import           BD.Types hiding (Text)
+import           BD.Types hiding  (Text)
 
 import           BD.Data.ImageLR  (Image)
 
@@ -45,9 +46,6 @@ instance ToJSON ImageLabel
 
 text2JS :: Text -> JSString
 text2JS = pack . unpack
-
-showJS :: Show a => a -> JSString
-showJS = fromString . show
 
 getRandomLabel :: API -> IO (Either AppError Label)
 getRandomLabel api = first ApiError <$> getAPIEither api "label-refiner/labels/random"

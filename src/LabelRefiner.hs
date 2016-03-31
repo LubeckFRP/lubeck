@@ -41,6 +41,7 @@ import           Data.Int
 
 import           BD.Data.ImageLR
 import           BD.Data.ImageLabel
+import           BD.Data.SessionLR 
 
 type ImageGrid = [(Image,Bool)]
 
@@ -120,23 +121,17 @@ submitBtnW sink _ =
 
 -- Maybe make a function to return a label AND associated images
 main = do
-  randLabel <- getRandomLabel testAPI
-  case randLabel of
-    Left (ApiError err) -> print err
-    Right label -> do
-      images <- getNimagesWithLabel testAPI 9 label
-      case images of
-        Left (ApiError err) -> print err
-        Right imgs -> do
-          let imgStateList = zip imgs $ repeat False
+  let nImgsPerPage = 9
+  initSession <- initializeSession' testAPI nImgsPerPage
+  let (Session sid (SessionPage initLabel initImgs)) = initSession 
+  let imgStateList = zip initImgs $ repeat False
 
-          (submitS, submitE) <- componentR () submitBtnW
+  (submitS, submitE) <- componentR () submitBtnW
 
-          promptE <- reactimateIOAsync $ fmap (const (getRandomLabel' testAPI)) submitE
-          promptS <- componentListen promptW <$> stepperS label promptE
+  newPageE <- reactimateIOAsync $ fmap (const (getSessionPage' testAPI nImgsPerPage)) submitE
+  promptS <- componentListen promptW <$> stepperS initLabel (fmap label newPageE) 
 
-          getImagesE <- reactimateIOAsync $ fmap (getNimagesWithLabel' testAPI 9) promptE
-          let imgsAndStateE = fmap (\x -> zip x $ repeat False) getImagesE
-          (imgGridS,_) <- componentEvent imgStateList imgGridW imgsAndStateE
-
-          runAppReactive $ render <$> promptS <*> imgGridS <*> submitS
+  let imgsAndStateE = fmap (\spage -> zip (imgs spage) $ repeat False) newPageE 
+  (imgGridS,_) <- componentEvent imgStateList imgGridW imgsAndStateE
+   
+  runAppReactive $ render <$> promptS <*> imgGridS <*> submitS
