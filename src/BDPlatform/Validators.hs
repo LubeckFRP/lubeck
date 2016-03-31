@@ -28,9 +28,11 @@ data VSuccess = VSuccess
 validURL :: JSString -> JSString -> Validation VError VSuccess
 validURL fn s  = case NU.parseURI (Data.JSString.unpack s) of
   Nothing  -> Failure . VError $ ["\"" <> fn <> "\" must be a valid URI"]
-  Just uri -> if (NU.uriScheme uri) == "http:" || (NU.uriScheme uri) == "https:"
+  Just uri -> if proto == "http:" || proto == "https:"
                 then Success VSuccess
                 else Failure . VError $ ["\"" <> fn <> "\": only http and https protocols allowed"]
+    where
+      proto = Data.JSString.toLower . Data.JSString.pack . NU.uriScheme $ uri
 
 longString :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
 longString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isPrintable fn s
