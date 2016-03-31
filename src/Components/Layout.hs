@@ -4,6 +4,7 @@ module Components.Layout
   ( fullsizeLayout2
   , fullsizeLayout4
   , verticalStackLayout2
+  , horizontalStackLayout2
   , toggleLayout2
   , overlayLayout
   , Layout(..)
@@ -13,6 +14,7 @@ module Components.Layout
   , mkLayoutFullsize2
   , mkLayoutFullsize4
   , mkLayoutVerticalStack
+  , mkLayoutHorizontalStack
   , mkLayoutToggle
   , mkLayoutOverlay
   , mkLayoutPure
@@ -59,34 +61,38 @@ data LayoutSpec a = LayoutSpec { _lView :: View
 data Layout = LayoutFullsize2 (LayoutSpec Int)
             | LayoutFullsize4 (LayoutSpec Int)
             | LayoutVerticalStack (LayoutSpec Int)
+            | LayoutHorizontalStack (LayoutSpec Int)
             | LayoutToggle (LayoutSpec Int) -- TODO better name
             | LayoutOverlay (LayoutSpec Bool)
             | LayoutPure (LayoutSpec ())
 -- TODO instances
 
-mkLayoutFullsize2 a b c     = LayoutFullsize2 $ LayoutSpec a b c
-mkLayoutFullsize4 a b c     = LayoutFullsize4 $ LayoutSpec a b c
-mkLayoutVerticalStack a b c = LayoutVerticalStack $ LayoutSpec a b c
-mkLayoutToggle a b c        = LayoutToggle $ LayoutSpec a b c
-mkLayoutOverlay a b c       = LayoutOverlay $ LayoutSpec a b c
-mkLayoutPure a              = LayoutPure $ LayoutSpec a Nothing Nothing
-mkLayoutPure' a b           = LayoutPure $ LayoutSpec a Nothing (Just b)
+mkLayoutFullsize2 a b c       = LayoutFullsize2 $ LayoutSpec a b c
+mkLayoutFullsize4 a b c       = LayoutFullsize4 $ LayoutSpec a b c
+mkLayoutVerticalStack a b c   = LayoutVerticalStack $ LayoutSpec a b c
+mkLayoutHorizontalStack a b c = LayoutHorizontalStack $ LayoutSpec a b c
+mkLayoutToggle a b c          = LayoutToggle $ LayoutSpec a b c
+mkLayoutOverlay a b c         = LayoutOverlay $ LayoutSpec a b c
+mkLayoutPure a                = LayoutPure $ LayoutSpec a Nothing Nothing
+mkLayoutPure' a b             = LayoutPure $ LayoutSpec a Nothing (Just b)
 
 view :: Layout -> View
-view (LayoutFullsize2 x)     = _lView x
-view (LayoutFullsize4 x)     = _lView x
-view (LayoutVerticalStack x) = _lView x
-view (LayoutToggle x)        = _lView x
-view (LayoutOverlay x)       = _lView x
-view (LayoutPure x)          = _lView x
+view (LayoutFullsize2 x)       = _lView x
+view (LayoutFullsize4 x)       = _lView x
+view (LayoutVerticalStack x)   = _lView x
+view (LayoutHorizontalStack x) = _lView x
+view (LayoutToggle x)          = _lView x
+view (LayoutOverlay x)         = _lView x
+view (LayoutPure x)            = _lView x
 
 name :: Layout -> Maybe ViewName
-name (LayoutFullsize2 x)     = _lName x
-name (LayoutFullsize4 x)     = _lName x
-name (LayoutVerticalStack x) = _lName x
-name (LayoutToggle x)        = _lName x
-name (LayoutOverlay x)       = _lName x
-name (LayoutPure x)          = _lName x
+name (LayoutFullsize2 x)       = _lName x
+name (LayoutFullsize4 x)       = _lName x
+name (LayoutVerticalStack x)   = _lName x
+name (LayoutHorizontalStack x) = _lName x
+name (LayoutToggle x)          = _lName x
+name (LayoutOverlay x)         = _lName x
+name (LayoutPure x)            = _lName x
 
 liftA4 :: Applicative f => (a -> b -> c -> d -> e) -> (f a -> f b -> f c -> f d -> f e)
 liftA4 f a b c d = f <$> a <*> b <*> c <*> d
@@ -159,6 +165,22 @@ verticalStackLayout2 :: Layout -> Layout -> IO Layout
 verticalStackLayout2 l1 l2 = do
   let topV = layoutVStack <$> (view l1) <*> (view l2)
   return $ mkLayoutVerticalStack topV Nothing Nothing
+
+--------------------------------------------------------------------------------
+
+layoutHStack l1 l2 = panel' . row $
+  [ col1 [l1]
+  , col2 [l2]
+  ]
+  where
+    row x  = E.div [A.class_ "row"] x
+    col1 x = E.div [A.class_ "col-xs-2"] x
+    col2 x = E.div [A.class_ "col-xs-10"] x
+
+horizontalStackLayout2 :: Layout -> Layout -> IO Layout
+horizontalStackLayout2 l1 l2 = do
+  let topV = layoutHStack <$> (view l1) <*> (view l2)
+  return $ mkLayoutHorizontalStack topV Nothing Nothing
 
 --------------------------------------------------------------------------------
 

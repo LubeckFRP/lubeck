@@ -29,6 +29,7 @@ import qualified BD.Data.Image                  as Im
 
 import           BDPlatform.Types
 import           Components.BusyIndicator       (BusyCmd (..))
+import           Components.Layout
 
 import           BDPlatform.Pages.Manage.ImageLibrary (imageLibrary)
 import           BDPlatform.HTMLCombinators
@@ -43,8 +44,8 @@ indexW sink action = mconcat
       , button "Predict for Ad"        (action ~== PredictForAd)       [Ev.click $ \e -> sink PredictForAd] ]
   ]
 
-layout action toolbar libview =
-  contentPanel $ mconcat [ toolbar, body, libview ]
+layout action toolbar =
+  contentPanel $ mconcat [ toolbar, body ]
   where
     body = case action of
              Just PredictForPagePost -> E.text "Predict for Post"
@@ -66,6 +67,9 @@ manageIndexPage busySink notifSink ipcSink ipcEvents userE = do
 
   let toolbarView                    = fmap (indexW actionsSink) actionsS
 
-  let view                           = layout <$> actionsS <*> toolbarView <*> imageLibView
+  let toolbarGroupView               = layout <$> actionsS <*> toolbarView
 
-  return (view, imsB, imlibKbdSink)
+  bodyL             <- horizontalStackLayout2 (mkLayoutPure (pure $ E.text "hello")) (mkLayoutPure imageLibView)
+  compositeL        <- verticalStackLayout2 (mkLayoutPure toolbarGroupView) bodyL
+
+  return (view compositeL, imsB, imlibKbdSink)
