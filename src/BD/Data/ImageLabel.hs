@@ -55,3 +55,10 @@ getRandomLabel api = first ApiError <$> getAPIEither api "label-refiner/labels/r
 getNimagesWithLabel :: API -> Int -> Label -> IO (Either AppError [Image])
 getNimagesWithLabel api n label = liftA (first ApiError) $
   getAPIEither api ("label-refiner/images/"<>showJS (id label)<>"/"<>showJS n)
+
+getRandomLabel' :: API -> IO Label
+getRandomLabel' api = unsafeGetAPI api "label-refiner/labels/random"
+
+getNimagesWithLabel' :: API -> Int -> Label -> IO [Image]
+getNimagesWithLabel' api n label =
+  unsafeGetAPI api ("label-refiner/images/"<>showJS (id label)<>"/"<>showJS n)

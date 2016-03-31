@@ -44,14 +44,11 @@ import           BD.Data.ImageLabel
 
 type ImageGrid = [(Image,Bool)]
 
-getImages :: JSString -> IO (Either AppError [Image])
-getImages path = first ApiError <$> getAPIEither testAPI "label-refiner/images/test"
-
-render :: Html -> Html -> Html
-render prompt imageGrid = E.div
+render :: Html -> Html -> Html -> Html
+render prompt imageGrid submitBtn = E.div
   [ A.class_ "container"
   , A.style "width: 1000px; margin-left: auto; margin-right: auto" ]
-  [ prompt, imageGrid ]
+  [ prompt, imageGrid, submitBtn ]
 
 chunksOf :: Int -> ImageGrid -> [ImageGrid]
 chunksOf _ [] = []
@@ -61,37 +58,38 @@ chunksOf n xs = front : chunksOf n back
     (front,back) = splitAt n xs
 
 imgGridW :: Widget' ImageGrid
-imgGridW sink imgs =
+imgGridW actionSink imgs =
     E.div
       [ A.class_ "row" ] $
-      map (E.div [ A.class_ "row" ] . imgRowW sink) $ chunksOf 3 imgs
-
-imgRowW :: Widget' ImageGrid
-imgRowW sink imgs = E.div
-    map (imgCell imgs sink) imgs
+      map (imgRow imgs actionSink) $ chunksOf 3 imgs
   where
+    imgRow :: ImageGrid -> Widget' ImageGrid
+    imgRow allImgs actionSink imgs =
+        E.div
+          [ A.class_ "row" ] $
+          map (imgCell allImgs actionSink) imgs
+
     imgCell :: ImageGrid ->  Widget (Image, Bool) ImageGrid
-    imgCell imgs actionsSink imgAndState = E.div
-      [ A.class_ "col-md-4 thumb"]
-      [ E.a [ A.class_ "thumbnail"]
-	    [ imgWithAttrs [] (contramapSink (`updateImage` imgs) actionsSink) imgAndState ]
-      ]
-
-imgWithAttrs :: [E.Property] -> Widget' (Image, Bool)
-imgWithAttrs attrs actionSink (image, state) =
-    E.img
-      ([ A.class_ "img-responsive"
-       , EV.click $ \_ -> actionSink $ highlightImage (image,state)
-       , A.src $ img_url image
-       ] ++ attrs ++ highlightStyle)
-      []
-  where
-    imgOrDefault Nothing = "No URL"
-    imgOrDefault (Just x) = x
-    highlightStyle = [ A.style "outline: 4px solid black;" | state ]
+    imgCell imgs actionSink (image, state) =
+        E.div
+          [ A.class_ "col-md-4"]
+          [ E.a
+              (A.class_ "thumbnail" : clickProp : highlightProp)
+              [ E.img [ A.src (img_url image) , A.class_ "img-responsive center-block" ] [] ]
+          ]
+      where
+        toggleSink = contramapSink (`updateImage` imgs) actionSink
+        clickProp = EV.click $ \_ -> toggleSink $ highlightImage (image,state)
+        highlightProp = [ A.style "outline: 4px solid black;" | state ]
 
 highlightImage :: (Image, Bool) -> (Image,Bool)
 highlightImage = second not
+
+squareClass :: E.Property
+squareClass = A.style $
+  "float:left; position: relative; width: 30%; padding-bottom : 30%;" <>
+  "margin:1.66%; background-position:center center;" <>
+  "background-repeat:no-repeat; background-size:cover;"
 
 updateImage :: (Image,Bool) -> ImageGrid -> ImageGrid
 updateImage img [] = []
@@ -101,20 +99,27 @@ updateImage img (curr:imgs)
 
 promptW :: Widget' Label
 promptW sink (Label id name)  =
-  E.div [ A.class_ "text-center" ]
-        [ E.text $
-            "Select the images that represent the label: " <>
-            pack (T.unpack name)
-        ]
+  E.div
+    [ A.class_ "text-center" ]
+    [ E.h2
+      []
+      [ E.text $
+          "Select the images that represent the label: " <>
+          pack (T.unpack name)
+      ]
+    ]
 
 submitBtnW :: Widget' ()
-submitBtnW = E.div
-  [ A.class_ "offset10 span2" ]
-  [ buttonWidget "Submit" ]
+submitBtnW sink _ =
+  E.div
+    [ A.class_ "row" ]
+    [ E.div
+        [ A.class_ "col-md-2 col-md-offset-10" ]
+        [ buttonWidget "Submit" sink () ]
+    ]
 
+-- Maybe make a function to return a label AND associated images
 main = do
-  -- add button to change label
-  -- change to reactimateIO and make image grid listen to promptW
   randLabel <- getRandomLabel testAPI
   case randLabel of
     Left (ApiError err) -> print err
@@ -124,7 +129,14 @@ main = do
         Left (ApiError err) -> print err
         Right imgs -> do
           let imgStateList = zip imgs $ repeat False
-          (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
-          (imgGridView, imgGridSink) <- componentW imgStateList imgGridW
-          (promptView,_) <- componentR label promptW
-          runAppReactive $ render <$> promptView <*> imgGridView
+
+          (submitS, submitE) <- componentR () submitBtnW
+
+          promptE <- reactimateIOAsync $ fmap (const (getRandomLabel' testAPI)) submitE
+          promptS <- componentListen promptW <$> stepperS label promptE
+
+          getImagesE <- reactimateIOAsync $ fmap (getNimagesWithLabel' testAPI 9) promptE
+          let imgsAndStateE = fmap (\x -> zip x $ repeat False) getImagesE
+          (imgGridS,_) <- componentEvent imgStateList imgGridW imgsAndStateE
+
+          runAppReactive $ render <$> promptS <*> imgGridS <*> submitS
