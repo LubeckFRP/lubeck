@@ -53,6 +53,7 @@ import qualified Data.JSString
 import JavaScript.Web.XMLHttpRequest -- TODO
 import GHCJS.Foreign.QQ (js, jsu, jsu')
 import Data.String (fromString)
+import           System.Random
 
 import BD.Types
 import BDPlatform.Config (xhrWithCredentials)
@@ -85,6 +86,17 @@ internalAPI = API internalApiBaseURL []
 showJS :: Show a => a -> JSString
 showJS = fromString . show
 
+mkAPIpath api path = do
+  g <- newStdGen
+  let salt = fromString $ Prelude.take 20 $ (randomRs ('a', 'z') g)
+  return $ canonicalUrl <> querySep <> salt
+
+  where
+    canonicalUrl = baseURL api <> path
+    querySep     = case Data.JSString.findIndex (== '?') canonicalUrl of
+                     Nothing -> "?"
+                     _       -> "&"
+
 {-|
 Make a GET request into the BD API.
 
@@ -109,7 +121,8 @@ getAccount name = getAPI "\/" <> name <> "\/account"
 -}
 getAPI' :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => API -> JSString -> m a
 getAPI' api path = do
-  eitherResult <- liftIO (try $ xhrByteString request :: IO (Either XHRError (Response ByteString)) )
+  requestURI <- liftIO $ mkAPIpath api path
+  eitherResult <- liftIO (try $ xhrByteString (request requestURI) :: IO (Either XHRError (Response ByteString)) )
   case eitherResult of
     Left s       -> throwError ("getAPI': " <> showJS s)
     Right result -> case contents result of
@@ -118,13 +131,13 @@ getAPI' api path = do
         Nothing -> throwError $ "getAPI': Parse error " <> showJS byteString
         Just x  -> return x
   where
-    request = Request { reqMethod          = GET
-                      , reqURI             = baseURL api <> path
-                      , reqLogin           = Nothing
-                      , reqHeaders         = headers api
-                      , reqWithCredentials = xhrWithCredentials
-                      , reqData            = NoData
-                      }
+    request requestURI = Request { reqMethod          = GET
+                                 , reqURI             = requestURI
+                                 , reqLogin           = Nothing
+                                 , reqHeaders         = headers api
+                                 , reqWithCredentials = xhrWithCredentials
+                                 , reqData            = NoData
+                                 }
 
 {-|
 Same as `getAPI'`, but without the ability to set headers.
@@ -157,8 +170,9 @@ postQuery = postAPI "\/internal\/queries\/"
 -}
 postAPI :: (ToJSON a, FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m) => API -> JSString -> a -> m b
 postAPI api path value = do
+  requestURI <- liftIO $ mkAPIpath api path
   body         <- liftIO $ encodeJSString value
-  eitherResult <- liftIO (try $ xhrByteString (request body) :: IO (Either XHRError (Response ByteString)))
+  eitherResult <- liftIO (try $ xhrByteString (request requestURI body) :: IO (Either XHRError (Response ByteString)))
   case eitherResult of
     Left s       -> throwError ("postAPI: " <> showJS s)
     Right result -> case contents result of
@@ -167,18 +181,19 @@ postAPI api path value = do
         Nothing -> throwError "postAPI: Parse error"
         Just x  -> return x
   where
-    request body = Request { reqMethod          = POST
-                           , reqURI             = baseURL api <> path
-                           , reqLogin           = Nothing
-                           , reqHeaders         = []
-                           , reqWithCredentials = xhrWithCredentials
-                           , reqData            = StringData body
-                           }
+    request requestURI body = Request { reqMethod          = POST
+                                      , reqURI             = requestURI
+                                      , reqLogin           = Nothing
+                                      , reqHeaders         = []
+                                      , reqWithCredentials = xhrWithCredentials
+                                      , reqData            = StringData body
+                                      }
 
 postFileAPI :: (FromJSON b, Monad m, MonadError s m, s ~ JSString, MonadIO m)
             => API -> JSString -> [(JSString, FormDataVal)] -> m b
 postFileAPI api path files = do
-  eitherResult <- liftIO (try $ xhrByteString (request files) :: IO (Either XHRError (Response ByteString)))
+  requestURI <- liftIO $ mkAPIpath api path
+  eitherResult <- liftIO (try $ xhrByteString (request requestURI files) :: IO (Either XHRError (Response ByteString)))
   case eitherResult of
     Left s       -> throwError ("postFileAPI: " <> showJS s)
     Right result -> case contents result of
@@ -187,13 +202,13 @@ postFileAPI api path files = do
         Nothing -> throwError "postFileAPI: Parse error"
         Just x  -> return x
   where
-    request files = Request { reqMethod          = POST
-                            , reqURI             = baseURL api <> path
-                            , reqLogin           = Nothing
-                            , reqHeaders         = []
-                            , reqWithCredentials = xhrWithCredentials
-                            , reqData            = FormData files
-                            }
+    request requestURI files = Request { reqMethod          = POST
+                                       , reqURI             = requestURI
+                                       , reqLogin           = Nothing
+                                       , reqHeaders         = []
+                                       , reqWithCredentials = xhrWithCredentials
+                                       , reqData            = FormData files
+                                       }
 
 
 postFileAPIEither :: FromJSON a => API -> JSString -> [(JSString, FormDataVal)] -> IO (Either JSString a)
@@ -213,7 +228,8 @@ fail with a parse error. Note that most endpoints are wrapped in an 'Envelope'.
 -}
 deleteAPI :: (FromJSON a, Monad m, MonadError s m, s ~ JSString, MonadIO m) => API -> JSString -> m a
 deleteAPI api path = do
-  eitherResult <- liftIO (try $ xhrByteString request :: IO (Either XHRError (Response ByteString)) )
+  requestURI <- liftIO $ mkAPIpath api path
+  eitherResult <- liftIO (try $ xhrByteString (request requestURI) :: IO (Either XHRError (Response ByteString)) )
   case eitherResult of
     Left s       -> throwError ("deleteAPI : " <> showJS s)
     Right result -> case contents result of
@@ -222,14 +238,13 @@ deleteAPI api path = do
         Nothing -> throwError "deleteAPI: Parse error"
         Just x  -> return x
   where
-    request = Request {
-            reqMethod          = DELETE
-          , reqURI             = baseURL api <> path
-          , reqLogin           = Nothing
-          , reqHeaders         = []
-          , reqWithCredentials = xhrWithCredentials
-          , reqData            = NoData
-          }
+    request requestURI = Request { reqMethod          = DELETE
+                                 , reqURI             = requestURI
+                                 , reqLogin           = Nothing
+                                 , reqHeaders         = []
+                                 , reqWithCredentials = xhrWithCredentials
+                                 , reqData            = NoData
+                                 }
 
 {-|
 Same as 'deleteAPI', with the 'MonadError' specialized to 'Either'.

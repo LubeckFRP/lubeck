@@ -29,6 +29,8 @@ module Lubeck.Util
   , contentPanel
   , tableHeaders
   , unselectable
+  -- * Intervals
+  , intervalToOrderings
   -- * Misc
   , jsConfirm
   , which
@@ -60,7 +62,7 @@ import           Lubeck.Html                    (Html)
 import           Lubeck.Types
 import           Prelude                        hiding (div)
 import qualified Prelude
-
+import           Data.Interval                  (Interval, interval, Extended(..), lowerBound, upperBound)
 import           BD.Types
 
 
@@ -192,3 +194,17 @@ newSyncEvent :: IO (Sink a, Events a)
 newSyncEvent = do
   (s,e) <- newEvent
   return (synchronously . s, e)
+
+-- |
+-- Convert an interval to a list of restrictions.
+--  First argument is an arbitrary value of the type.
+intervalToOrderings :: a -> Interval a -> [(Ordering, a)]
+intervalToOrderings arbitrary i = case (a, b) of
+  (NegInf,   PosInf)   -> [] -- full
+  (NegInf,   Finite b) -> [(LT, b)] -- max
+  (Finite a, PosInf)   -> [(GT, a)] -- min
+  (Finite a, Finite b) -> [(GT, a), (LT, b)] -- min,max
+  _                    -> [(GT, arbitrary), (LT, arbitrary)] -- empty
+  where
+    (a, b) = (lowerBound i, upperBound i)
+-- TODO arguaby wrong behavior w.r.t. open/closed

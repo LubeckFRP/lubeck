@@ -164,6 +164,7 @@ interactionW _ interaction =
           , div [ class_ "col-xs-4 col-lg-4" ]
                 [ displayImage image
                 , div [] [ caption ]
+                , div [] [ impact ]
                 ]
           ]
     ]
@@ -184,6 +185,10 @@ interactionW _ interaction =
     caption = case P.description sPost of
       Nothing   -> text ""
       Just desc -> text desc
+
+    impact = case impact_estimate interaction of
+      Nothing -> text "No impact estimate"
+      Just x -> text $ "Impact estimate: "<> fromString (show $ round x)
 
     displayImage :: Maybe Html -> Html
     displayImage Nothing = p [A.class_ "text-center"] [E.text "Post Deleted"]

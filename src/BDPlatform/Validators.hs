@@ -11,6 +11,8 @@ import qualified Data.JSString
 import           Data.Monoid
 import qualified Data.Semigroup
 
+import qualified Network.URI            as NU
+
 import           GHCJS.Types            (JSString)
 import           Lubeck.Util            (showJS)
 
@@ -23,8 +25,17 @@ runValidation4 a b c d = VSuccess
 newtype VError = VError [JSString] deriving (Data.Semigroup.Semigroup)
 data VSuccess = VSuccess
 
+validURL :: JSString -> JSString -> Validation VError VSuccess
+validURL fn s  = case NU.parseURI (Data.JSString.unpack s) of
+  Nothing  -> Failure . VError $ ["\"" <> fn <> "\" must be a valid URI"]
+  Just uri -> if proto == "http:" || proto == "https:"
+                then Success VSuccess
+                else Failure . VError $ ["\"" <> fn <> "\": only http and https protocols allowed"]
+    where
+      proto = Data.JSString.toLower . Data.JSString.pack . NU.uriScheme $ uri
+
 longString :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
-longString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isAlphanum fn s
+longString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isPrintable fn s
 
 passwordString :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
 passwordString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isPrintable fn s

@@ -19,7 +19,7 @@ import Data.Interval (Interval, interval, whole, Extended(..), lowerBound, upper
 import qualified Data.JSString
 
 import BD.Types
-import Lubeck.Util (formatDateFromUTC)
+import Lubeck.Util (formatDateFromUTC, intervalToOrderings)
 
 data Query
   = PostQuery PostQuery
@@ -157,17 +157,3 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
   where
     someDay = ModifiedJulianDay 0
     complexifyInterval z f x = fmap (uncurry f) (intervalToOrderings z x)
-
--- |
--- Convert an interval to a list of restrictions.
---  First argument is an arbitrary value of the type.
-intervalToOrderings :: a -> Interval a -> [(Ordering, a)]
-intervalToOrderings arbitrary i = case (a, b) of
-  (NegInf,   PosInf)   -> [] -- full
-  (NegInf,   Finite b) -> [(LT, b)] -- max
-  (Finite a, PosInf)   -> [(GT, a)] -- min
-  (Finite a, Finite b) -> [(GT, a), (LT, b)] -- min,max
-  _                    -> [(GT, arbitrary), (LT, arbitrary)] -- empty
-  where
-    (a, b) = (lowerBound i, upperBound i)
--- TODO arguaby wrong behavior w.r.t. open/closed

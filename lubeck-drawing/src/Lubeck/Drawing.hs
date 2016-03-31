@@ -845,12 +845,23 @@ instance Monoid TextAnchor where
 
 -- | Text baseline (vertical) alignment.
 --
+-- https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/alignment-baseline
 -- https://www.w3.org/TR/SVG/text.html#AlignmentProperties
+--
+-- TODO rename this type DominantBaseline (that's what it actually generates!)
 data AlignmentBaseline
   = AlignmentBaselineAuto
   | AlignmentBaselineBaseline
+  | AlignmentBaselineBeforeEdge
+  | AlignmentBaselineTextBeforeEdge
   | AlignmentBaselineMiddle
   | AlignmentBaselineCentral
+  | AlignmentBaselineAfterEdge
+  | AlignmentBaselineTextAfterEdge
+  | AlignmentBaselineIdeographic
+  | AlignmentBaselineAlphabetic
+  | AlignmentBaselineHanging
+  | AlignmentBaselineMathematical
   deriving (Eq, Ord, Read, Show)
 
 instance Monoid AlignmentBaseline where
@@ -961,11 +972,18 @@ textWithOptions opts = style allOfThem . Text
       TextAnchorInherit         -> mempty
 
     _alignmentBaseline = case alignmentBaseline opts of
-      AlignmentBaselineAuto     -> mempty
-      AlignmentBaselineBaseline -> styleNamed "alignment-baseline" "baseline"
-      AlignmentBaselineMiddle   -> styleNamed "alignment-baseline" "middle"
-      AlignmentBaselineCentral  -> styleNamed "alignment-baseline" "central"
-
+      AlignmentBaselineAuto           -> mempty
+      AlignmentBaselineBaseline       -> styleNamed "dominant-baseline" "baseline"
+      AlignmentBaselineBeforeEdge     -> styleNamed "dominant-baseline" "before-edge"
+      AlignmentBaselineTextBeforeEdge -> styleNamed "dominant-baseline" "text-before-edge"
+      AlignmentBaselineMiddle         -> styleNamed "dominant-baseline" "middle"
+      AlignmentBaselineCentral        -> styleNamed "dominant-baseline" "central"
+      AlignmentBaselineAfterEdge      -> styleNamed "dominant-baseline" "after-edge"
+      AlignmentBaselineTextAfterEdge  -> styleNamed "dominant-baseline" "text-after-edge"
+      AlignmentBaselineIdeographic    -> styleNamed "dominant-baseline" "ideographic"
+      AlignmentBaselineAlphabetic     -> styleNamed "dominant-baseline" "alphabetic"
+      AlignmentBaselineHanging        -> styleNamed "dominant-baseline" "hanging"
+      AlignmentBaselineMathematical   -> styleNamed "dominant-baseline" "mathematical"
 
 {-| Apply a [Transformation](#Transformation) to an image.
 
