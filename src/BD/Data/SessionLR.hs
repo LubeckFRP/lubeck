@@ -34,11 +34,18 @@ data Session = Session
 instance FromJSON Session 
 
 data SessionPage = SessionPage
-  { label :: IL.Label
+  { time :: UTCTime
+  , label :: IL.Label
   , imgs :: [I.Image]
   } deriving (GHC.Generic, Show, Eq)
 
 instance FromJSON SessionPage
+
+data SessionData = SessionData 
+  { session_data :: [SessionImage] }
+  deriving (GHC.Generic)
+
+instance ToJSON SessionData
 
 data SessionImage = SessionImage
   { session_id :: Int
@@ -49,7 +56,7 @@ data SessionImage = SessionImage
   , time_selected :: Maybe UTCTime
   } deriving (GHC.Generic, Show, Eq)
 
-instance ToJSON SessionPage
+instance ToJSON SessionImage 
 
 initializeSession' :: API -> Int -> IO Session
 initializeSession' api n = 
@@ -58,3 +65,7 @@ initializeSession' api n =
 getSessionPage' :: API -> Int -> IO SessionPage
 getSessionPage' api n =
   unsafeGetAPI api ("label-refiner/session/page/" <> showJS n)
+
+postSessionData :: API -> SessionData -> IO (Either AppError Ok)
+postSessionData api = 
+  fmap (first ApiError) . postAPIEither api "label-refiner/session/data" 
