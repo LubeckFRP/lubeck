@@ -33,6 +33,7 @@ import           Data.Typeable                  (Typeable)
 
 import           Data.Aeson
 import qualified Data.Text as T
+import qualified Data.Map as Map
 
 import           BD.Api
 import           BD.Types
@@ -42,22 +43,16 @@ import           Data.Int
 
 import           BD.Data.ImageLR
 import           BD.Data.ImageLabel
-import           BD.Data.SessionLR 
+import           BD.Data.SessionLR
 
-data SImage = SImage
-  { tselected :: Maybe UTCTime
-  , img :: Image
-  }
+type ImageStates = Map.Map Image UTCTime
 
-type Selected = [SImage]
-type NotSelected = [SImage]
-type Selections = (Selected,NotSelected)
-
-data SessionState = SessionState 
+data SessionState = SessionState
   { images :: [Image]
-  , selections :: Selections
-  , pageRecTime :: UTCTime
-  } 
+  , imageStates :: ImageStates
+  , server_time :: UTCTime
+  , time_rec :: UTCTime
+  }
 
 render :: Html -> Html -> Html -> Html
 render prompt imageGrid submitBtn = E.div
@@ -72,50 +67,41 @@ chunksOf n xs = front : chunksOf n back
   where
     (front,back) = splitAt n xs
 
-imgGridW :: Widget' SessionState 
-imgGridW actionSink s@(SessionState imgs sels _) =
+imgGridW :: Widget' SessionState
+imgGridW actionSink s@(SessionState imgs imgStates _ _) =
     E.div [ A.class_ "row" ] $
       map (\irow -> imgRow irow actionSink s) $ chunksOf 3 imgs
   where
-    imgRow :: [Image] -> Widget' SessionState 
-    imgRow imgs actionSink state =
+    imgRow :: [Image] -> Widget' SessionState
+    imgRow rowImgs actionSink state =
         E.div [ A.class_ "row" ] $
-          map (imgCell toggleSink) imgs 
-      where
-        toggleSink = contramapSink (`toggleImg` state) actionSink
+          map (imgCell actionSink) rowImgs
 
-    imgCell :: Widget SImage 
-    imgCell toggleSink img =
+    imgCell :: Widget Image SessionState
+    imgCell actionSink img =
         E.div [ A.class_ "col-md-4"]
           [ E.a (A.class_ "thumbnail" : clickProp : highlightProp)
-              [ E.img [ A.src (img_url img) , A.class_ "img-responsive center-block" ] 
-                  [] 
+              [ E.img [ A.src (img_url img) , A.class_ "img-responsive center-block" ]
+                  []
               ]
           ]
       where
-        clickProp = EV.click $ \_ -> toggleSink img
-        highlightProp = [A.style "outline: 4px solid black;" | img `elem` fst sels]
+        clickProp = EV.click $ \_ -> do
+            t <- getCurrentTime
+            actionSink (toggleImgState img t s)
+        highlightProp = [A.style "outline: 4px solid black;" | img `Map.member` imgStates]
 
-toggleImg :: SImage -> SessionState -> SessionState  
-toggleImg img (SessionState imgs (sel,nsel) recTime) 
-  | img `elem` sel = SessionState imgs (removeImg img sel, img:nsel)
-  | otherwise = SessionState imgs (img:sel, removeImg img nsel) 
-  where 
-    removeImg :: Image -> [SImage] -> [SImage]
-    removeImg _ [] = []
-    removeImg img (i:imgs)
-      | img == snd i = imgs
-      | otherwise = i : removeImg img imgs
-
-mapSinkWithTime :: (UTCTime -> a -> b) -> Sink b -> Sink a
-mapSinkWithTime = undefined
+toggleImgState :: Image -> UTCTime -> SessionState -> SessionState
+toggleImgState img t s@(SessionState imgs imgStates serverTime recTime)
+    | img `Map.member` imgStates = s { imageStates = Map.delete img imgStates }
+    | otherwise = s { imageStates = Map.insert img t imgStates }
 
 promptW :: Widget' Label
 promptW sink (Label id name)  =
   E.div [ A.class_ "text-center" ]
     [ E.h2 []
-      [ E.text $ 
-          "Select the images that represent the label: " <> pack (T.unpack name) 
+      [ E.text $
+          "Select the images that represent the label: " <> pack (T.unpack name)
       ]
     ]
 
@@ -126,19 +112,23 @@ submitBtnW sink _ =
         [ buttonWidget "Submit" sink () ]
     ]
 
+pageToSessState :: SessionPage -> IO SessionState
+pageToSessState (SessionPage timeSent _ imgs) =
+  SessionState imgs Map.empty timeSent <$> getCurrentTime
+
 main = do
   let nImgsPerPage = 9
   initSession <- initializeSession' testAPI nImgsPerPage
-  let Session sid (SessionPage serverTime initLabel initImgs) = initSession 
-  initState <- SessionState initImgs ([],initImgs) <$> getCurrentTime 
+  let Session sid sp@(SessionPage serverTime initLabel initImgs) = initSession
+  initState <- pageToSessState sp
 
   (submitS, submitE) <- componentR () submitBtnW
   counterS <- accumS 0 (fmap (const (+1)) submitE)
-  
-  newPageE <- reactimateIOAsync $ fmap (const (getSessionPage' testAPI nImgsPerPage)) submitE
-  promptS <- componentListen promptW <$> stepperS initLabel (fmap label newPageE) 
 
-  let newSelectionsE = fmap (\page -> SessionState (imgs page) ([],imgs page)) newPageE 
-  (imgGridS,_) <- componentEvent initState imgGridW newSelectionsE 
-  
+  newPageE <- reactimateIOAsync $ fmap (const (getSessionPage' testAPI nImgsPerPage)) submitE
+  promptS <- componentListen promptW <$> stepperS initLabel (fmap label newPageE)
+
+  newSessionStateE <- reactimateIOAsync $ fmap pageToSessState newPageE
+  (imgGridS,_) <- componentEvent initState imgGridW newSessionStateE
+
   runAppReactive $ render <$> promptS <*> imgGridS <*> submitS
