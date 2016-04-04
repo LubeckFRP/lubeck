@@ -46,7 +46,7 @@ import Linear.V4
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
 import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
-import Lubeck.DV.Styling(withDefaultStyle)
+import Lubeck.DV.Styling(withDefaultStyle, Styled)
 
 
 -- -- TODO to many variants of these
@@ -134,11 +134,11 @@ simpleLinePlot
   -> Int                              -- ^ Number of ticks on X axis.
   -> Int                              -- ^ Number of ticks on Y axis.
   -> [(a,b)]                          -- ^ Data to plot.
-  -> ((Double -> Double, Double -> Double), Drawing)
+  -> ((Double -> Double, Double -> Double), Styled Drawing)
 simpleLinePlot _     _     _   _   _   _   _         _         [] = ((id,id), mempty)
 simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, normB), drawing)
   where
-    drawing = withDefaultStyle $ mconcat
+    drawing = mconcat
       [ lineData points
       , ticks (zip tickOffsetsA (fmap Just tickLabelsA)) (zip tickOffsetsB (fmap Just tickLabelsB))
       , labeledAxis "" ""
@@ -197,17 +197,17 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
 
 
 
-simpleTimeSeries :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Drawing
+simpleTimeSeries :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Styled Drawing
 simpleTimeSeries s f g = snd . simpleLinePlot
   (replaceStr "T" "  " . takeStr 16 . formatDateAndTimeFromUTC) s
   utcTimeToApproxReal realToApproxUTCTime
   f g
   10 10
 
-simpleTimeSeriesWithOverlay :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Drawing
+simpleTimeSeriesWithOverlay :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Styled Drawing
 simpleTimeSeriesWithOverlay s f g times dat = plot2 <> plot1
   where
-    plot2 = withDefaultStyle $ scatterDataX $ fmap ((\t -> P $ V2 t 0.5) . normT . utcTimeToApproxReal) times
+    plot2 = scatterDataX $ fmap ((\t -> P $ V2 t 0.5) . normT . utcTimeToApproxReal) times
     ((normT, _), plot1) = simpleLinePlot
       (replaceStr "T" "  " . takeStr 16 . formatDateAndTimeFromUTC) s
       utcTimeToApproxReal realToApproxUTCTime

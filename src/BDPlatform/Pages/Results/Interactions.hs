@@ -7,7 +7,8 @@ import qualified Prelude
 
 import           Control.Applicative
 import           Control.Concurrent             (forkIO, threadDelay)
-import           Control.Lens                   (over, set)
+import           Control.Lens                   (over, set, _1, _2)
+import           Control.Lens.Operators
 import           Control.Lens.TH                (makeLenses)
 import           Control.Monad                  (forM_, forever, unless)
 import           Control.Monad.Except           (runExceptT)
@@ -42,6 +43,7 @@ import           Lubeck.App                     (Html, runAppReactive)
 import qualified Lubeck.Drawing                 as Drawing
 import           Lubeck.DV.SimpleNormalized     (simpleTimeSeries,
                                                  simpleTimeSeriesWithOverlay)
+import           Lubeck.DV.Styling              (getStyled, tickTextTurn, tickTextAnchor)
 import           Lubeck.Forms
 import           Lubeck.Forms.Button            (buttonWidget,
                                                  multiButtonWidget)
@@ -107,8 +109,6 @@ loadInteractionsW sink (x,y) =
     ]
 
   where
-    _1 f (x,y) = (,y) <$> f x
-    _2 f (x,y) = (x,) <$> f y
     emptyToN "" = Nothing
     emptyToN xs = Just xs
     nToEmpty Nothing   = ""
@@ -202,7 +202,14 @@ interactionW _ interaction =
             then Nothing
             else Just $ img [src (sPost .: P.url), width 200] []
 
-    render     = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.V2 75 105)
+    -- render :: ()
+    render  = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.V2 75 105) . (`getStyled` plotStyling)
+    plotStyling = id
+      $ (tickTextTurn._1)   .~ 1
+      $ (tickTextAnchor._1) .~ Drawing.TextAnchorEnd
+
+      $ (tickTextTurn._2)   .~ (Drawing.turn / 3)
+      $ mempty
     renderOpts = mempty
       { Drawing.dimensions      = Drawing.P (Drawing.V2 600 600)
       , Drawing.originPlacement = Drawing.BottomLeft }

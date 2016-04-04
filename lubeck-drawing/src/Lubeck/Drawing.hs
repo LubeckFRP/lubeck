@@ -304,7 +304,10 @@ betweenPoints xs = case xs of
 --
 -- To convert to radians or degrees, use
 newtype Angle n = Radians n
-  deriving (Functor, Enum, Eq, Ord, Num, Fractional, Show) -- TODO bad show
+  deriving (Functor, Enum, Eq, Ord, Num, Fractional, Floating)
+
+instance Show a => Show (Angle a) where
+  show (Radians x) = show x
 
 instance Applicative Angle where
   pure = Radians
