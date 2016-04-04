@@ -565,7 +565,7 @@ ticksNoFilter xt yt = do
             -- Outside quadrant tick
             , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
             -- Text
-            , maybe mempty id $ fmap (\str -> translateY (tl * (-1.5)) .rotate (turn*xTickTurn) $ textX style str) $ str
+            , maybe mempty id $ fmap (\str -> translateY (tl * (-1.5)) . rotate (turn*xTickTurn) $ textX style str) $ str
             ]
   let yTicks = mconcat $ flip fmap yt $
           \(pos,str) -> translateY (pos * y) $ mconcat
@@ -575,7 +575,7 @@ ticksNoFilter xt yt = do
             -- Outside quadrant tick
             , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
             -- Text
-            , maybe mempty id $ fmap (\str -> translateX (tl * (-1.5)) .rotate (turn*yTickTurn) $ textY style str) $ str
+            , maybe mempty id $ fmap (\str -> translateX (tl * (-1.5)) . rotate (turn*yTickTurn) $ textY style str) $ str
             ]
   return $ mconcat [xTicks, yTicks]
   where
