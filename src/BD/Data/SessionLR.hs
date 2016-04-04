@@ -24,21 +24,28 @@ import           Lubeck.Util      (showJS)
 import           BD.Types hiding  (Text)
 
 import qualified BD.Data.ImageLR as I
-import qualified BD.Data.ImageLabel as IL  
+import qualified BD.Data.ImageLabel as IL
 
 data Session = Session
   { sid :: Int
   , content :: SessionPage
   } deriving (GHC.Generic, Show, Eq)
 
-instance FromJSON Session 
+instance FromJSON Session
 
 data SessionPage = SessionPage
-  { label :: IL.Label
+  { time_sent :: UTCTime
+  , label :: IL.Label
   , imgs :: [I.Image]
   } deriving (GHC.Generic, Show, Eq)
 
 instance FromJSON SessionPage
+
+data SessionData = SessionData
+  { session_data :: [SessionImage] }
+  deriving (GHC.Generic)
+
+instance ToJSON SessionData
 
 data SessionImage = SessionImage
   { session_id :: Int
@@ -49,12 +56,16 @@ data SessionImage = SessionImage
   , time_selected :: Maybe UTCTime
   } deriving (GHC.Generic, Show, Eq)
 
-instance ToJSON SessionPage
+instance ToJSON SessionImage
 
 initializeSession' :: API -> Int -> IO Session
-initializeSession' api n = 
-  unsafeGetAPI api ("label-refiner/session/new/" <> showJS n) 
+initializeSession' api n =
+  unsafeGetAPI api ("label-refiner/session/new/" <> showJS n)
 
 getSessionPage' :: API -> Int -> IO SessionPage
 getSessionPage' api n =
   unsafeGetAPI api ("label-refiner/session/page/" <> showJS n)
+
+postSessionData :: API -> SessionData -> IO (Either AppError Ok)
+postSessionData api =
+  fmap (first ApiError) . postAPIEither api "label-refiner/session/data"
