@@ -304,6 +304,17 @@ data Aesthetic a = Aesthetic
       --   See also 'scaleBaseName'.
   }
 
+
+data Plot = Plot
+  { mappedData        :: [Map Key Double]
+  , mappedSpecialData :: [Map Key Special]
+  , bounds            :: Map Key (Double, Double)
+  , guides            :: Map Key [(Double, Str)]
+  , labels            :: Map Key [(Double, Double, Str)]
+  , axisNames         :: [Str]
+  }
+
+
 {-|
   - 'mempty' does not map anything.
   - 'mappend' interleaves bindings (left-biased).
@@ -759,12 +770,12 @@ Assuming (Ord k) =>
 
 [a]     ~ (Int, Int -> a)
 Map k v ~ ([k], k -> Maybe v)
-Map k v ~ ([Int], Int -> k, k -> v)  ~  ([Int], Int -> (k, v))  ~ [(k, v)]
+Map k v ~ (Int, Int -> k, Int -> v)  ~  (Int, Int -> (k, v))  ~ [(k, v)]
 
 
 [Map k v]
-  ~ ([Int], Int -> Map k v)
-  ~ ([Int], Int -> ([k], k -> Maybe v))
+  ~ (Int, Int -> Map k v)
+  ~ (Int, Int -> ([k], k -> Maybe v))
 
 
 INTERESTINGLY
