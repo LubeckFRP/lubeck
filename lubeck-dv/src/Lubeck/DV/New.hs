@@ -305,23 +305,14 @@ data Aesthetic a = Aesthetic
   }
 
 
-data Plot = Plot
-  { mappedData        :: [Map Key Double]
-  , mappedSpecialData :: [Map Key Special]
-  , bounds            :: Map Key (Double, Double)
-  , guides            :: Map Key [(Double, Str)]
-  , labels            :: Map Key [(Double, Double, Str)]
-  , axisNames         :: [Str]
-  }
-
-
 {-|
   - 'mempty' does not map anything.
   - 'mappend' interleaves bindings (left-biased).
 -}
 instance Monoid (Aesthetic a) where
   mempty = Aesthetic mempty mempty mempty mempty mempty mempty
-  mappend (Aesthetic a1 a2 a3 a4 a5 a6) (Aesthetic b1 b2 b3 b4 b5 b6) = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)  (a6 <> b6)
+  mappend (Aesthetic a1 a2 a3 a4 a5 a6) (Aesthetic b1 b2 b3 b4 b5 b6)
+    = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)  (a6 <> b6)
 
 -- | Make a custom aesthetic attribute.
 customAesthetic :: HasScale a => Key -> Aesthetic a
@@ -368,6 +359,22 @@ instance Contravariant Aesthetic where
       (\xs   -> i  (fmap f xs))
       (\xs   -> j  (fmap f xs))
       (\xs   -> k  (fmap f xs))
+
+
+data Plot = Plot
+  { mappedData        :: [Map Key Double]
+  , mappedSpecialData :: [Map Key Special]
+  , bounds            :: Map Key (Double, Double)
+  , guides            :: Map Key [(Double, Str)]
+  , labels            :: Map Key [(Double, Double, Str)]
+  , axisNames         :: [Str]
+  }
+
+instance Monoid Plot where
+  mempty = Plot mempty mempty mempty mempty mempty mempty
+  mappend (Plot a1 a2 a3 a4 a5 a6) (Plot b1 b2 b3 b4 b5 b6)
+    = Plot (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)  (a6 <> b6)
+
 
 x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
 
