@@ -205,10 +205,9 @@ interactionW _ interaction =
     -- render :: ()
     render  = Drawing.toSvg renderOpts . Drawing.scale 1.4 . Drawing.translate (Drawing.V2 75 105) . (`getStyled` plotStyling)
     plotStyling = id
-      $ (tickTextTurn._1)   .~ 1
+      $ (tickTextTurn._1)   .~ 0.25
       $ (tickTextAnchor._1) .~ Drawing.TextAnchorEnd
 
-      $ (tickTextTurn._2)   .~ (Drawing.turn / 3)
       $ mempty
     renderOpts = mempty
       { Drawing.dimensions      = Drawing.P (Drawing.V2 600 600)
