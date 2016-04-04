@@ -40,7 +40,7 @@ import           Lubeck.Util                    (showIntegerWithThousandSeparato
 import           BD.Api
 import           BD.Data.Account                (Account)
 import qualified BD.Data.Account                as Ac
-import qualified BD.Data.Group                    as DG
+import qualified BD.Data.Group                  as DG
 import           BD.Query.AccountQuery
 import qualified BD.Query.AccountQuery          as AQ
 import           BD.Types
@@ -53,6 +53,7 @@ import           Components.Grid
 import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2)
 
 import           BDPlatform.Pages.Accounts.Common
+import           BDPlatform.Pages.Accounts.Types
 
 
 data SearchResults = Pending | Empty | Found [Ac.Account]
@@ -193,23 +194,21 @@ doAddToGroup _ selectionSnapshotS {-busySink notifSink-} Nothing = return ()
 doAddToGroup popupSink selectionSnapshotS {-busySink notifSink-} (Just groupName) = do
   x <- pollBehavior (current selectionSnapshotS)
   let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) x
-      as  = fmap Ac.id (Set.toList sel)
+  let as  = fmap Ac.id (Set.toList sel)
   r <- DG.addAccountsToGroup groupName as
   -- when no errors r -- ?
   popupSink ATGHidden
   return ()
 
 
-gridAndAddToGroupComp :: Layout -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
-gridAndAddToGroupComp gridL selectionSnapshotS = do
+gridAndAddToGroupComp :: Layout -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> Ctx -> IO Layout
+gridAndAddToGroupComp gridL selectionSnapshotS ctx = do
   (popupSink, popupEvnt) <- newSyncEventOf (undefined :: AddToGroupViewMode)
   popupSig               <- stepperS ATGHidden popupEvnt -- TODO helper newSyncSignalOf
 
-  (groupsListSink, groupsListE) <- newSyncEventOf (undefined :: DG.GroupsNamesList)
-  void . forkIO $ loadGroupsNames emptySink emptySink groupsListSink
-  groupsListB <- stepper [] (fmap id groupsListE)
+  let groupsListS = fmap (fromMaybe []) (_groupsList ctx)
 
-  (popupV, groupNameSelected) <- formWithValidationComponentExtra1 groupsListB
+  (popupV, groupNameSelected) <- formWithValidationComponentExtra1 (current groupsListS)
                                                                    validateGroupname
                                                                    Nothing
                                                                    selectCreateGroupW -- :: IO (Signal Html, Events DG.GroupName)
@@ -218,7 +217,7 @@ gridAndAddToGroupComp gridL selectionSnapshotS = do
 
   subscribeEvent groupNameSelected $ \x -> void . forkIO $ do
     doAddToGroup popupSink selectionSnapshotS x
-    loadGroupsNames emptySink emptySink groupsListSink -- TODO better reloading logic
+    _pageIPC ctx $ ReloadGroupsList
   subscribeEvent (FRP.filter (== Nothing) groupNameSelected) $ const . popupSink $ ATGHidden
 
   let popupL       = mkLayoutPure popupV
@@ -248,14 +247,14 @@ gridAndAddToGroupComp gridL selectionSnapshotS = do
                , x ]
 
 
-gridOrDetailsComp :: Layout -> Events ResultsViewMode -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
-gridOrDetailsComp gridL gridItemsE selectionSnapshotS = do
+gridOrDetailsComp :: Layout -> Events ResultsViewMode -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> Ctx -> IO Layout
+gridOrDetailsComp gridL gridItemsE selectionSnapshotS ctx = do
   (rvmSink, rvmEvts) <- newSyncEventOf (undefined :: ResultsViewMode)
   rvmSig <- stepperS ResultsGrid rvmEvts -- TODO helper newSyncSignalOf
 
   subscribeEvent gridItemsE rvmSink
 
-  gridAndPopupL <- gridAndAddToGroupComp gridL selectionSnapshotS
+  gridAndPopupL <- gridAndAddToGroupComp gridL selectionSnapshotS ctx
 
   let detailsV = fmap (detailsW rvmSink) rvmSig
   let detailsL = mkLayoutPure detailsV
@@ -267,8 +266,8 @@ gridOrDetailsComp gridL gridItemsE selectionSnapshotS = do
     f ResultsGrid        = 0
     f (AccountDetails _) = 1
 
-resultsOrNoneComp :: Signal SearchResults -> IO Layout
-resultsOrNoneComp results = do
+resultsOrNoneComp :: Signal SearchResults -> Ctx -> IO Layout
+resultsOrNoneComp results ctx = do
   (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent gridOptions initialItems itemMarkup
 
   subscribeEvent (updates results) $ gridCmdsSink . searchResultsToGridCmd
@@ -276,7 +275,7 @@ resultsOrNoneComp results = do
 
   let emptyL = mkLayoutPure (pure mempty)
   let gridL  = mkLayoutPure gridView
-  gridL'     <- gridOrDetailsComp gridL gridItemsE selectionSnapshotS
+  gridL'     <- gridOrDetailsComp gridL gridItemsE selectionSnapshotS ctx
   resL       <- toggleLayout2 (fmap f results) gridL' emptyL
 
   return resL
@@ -293,19 +292,27 @@ resultsOrNoneComp results = do
     searchResultsToGridCmd Empty      = Replace []
     searchResultsToGridCmd (Found xs) = Replace xs
 
+data Ctx = Ctx
+  { _busySink   :: Sink BusyCmd
+  , _notifSink  :: Sink (Maybe Notification)
+  , _pageIPC    :: Sink AccountsPageAction
+  , _groupsList :: Signal (Maybe DG.GroupsNamesList)
+  }
 
 accountSearch :: Sink BusyCmd
               -> Sink (Maybe Notification)
               -> Sink IPCMessage
+              -> Sink AccountsPageAction
               -> Behavior (Maybe JSString)
+              -> Signal (Maybe DG.GroupsNamesList)
               -> Signal Nav
               -> IO (Signal Html)
-accountSearch busySink notifSink ipcSink mUserNameB navS = do
+accountSearch busySink notifSink ipcSink pageIPCSink mUserNameB groupsListS navS = do
   (srchResSink, srchResEvents) <- newSyncEventOf (undefined    :: SearchResults)
   results                      <- stepperS Empty srchResEvents :: IO (Signal SearchResults)
 
   (srchFormL, searchRequested) <- searchFormComp
-  resultsL                     <- resultsOrNoneComp results
+  resultsL                     <- resultsOrNoneComp results (Ctx busySink notifSink pageIPCSink groupsListS)
 
   subscribeEvent searchRequested $ void . forkIO . doSearchRequest busySink notifSink srchResSink
 

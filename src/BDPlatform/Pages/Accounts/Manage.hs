@@ -48,6 +48,7 @@ import           Components.BusyIndicator         (BusyCmd (..), withBusy,
 import           Components.Grid
 
 import           BDPlatform.Pages.Accounts.Common
+import           BDPlatform.Pages.Accounts.Types
 
 data Action = LoadGroup DG.GroupName | ActionNoop | CreateNewGroup | DeleteGroup DG.Group
 
@@ -98,19 +99,18 @@ handleActions busySink notifSink gridCmdsSink act = case act of
 manageAccouns :: Sink BusyCmd
               -> Sink (Maybe Notification)
               -> Sink IPCMessage
+              -> Sink AccountsPageAction
               -> Behavior (Maybe JSString)
+              -> Signal (Maybe DG.GroupsNamesList)
               -> Signal Nav
               -> IO (Signal Html)
-manageAccouns busySink notifSink ipcSink mUserNameB navS = do
-  (groupsListSink, groupsListE)                                <- newSyncEventOf (undefined :: DG.GroupsNamesList)
+manageAccouns busySink notifSink ipcSink pageIPCSink mUserNameB groupsListS navS = do
   (actionsSink, actionsE)                                      <- newSyncEventOf (undefined :: Action)
 
   (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent (Just gridOptions) [] itemMarkup
 
   subscribeEvent actionsE $ void . forkIO . handleActions busySink notifSink gridCmdsSink
-  void . forkIO $ loadGroupsNames busySink notifSink groupsListSink
 
-  groupsListS                                                  <- stepperS Nothing (fmap Just groupsListE)
   let headerView                                               = fmap (headerW actionsSink) groupsListS
   let view                                                     = layout <$> headerView <*> gridView
 
