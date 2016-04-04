@@ -9,6 +9,7 @@ import qualified Prelude
 import           Control.Applicative
 import           Control.Monad
 import           Data.Monoid                    (mconcat, (<>))
+import           Data.Time
 
 import           Data.JSString                  (JSString, pack, unpack)
 import qualified GHC.Generics                   as GHC
@@ -32,6 +33,7 @@ import           Data.Typeable                  (Typeable)
 
 import           Data.Aeson
 import qualified Data.Text as T
+import qualified Data.Map as Map
 
 import           BD.Api
 import           BD.Types
@@ -41,68 +43,92 @@ import           Data.Int
 
 import           BD.Data.ImageLR
 import           BD.Data.ImageLabel
+import           BD.Data.SessionLR
 
-type ImageGrid = [(Image,Bool)]
+type ImageStates = Map.Map Image UTCTime
 
-getImages :: JSString -> IO (Either AppError [Image])
-getImages path = first ApiError <$> getAPIEither testAPI "label-refiner/images/test"
+data SessionState = SessionState
+  { images :: [Image]
+  , imageStates :: ImageStates
+  , server_time :: UTCTime
+  , time_rec :: UTCTime
+  }
 
-render :: Html -> Html -> Html
-render prompt imageGrid = E.div
-  [ A.style "width: 1000px; margin-left: auto; margin-right: auto" ]
-  [ prompt, imageGrid ]
+render :: Html -> Html -> Html -> Html
+render prompt imageGrid submitBtn = E.div
+  [ A.class_ "container"
+  , A.style "width: 1000px; margin-left: auto; margin-right: auto" ]
+  [ prompt, imageGrid, submitBtn ]
 
-imgGridW :: Widget' ImageGrid
-imgGridW sink imgs =
-    E.div [ A.class_ "container" ]
-      [ E.div
-        [ A.class_ "row" ] $
-        map (imgCell imgs sink) imgs
-      ]
+chunksOf :: Int -> [a] -> [[a]]
+chunksOf _ [] = []
+chunksOf 0 xs = [xs]
+chunksOf n xs = front : chunksOf n back
   where
-    imgCell :: ImageGrid ->  Widget (Image, Bool) ImageGrid
-    imgCell imgs actionsSink imgAndState = E.div
-      [ A.class_ "col-lg-3 col-md-4 col-xs-6 thumb"]
-      [ E.a [ A.class_ "thumbnail"]
-	    [ imgWithAttrs [] (contramapSink (`updateImage` imgs) actionsSink) imgAndState ]
-      ]
+    (front,back) = splitAt n xs
 
-imgWithAttrs :: [E.Property] -> Widget' (Image, Bool)
-imgWithAttrs attrs actionSink (image, state) =
-    E.img
-      ([ EV.click $ \_ -> actionSink $ highlightImage (image,state)
-       , A.src $ filename image] ++
-         attrs ++ highlightStyle)
-      []
+imgGridW :: Widget' SessionState
+imgGridW actionSink s@(SessionState imgs imgStates _ _) =
+    E.div [ A.class_ "row" ] $
+      map (\irow -> imgRow irow actionSink s) $ chunksOf 3 imgs
   where
-    imgOrDefault Nothing = "No URL"
-    imgOrDefault (Just x) = x
-    highlightStyle = [ A.style "outline: 4px solid black;" | state ]
+    imgRow :: [Image] -> Widget' SessionState
+    imgRow rowImgs actionSink state =
+        E.div [ A.class_ "row" ] $
+          map (imgCell actionSink) rowImgs
 
-highlightImage :: (Image, Bool) -> (Image,Bool)
-highlightImage = second not
+    imgCell :: Widget Image SessionState
+    imgCell actionSink img =
+        E.div [ A.class_ "col-md-4"]
+          [ E.a (A.class_ "thumbnail" : clickProp : highlightProp)
+              [ E.img [ A.src (img_url img) , A.class_ "img-responsive center-block" ]
+                  []
+              ]
+          ]
+      where
+        clickProp = EV.click $ \_ -> do
+            t <- getCurrentTime
+            actionSink (toggleImgState img t s)
+        highlightProp = [A.style "outline: 4px solid black;" | img `Map.member` imgStates]
 
-updateImage :: (Image,Bool) -> ImageGrid -> ImageGrid
-updateImage img [] = []
-updateImage img (curr:imgs)
-  | fst img == fst curr = img : imgs
-  | otherwise = curr : updateImage img imgs
+toggleImgState :: Image -> UTCTime -> SessionState -> SessionState
+toggleImgState img t s@(SessionState imgs imgStates serverTime recTime)
+    | img `Map.member` imgStates = s { imageStates = Map.delete img imgStates }
+    | otherwise = s { imageStates = Map.insert img t imgStates }
 
 promptW :: Widget' Label
 promptW sink (Label id name)  =
-  E.div [ A.class_ "text-center" ] [ E.text . pack $ T.unpack name ]
+  E.div [ A.class_ "text-center" ]
+    [ E.h2 []
+      [ E.text $
+          "Select the images that represent the label: " <> pack (T.unpack name)
+      ]
+    ]
+
+submitBtnW :: Widget' ()
+submitBtnW sink _ =
+  E.div [ A.class_ "row" ]
+    [ E.div [ A.class_ "col-md-2 col-md-offset-10" ]
+        [ buttonWidget "Submit" sink () ]
+    ]
+
+pageToSessState :: SessionPage -> IO SessionState
+pageToSessState (SessionPage timeSent _ imgs) =
+  SessionState imgs Map.empty timeSent <$> getCurrentTime
 
 main = do
-  -- call getRandomLabel
-  randLabel <- getRandomLabel testAPI
-  testImages <- getImages (pack "")
-  case randLabel of
-    Left (ApiError err) -> print err
-    Right label -> case testImages of
-      Left (ApiError err) -> print err
-      Right imgs -> do
-        let imgStateList = zip imgs $ repeat False
-        (actionSink,_) <- newEvent :: IO (Sink ImageGrid, Events ImageGrid)
-        (imgGridView, imgGridSink) <- componentW imgStateList imgGridW
-        (promptView,_) <- componentR label promptW
-        runAppReactive $ render <$> promptView <*> imgGridView
+  let nImgsPerPage = 9
+  initSession <- initializeSession' testAPI nImgsPerPage
+  let Session sid sp@(SessionPage serverTime initLabel initImgs) = initSession
+  initState <- pageToSessState sp
+
+  (submitS, submitE) <- componentR () submitBtnW
+  counterS <- accumS 0 (fmap (const (+1)) submitE)
+
+  newPageE <- reactimateIOAsync $ fmap (const (getSessionPage' testAPI nImgsPerPage)) submitE
+  promptS <- componentListen promptW <$> stepperS initLabel (fmap label newPageE)
+
+  newSessionStateE <- reactimateIOAsync $ fmap pageToSessState newPageE
+  (imgGridS,_) <- componentEvent initState imgGridW newSessionStateE
+
+  runAppReactive $ render <$> promptS <*> imgGridS <*> submitS

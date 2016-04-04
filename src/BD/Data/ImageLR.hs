@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module BD.Data.ImageLR where
@@ -26,9 +25,10 @@ data Image = Image
  { id :: Int
  , img_url :: Text
  , filename :: Text
- , img_src :: Text
+ , img_src :: Int
  , bd_shared :: Bool
  } deriving (GHC.Generic, Show, Eq, Ord)
 
 instance ToJSON Image
 instance FromJSON Image
+

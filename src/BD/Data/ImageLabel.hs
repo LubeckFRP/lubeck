@@ -4,30 +4,35 @@
 
 module BD.Data.ImageLabel where
 
-import           Control.Monad
+import           Control.Applicative
+
 import           Data.Aeson
 import qualified Data.Aeson.Types
 import           Data.Data
 import           Data.Monoid
+import           Data.JSString    (JSString, pack)
 import           Data.String      (fromString)
 import           Data.Time.Clock  (UTCTime)
+import           Data.Bifunctor   (first)
+import           Data.Text        (Text, unpack)
+import           Prelude hiding   (id)
+
 import qualified GHC.Generics     as GHC
 
-import           GHCJS.Types      (JSString)
-
+import           Lubeck.Util      (showJS)
 import           BD.Api
-import           BD.Types hiding (Text)
+import           BD.Types hiding  (Text)
 
-import           Data.Bifunctor   (first)
-import           Data.Text        (Text)
+import           BD.Data.ImageLR  (Image)
+
 
 data Label = Label
  { id :: Int
  , name :: Text
  } deriving (GHC.Generic, Show, Eq)
 
-instance FromJSON        Label
-instance ToJSON          Label
+instance FromJSON Label
+instance ToJSON   Label
 
 data ImageLabel = ImageLabel
  { image_id :: Int
@@ -39,6 +44,19 @@ data ImageLabel = ImageLabel
 instance FromJSON ImageLabel
 instance ToJSON ImageLabel
 
+text2JS :: Text -> JSString
+text2JS = pack . unpack
+
 getRandomLabel :: API -> IO (Either AppError Label)
 getRandomLabel api = first ApiError <$> getAPIEither api "label-refiner/labels/random"
 
+getNimagesWithLabel :: API -> Int -> Label -> IO (Either AppError [Image])
+getNimagesWithLabel api n label = liftA (first ApiError) $
+  getAPIEither api ("label-refiner/images/"<>showJS (id label)<>"/"<>showJS n)
+
+getRandomLabel' :: API -> IO Label
+getRandomLabel' api = unsafeGetAPI api "label-refiner/labels/random"
+
+getNimagesWithLabel' :: API -> Int -> Label -> IO [Image]
+getNimagesWithLabel' api n label =
+  unsafeGetAPI api ("label-refiner/images/"<>showJS (id label)<>"/"<>showJS n)

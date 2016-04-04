@@ -444,3 +444,6 @@ div, h1, h2, img, p, span {
   left       : 175px;
   padding    : 0px;
 }
+.btn-link:focus, .btn-link:active {
+  outline: 0;
+}

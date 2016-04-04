@@ -44,6 +44,7 @@ library
                      , BD.Data.Image
                      , BD.Data.ImageLR
                      , BD.Data.ImageLabel
+                     , BD.Data.SessionLR
                      , BD.Data.Count
                      , BD.Data.Interaction
                      , BD.Data.SearchPost
@@ -274,6 +275,7 @@ executable bd-label-refiner
                      , lens
                      , aeson
                      , text
+                     , containers
                      , ghcjs-base
   default-language:    Haskell2010
 
