@@ -1185,32 +1185,33 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
   where
     -- mappedAndScaledDataWSpecial, guidesM, axesNames
 
-    axesNames = axesNames1 ++ repeat ""                       :: [Str]
+    axesNames = axesNames1 ++ repeat ""                              :: [Str]
 
-    aes                 = mconcat aess
-    boundsM             = aestheticBounds aes dat                    :: Map Key (Double, Double)
-    guidesM2            = aestheticGuides aes dat                    :: Map Key [(Double, Str)]
-    guidesM             = normalizeGuides boundsM guidesM2           :: Map Key [(Coord, Str)]
-
-    mappedData2         = fmap (aestheticMapping aes dat) dat        :: [Map Key Double]
-    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
-    mappedAndScaledData = normalizeData boundsM mappedData2          :: [Map Key Coord]
-    mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
-      :: [Map Key (Coord, Maybe Special)]
-
-    -- drawGuides :: [(Normalized Double, Str)] -> [(Normalized Double, Str)] -> StyledT m1 Drawing
     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
 
-    mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-    mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
+
+    aes                 = mconcat aess
+    boundsM             = aestheticBounds aes dat                    :: Map Key (Double, Double)
+    guidesM2            = aestheticGuides aes dat                    :: Map Key [(Double, Str)]
+    guidesM             = normalizeGuides boundsM guidesM2           :: Map Key [(Coord, Str)]
+    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
+    mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
+      :: [Map Key (Coord, Maybe Special)]
       where
-        g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
-          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-          (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
-          (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
+        mappedAndScaledData = normalizeData boundsM mappedData           :: [Map Key Coord]
+          where
+            mappedData          = fmap (aestheticMapping aes dat) dat        :: [Map Key Double]
+
+        mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
+        mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
+          where
+            g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
+              (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
+              (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
+              (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
 
 -- TEST
