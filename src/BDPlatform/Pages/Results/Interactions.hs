@@ -207,11 +207,11 @@ interactionW _ interaction =
     plotStyling = id
       $ (tickTextTurn._1)   .~ 0.25
       $ (tickTextAnchor._1) .~ Drawing.TextAnchorEnd
-
       $ mempty
     renderOpts = mempty
       { Drawing.dimensions      = Drawing.P (Drawing.V2 600 600)
-      , Drawing.originPlacement = Drawing.BottomLeft }
+      , Drawing.originPlacement = Drawing.BottomLeft
+      }
 
 
 getShoutouts :: TwoAccounts -> IO (InteractionSet SearchPost)
