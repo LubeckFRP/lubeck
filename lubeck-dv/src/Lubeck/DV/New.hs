@@ -1177,17 +1177,20 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 -- guide/elem (implied by data, geometry and aesthetic)
 
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
-visualizeWithStyle axesNames1 dat (Geometry geom _) aess =
-  let dataD = geom mappedAndScaledDataWSpecial --  :: StyledT M Drawing
-      ticksD = drawTicks (guidesM ? "x") (guidesM ? "y") --  :: StyledT M Drawing
-      axesNames = axesNames1 ++ repeat ""
-      axesD  = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
-  in mconcat [dataD, axesD, ticksD]
+visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
+  let dataD     = drawData mappedAndScaledDataWSpecial          :: Styled Drawing
+      guidesD   = drawGuides (guidesM ? "x") (guidesM ? "y")    :: Styled Drawing
+      axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
+  in mconcat [dataD, axesD, guidesD]
   where
+    -- mappedAndScaledDataWSpecial, guidesM, axesNames
+
+    axesNames = axesNames1 ++ repeat ""                       :: [Str]
+
     aes                 = mconcat aess
-    boundsM             = aestheticBounds aes dat --  :: Map Key (Double, Double)
-    guidesM2            = aestheticGuides aes dat --  :: Map Key [(Double, Str)]
-    guidesM             = normalizeGuides boundsM guidesM2 :: Map Key [(Coord, Str)]
+    boundsM             = aestheticBounds aes dat                    :: Map Key (Double, Double)
+    guidesM2            = aestheticGuides aes dat                    :: Map Key [(Double, Str)]
+    guidesM             = normalizeGuides boundsM guidesM2           :: Map Key [(Coord, Str)]
 
     mappedData2         = fmap (aestheticMapping aes dat) dat        :: [Map Key Double]
     specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
@@ -1195,8 +1198,8 @@ visualizeWithStyle axesNames1 dat (Geometry geom _) aess =
     mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
       :: [Map Key (Coord, Maybe Special)]
 
-    -- drawTicks :: [(Normalized Double, Str)] -> [(Normalized Double, Str)] -> StyledT m1 Drawing
-    drawTicks xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+    -- drawGuides :: [(Normalized Double, Str)] -> [(Normalized Double, Str)] -> StyledT m1 Drawing
+    drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
