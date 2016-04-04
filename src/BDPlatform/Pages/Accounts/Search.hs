@@ -33,12 +33,14 @@ import           Lubeck.Types
 import           Lubeck.Forms.Interval
 import           Lubeck.Forms.Select
 import           Lubeck.FRP
+import qualified Lubeck.FRP                     as FRP
 import           Lubeck.Util                    (showIntegerWithThousandSeparators,
                                                  showJS, which, newSyncEventOf)
 
 import           BD.Api
 import           BD.Data.Account                (Account)
 import qualified BD.Data.Account                as Ac
+import qualified BD.Data.Group                    as DG
 import           BD.Query.AccountQuery
 import qualified BD.Query.AccountQuery          as AQ
 import           BD.Types
@@ -56,6 +58,44 @@ import           BDPlatform.Pages.Accounts.Common
 data SearchResults = Pending | Empty | Found [Ac.Account]
 data FormViewMode  = FormVisible | FormHidden
 data AddToGroupViewMode = ATGVisible | ATGHidden
+
+
+--------------------------------------------------------------------------------
+-- TODO move to Common
+selectCreateGroupW :: Widget (FormValid VError, (DG.GroupsNamesList, Maybe DG.GroupName)) (Submit (Maybe DG.GroupName))
+selectCreateGroupW outputSink (isValid, (gnl, val)) =
+  let (canSubmitAttr, cantSubmitMsg) = case isValid of
+                                         FormValid       -> ([Ev.click $ \e -> outputSink $ Submit val], "")
+                                         FormNotValid es -> ([A.disabled True], showValidationErrors es)
+  in modalPopup' $ formPanel_ [Ev.keyup $ \e -> when (which e == 13) $ outputSink (Submit val) ]
+    [ formRowWithLabel "Select a group"
+        [ selectWithPromptWidget
+            (makeOpts gnl)
+            (contramapSink (toAction . filterGroup gnl) outputSink)
+            (firstGroupName gnl)
+        ]
+    , longStringWidget "or create one" False (contramapSink (\new -> DontSubmit (Just new)) outputSink) (fromMaybe "" val)
+
+    , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
+        [ buttonOkIcon "Submit" "group" False canSubmitAttr
+        , button       "Cancel"         False [ Ev.click $ \e -> outputSink (Submit Nothing) ]
+        , inlineMessage cantSubmitMsg ]
+    ]
+  where
+    makeOpts gnl = zip gnl gnl
+
+    filterGroup _ Nothing = []
+    filterGroup gnl (Just grpname) = Data.List.filter (byName grpname) gnl
+
+    byName name x = name == x
+
+    toAction []     = DontSubmit Nothing
+    toAction [x]    = DontSubmit $ Just x
+    toAction (x:xs) = DontSubmit $ Just x -- XXX ???
+
+    firstGroupName [] = ""
+    firstGroupName xs = head xs
+--------------------------------------------------------------------------------
 
 searchFormW :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)
 searchFormW dayNow outputSink query =
@@ -105,9 +145,6 @@ detailsW sink r = case r of
 
   _  -> panel [E.text "No account"]
 
-addToGroup :: Set.Set Ac.Account -> IO ()
-addToGroup sel = print $ "Going to add to group " <> showJS (Set.size sel) <> " accounts"
-
 doSearchRequest busySink notifSink srchResSink query = do
   srchResSink Pending -- reset previous search results
 
@@ -141,40 +178,47 @@ searchFormComp = do
 
     initPostQuery = defSimpleAccountQuery
 
-validateATG :: JSString -> FormValid VError
-validateATG x =
-  let validationResult = runValidation1 <$> longString "Group" 1 80 x :: Validation VError VSuccess
+validateGroupname :: Maybe DG.GroupName -> FormValid VError
+validateGroupname x =
+  let validationResult = runValidation1 <$> longString "Group name" 1 80 (fromMaybe "" x) :: Validation VError VSuccess
   in case validationResult of
         Success _  -> FormValid
         Failure es -> FormNotValid es
 
-doAddToGroup {-busySink notifSink-} x = do
-  print $ "doAddToGroup " <> x
+doAddToGroup :: Sink AddToGroupViewMode
+             -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account))
+             -> Maybe DG.GroupName
+             -> IO ()
+doAddToGroup _ selectionSnapshotS {-busySink notifSink-} Nothing = return ()
+doAddToGroup popupSink selectionSnapshotS {-busySink notifSink-} (Just groupName) = do
+  x <- pollBehavior (current selectionSnapshotS)
+  let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) x
+      as  = fmap Ac.id (Set.toList sel)
+  r <- DG.addAccountsToGroup groupName as
+  -- when no errors r -- ?
+  popupSink ATGHidden
+  return ()
 
-popupW :: Sink AddToGroupViewMode -> Widget (FormValid VError, JSString) (Submit JSString)
-popupW viewModeSink sink (isValid, x) =
-  let (canSubmitAttr, cantSubmitMsg) = case isValid of
-                                         FormValid       -> ([Ev.click $ \e -> sink $ Submit x], "")
-                                         FormNotValid es -> ([A.disabled True], showValidationErrors es)
-  in modalPopup' $ formPanel
-      [ longStringWidget "Group to add to" True (contramapSink DontSubmit sink) x
 
-      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
-          [ buttonOkIcon "Submit" "group" False canSubmitAttr
-          , button       "Cancel"         False [ Ev.click $ \e -> viewModeSink ATGHidden ]
-          , inlineMessage cantSubmitMsg ]
-      ]
-
-gridAndAddToGroupL :: Layout -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
-gridAndAddToGroupL gridL selectionSnapshotS = do
-  (pupupSink, popupEvnt) <- newSyncEventOf (undefined :: AddToGroupViewMode)
+gridAndAddToGroupComp :: Layout -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
+gridAndAddToGroupComp gridL selectionSnapshotS = do
+  (popupSink, popupEvnt) <- newSyncEventOf (undefined :: AddToGroupViewMode)
   popupSig               <- stepperS ATGHidden popupEvnt -- TODO helper newSyncSignalOf
 
-  (popupV, addToGroupE)  <- formWithValidationComponent validateATG "yo" (popupW pupupSink) -- :: IO (Signal Html, Events JSString)
+  (groupsListSink, groupsListE) <- newSyncEventOf (undefined :: DG.GroupsNamesList)
+  void . forkIO $ loadGroupsNames emptySink emptySink groupsListSink
+  groupsListB <- stepper [] (fmap id groupsListE)
 
-  let wrappedV           = wrapper pupupSink <$> selectionSnapshotS <*> (view gridL)
+  (popupV, groupNameSelected) <- formWithValidationComponentExtra1 groupsListB
+                                                                   validateGroupname
+                                                                   Nothing
+                                                                   selectCreateGroupW -- :: IO (Signal Html, Events DG.GroupName)
 
-  subscribeEvent addToGroupE $ void . forkIO . doAddToGroup
+  let wrappedV           = wrapper popupSink <$> selectionSnapshotS <*> (view gridL)
+
+  subscribeEvent groupNameSelected $ void . forkIO . doAddToGroup popupSink selectionSnapshotS
+  subscribeEvent (FRP.filter (== Nothing) groupNameSelected) $ const . popupSink $ ATGHidden
+
   let popupL       = mkLayoutPure popupV
   let wrappedGridL = mkLayoutPure wrappedV
   l <- overlayLayout (fmap f popupSig) wrappedGridL popupL
@@ -185,13 +229,13 @@ gridAndAddToGroupL gridL selectionSnapshotS = do
     f ATGHidden  = False
 
     wrapper :: Sink AddToGroupViewMode -> Maybe (Set.Set Ac.Account, GridAction Ac.Account) -> Html -> Html
-    wrapper pupupSink sel x =
+    wrapper popupSink sel x =
       let sel'    = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel
           btnAttr = if Set.size sel' > 0
-                      then [Ev.click $ \e -> pupupSink ATGVisible {-sel'-}]
+                      then [Ev.click $ \e -> popupSink ATGVisible {-sel'-}]
                       else [A.disabled True]
           msg     = case Set.size sel' of
-                      0 -> ""
+                      0 -> "Select some items first"
                       1 -> "1 item selected"
                       x -> showJS x <> " items selected"
 
@@ -202,14 +246,14 @@ gridAndAddToGroupL gridL selectionSnapshotS = do
                , x ]
 
 
-gridOrDetailsL :: Layout -> Events ResultsViewMode -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
-gridOrDetailsL gridL gridItemsE selectionSnapshotS = do
+gridOrDetailsComp :: Layout -> Events ResultsViewMode -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
+gridOrDetailsComp gridL gridItemsE selectionSnapshotS = do
   (rvmSink, rvmEvts) <- newSyncEventOf (undefined :: ResultsViewMode)
   rvmSig <- stepperS ResultsGrid rvmEvts -- TODO helper newSyncSignalOf
 
   subscribeEvent gridItemsE rvmSink
 
-  gridAndPopupL <- gridAndAddToGroupL gridL selectionSnapshotS
+  gridAndPopupL <- gridAndAddToGroupComp gridL selectionSnapshotS
 
   let detailsV = fmap (detailsW rvmSink) rvmSig
   let detailsL = mkLayoutPure detailsV
@@ -230,7 +274,7 @@ resultsOrNoneComp results = do
 
   let emptyL = mkLayoutPure (pure mempty)
   let gridL  = mkLayoutPure gridView
-  gridL'     <- gridOrDetailsL gridL gridItemsE selectionSnapshotS
+  gridL'     <- gridOrDetailsComp gridL gridItemsE selectionSnapshotS
   resL       <- toggleLayout2 (fmap f results) gridL' emptyL
 
   return resL

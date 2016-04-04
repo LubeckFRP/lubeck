@@ -45,6 +45,7 @@ module Lubeck.Forms
   , formComponentExtra1
   , formComponentExtra2
   , formWithValidationComponent
+  , formWithValidationComponentExtra1
   , formWithValidationComponentExtra2
 
   -- ** Submit type
@@ -320,6 +321,25 @@ formWithValidationComponentExtra2 bB cB validate az w = do
   let bcaS        = snapshotS cB baS                   -- :: Signal (c, (b, a))
 
   let xS          = liftA2 (,) isValidS bcaS
+
+  let htmlS       = fmap (w aSink) xS
+  return (htmlS, submits aEvent)
+
+formWithValidationComponentExtra1 :: Behavior b
+                                  -> Validator a e
+                                  -> a
+                                  -> Widget (FormValid e, (b, a)) (Submit a)
+                                  -> IO (Signal Html, Events a)
+formWithValidationComponentExtra1 bB validate az w = do
+  (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
+
+  let isValidE    = fmap (validate . submitValue) aEvent
+  isValidS        <- stepperS (validate az) isValidE
+
+  aS              <- stepperS (DontSubmit az) aEvent   -- :: IO (Signal (Submit a))
+  let baS         = snapshotS bB (fmap submitValue aS) -- :: Signal (b, a)
+
+  let xS          = liftA2 (,) isValidS baS
 
   let htmlS       = fmap (w aSink) xS
   return (htmlS, submits aEvent)

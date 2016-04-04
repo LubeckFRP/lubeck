@@ -51,24 +51,21 @@ import           BDPlatform.Pages.Accounts.Common
 
 data Action = LoadGroup DG.GroupName | ActionNoop | CreateNewGroup | DeleteGroup DG.Group
 
-headerW :: Widget (Maybe DG.GroupsNamesList) Action
-headerW actionsSink x = case x of
-  Nothing -> go []
-  Just gnl -> go gnl
-  where
-    go gnl =
-      panel
-        [ toolbar
-            [ buttonGroup' $
-                selectWithPromptWidget
-                  (makeOpts gnl)
-                  (contramapSink (toAction . filterGroup gnl) actionsSink)
-                  (firstGroupName gnl)
+groupSelectW :: Widget (Maybe DG.GroupsNamesList) Action
+groupSelectW actionsSink gnl' =
+  toolbar $
+    [ buttonGroup' $
+        selectWithPromptWidget
+          (makeOpts gnl)
+          (contramapSink (toAction . filterGroup gnl) actionsSink)
+          (firstGroupName gnl)
 
-            , buttonGroup' $
-                buttonOkIcon "New group" "plus" False [Ev.click $ \e -> actionsSink CreateNewGroup]
-            ]
-        ]
+    -- , buttonGroup' $ -- XXX create new group only when some account selected, the same as in search results
+        -- buttonOkIcon "New group" "plus" False [Ev.click $ \e -> actionsSink CreateNewGroup]
+    ]
+
+  where
+    gnl = fromMaybe [] gnl'
 
     makeOpts gnl = zip gnl gnl
 
@@ -84,6 +81,9 @@ headerW actionsSink x = case x of
     firstGroupName [] = ""
     firstGroupName xs = head xs
 
+headerW :: Widget (Maybe DG.GroupsNamesList) Action
+headerW x y = panel' . groupSelectW x $ y
+
 layout header grid = panel [header, grid]
 
 handleActions busySink notifSink gridCmdsSink act = case act of
@@ -94,11 +94,6 @@ handleActions busySink notifSink gridCmdsSink act = case act of
     gridCmdsSink $ Replace (Set.toList (DG.members group))
 
   _              -> print "other act"
-
-loadGroupsNames busySink notifSink groupsListSink = do
-  -- XXX do not use withBusy here?
-  res  <- withBusy0 busySink DG.loadGroupsNames >>= eitherToError notifSink
-  forM_ res groupsListSink
 
 manageAccouns :: Sink BusyCmd
               -> Sink (Maybe Notification)

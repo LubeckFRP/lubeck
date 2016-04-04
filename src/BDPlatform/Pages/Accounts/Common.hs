@@ -6,18 +6,27 @@ import           Prelude
 
 import           Data.Maybe
 import           Data.Monoid
+import           Data.Foldable                    (forM_)
 
 import qualified Web.VirtualDom.Html            as E
 import qualified Web.VirtualDom.Html.Attributes as A
 import qualified Web.VirtualDom.Html.Events     as Ev
 
 import           Lubeck.Forms
-import           Lubeck.Util                    (showIntegerWithThousandSeparators )
+import           Lubeck.Util                    (showIntegerWithThousandSeparators, eitherToError )
 
 import qualified BD.Data.Account                as Ac
+import qualified BD.Data.Group                    as DG
+import           Components.BusyIndicator         (BusyCmd (..), withBusy,
+                                                   withBusy0, withBusy2)
 
 -- data ResultsViewMode = AllResults | DetailsView Ac.Account | ResultsHidden
 data ResultsViewMode = ResultsGrid | AccountDetails Ac.Account
+
+loadGroupsNames busySink notifSink groupsListSink = do
+  -- XXX do not use withBusy here?
+  res  <- withBusy0 busySink DG.loadGroupsNames >>= eitherToError notifSink
+  forM_ res groupsListSink
 
 itemMarkup :: Widget Ac.Account ResultsViewMode
 itemMarkup sink account =
