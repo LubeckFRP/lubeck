@@ -218,7 +218,7 @@ gridAndAddToGroupComp gridL selectionSnapshotS = do
 
   subscribeEvent groupNameSelected $ \x -> void . forkIO $ do
     doAddToGroup popupSink selectionSnapshotS x
-    loadGroupsNames emptySink emptySink groupsListSink
+    loadGroupsNames emptySink emptySink groupsListSink -- TODO better reloading logic
   subscribeEvent (FRP.filter (== Nothing) groupNameSelected) $ const . popupSink $ ATGHidden
 
   let popupL       = mkLayoutPure popupV
