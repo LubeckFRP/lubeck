@@ -16,11 +16,12 @@ import           Lubeck.Util                    (showIntegerWithThousandSeparato
 
 import qualified BD.Data.Account                as Ac
 
-data ResultsViewMode = AllResults | DetailsView Ac.Account | ResultsHidden
+-- data ResultsViewMode = AllResults | DetailsView Ac.Account | ResultsHidden
+data ResultsViewMode = ResultsGrid | AccountDetails Ac.Account
 
 itemMarkup :: Widget Ac.Account ResultsViewMode
 itemMarkup sink account =
-  E.div [A.class_ "", Ev.click $ \e -> sink $ DetailsView account]
+  E.div [A.class_ "", Ev.click $ \e -> sink $ AccountDetails account]
     [ E.div [A.class_ "acc-pic"] [ E.img [A.src (Data.Maybe.fromMaybe "defaultPic" (Ac.profile_picture account))] [] ]
     , E.div [A.class_ "acc-username"] [ E.a [ A.class_ "acc-username"
                                             , Ev.click $ \e -> Ev.stopPropagation e

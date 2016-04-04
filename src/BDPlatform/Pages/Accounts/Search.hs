@@ -10,6 +10,7 @@ import qualified Prelude
 
 import           Control.Applicative
 import           Control.Monad                  (void, when)
+import           Data.Either.Validation
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
@@ -43,7 +44,9 @@ import qualified BD.Query.AccountQuery          as AQ
 import           BD.Types
 
 import           BDPlatform.Types
+import           BDPlatform.Validators
 import           BDPlatform.HTMLCombinators
+import           Components.Layout
 import           Components.Grid
 import           Components.BusyIndicator       (BusyCmd (..), withBusy, withBusy2)
 
@@ -51,10 +54,8 @@ import           BDPlatform.Pages.Accounts.Common
 
 
 data SearchResults = Pending | Empty | Found [Ac.Account]
-data ViewMode = ViewMode { form :: FormViewMode
-                         , results :: ResultsViewMode }
-data FormViewMode = FormVisible | FormHidden
-
+data FormViewMode  = FormVisible | FormHidden
+data AddToGroupViewMode = ATGVisible | ATGHidden
 
 searchFormW :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)
 searchFormW dayNow outputSink query =
@@ -92,43 +93,22 @@ searchFormW dayNow outputSink query =
           [ buttonOkIcon "Search!" "instagram" False [Ev.click $ \e -> outputSink $ Submit query] ]
       ]
 
-
 formPlaceholder :: Widget () FormViewMode
 formPlaceholder sink _ = panel' . toolbar' . buttonGroupLeft' $ buttonOk "Edit search" False [Ev.click $ \e -> sink FormVisible]
 
-detailsW :: Widget ViewMode ResultsViewMode
-detailsW sink (ViewMode f r) = case r of
-  DetailsView acc ->
+detailsW :: Widget ResultsViewMode ResultsViewMode
+detailsW sink r = case r of
+  AccountDetails acc ->
     panel
-      [ toolbar' . buttonGroupLeft' $ button "Back" True [Ev.click $ \e -> sink AllResults ]
+      [ toolbar' . buttonGroupLeft' $ button "Back" True [Ev.click $ \e -> sink ResultsGrid ]
       , panel [E.text $ showJS acc]]
 
   _  -> panel [E.text "No account"]
 
-wrapResults :: Html -> SearchResults -> Maybe (Set.Set Ac.Account, GridAction Ac.Account) -> Html
-wrapResults resultsV results sel =
-  let sel'    = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel
-      btnAttr = if Set.size sel' > 0
-                  then [Ev.click $ \e -> addToGroup sel']
-                  else [A.disabled True]
-      msg     = case Set.size sel' of
-                  0 -> ""
-                  1 -> "1 item selected"
-                  x -> showJS x <> " items selected"
-      resultsMsg Pending    = "Search in progress..."
-      resultsMsg Empty      = "Nothing found"
-      resultsMsg (Found xs) = "Found " <> showJS (length xs) <> " accounts"
-
-  in panel [ header1' "Search Results " (resultsMsg results)
-           , toolbarLeft' . buttonGroupLeft $
-               [ buttonOk "Add to group" False btnAttr
-               , inlineMessage msg ]
-           , resultsV ]
-
 addToGroup :: Set.Set Ac.Account -> IO ()
 addToGroup sel = print $ "Going to add to group " <> showJS (Set.size sel) <> " accounts"
 
-searchRequest busySink notifSink srchResSink query = do
+doSearchRequest busySink notifSink srchResSink query = do
   srchResSink Pending -- reset previous search results
 
   let complexQuery = AccountQuery $ complexifyAccountQuery query
@@ -141,13 +121,132 @@ searchRequest busySink notifSink srchResSink query = do
         Left e   -> notifSink . Just . apiError $ "Failed getting query results: " <> showJS e
         Right ps -> srchResSink $ Found ps
 
-layout fViewModeSink viewMode formV resultsV detailsV = case viewMode of
-  ViewMode FormVisible AllResults      -> panel [formV, resultsV]
-  ViewMode FormVisible ResultsHidden   -> panel [formV]
-  ViewMode FormVisible (DetailsView _) -> panel [formV, detailsV]
-  ViewMode FormHidden  AllResults      -> panel [formPlaceholder fViewModeSink (), resultsV]
-  ViewMode FormHidden  ResultsHidden   -> panel [formPlaceholder fViewModeSink ()]
-  ViewMode FormHidden  (DetailsView _) -> panel [formPlaceholder fViewModeSink (), detailsV]
+searchFormComp :: IO (Layout, Events SimpleAccountQuery)
+searchFormComp = do
+  now                                      <- getCurrentTime
+  (localViewModeSink, localViewModeEvents) <- newSyncEventOf (undefined :: FormViewMode)
+  localViewModeSignal                      <- stepperS FormVisible localViewModeEvents
+  (formView, searchRequested)              <- formComponent initPostQuery (searchFormW (utctDay now))
+  let placeholderView                      = fmap (formPlaceholder localViewModeSink) (pure ())
+
+  subscribeEvent searchRequested $ \_ -> localViewModeSink FormHidden -- >> rViewModeSink AllResults
+
+  l <- toggleLayout2 (fmap f localViewModeSignal) (mkLayoutPure formView) (mkLayoutPure placeholderView)
+
+  return (l, searchRequested)
+
+  where
+    f FormHidden  = 1
+    f FormVisible = 0
+
+    initPostQuery = defSimpleAccountQuery
+
+validateATG :: JSString -> FormValid VError
+validateATG x =
+  let validationResult = runValidation1 <$> longString "Group" 1 80 x :: Validation VError VSuccess
+  in case validationResult of
+        Success _  -> FormValid
+        Failure es -> FormNotValid es
+
+doAddToGroup {-busySink notifSink-} x = do
+  print $ "doAddToGroup " <> x
+
+popupW :: Sink AddToGroupViewMode -> Widget (FormValid VError, JSString) (Submit JSString)
+popupW viewModeSink sink (isValid, x) =
+  let (canSubmitAttr, cantSubmitMsg) = case isValid of
+                                         FormValid       -> ([Ev.click $ \e -> sink $ Submit x], "")
+                                         FormNotValid es -> ([A.disabled True], showValidationErrors es)
+  in modalPopup' $ formPanel
+      [ longStringWidget "Group to add to" True (contramapSink DontSubmit sink) x
+
+      , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
+          [ buttonOkIcon "Submit" "group" False canSubmitAttr
+          , button       "Cancel"         False [ Ev.click $ \e -> viewModeSink ATGHidden ]
+          , inlineMessage cantSubmitMsg ]
+      ]
+
+gridAndAddToGroupL :: Layout -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
+gridAndAddToGroupL gridL selectionSnapshotS = do
+  (pupupSink, popupEvnt) <- newSyncEventOf (undefined :: AddToGroupViewMode)
+  popupSig               <- stepperS ATGHidden popupEvnt -- TODO helper newSyncSignalOf
+
+  (popupV, addToGroupE)  <- formWithValidationComponent validateATG "yo" (popupW pupupSink) -- :: IO (Signal Html, Events JSString)
+
+  let wrappedV           = wrapper pupupSink <$> selectionSnapshotS <*> (view gridL)
+
+  subscribeEvent addToGroupE $ void . forkIO . doAddToGroup
+  let popupL       = mkLayoutPure popupV
+  let wrappedGridL = mkLayoutPure wrappedV
+  l <- overlayLayout (fmap f popupSig) wrappedGridL popupL
+  return l
+
+  where
+    f ATGVisible = True
+    f ATGHidden  = False
+
+    wrapper :: Sink AddToGroupViewMode -> Maybe (Set.Set Ac.Account, GridAction Ac.Account) -> Html -> Html
+    wrapper pupupSink sel x =
+      let sel'    = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel
+          btnAttr = if Set.size sel' > 0
+                      then [Ev.click $ \e -> pupupSink ATGVisible {-sel'-}]
+                      else [A.disabled True]
+          msg     = case Set.size sel' of
+                      0 -> ""
+                      1 -> "1 item selected"
+                      x -> showJS x <> " items selected"
+
+      in panel [ header1 "Search Results "
+               , toolbarLeft' . buttonGroupLeft $
+                   [ buttonOk "Add to group" False btnAttr
+                   , inlineMessage msg ]
+               , x ]
+
+
+gridOrDetailsL :: Layout -> Events ResultsViewMode -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
+gridOrDetailsL gridL gridItemsE selectionSnapshotS = do
+  (rvmSink, rvmEvts) <- newSyncEventOf (undefined :: ResultsViewMode)
+  rvmSig <- stepperS ResultsGrid rvmEvts -- TODO helper newSyncSignalOf
+
+  subscribeEvent gridItemsE rvmSink
+
+  gridAndPopupL <- gridAndAddToGroupL gridL selectionSnapshotS
+
+  let detailsV = fmap (detailsW rvmSink) rvmSig
+  let detailsL = mkLayoutPure detailsV
+  l <- toggleLayout2 (fmap f rvmSig) gridAndPopupL detailsL
+
+  return l
+
+  where
+    f ResultsGrid        = 0
+    f (AccountDetails _) = 1
+
+resultsOrNoneComp :: Signal SearchResults -> IO Layout
+resultsOrNoneComp results = do
+  (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent gridOptions initialItems itemMarkup
+
+  subscribeEvent (updates results) $ gridCmdsSink . searchResultsToGridCmd
+  selectionSnapshotS <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE))       :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
+
+  let emptyL = mkLayoutPure (pure mempty)
+  let gridL  = mkLayoutPure gridView
+  gridL'     <- gridOrDetailsL gridL gridItemsE selectionSnapshotS
+  resL       <- toggleLayout2 (fmap f results) gridL' emptyL
+
+  return resL
+
+  where
+    f Pending   = 1
+    f Empty     = 1
+    f (Found _) = 0
+
+    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
+    initialItems  = []
+
+    searchResultsToGridCmd Pending    = Replace []
+    searchResultsToGridCmd Empty      = Replace []
+    searchResultsToGridCmd (Found xs) = Replace xs
+
 
 accountSearch :: Sink BusyCmd
               -> Sink (Maybe Notification)
@@ -156,40 +255,14 @@ accountSearch :: Sink BusyCmd
               -> Signal Nav
               -> IO (Signal Html)
 accountSearch busySink notifSink ipcSink mUserNameB navS = do
-  (fViewModeSink, fViewModeEvents) <- newSyncEventOf (undefined                                           :: FormViewMode)
-  (rViewModeSink, rViewModeEvents) <- newSyncEventOf (undefined                                           :: ResultsViewMode)
-  (srchResSink, srchResEvents)     <- newSyncEventOf (undefined                                           :: SearchResults)
+  (srchResSink, srchResEvents) <- newSyncEventOf (undefined    :: SearchResults)
+  results                      <- stepperS Empty srchResEvents :: IO (Signal SearchResults)
 
-  fViewModeS                       <- stepperS FormVisible fViewModeEvents                                :: IO (Signal FormViewMode)
-  rViewModeS                       <- stepperS ResultsHidden rViewModeEvents                              :: IO (Signal ResultsViewMode)
-  let viewModeS                    = ViewMode <$> fViewModeS <*> rViewModeS                               :: Signal ViewMode
+  (srchFormL, searchRequested) <- searchFormComp
+  resultsL                     <- resultsOrNoneComp results
 
-  now                              <- getCurrentTime
-  (formView, searchRequested)      <- formComponent initPostQuery (searchFormW (utctDay now))
-  results                          <- stepperS Empty srchResEvents                                        :: IO (Signal SearchResults)
+  subscribeEvent searchRequested $ void . forkIO . doSearchRequest busySink notifSink srchResSink
 
-  (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent gridOptions initialItems itemMarkup
-  -- XXX is it too imperative?
-  subscribeEvent srchResEvents $ gridCmdsSink . searchResultsToGridCmd
-  subscribeEvent gridItemsE    rViewModeSink
-  subscribeEvent gridActionE   $ \x -> print $ "Got grid action in parent : " <> showJS x
+  topL <- verticalStackLayout2 srchFormL resultsL
 
-  selectionSnapshotS               <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE))       :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
-
-  let detailsView                  = fmap (detailsW rViewModeSink) viewModeS                              :: Signal Html
-  let resultsView                  = wrapResults <$> gridView <*> results <*> selectionSnapshotS          :: Signal Html
-  let view                         = layout fViewModeSink <$> viewModeS <*> formView <*> resultsView <*> detailsView :: Signal Html
-
-  subscribeEvent searchRequested $ void . forkIO . searchRequest busySink notifSink srchResSink
-  subscribeEvent searchRequested $ \_ -> fViewModeSink FormHidden >> rViewModeSink AllResults
-
-  return view
-
-  where
-    initPostQuery = defSimpleAccountQuery
-    initViewMode  = ViewMode FormVisible ResultsHidden
-    gridOptions   = Just (defaultGridOptions {deleteButton = False, otherButton = False})
-    initialItems  = []
-    searchResultsToGridCmd Pending    = Replace []
-    searchResultsToGridCmd Empty      = Replace []
-    searchResultsToGridCmd (Found xs) = Replace xs
+  return (view topL)
