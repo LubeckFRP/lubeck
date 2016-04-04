@@ -54,13 +54,21 @@ data SessionImage = SessionImage
   , image_id :: Int
   , num_selected :: Maybe Int
   , time_selected :: Maybe UTCTime
-  } deriving (GHC.Generic, Show, Eq)
+  } deriving (GHC.Generic, Show, Eq) 
 
 instance ToJSON SessionImage
+
+initializeSession :: API -> Int -> IO (Either AppError Session)
+initializeSession api n =
+  first ApiError <$> getAPIEither api ("label-refiner/session/new/" <> showJS n)
 
 initializeSession' :: API -> Int -> IO Session
 initializeSession' api n =
   unsafeGetAPI api ("label-refiner/session/new/" <> showJS n)
+
+getSessionPage :: API -> Int -> IO (Either AppError SessionPage)
+getSessionPage api n =
+  first ApiError <$> getAPIEither api ("label-refiner/session/page/" <> showJS n)
 
 getSessionPage' :: API -> Int -> IO SessionPage
 getSessionPage' api n =

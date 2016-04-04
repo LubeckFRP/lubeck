@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE DeriveGeneric              #-}
 
 module BD.Data.Group
     ( Group(..)
@@ -9,15 +10,19 @@ module BD.Data.Group
     , GroupMemberNamesList(..)
     , loadGroupsNames
     , loadGroup
+    , addAccountsToGroup
     ) where
 
 import           Control.Monad
 import qualified Control.Monad.Parallel as MP
 import           Data.Monoid
+import           Data.Aeson
+import           Data.Aeson.Types
 import qualified Data.Set                  as Set
 import           Data.Bifunctor (bimap, first)
 
 import           GHCJS.Types      (JSString)
+import qualified GHC.Generics     as GHC
 
 import           BD.Api
 import           BD.Types
@@ -33,6 +38,21 @@ type GroupName            = JSString
 type MemberName           = JSString
 type GroupsNamesList       = [GroupName]
 type GroupMemberNamesList = [MemberName]
+
+data AccountInGroupToggle = AccountInGroupToggle
+  { status :: Int
+  , group_name :: JSString
+  , account_id :: Int
+  } deriving (GHC.Generic)
+
+instance ToJSON AccountInGroupToggle
+
+addAccountsToGroup :: GroupName -> [Int] -> IO [Either AppError Ok]
+addAccountsToGroup grp = MP.mapM go
+  where
+    go a = do
+      let payload = AccountInGroupToggle 1 grp a
+      postAPIEither BD.Api.internalAPI "events/account-in-group" payload >>= return . bimap ApiError id
 
 loadGroupsNames :: IO (Either AppError GroupsNamesList)
 loadGroupsNames = getAPIEither BD.Api.internalAPI "account-groups" >>= return . bimap ApiError id

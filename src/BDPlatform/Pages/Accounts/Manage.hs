@@ -48,27 +48,25 @@ import           Components.BusyIndicator         (BusyCmd (..), withBusy,
 import           Components.Grid
 
 import           BDPlatform.Pages.Accounts.Common
+import           BDPlatform.Pages.Accounts.Types
 
 data Action = LoadGroup DG.GroupName | ActionNoop | CreateNewGroup | DeleteGroup DG.Group
 
-headerW :: Widget (Maybe DG.GroupsNamesList) Action
-headerW actionsSink x = case x of
-  Nothing -> go []
-  Just gnl -> go gnl
-  where
-    go gnl =
-      panel
-        [ toolbar
-            [ buttonGroup' $
-                selectWithPromptWidget
-                  (makeOpts gnl)
-                  (contramapSink (toAction . filterGroup gnl) actionsSink)
-                  (firstGroupName gnl)
+groupSelectW :: Widget (Maybe DG.GroupsNamesList) Action
+groupSelectW actionsSink gnl' =
+  toolbar $
+    [ buttonGroup' $
+        selectWithPromptWidget
+          (makeOpts gnl)
+          (contramapSink (toAction . filterGroup gnl) actionsSink)
+          (firstGroupName gnl)
 
-            , buttonGroup' $
-                buttonOkIcon "New group" "plus" False [Ev.click $ \e -> actionsSink CreateNewGroup]
-            ]
-        ]
+    -- , buttonGroup' $ -- XXX create new group only when some account selected, the same as in search results
+        -- buttonOkIcon "New group" "plus" False [Ev.click $ \e -> actionsSink CreateNewGroup]
+    ]
+
+  where
+    gnl = fromMaybe [] gnl'
 
     makeOpts gnl = zip gnl gnl
 
@@ -84,6 +82,9 @@ headerW actionsSink x = case x of
     firstGroupName [] = ""
     firstGroupName xs = head xs
 
+headerW :: Widget (Maybe DG.GroupsNamesList) Action
+headerW x y = panel' . groupSelectW x $ y
+
 layout header grid = panel [header, grid]
 
 handleActions busySink notifSink gridCmdsSink act = case act of
@@ -95,27 +96,21 @@ handleActions busySink notifSink gridCmdsSink act = case act of
 
   _              -> print "other act"
 
-loadGroupsNames busySink notifSink groupsListSink = do
-  -- XXX do not use withBusy here?
-  res  <- withBusy0 busySink DG.loadGroupsNames >>= eitherToError notifSink
-  forM_ res groupsListSink
-
 manageAccouns :: Sink BusyCmd
               -> Sink (Maybe Notification)
               -> Sink IPCMessage
+              -> Sink AccountsPageAction
               -> Behavior (Maybe JSString)
+              -> Signal (Maybe DG.GroupsNamesList)
               -> Signal Nav
               -> IO (Signal Html)
-manageAccouns busySink notifSink ipcSink mUserNameB navS = do
-  (groupsListSink, groupsListE)                                <- newSyncEventOf (undefined :: DG.GroupsNamesList)
+manageAccouns busySink notifSink ipcSink pageIPCSink mUserNameB groupsListS navS = do
   (actionsSink, actionsE)                                      <- newSyncEventOf (undefined :: Action)
 
   (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent (Just gridOptions) [] itemMarkup
 
   subscribeEvent actionsE $ void . forkIO . handleActions busySink notifSink gridCmdsSink
-  void . forkIO $ loadGroupsNames busySink notifSink groupsListSink
 
-  groupsListS                                                  <- stepperS Nothing (fmap Just groupsListE)
   let headerView                                               = fmap (headerW actionsSink) groupsListS
   let view                                                     = layout <$> headerView <*> gridView
 

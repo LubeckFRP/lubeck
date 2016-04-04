@@ -61,6 +61,7 @@ library
                      , BDPlatform.Pages.Accounts.Search
                      , BDPlatform.Pages.Accounts.Manage
                      , BDPlatform.Pages.Accounts.Common
+                     , BDPlatform.Pages.Accounts.Types
                      , BDPlatform.Pages.Manage.Index
                      , BDPlatform.Pages.Manage.ImageLibrary
                      , BDPlatform.Pages.CurrentUser.Index
