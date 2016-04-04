@@ -214,9 +214,11 @@ gridAndAddToGroupComp gridL selectionSnapshotS = do
                                                                    Nothing
                                                                    selectCreateGroupW -- :: IO (Signal Html, Events DG.GroupName)
 
-  let wrappedV           = wrapper popupSink <$> selectionSnapshotS <*> (view gridL)
+  let wrappedV = wrapper popupSink <$> selectionSnapshotS <*> (view gridL)
 
-  subscribeEvent groupNameSelected $ void . forkIO . doAddToGroup popupSink selectionSnapshotS
+  subscribeEvent groupNameSelected $ \x -> void . forkIO $ do
+    doAddToGroup popupSink selectionSnapshotS x
+    loadGroupsNames emptySink emptySink groupsListSink
   subscribeEvent (FRP.filter (== Nothing) groupNameSelected) $ const . popupSink $ ATGHidden
 
   let popupL       = mkLayoutPure popupV
