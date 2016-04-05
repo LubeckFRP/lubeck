@@ -492,10 +492,8 @@ instance HasScale Ordering where
 instance (Ord a, Show a) => HasScale [a] where
   scale = const categorical
 
-#ifdef __GHCJS__
 instance HasScale Str where
   scale x = contramap unpackStr $ scale (unpackStr x)
-#endif
 
 instance HasScale UTCTime where
   scale = const timeScale

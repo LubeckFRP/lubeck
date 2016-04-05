@@ -9,9 +9,19 @@ setup-info:
   source:
    ghcjs-0.2.0.20151230.3_ghc-7.10.2:
     url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
+
     # Official release URL
     #  url: http://ghcjs.luite.com/master-20151230.tar.gz
     # For details, see https://github.com/ghcjs/ghcjs/issues/444
+
+# compiler: ghcjs-0.2.0.20160315_ghc-7.10.2
+# compiler-check: match-exact
+# setup-info:
+#   ghcjs:
+#       source:
+#             ghcjs-0.2.0.20160315_ghc-7.10.2:
+#                     url: "http://ghcjs.luite.com/master-20160315.tar.gz"
+
 
 packages:
 - '.'

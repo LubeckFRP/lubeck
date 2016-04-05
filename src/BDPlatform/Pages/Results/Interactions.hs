@@ -40,6 +40,7 @@ import           Web.VirtualDom.Html.Events     (change, click, keyup,
 import qualified Web.VirtualDom.Html.Events     as Ev
 
 import           Lubeck.App                     (Html, runAppReactive)
+import           Lubeck.Drawing                 (fromJSString)
 import qualified Lubeck.Drawing                 as Drawing
 import           Lubeck.DV.SimpleNormalized     (simpleTimeSeries,
                                                  simpleTimeSeriesWithOverlay)
@@ -176,7 +177,7 @@ interactionW _ interaction =
 
     interactionPlot = render $
         simpleTimeSeriesWithOverlay
-          showIntegerWithThousandSeparators
+          (fromJSString . showIntegerWithThousandSeparators)
           fromIntegral
           round
           [interaction .: interaction_time]
