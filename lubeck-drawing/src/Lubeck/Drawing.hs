@@ -52,12 +52,16 @@ Main differences from Diagrams:
 -}
 module Lubeck.Drawing
   (
+  -- * Str type
+  -- ** (should be moved to a separate package)
     Str
   , toStr
   , packStr
   , unpackStr
   , replaceStr
   , takeStr
+  , fromJSString
+  , toJSString
 
   -- * Creating drawings
   -- ** Geometry
@@ -265,14 +269,18 @@ instance Show Str where
 
 #ifdef __GHCJS__
 type StrBase = JSString
-packStr    = Str . Data.JSString.pack
-unpackStr  = Data.JSString.unpack . getStr
+fromJSString  = Str
+toJSString    = getStr
+packStr       = Str . Data.JSString.pack
+unpackStr     = Data.JSString.unpack . getStr
 takeStr n  = Str . Data.JSString.take n . getStr
 replaceStr (Str a) (Str b) (Str c) = Str $ Data.JSString.replace a b c
 #else
 type StrBase = String
-packStr   = Str
-unpackStr = getStr
+fromJSString () = ""
+toJSString _    = ()
+packStr         = Str
+unpackStr       = getStr
 takeStr n = Str . take n . getStr
 replaceStr :: Str -> Str -> Str -> Str
 replaceStr (Str old) (Str new) (Str orig) = Str $ Data.List.intercalate new $ Data.List.Split.splitOn old orig
