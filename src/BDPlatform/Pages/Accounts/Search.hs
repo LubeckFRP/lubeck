@@ -190,7 +190,7 @@ doAddToGroup :: Sink AddToGroupViewMode
              -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account))
              -> Maybe DG.GroupName
              -> IO ()
-doAddToGroup _ selectionSnapshotS {-busySink notifSink-} Nothing = return ()
+doAddToGroup _ _ {-busySink notifSink-} Nothing = return ()
 doAddToGroup popupSink selectionSnapshotS {-busySink notifSink-} (Just groupName) = do
   x <- pollBehavior (current selectionSnapshotS)
   let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) x

@@ -139,8 +139,8 @@ adPlatform = do
   (ipcNavSink, ipcNavEvents)            <- newSyncEventOf (undefined :: Nav)
   navS                                  <- stepperS NavLogin (postLoginNavE <> menuNavE <> ipcNavEvents)
 
-  searchIndexView                       <- searchIndexPage      busySink notifSink ipcSink usernameB navS
-  accountsIndexView                     <- accountsIndexPage    busySink notifSink ipcSink usernameB navS
+  (accountsIndexView, groupsListS)      <- accountsIndexPage    busySink notifSink ipcSink usernameB navS
+  searchIndexView                       <- searchIndexPage      busySink notifSink ipcSink usernameB groupsListS navS
   currentUserIndexView                  <- currentUserIndexPage busySink notifSink ipcSink userS authS
   resultsIndexView                      <- resultsIndexPage     busySink notifSink ipcSink usernameB navS
 

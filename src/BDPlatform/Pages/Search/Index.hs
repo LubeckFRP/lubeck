@@ -24,6 +24,7 @@ import           Lubeck.Util                    (contentPanel, newSyncEventOf,
                                                  showJS, withErrorIO)
 
 import           BD.Types
+import qualified BD.Data.Group                  as DG
 
 import           BDPlatform.Types
 import           Components.BusyIndicator       (BusyCmd (..))
@@ -38,10 +39,11 @@ searchIndexPage :: Sink BusyCmd
                 -> Sink (Maybe Notification)
                 -> Sink IPCMessage
                 -> Behavior (Maybe JSString)
+                -> Signal (Maybe DG.GroupsNamesList)
                 -> Signal Nav
                 -> IO (Signal Html)
-searchIndexPage busySink notifSink ipcSink usernameB navS = do
-  searchInstagramView <- searchInstagram busySink notifSink ipcSink usernameB navS
+searchIndexPage busySink notifSink ipcSink usernameB groupsListS navS = do
+  searchInstagramView <- searchInstagram busySink notifSink ipcSink usernameB groupsListS navS
   uploadView          <- uploadPage      busySink notifSink ipcSink usernameB navS
   compositeL          <- fullsizeLayout4 (pure 3)
                                          (mkLayoutPure' uploadView                     "Upload")
