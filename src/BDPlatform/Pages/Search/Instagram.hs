@@ -231,7 +231,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB groupsListS navS = do
   (htFormView, createHTagE)        <- formWithValidationComponent validateHTag "" (createHTagW hViewModeSink) :: IO (Signal Html, Events JSString)
 
   (mapView, mapSink, _)            <- mapComponent []
-  mapSink MapInit
+  -- mapSink MapInit
   (gridView, gridCmdsSink, gridActionE, gridItemsE, _) <- gridComponent gridOptions initialItems itemMarkup
 
   subscribeEvent srchResEvents        $ gridCmdsSink . Replace . fromMaybe []
