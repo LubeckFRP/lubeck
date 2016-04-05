@@ -231,7 +231,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB groupsListS navS = do
   (htFormView, createHTagE)        <- formWithValidationComponent validateHTag "" (createHTagW hViewModeSink) :: IO (Signal Html, Events JSString)
 
   (mapView, mapSink, _)            <- mapComponent []
-  -- mapSink MapInit
+  mapSink MapInit
   (gridView, gridCmdsSink, gridActionE, gridItemsE, _) <- gridComponent gridOptions initialItems itemMarkup
 
   subscribeEvent srchResEvents        $ gridCmdsSink . Replace . fromMaybe []
@@ -248,13 +248,22 @@ searchInstagram busySink notifSink ipcSink mUserNameB groupsListS navS = do
   formView''    <- overlayLayout (fmap htFormViewModeToIdx hViewModeS) (mkLayoutPure formView)   (mkLayoutPure htFormView)
   formView'     <- toggleLayout2 (fmap formViewModeToIdx fViewModeS)   formView'' (mkLayoutPure editView)
 
-  resultsView'  <- fullsizeLayout2 (fmap resultsViewModeToIdx rViewModeS) (mkLayoutPure' gridView "Grid") (mkLayoutPure' mapView "Map")
-  resultsView'' <- toggleLayout2   (fmap resultsToResultsViewIdx results) resultsView' (mkLayoutPure (pure mempty))
+  (resultsView', switchSignal)  <- fullsizeLayout2' (fmap resultsViewModeToIdx rViewModeS) (mkLayoutPure' gridView "Grid") (mkLayoutPure' mapView "Map")
+  resultsView'' <- toggleLayout2 (fmap resultsToResultsViewIdx results) resultsView' (mkLayoutPure (pure mempty))
   topL          <- verticalStackLayout2 formView' resultsView''
+
+  subscribeEvent (updates switchSignal) $ invalidateMapSize mapSink
 
   return (view topL)
 
   where
+    invalidateMapSize mapSink 1 = void . forkIO $ do
+      -- give map element some time to appear in the DOM and obtain pixel size so map could resize itself accordingly
+      threadDelay 100000
+      mapSink InvalidateSize
+
+    invalidateMapSize _       _ = return ()
+
     resultsViewModeToIdx ResultsGrid  = 0
     resultsViewModeToIdx ResultsMap   = 1
     resultsViewModeToIdx _            = 0

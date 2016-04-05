@@ -89,7 +89,7 @@ foreign import javascript unsafe "$1.fitWorld()"
 fitWorld :: LMap -> IO ()
 fitWorld lm = fitWorld_ (lMap lm)
 
-foreign import javascript unsafe "$1.invalidateSize(true)"
+foreign import javascript unsafe "(function(){console.log('invalidate size here');$1.invalidateSize(true)})()"
   invalidateSize_ :: JSVal -> IO ()
 
 invalidateSize :: LMap -> IO ()
@@ -203,7 +203,7 @@ mapComponent z = do
 
   g                                 <- getStdGen
   let mapId                         = fromString . take 10 $ randomRs ('a', 'z') g
-  -- createElement $ mapW mapId -- force creating a container node before the map could be initialised
+  createElement $ mapW mapId -- force creating a container node before the map could be initialised
 
   let htmlS                         = pure (mapW mapId)                          :: Signal Html
   mapRef                            <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
