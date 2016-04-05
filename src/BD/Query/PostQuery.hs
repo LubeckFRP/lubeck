@@ -36,6 +36,7 @@ data PostQuery
   | PostQueryUsername Text
   | PostQueryUsernames [Text]
   | PostQueryTrackedHashtag Text
+  | PostQueryGroup Text
 
   | PostQueryFollowers Ordering Int
   | PostQueryDate Ordering Day
@@ -61,8 +62,9 @@ instance ToJSON PostQuery where
 
     PostQueryUsername x          -> inObjectNamed "username" $ toJSON x
     PostQueryLocation x          -> inObjectNamed "location" $ (Number . fromIntegral) x
-    PostQueryHashtag x           -> inObjectNamed "hashtag" $ toJSON x
+    PostQueryHashtag x           -> inObjectNamed "hashtag" $ toJSON x -- XXX the same field name?
     PostQueryTrackedHashtag x    -> inObjectNamed "hashtag" $ toJSON x
+    PostQueryGroup x             -> inObjectNamed "accountgroup" $ toJSON x
 
     PostQueryOrderBy x           -> inObjectNamed "orderBy" $ searchPostOrderEnc x
     PostQueryOrderDirection x    -> inObjectNamed "orderDirection" $ sortDirectionEnc x
@@ -106,6 +108,7 @@ data SimplePostQuery = SimplePostQuery
   , direction      :: SortDirection
 
   , trackedHashTag :: Maybe Text
+  , accountgroup   :: Maybe Text
   , limit          :: Int
   }
   deriving (Eq, Show)
@@ -134,11 +137,12 @@ defSimplePostQuery = SimplePostQuery
   , orderBy        = PostByLikes
   , direction      = Desc
   , trackedHashTag = Nothing
+  , accountgroup   = Nothing
   , limit          = 50 }
 
 -- | Convert a 'SimplePostQuery' to a 'PostQuery'.
 complexifyPostQuery :: SimplePostQuery -> PostQuery
-complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, followers, date, location, orderBy, direction, trackedHashTag, limit}) =
+complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, followers, date, location, orderBy, direction, trackedHashTag, accountgroup, limit}) =
   case trackedHashTag of
     Just x  ->
       PostQueryAnd $
@@ -150,6 +154,7 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
       ++ (if comment  == "" then [] else [PostQueryHasComment comment])
       ++ (if hashTag  == "" then [] else [PostQueryHashtag hashTag])
       ++ (if userName == "" then [] else [PostQueryUsername userName])
+      ++ complexifyGroup accountgroup
       ++ complexifyInterval 0       PostQueryFollowers followers
       ++ complexifyInterval someDay PostQueryDate date
       ++ [PostQueryOrderBy orderBy, PostQueryOrderDirection direction]
@@ -157,3 +162,6 @@ complexifyPostQuery (SimplePostQuery {caption, comment, hashTag, userName, follo
   where
     someDay = ModifiedJulianDay 0
     complexifyInterval z f x = fmap (uncurry f) (intervalToOrderings z x)
+    complexifyGroup g = case g of
+      Nothing -> []
+      Just name -> [PostQueryGroup name]

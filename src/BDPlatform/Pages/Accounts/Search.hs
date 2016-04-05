@@ -94,8 +94,9 @@ selectCreateGroupW outputSink (isValid, (gnl, val)) =
     toAction [x]    = DontSubmit $ Just x
     toAction (x:xs) = DontSubmit $ Just x -- XXX ???
 
-    firstGroupName [] = ""
-    firstGroupName xs = head xs
+    -- firstGroupName [] = ""
+    -- firstGroupName xs = head xs
+    firstGroupName _ = "474435ed33c2aae0a145fc62d2083963ab537336" -- select no group
 --------------------------------------------------------------------------------
 
 searchFormW :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)
@@ -190,7 +191,7 @@ doAddToGroup :: Sink AddToGroupViewMode
              -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account))
              -> Maybe DG.GroupName
              -> IO ()
-doAddToGroup _ selectionSnapshotS {-busySink notifSink-} Nothing = return ()
+doAddToGroup _ _ {-busySink notifSink-} Nothing = return ()
 doAddToGroup popupSink selectionSnapshotS {-busySink notifSink-} (Just groupName) = do
   x <- pollBehavior (current selectionSnapshotS)
   let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) x

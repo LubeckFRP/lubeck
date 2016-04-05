@@ -41,6 +41,7 @@ import           BD.Api
 import           BD.Data.Account                (Account)
 import           BD.Data.SearchPost             (SearchPost)
 import qualified BD.Data.SearchPost             as P
+import qualified BD.Data.Group                  as DG
 import           BD.Query.PostQuery
 import qualified BD.Query.PostQuery             as PQ
 import           BD.Types
@@ -64,8 +65,8 @@ data FormViewMode    = FormVisible | FormHidden
 data ResultsViewMode = ResultsGrid | ResultsMap | ResultsHidden deriving (Show, Eq)
 
 
-searchForm :: Sink HTFormViewMode -> Sink PageAction -> Day -> Widget ([P.TrackedHashtag], SimplePostQuery) (Submit SimplePostQuery)
-searchForm hViewModeSink pageActionSink dayNow outputSink (trackedHTs, query) =
+searchFormW :: Sink HTFormViewMode -> Sink PageAction -> Day -> Widget (Maybe DG.GroupsNamesList, ([P.TrackedHashtag], SimplePostQuery)) (Submit SimplePostQuery)
+searchFormW hViewModeSink pageActionSink dayNow outputSink (groups, (trackedHTs, query)) =
   panel' $ formPanel_ [Ev.keyup $ \e -> when (which e == 13) (outputSink $ Submit query) ]  -- event delegation
       [ longStringWidget "Caption"   True  (contramapSink (\new -> DontSubmit $ query { caption = new })  outputSink) (PQ.caption query)
       , longStringWidget "Comment"   False (contramapSink (\new -> DontSubmit $ query { comment = new })  outputSink) (PQ.comment query)
@@ -74,6 +75,15 @@ searchForm hViewModeSink pageActionSink dayNow outputSink (trackedHTs, query) =
 
       , integerIntervalWidget "Poster followers"    (contramapSink (\new -> DontSubmit $ query { followers = new }) outputSink) (PQ.followers query)
       , dateIntervalWidget    dayNow "Posting date" (contramapSink (\new -> DontSubmit $ query { date = new }) outputSink)      (PQ.date query)
+
+      , formRowWithLabel "Account group"
+          [ selectWithPromptWidget
+              (let x = fromMaybe [] groups in zip x x)
+              (contramapSink (\new -> DontSubmit $ query { accountgroup = new }) outputSink)
+                             (fromMaybe "474435ed33c2aae0a145fc62d2083963ab537336" $ PQ.accountgroup query) ]
+                             -- for Nothing we should provide some unique value, not matching any other choices
+                             -- empty string won't work as there is a group with empty name
+                             -- TODO better way - some indexes.
 
       , formRowWithLabel "Sort by"
           [ selectWidget
@@ -194,9 +204,10 @@ searchInstagram :: Sink BusyCmd
                 -> Sink (Maybe Notification)
                 -> Sink IPCMessage
                 -> Behavior (Maybe JSString)
+                -> Signal (Maybe DG.GroupsNamesList)
                 -> Signal Nav
                 -> IO (Signal Html)
-searchInstagram busySink notifSink ipcSink mUserNameB navS = do
+searchInstagram busySink notifSink ipcSink mUserNameB groupsListS navS = do
   (fViewModeSink, fViewModeS) <- newSignalWithDefault FormVisible
   (rViewModeSink, rViewModeS) <- newSignalWithDefault ResultsHidden
   (hViewModeSink, hViewModeS) <- newSignalWithDefault HTFormHidden
@@ -216,7 +227,7 @@ searchInstagram busySink notifSink ipcSink mUserNameB navS = do
   results                          <- stepperS Nothing srchResEvents                                   :: IO (Signal (Maybe [Post]))
 
   now                              <- getCurrentTime
-  (formView, searchRequested)      <- formComponentExtra1 thtsB initPostQuery (searchForm hViewModeSink pageActionsSink (utctDay now))
+  (formView, searchRequested)      <- formComponentExtra2 thtsB (current groupsListS) initPostQuery (searchFormW hViewModeSink pageActionsSink (utctDay now))
   (htFormView, createHTagE)        <- formWithValidationComponent validateHTag "" (createHTagW hViewModeSink) :: IO (Signal Html, Events JSString)
 
   (mapView, mapSink, _)            <- mapComponent []

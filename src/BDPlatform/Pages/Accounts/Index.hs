@@ -47,7 +47,7 @@ accountsIndexPage :: Sink BusyCmd
                   -> Sink IPCMessage
                   -> Behavior (Maybe JSString)
                   -> Signal Nav
-                  -> IO (Signal Html)
+                  -> IO (Signal Html, Signal (Maybe DG.GroupsNamesList))
 accountsIndexPage busySink notifSink ipcSink usernameB navS = do
   (groupsListSink, groupsListE) <- newSyncEventOf (undefined :: DG.GroupsNamesList)
   groupsListS                   <- stepperS Nothing (fmap Just groupsListE)
@@ -63,4 +63,4 @@ accountsIndexPage busySink notifSink ipcSink usernameB navS = do
                                        (mkLayoutPure' accountSearchView "Find accounts")
                                        (mkLayoutPure' manageAccounsView "Manage groups")
 
-  return $ view compositeL
+  return (view compositeL, groupsListS)
