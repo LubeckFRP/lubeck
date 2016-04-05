@@ -94,8 +94,9 @@ selectCreateGroupW outputSink (isValid, (gnl, val)) =
     toAction [x]    = DontSubmit $ Just x
     toAction (x:xs) = DontSubmit $ Just x -- XXX ???
 
-    firstGroupName [] = ""
-    firstGroupName xs = head xs
+    -- firstGroupName [] = ""
+    -- firstGroupName xs = head xs
+    firstGroupName _ = "474435ed33c2aae0a145fc62d2083963ab537336" -- select no group
 --------------------------------------------------------------------------------
 
 searchFormW :: Day -> Widget SimpleAccountQuery (Submit SimpleAccountQuery)

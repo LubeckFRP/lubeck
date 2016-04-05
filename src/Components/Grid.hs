@@ -25,14 +25,15 @@ import qualified Web.VirtualDom.Html.Events     as Ev
 import           Lubeck.App                     (Html)
 import           Lubeck.Forms
 import           Lubeck.FRP
+import qualified Lubeck.FRP                     as FRP
 import           Lubeck.Util
 
 import           BD.Types
 import           BDPlatform.HTMLCombinators
 
 
-data GridAction a = Select [a] | Delete [a] | Other [a] | Noop deriving Show
-data GridCommand a = Replace [a]
+data GridAction a = Select [a] | Delete [a] | Other [a] | SelectNone | Noop deriving Show
+data GridCommand a = Replace [a] | ClearSelection
 
 data GridOptions = GridOptions { deleteButton :: Bool
                                , selectButton :: Bool
@@ -75,7 +76,9 @@ gridComponent mbOpts as itemW = do
   selectedS                         <- accumS (Set.empty :: Set.Set a) selE
   let selectedB                     = current selectedS
 
-  asS                               <- stepperS [] (fmap (\(Replace as) -> as) lifecycleEvents)
+  subscribeEvent (FRP.filter filterResetSelectionEvents lifecycleEvents) $ const . actionsSink $ SelectNone
+
+  asS                               <- stepperS [] (fmap (\(Replace as) -> as) (FRP.filter filterReplaceEvents lifecycleEvents))
 
   let asAndSelS                     = liftA2 (,) asS selectedS                 --  :: Signal ([a], Set.Set a)
 
@@ -84,9 +87,17 @@ gridComponent mbOpts as itemW = do
   return (view, lifecycleSink, actionsEvents, itemEvents, selectedB)
 
   where
+    filterResetSelectionEvents ClearSelection = True
+    filterResetSelectionEvents (Replace _)    = True
+    filterResetSelectionEvents _              = False
+
+    filterReplaceEvents (Replace _)           = True
+    filterReplaceEvents _                     = False
+
     commandToSelection :: Ord a => GridAction a -> Set.Set a -> Set.Set a
     commandToSelection (Select y') x = let y = Set.fromList y' in
                                        if Set.null (Set.intersection x y)
                                          then Set.union x y
                                          else Set.union (Set.difference x y) (Set.difference y x)
+    commandToSelection SelectNone  _ = Set.empty
     commandToSelection _           x = x
