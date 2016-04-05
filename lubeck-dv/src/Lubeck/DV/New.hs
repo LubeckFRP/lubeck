@@ -361,19 +361,24 @@ instance Contravariant Aesthetic where
       (\xs   -> k  (fmap f xs))
 
 
+-- Data/guides/labels is mapped but not scaled
 data Plot = Plot
   { mappedData        :: [Map Key Double]
+    -- Default merge is list append
+    -- If we have two different shapes with i.e. X and Y values, we should do a cross/blend here
   , mappedSpecialData :: [Map Key Special]
+    -- Default merge is list append
+    -- As this is only used for images/labels append is fine
   , bounds            :: Map Key (Double, Double)
+    -- Use max for both bounds
   , guides            :: Map Key [(Double, Str)]
+    -- Arbitrarily use first
   , labels            :: Map Key [(Double, Double, Str)]
+    -- Merge
   , axisNames         :: [Str]
+  , geom              :: Geometry
+    -- Wrap each geom in somethign that looks for a unique value (used in the blend above)
   }
-
-instance Monoid Plot where
-  mempty = Plot mempty mempty mempty mempty mempty mempty
-  mappend (Plot a1 a2 a3 a4 a5 a6) (Plot b1 b2 b3 b4 b5 b6)
-    = Plot (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)  (a6 <> b6)
 
 
 x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
@@ -941,7 +946,8 @@ area = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+    baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $
+      V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 {-|
 Like 'fill', but renders the area between {x, y, bound:False} and {x, y, bound:True}
@@ -973,20 +979,23 @@ area2 = Geometry tot [""]
         -- ys2 = fmap (getNormalized . (! "y")) highMappings
         -- ps = zipWith3 (\x y1 y2 -> P (V3 x y1 y2)) xs ys1 ys2
 
-    -- baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+    -- baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3
+      -- (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 xIntercept :: Geometry
 xIntercept = ifG "crossLineX" (Geometry g [""])
   where
-   g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+   g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $
+    V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 yIntercept :: Geometry
 yIntercept = ifG "crossLineY" (Geometry g [""])
   where
-   g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+   g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $
+    V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 imageG :: Geometry
 imageG = Geometry g [""]
