@@ -203,7 +203,7 @@ mapComponent z = do
 
   g                                 <- getStdGen
   let mapId                         = fromString . take 10 $ randomRs ('a', 'z') g
-  createElement $ mapW mapId -- force creating a container node before the map could be initialised
+  -- createElement $ mapW mapId -- force creating a container node before the map could be initialised
 
   let htmlS                         = pure (mapW mapId)                          :: Signal Html
   mapRef                            <- TVar.newTVarIO Nothing                    :: IO (TVar.TVar (Maybe LMap))
