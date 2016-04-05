@@ -19,12 +19,12 @@ packages:
 - location:
     git: git@github.com:ghcjs/ghcjs-ffiqq.git
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
-- location:
-    git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: 77d6c103ebe6e4adb87190a19553efb0674e3fdc
 # - location:
-    # git: git@github.com:EugeneN/virtual-dom.git
-    # commit: f0dc216e2accd87bb721f539d14d32fc1a9b712c
+#     git: git@github.com:BeautifulDestinations/virtual-dom.git
+#     commit: 77d6c103ebe6e4adb87190a19553efb0674e3fdc
+- location:
+    git: git@github.com:EugeneN/virtual-dom.git
+    commit: 68ff791b991252ee352ed8de511474036a31ad27
 - location:
     git: git@github.com:msakai/data-interval.git
     commit: f57e950e53e5499f1cbc2609382521bf52105b5e
