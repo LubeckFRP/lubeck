@@ -1121,7 +1121,7 @@ debugInfo dat aess = box
     -- tab1a = makeTable (fmap (toBox) $ aKeys)
       -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
     tab2 = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedAndScaledData)
+      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial plot))
     tab = makeTable ["Aesthetic", "Scale base", "Bounds", "Guide"]
       (fmap (\k ->
         [ toBox k
@@ -1158,7 +1158,7 @@ debugInfo dat aess = box
           (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
     aKeys       = Data.Map.keys $ mconcat mappedData
-    (Plot mappedData _ mappedAndScaledData mappedAndScaledDataWSpecial boundsM guidesM) = createPlot dat aess
+    plot@(Plot mappedData _ boundsM guidesM) = createPlot dat aess
     scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
 
 
@@ -1167,7 +1167,7 @@ The main entry-point of the library.
 -}
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
-  let dataD     = drawData mappedAndScaledDataWSpecial          :: Styled Drawing
+  let dataD     = drawData (mappedAndScaledDataWithSpecial plot)  :: Styled Drawing
       guidesD   = drawGuides (guidesM ? "x") (guidesM ? "y")    :: Styled Drawing
       axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
   in mconcat [dataD, axesD, guidesD]
@@ -1180,23 +1180,33 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
-    (Plot _ _ _ mappedAndScaledDataWSpecial _ guidesM) = createPlot dat aess
+    plot = createPlot dat aess
+    guidesM = scaledGuides plot
 
 
 createPlot :: [a] -> [Aesthetic a] -> Plot
 createPlot dat aess =
-  Plot mappedData specialData mappedAndScaledData mappedAndScaledDataWSpecial bounds scaledGuides
+  Plot mappedData specialData guides bounds
   where
     aes                 = mconcat aess
     bounds             = aestheticBounds aes dat                        :: Map Key (Double, Double)
     guides            = aestheticGuides aes dat                         :: Map Key [(Double, Str)]
     scaledGuides             = normalizeGuides bounds guides            :: Map Key [(Coord, Str)]
     specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
-    mappedAndScaledData = normalizeData bounds mappedData               :: [Map Key Coord]
     mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
-    mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
+
+scaledGuides :: Plot -> Map Key [(Coord, Str)]
+scaledGuides (Plot _ _ guides bounds) = normalizeGuides bounds guides
+
+mappedAndScaledDataWithSpecial :: Plot -> [Map Key (Coord, Maybe Special)]
+mappedAndScaledDataWithSpecial
+  (Plot mappedData specialData _ bounds)
+  = zipWith mergeMapsL mappedAndScaledData specialData
       :: [Map Key (Coord, Maybe Special)]
       where
+        mappedAndScaledData :: [Map Key Coord]
+        mappedAndScaledData = normalizeData bounds mappedData
+
         mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
         mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
           where
@@ -1207,27 +1217,16 @@ createPlot dat aess =
 
 
 
+data Plot'
+  = Plot's (Map Key (Double, Double)) [Plot']
+  | Plot' Plot Geometry
+
 -- Data/guides/labels is mapped but not scaled
 data Plot = Plot
   { mappedData        :: [Map Key Double]
   , specialData       :: [Map Key Special]
-    -- Default merge is list append
-    -- If we have two different shapes with i.e. X and Y values, we should do a cross/blend here
-  , mappedAndScaledData :: [Map Key Coord]
-
-  , mappedAndScaledDataWSpecial :: [Map Key (Coord, Maybe Special)]
-  -- Data mapped into the real domain, parameterized by key and scaled according to bounds.
-
-    -- Default merge is list append
-    -- As this is only used for images/labels append is fine
+  , guides            :: Map Key [(Double, Str)]
   , bounds            :: Map Key (Double, Double)
-    -- Use max for both bounds
-  , guides            :: Map Key [(Coord, Str)]
-
-    -- Arbitrarily use first
-  -- , axisNames         :: [Str]
-  -- , geom              :: Geometry
-    -- Wrap each geom in somethign that looks for a unique value (used in the blend above)
   }
 
 {-
