@@ -1113,7 +1113,9 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
 debugInfo dat aess = box
   where
-    aes = mconcat aess
+    plot@(Plot mappedData _ boundsM guidesM) = createPlot dat aess
+    aKeys       = Data.Map.keys $ mconcat mappedData
+    scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
 
     tab0 = B.vcat B.left $ map (toBox) dat
     tab1 = makeTable (fmap (toBox) $ aKeys)
@@ -1149,18 +1151,6 @@ debugInfo dat aess = box
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
 
-    mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-    mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
-      where
-        g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
-          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-          (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
-          (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
-
-    aKeys       = Data.Map.keys $ mconcat mappedData
-    plot@(Plot mappedData _ boundsM guidesM) = createPlot dat aess
-    scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-
 
 {-|
 The main entry-point of the library.
@@ -1168,20 +1158,16 @@ The main entry-point of the library.
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
   let dataD     = drawData (mappedAndScaledDataWithSpecial plot)  :: Styled Drawing
-      guidesD   = drawGuides (guidesM ? "x") (guidesM ? "y")    :: Styled Drawing
+      guidesD   = drawGuides (scaledGuides plot ? "x") (scaledGuides plot ? "y")    :: Styled Drawing
       axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
   in mconcat [dataD, axesD, guidesD]
   where
-    -- mappedAndScaledDataWSpecial, guidesM, axesNames
-
     axesNames = axesNames1 ++ repeat ""                              :: [Str]
-
     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
     plot = createPlot dat aess
-    guidesM = scaledGuides plot
 
 
 createPlot :: [a] -> [Aesthetic a] -> Plot
