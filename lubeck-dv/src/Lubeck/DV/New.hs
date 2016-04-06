@@ -627,8 +627,9 @@ linearWithOptions
       UseZero               -> 0
       InterpZeroAndMin x -> x * minVal
       UseMin                -> minVal
+    chooseUB = id
 
-    bounds vs = (chooseLB $ realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+    bounds vs = (chooseLB $ realToFrac $ safeMin vs, chooseUB $ realToFrac $ safeMax vs)
     guides vs = fmap (\x -> (x, showN x)) $ tickCalc 4 (bounds vs)
 
     -- number of ticks, interval, outpouts ticks
@@ -1113,7 +1114,7 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
 debugInfo dat aess = box
   where
-    plot@(Plot mappedData _ boundsM guidesM) = createPlot dat aess
+    plot@(Plot mappedData _ boundsM guidesM _) = createPlot dat aess
     aKeys       = Data.Map.keys $ mconcat mappedData
     scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
 
@@ -1170,9 +1171,23 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
     plot = createPlot dat aess
 
 
+-- visualizeWithStyle2 :: Show s => [Str] -> Plots -> Styled Drawing
+-- visualizeWithStyle2 axesNames1 dat (Geometry drawData _) aess =
+--   let dataD     = drawData (mappedAndScaledDataWithSpecial plot)  :: Styled Drawing
+--       guidesD   = drawGuides (scaledGuides plot ? "x") (scaledGuides plot ? "y")    :: Styled Drawing
+--       axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
+--   in mconcat [dataD, axesD, guidesD]
+--   where
+--     axesNames = axesNames1 ++ repeat ""                              :: [Str]
+--     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+--       where
+--         xs = fmap (second Just) xs2
+--         ys = fmap (second Just) ys2
+--     plot = createPlot dat aess
+
 createPlot :: [a] -> [Aesthetic a] -> Plot
 createPlot dat aess =
-  Plot mappedData specialData guides bounds
+  Plot mappedData specialData guides bounds mempty
   where
     aes                 = mconcat aess
     bounds              = aestheticBounds aes dat                       :: Map Key (Double, Double)
@@ -1182,11 +1197,11 @@ createPlot dat aess =
     mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
 
 scaledGuides :: Plot -> Map Key [(Coord, Str)]
-scaledGuides (Plot _ _ guides bounds) = normalizeGuides bounds guides
+scaledGuides (Plot _ _ guides bounds _) = normalizeGuides bounds guides
 
 mappedAndScaledDataWithSpecial :: Plot -> [Map Key (Coord, Maybe Special)]
 mappedAndScaledDataWithSpecial
-  (Plot mappedData specialData _ bounds)
+  (Plot mappedData specialData _ bounds _)
   = zipWith mergeMapsL mappedAndScaledData specialData
       :: [Map Key (Coord, Maybe Special)]
       where
@@ -1201,31 +1216,55 @@ mappedAndScaledDataWithSpecial
               (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
               (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
+data Plots = OnePlot Plot | ManyPlots [Plots]
+
+plotBounds :: Plots -> Map Key (Double, Double)
+plotBounds (OnePlot p)    = bounds p
+plotBounds (ManyPlots []) = mempty
+plotBounds (ManyPlots ps) = foldr1 outerBounds (fmap plotBounds ps)
+
 -- Data/guides/labels is mapped but not scaled
 data Plot = Plot
   { mappedData        :: [Map Key Double]
   , specialData       :: [Map Key Special]
   , guides            :: Map Key [(Double, Str)]
   , bounds            :: Map Key (Double, Double)
+  , geometry          :: Geometry
   }
-  deriving (Show)
+-- When drawing plots:
+-- Calculate bounds using foldr maxBounds
 
-isEmptyPlot :: Plot -> Bool
-isEmptyPlot (Plot [] [] a b) = Data.Map.null a && Data.Map.null b
-isEmptyPlot _ = False
 
-maxBounds = Data.Map.unionWith g
+
+{-
+TODO embed Geom in plot such that
+  - Plots are monoidal
+  - Monoidal composition of plots
+    - Retains association of geoms to subplots (i.e. geoms are NOT unified)
+    - Does not retain association of bounds to subplots (i.e. bounds ARE unified)
+
+-}
+
+-- isEmptyPlot :: Plot -> Bool
+-- isEmptyPlot (Plot [] [] a b _) = Data.Map.null a && Data.Map.null b
+-- isEmptyPlot _ = False
+
+outerBounds :: (Ord k) => Map k (Double, Double) -> Map k (Double, Double) -> Map k (Double, Double)
+outerBounds = Data.Map.unionWith g
   where
     g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
 
-instance Monoid Plot where
-  mempty = Plot mempty mempty mempty mempty
-  mappend a@(Plot a1 a2 a3 a4) b@(Plot b1 b2 b3 b4)
-    | isEmptyPlot a = b
-    | otherwise = Plot  (a1 <> b1)
-                        (a2 <> b2)
-                        a3
-                        (a4 `maxBounds` b4)
+-- instance Monoid Plot where
+--   mempty = Plot mempty mempty mempty mempty
+--   mappend a@(Plot a1 a2 a3 a4) b@(Plot b1 b2 b3 b4)
+--     | isEmptyPlot a = b
+--     | otherwise = Plot  (a1 <> b1)
+--                         (a2 <> b2)
+--                         a3
+--                         (a4 `maxBounds` b4)
+
+
+
 {-
 instance Monoid Plot where
   mempty = Plot mempty mempty mempty mempty mempty mempty
