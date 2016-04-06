@@ -301,28 +301,6 @@ data Aesthetic a = Aesthetic
       --   See also 'scaleBaseName'.
   }
 
--- Data/guides/labels is mapped but not scaled
-data Plot = Plot
-  { mappedData        :: [Map Key Double]
-    -- Default merge is list append
-    -- If we have two different shapes with i.e. X and Y values, we should do a cross/blend here
-  , mappedSpecialData :: [Map Key Special]
-    -- Default merge is list append
-    -- As this is only used for images/labels append is fine
-  , bounds            :: Map Key (Double, Double)
-    -- Use max for both bounds
-  , guides            :: Map Key [(Double, Str)]
-    -- Arbitrarily use first
-  , axisNames         :: [Str]
-  , geom              :: Geometry
-    -- Wrap each geom in somethign that looks for a unique value (used in the blend above)
-  }
-
-instance Monoid Plot where
-  mempty = Plot mempty mempty mempty mempty mempty mempty
-  mappend (Plot a1 a2 a3 a4 a5 a6) (Plot b1 b2 b3 b4 b5 b6) =
-    Plot (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5) (a6 <> b6)
-
 
 
 {-|
@@ -389,6 +367,7 @@ x = customAesthetic "x"
 y = customAesthetic "y"
 
 -- | Map values to the Y axis of a plot.
+-- This is used for the lower bound of the 'area' geometry.
 yMin = customAesthetic "yMin"
 
 -- | Map values to the color of a plot element.
@@ -409,6 +388,10 @@ shape = customAesthetic "shape"
 -- | Map values to the thickness of a plot element.
 thickness = customAesthetic "thickness"
 
+-- | Defines the bound of an interval (lower or upper). Works with their
+-- standard 'Bool' scale.
+--
+-- Used by the 'area2' geometry.
 bound = customAesthetic "bound"
 
 -- | If present and non-zero, show X-intercepting cross-lines.
@@ -589,8 +572,10 @@ linear = linearWithOptions False UseMin
 
 {-|
 A linear scale for integral values.
+
+Accepts (and renders) non-integral values, but displays guides without decimals.
 -}
-linearIntegral :: (Integral a, Show a) => Scale a
+linearIntegral :: (Real a, Show a) => Scale a
 linearIntegral = linearWithOptions True UseMin
 
 {-|
@@ -800,11 +785,15 @@ INTERESTINGLY
 
 -}
 
+{-
+A value in @[ x | 0 <= x <= 1]@.
+
+Used to represent scaled data.
+-}
 type Coord = Normalized Double
 
 data Geometry = Geometry
   { geomMapping         :: [Map Key (Coord, Maybe Special)] -> Styled Drawing
-  -- , getSpecialGeometry  :: [Map Key Special] -> Styled Drawing
   , geomBaseName        :: [String]
   }
 
@@ -874,7 +863,7 @@ geom_violin(stat_ydensity)
 -}
 
 
-{-| Render a geometry iff a key is present and its scaled value > 0.5.
+{-| Render a geometry iff a key is present and has a (scaled) value @> 0.5@.
 
 This is convenient to use with standard 'Bool' or 'Integer' scales.
 -}
@@ -1059,15 +1048,7 @@ colors ms = case Data.Maybe.catMaybes $ fmap (fmap fst . (?! "color")) ms of
 
 
 
-normalizeGuides :: Map Key (Double, Double) -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
-normalizeGuides b m = normalizeGuides' b m
 
-normalizeData :: Map Key (Double, Double) -> [Map Key Double] -> [Map Key (Coord)]
-normalizeData b m = fmap (normalizeData' b) m
-
--- TODO nice Identity vs Compose pattern!
-normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
-normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
 
 {-| Tag a value to keep track of the fact that it is /normalized/, i.e. in the unit hypercube. -}
 newtype Normalized a = Normalized { getNormalized :: a }
@@ -1106,6 +1087,8 @@ m ?! k = Data.Map.lookup k m
 
 
 
+
+
 -- TOP-LEVEL
 
 visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
@@ -1127,7 +1110,7 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 
 
 {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
-debugInfo :: Show s => [s] -> [Aesthetic s] -> B.Box
+debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
 debugInfo dat aess = box
   where
     aes = mconcat aess
@@ -1135,8 +1118,8 @@ debugInfo dat aess = box
     tab0 = B.vcat B.left $ map (toBox) dat
     tab1 = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
-    tab1a = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
+    -- tab1a = makeTable (fmap (toBox) $ aKeys)
+      -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
     tab2 = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedAndScaledData)
     tab = makeTable ["Aesthetic", "Scale base", "Bounds", "Guide"]
@@ -1150,7 +1133,6 @@ debugInfo dat aess = box
     box = B.vsep 1 B.left
       [ "Raw data    " B.<+> tab0
       , "Mapped data " B.<+> tab1 -- TODO show "special" data here too!
-      , "Mapped (special) data " B.<+> tab1a-- TODO show "special" data here too!
       , "Scaled data " B.<+> tab2
       , "Aesthetics  " B.<+> tab
       ]
@@ -1175,33 +1157,14 @@ debugInfo dat aess = box
           (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
           (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
-
-
-
-
     aKeys       = Data.Map.keys $ mconcat mappedData
-    (mappedAndScaledDataWSpecial, boundsM, guidesM) = aestheticToPlot dat aess
-
-    -- TODO replace stuff being generated here with Plot
-    -- guidesM     = aestheticGuides aes dat :: Map Key [(Double, Str)]
-    -- boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
+    (mappedData, mappedAndScaledData, mappedAndScaledDataWSpecial, boundsM, guidesM) = createPlot dat aess
     scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-    mappedData          = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
-    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
-    -- mappedDataWSpecial  = zipWith mergeMapsL mappedData specialData
-      -- :: [Map Key (Double, Maybe Special)]
-
-    mappedAndScaledData = normalizeData boundsM mappedData :: [Map Key (Coord)]
-    -- mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
-      -- :: [Map Key (Coord, Maybe Special)]
 
 
-{-| The main entry-point for the library. -}
--- data/trans (our [s]),
--- scale (implied by the aesthetic),
--- coord (implied by the geometry)
--- guide/elem (implied by data, geometry and aesthetic)
-
+{-|
+The main entry-point of the library.
+-}
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
   let dataD     = drawData mappedAndScaledDataWSpecial          :: Styled Drawing
@@ -1217,49 +1180,31 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
-    (mappedAndScaledDataWSpecial, boundsM, guidesM) = aestheticToPlot dat aess
-    --
-    --
-    -- aes                 = mconcat aess
-    -- boundsM             = aestheticBounds aes dat                    :: Map Key (Double, Double)
-    -- guidesM2            = aestheticGuides aes dat                    :: Map Key [(Double, Str)]
-    -- guidesM             = normalizeGuides boundsM guidesM2           :: Map Key [(Coord, Str)]
-    -- specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
-    -- mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
-    --   :: [Map Key (Coord, Maybe Special)]
-    --   where
-    --     mappedAndScaledData = normalizeData boundsM mappedData           :: [Map Key Coord]
-    --       where
-    --         mappedData          = fmap (aestheticMapping aes dat) dat        :: [Map Key Double]
-    --
-    --     mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-    --     mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
-    --       where
-    --         g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
-    --           (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-    --           (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
-    --           (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
+    (mappedData, mappedAndScaledData, mappedAndScaledDataWSpecial, boundsM, guidesM) = createPlot dat aess
 
-aestheticToPlot
+
+createPlot
   :: [a]
      -> [Aesthetic a]
-     -> ([Map Key (Coord, Maybe Special)],
-         Map Key (Double, Double),
-         Map Key [(Coord, Str)])
-aestheticToPlot dat aess = (mappedAndScaledDataWSpecial, boundsM, guidesM)
+     ->
+      ( [Map Key Double]
+      , [Map Key Coord]
+      , [Map Key (Coord, Maybe Special)]
+      , Map Key (Double, Double)
+      , Map Key [(Coord, Str)]
+      )
+createPlot dat aess = (mappedData, mappedAndScaledData, mappedAndScaledDataWSpecial, bounds, scaledGuides)
   where
     aes                 = mconcat aess
-    boundsM             = aestheticBounds aes dat                    :: Map Key (Double, Double)
-    guidesM2            = aestheticGuides aes dat                    :: Map Key [(Double, Str)]
-    guidesM             = normalizeGuides boundsM guidesM2           :: Map Key [(Coord, Str)]
-    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
+    bounds             = aestheticBounds aes dat                        :: Map Key (Double, Double)
+    guides            = aestheticGuides aes dat                         :: Map Key [(Double, Str)]
+    scaledGuides             = normalizeGuides bounds guides            :: Map Key [(Coord, Str)]
+    specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
+    mappedAndScaledData = normalizeData bounds mappedData               :: [Map Key Coord]
+    mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
     mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
       :: [Map Key (Coord, Maybe Special)]
       where
-        mappedAndScaledData = normalizeData boundsM mappedData           :: [Map Key Coord]
-          where
-            mappedData          = fmap (aestheticMapping aes dat) dat        :: [Map Key Double]
-
         mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
         mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
           where
@@ -1267,6 +1212,50 @@ aestheticToPlot dat aess = (mappedAndScaledDataWSpecial, boundsM, guidesM)
               (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
               (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
               (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
+
+
+
+-- Data/guides/labels is mapped but not scaled
+data Plot = Plot
+  { mappedData        :: [Map Key Double]
+    -- Default merge is list append
+    -- If we have two different shapes with i.e. X and Y values, we should do a cross/blend here
+  , mappedAndScaledData :: [Map Key Coord]
+
+  , mappedAndScaledDataWSpecial :: [Map Key (Coord, Maybe Special)]
+  -- Data mapped into the real domain, parameterized by key and scaled according to bounds.
+
+    -- Default merge is list append
+    -- As this is only used for images/labels append is fine
+  , bounds            :: Map Key (Double, Double)
+    -- Use max for both bounds
+  , guides            :: Map Key [(Coord, Str)]
+    -- Arbitrarily use first
+  , axisNames         :: [Str]
+  , geom              :: Geometry
+    -- Wrap each geom in somethign that looks for a unique value (used in the blend above)
+  }
+
+{-
+instance Monoid Plot where
+  mempty = Plot mempty mempty mempty mempty mempty mempty
+  mappend (Plot a1 a2 a3 a4 a5 a6) (Plot b1 b2 b3 b4 b5 b6) =
+    Plot (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5) (a6 <> b6)
+-}
+
+
+
+normalizeGuides :: Map Key (Double, Double) -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
+normalizeGuides b m = normalizeGuides' b m
+
+normalizeData :: Map Key (Double, Double) -> [Map Key Double] -> [Map Key (Coord)]
+normalizeData b m = fmap (normalizeData' b) m
+
+-- TODO nice Identity vs Compose pattern!
+normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
+normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
+
+
 
 -- TEST
 
