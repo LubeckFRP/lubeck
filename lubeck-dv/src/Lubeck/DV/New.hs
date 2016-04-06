@@ -277,7 +277,8 @@ data Aesthetic a = Aesthetic
       --
       --   See also 'scaleMapping'.
   , aestheticSpecialMapping  :: [a] -> a -> Map Key Special
-      -- ^ Given dataset @vs@, map single value @v@ into a special value.
+      -- ^ Given dataset @vs@, map single value @v@ to a special value.
+      --   Typically used for images and labels.
       --
       --   See also 'scaleMapping'.
   , aestheticBounds        :: [a] -> Map Key (Double, Double)

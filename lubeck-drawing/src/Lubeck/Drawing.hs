@@ -1244,7 +1244,11 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
         pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
 
     embedToSvg :: Embed -> Svg
-    embedToSvg _ = E.text "" -- TODO
+    embedToSvg (EmbedContent str) = E.text (toJSString str)
+    embedToSvg (EmbedNode name attrs children) =
+      E.node (toJSString name)
+        (fmap ((\name, value) -> E.property (toJSString name) (toJSString value)) attrs)
+        (fmap embedToSvg children)
 
     toSvg1 :: [E.Property] -> Drawing -> [Svg]
     toSvg1 ps x = let
