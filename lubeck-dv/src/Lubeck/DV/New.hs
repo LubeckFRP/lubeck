@@ -1175,9 +1175,9 @@ createPlot dat aess =
   Plot mappedData specialData guides bounds
   where
     aes                 = mconcat aess
-    bounds             = aestheticBounds aes dat                        :: Map Key (Double, Double)
-    guides            = aestheticGuides aes dat                         :: Map Key [(Double, Str)]
-    scaledGuides             = normalizeGuides bounds guides            :: Map Key [(Coord, Str)]
+    bounds              = aestheticBounds aes dat                       :: Map Key (Double, Double)
+    guides              = aestheticGuides aes dat                       :: Map Key [(Double, Str)]
+    scaledGuides        = normalizeGuides bounds guides                 :: Map Key [(Coord, Str)]
     specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
     mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
 
@@ -1201,12 +1201,6 @@ mappedAndScaledDataWithSpecial
               (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
               (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
-
-
-data Plot'
-  = Plot's (Map Key (Double, Double)) [Plot']
-  | Plot' Plot Geometry
-
 -- Data/guides/labels is mapped but not scaled
 data Plot = Plot
   { mappedData        :: [Map Key Double]
@@ -1214,7 +1208,24 @@ data Plot = Plot
   , guides            :: Map Key [(Double, Str)]
   , bounds            :: Map Key (Double, Double)
   }
+  deriving (Show)
 
+isEmptyPlot :: Plot -> Bool
+isEmptyPlot (Plot [] [] a b) = Data.Map.null a && Data.Map.null b
+isEmptyPlot _ = False
+
+maxBounds = Data.Map.unionWith g
+  where
+    g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
+
+instance Monoid Plot where
+  mempty = Plot mempty mempty mempty mempty
+  mappend a@(Plot a1 a2 a3 a4) b@(Plot b1 b2 b3 b4)
+    | isEmptyPlot a = b
+    | otherwise = Plot  (a1 <> b1)
+                        (a2 <> b2)
+                        a3
+                        (a4 `maxBounds` b4)
 {-
 instance Monoid Plot where
   mempty = Plot mempty mempty mempty mempty mempty mempty
