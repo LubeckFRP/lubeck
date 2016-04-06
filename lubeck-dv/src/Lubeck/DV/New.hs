@@ -1158,7 +1158,7 @@ debugInfo dat aess = box
           (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
     aKeys       = Data.Map.keys $ mconcat mappedData
-    (mappedData, mappedAndScaledData, mappedAndScaledDataWSpecial, boundsM, guidesM) = createPlot dat aess
+    (Plot mappedData _ mappedAndScaledData mappedAndScaledDataWSpecial boundsM guidesM) = createPlot dat aess
     scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
 
 
@@ -1180,20 +1180,12 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
-    (mappedData, mappedAndScaledData, mappedAndScaledDataWSpecial, boundsM, guidesM) = createPlot dat aess
+    (Plot _ _ _ mappedAndScaledDataWSpecial _ guidesM) = createPlot dat aess
 
 
-createPlot
-  :: [a]
-     -> [Aesthetic a]
-     ->
-      ( [Map Key Double]
-      , [Map Key Coord]
-      , [Map Key (Coord, Maybe Special)]
-      , Map Key (Double, Double)
-      , Map Key [(Coord, Str)]
-      )
-createPlot dat aess = (mappedData, mappedAndScaledData, mappedAndScaledDataWSpecial, bounds, scaledGuides)
+createPlot :: [a] -> [Aesthetic a] -> Plot
+createPlot dat aess =
+  Plot mappedData specialData mappedAndScaledData mappedAndScaledDataWSpecial bounds scaledGuides
   where
     aes                 = mconcat aess
     bounds             = aestheticBounds aes dat                        :: Map Key (Double, Double)
@@ -1218,6 +1210,7 @@ createPlot dat aess = (mappedData, mappedAndScaledData, mappedAndScaledDataWSpec
 -- Data/guides/labels is mapped but not scaled
 data Plot = Plot
   { mappedData        :: [Map Key Double]
+  , specialData       :: [Map Key Special]
     -- Default merge is list append
     -- If we have two different shapes with i.e. X and Y values, we should do a cross/blend here
   , mappedAndScaledData :: [Map Key Coord]
@@ -1230,9 +1223,10 @@ data Plot = Plot
   , bounds            :: Map Key (Double, Double)
     -- Use max for both bounds
   , guides            :: Map Key [(Coord, Str)]
+
     -- Arbitrarily use first
-  , axisNames         :: [Str]
-  , geom              :: Geometry
+  -- , axisNames         :: [Str]
+  -- , geom              :: Geometry
     -- Wrap each geom in somethign that looks for a unique value (used in the blend above)
   }
 
