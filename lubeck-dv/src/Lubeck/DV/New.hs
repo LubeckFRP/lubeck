@@ -1761,7 +1761,7 @@ test23 = exportTestDrawing mempty mempty $ visualizePlot $
   Bar plot.
 -}
 test25 = exportTestDrawing mempty mempty $ visualizePlot $
-  createPlot (zip chars freq) [x <~ _1, y <~ _2] (bars)
+  createPlot (zip chars freq) [x <~ _1, y <~ _2] bars
   where
     chars :: [Char]
     freq :: [Int]
