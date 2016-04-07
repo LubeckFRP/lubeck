@@ -277,7 +277,8 @@ data Aesthetic a = Aesthetic
       --
       --   See also 'scaleMapping'.
   , aestheticSpecialMapping  :: [a] -> a -> Map Key Special
-      -- ^ Given dataset @vs@, map single value @v@ into a special value.
+      -- ^ Given dataset @vs@, map single value @v@ to a special value.
+      --   Typically used for images and labels.
       --
       --   See also 'scaleMapping'.
   , aestheticBounds        :: [a] -> Map Key (Double, Double)
@@ -294,10 +295,6 @@ data Aesthetic a = Aesthetic
       --
       --   See also 'scaleGuides'.
 
-  , aestheticLabels        :: [a] -> Map Key [(Double, Double, Str)]
-      -- ^ Similar to guides, except map into the X-Y coordinates of the underlying plot.
-      --   Mainly used for textural labels.
-
   , aestheticScaleBaseName :: [a] -> Map Key Str
       -- ^ Name of scale used to plot the given aesthetic.
       --
@@ -305,14 +302,15 @@ data Aesthetic a = Aesthetic
   }
 
 
+
 {-|
   - 'mempty' does not map anything.
   - 'mappend' interleaves bindings (left-biased).
 -}
 instance Monoid (Aesthetic a) where
-  mempty = Aesthetic mempty mempty mempty mempty mempty mempty
-  mappend (Aesthetic a1 a2 a3 a4 a5 a6) (Aesthetic b1 b2 b3 b4 b5 b6)
-    = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)  (a6 <> b6)
+  mempty = Aesthetic mempty mempty mempty mempty mempty
+  mappend (Aesthetic a1 a2 a3 a4 a5) (Aesthetic b1 b2 b3 b4 b5)
+    = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)
 
 -- | Make a custom aesthetic attribute.
 customAesthetic :: HasScale a => Key -> Aesthetic a
@@ -320,7 +318,7 @@ customAesthetic = customAesthetic' scale (const Nothing) (const Nothing)
 
 customAesthetic' :: (a -> Scale a) -> (a -> Maybe Str) -> (a -> Maybe Drawing) -> Key -> Aesthetic a
 customAesthetic' scale toMStr toMDrawing n =
-    Aesthetic mapping specialMapping genBounds genGuides genLabels getScaleBaseName
+    Aesthetic mapping specialMapping genBounds genGuides getScaleBaseName
   where
     mapping       = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
 
@@ -338,8 +336,6 @@ customAesthetic' scale toMStr toMDrawing n =
       []    -> []
       (v:_) -> scaleGuides (scale v) vs
 
-    genLabels = (const mempty)
-
     getScaleBaseName = \vs -> Data.Map.singleton n $ case vs of
       []    -> ""
       (v:_) -> scaleBaseName (scale v)
@@ -351,29 +347,15 @@ Contramapping an 'Aesthetic' provides an aesthetic for a (non-strictly) larger t
 >>> contramap toInteger :: Integral a => Aesthetic Integer -> f a
 -}
 instance Contravariant Aesthetic where
-  contramap f (Aesthetic g g2 h i j k)
+  contramap f (Aesthetic g g2 h i j)
     = Aesthetic
       (\xs x -> g  (fmap f xs) (f x))
       (\xs x -> g2 (fmap f xs) (f x))
       (\xs   -> h  (fmap f xs))
       (\xs   -> i  (fmap f xs))
       (\xs   -> j  (fmap f xs))
-      (\xs   -> k  (fmap f xs))
 
 
-data Plot = Plot
-  { mappedData        :: [Map Key Double]
-  , mappedSpecialData :: [Map Key Special]
-  , bounds            :: Map Key (Double, Double)
-  , guides            :: Map Key [(Double, Str)]
-  , labels            :: Map Key [(Double, Double, Str)]
-  , axisNames         :: [Str]
-  }
-
-instance Monoid Plot where
-  mempty = Plot mempty mempty mempty mempty mempty mempty
-  mappend (Plot a1 a2 a3 a4 a5 a6) (Plot b1 b2 b3 b4 b5 b6)
-    = Plot (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)  (a6 <> b6)
 
 
 x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
@@ -385,6 +367,7 @@ x = customAesthetic "x"
 y = customAesthetic "y"
 
 -- | Map values to the Y axis of a plot.
+-- This is used for the lower bound of the 'area' geometry.
 yMin = customAesthetic "yMin"
 
 -- | Map values to the color of a plot element.
@@ -405,6 +388,10 @@ shape = customAesthetic "shape"
 -- | Map values to the thickness of a plot element.
 thickness = customAesthetic "thickness"
 
+-- | Defines the bound of an interval (lower or upper). Works with their
+-- standard 'Bool' scale.
+--
+-- Used by the 'area2' geometry.
 bound = customAesthetic "bound"
 
 -- | If present and non-zero, show X-intercepting cross-lines.
@@ -455,7 +442,11 @@ data Scale a = Scale
   }
 
 instance Contravariant Scale where
-  contramap f (Scale r b t n) = Scale (\vs v -> r (fmap f vs) (f v)) (b . fmap f) (t . fmap f) n
+  contramap f (Scale r b t n) = Scale
+    (\vs v -> r (fmap f vs) (f v))
+    (b . fmap f)
+    (t . fmap f)
+    n
 
 -- | Types with a default scale.
 --
@@ -487,10 +478,8 @@ instance HasScale Ordering where
 instance (Ord a, Show a) => HasScale [a] where
   scale = const categorical
 
-#ifdef __GHCJS__
 instance HasScale Str where
   scale x = contramap unpackStr $ scale (unpackStr x)
-#endif
 
 instance HasScale UTCTime where
   scale = const timeScale
@@ -569,7 +558,8 @@ categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
 categoricalEnum = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ fromEnum v
   , scaleBounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
-  , scaleGuides   = \vs -> zipWith (\k v -> (k, toStr v)) [1..] [minBound..maxBound `asTypeOf` head vs]
+  , scaleGuides   = \vs -> zipWith (\k v -> (k, toStr v)) [1..]
+    [minBound..maxBound `asTypeOf` head vs]
   , scaleBaseName = "categoricalEnum"
   }
 -- TODO could be written without the asTypeOf using ScopedTypeVariables
@@ -582,8 +572,10 @@ linear = linearWithOptions False UseMin
 
 {-|
 A linear scale for integral values.
+
+Accepts (and renders) non-integral values, but displays guides without decimals.
 -}
-linearIntegral :: (Integral a, Show a) => Scale a
+linearIntegral :: (Real a, Show a) => Scale a
 linearIntegral = linearWithOptions True UseMin
 
 {-|
@@ -635,8 +627,9 @@ linearWithOptions
       UseZero               -> 0
       InterpZeroAndMin x -> x * minVal
       UseMin                -> minVal
+    chooseUB = id
 
-    bounds vs = (chooseLB $ realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+    bounds vs = (chooseLB $ realToFrac $ safeMin vs, chooseUB $ realToFrac $ safeMax vs)
     guides vs = fmap (\x -> (x, showN x)) $ tickCalc 4 (bounds vs)
 
     -- number of ticks, interval, outpouts ticks
@@ -674,6 +667,7 @@ timeScale = timeScaleWithOptions StandardTR
 
 data TimeRendering = StandardTR | MonthYearTR
 
+timeScaleWithOptions :: TimeRendering -> Scale UTCTime
 timeScaleWithOptions timeRendering = Scale
   { scaleMapping  = mapping
   , scaleBounds   = bounds . fmap toNDiffTime
@@ -792,11 +786,15 @@ INTERESTINGLY
 
 -}
 
+{-
+A value in @[ x | 0 <= x <= 1]@.
+
+Used to represent scaled data.
+-}
 type Coord = Normalized Double
 
 data Geometry = Geometry
   { geomMapping         :: [Map Key (Coord, Maybe Special)] -> Styled Drawing
-  -- , getSpecialGeometry  :: [Map Key Special] -> Styled Drawing
   , geomBaseName        :: [String]
   }
 
@@ -866,7 +864,7 @@ geom_violin(stat_ydensity)
 -}
 
 
-{-| Render a geometry iff a key is present and its scaled value > 0.5.
+{-| Render a geometry iff a key is present and has a (scaled) value @> 0.5@.
 
 This is convenient to use with standard 'Bool' or 'Integer' scales.
 -}
@@ -894,7 +892,8 @@ pointG = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $
+      V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 line :: Geometry
 line = Geometry tot [""]
@@ -904,7 +903,8 @@ line = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $
+      V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 fill :: Geometry
 fill = Geometry tot [""]
@@ -941,7 +941,8 @@ area = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+    baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $
+      V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 {-|
 Like 'fill', but renders the area between {x, y, bound:False} and {x, y, bound:True}
@@ -973,20 +974,23 @@ area2 = Geometry tot [""]
         -- ys2 = fmap (getNormalized . (! "y")) highMappings
         -- ps = zipWith3 (\x y1 y2 -> P (V3 x y1 y2)) xs ys1 ys2
 
-    -- baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+    -- baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3
+      -- (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 xIntercept :: Geometry
 xIntercept = ifG "crossLineX" (Geometry g [""])
   where
-   g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+   g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $
+    V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 yIntercept :: Geometry
 yIntercept = ifG "crossLineY" (Geometry g [""])
   where
-   g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+   g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $
+    V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 imageG :: Geometry
 imageG = Geometry g [""]
@@ -1045,15 +1049,7 @@ colors ms = case Data.Maybe.catMaybes $ fmap (fmap fst . (?! "color")) ms of
 
 
 
-normalizeGuides :: Map Key (Double, Double) -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
-normalizeGuides b m = normalizeGuides' b m
 
-normalizeData :: Map Key (Double, Double) -> [Map Key Double] -> [Map Key (Coord)]
-normalizeData b m = fmap (normalizeData' b) m
-
--- TODO nice Identity vs Compose pattern!
-normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
-normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
 
 {-| Tag a value to keep track of the fact that it is /normalized/, i.e. in the unit hypercube. -}
 newtype Normalized a = Normalized { getNormalized :: a }
@@ -1092,43 +1088,43 @@ m ?! k = Data.Map.lookup k m
 
 
 
+
+
 -- TOP-LEVEL
 
 visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
 visualizeTest dat geom aess = do
-  printDebugInfo dat aess
+  -- printDebugInfo dat aess
+  putStrLn $ B.render $ debugInfo dat aess
   let finalD = visualize ["FIRST AXIS", "SECOND AXIS"] dat geom aess
   let svgS = Lubeck.Drawing.toSvgStr mempty $ finalD
   writeFile "static/tmp/test2.svg" $ unpackStr svgS
   return ()
 
+{-| Convenient wrapper for 'visualize' using 'mempty' style. -}
+visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
+visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
+
+-- {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
+-- printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO ()
+-- printDebugInfo dat aess = putStrLn $ debugInfo dat aess
+
+
 {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
-printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO ()
-printDebugInfo dat aess = putStrLn $ B.render $ box
+debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
+debugInfo dat aess = box
   where
-    aes = mconcat aess
-
-    guidesM     = aestheticGuides aes dat :: Map Key [(Double, Str)]
-    boundsM     = aestheticBounds aes dat :: Map Key (Double, Double)
-    scaleBaseNM = aestheticScaleBaseName aes dat :: Map Key Str
-    mappedData          = fmap (aestheticMapping aes dat) dat :: [Map Key Double]
-    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
-    mappedDataWSpecial  = zipWith mergeMapsL mappedData specialData
-      :: [Map Key (Double, Maybe Special)]
-
-    mappedAndScaledData = normalizeData boundsM mappedData :: [Map Key (Coord)]
-    mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
-      :: [Map Key (Coord, Maybe Special)]
-
+    plot@(Plot mappedData _ boundsM guidesM _) = createPlot dat aess
     aKeys       = Data.Map.keys $ mconcat mappedData
+    scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
 
     tab0 = B.vcat B.left $ map (toBox) dat
     tab1 = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
-    tab1a = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
+    -- tab1a = makeTable (fmap (toBox) $ aKeys)
+      -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
     tab2 = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedAndScaledData)
+      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial plot))
     tab = makeTable ["Aesthetic", "Scale base", "Bounds", "Guide"]
       (fmap (\k ->
         [ toBox k
@@ -1140,7 +1136,6 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
     box = B.vsep 1 B.left
       [ "Raw data    " B.<+> tab0
       , "Mapped data " B.<+> tab1 -- TODO show "special" data here too!
-      , "Mapped (special) data " B.<+> tab1a-- TODO show "special" data here too!
       , "Scaled data " B.<+> tab2
       , "Aesthetics  " B.<+> tab
       ]
@@ -1157,53 +1152,61 @@ printDebugInfo dat aess = putStrLn $ B.render $ box
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
 
-    mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-    mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
-      where
-        g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
-          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-          (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
-          (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
-{-| Convenient wrapper for 'visualize' using 'mempty' style. -}
-visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
-visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
-
-
-{-| The main entry-point for the library. -}
--- data/trans (our [s]),
--- scale (implied by the aesthetic),
--- coord (implied by the geometry)
--- guide/elem (implied by data, geometry and aesthetic)
-
+{-|
+The main entry-point of the library.
+-}
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
-  let dataD     = drawData mappedAndScaledDataWSpecial          :: Styled Drawing
-      guidesD   = drawGuides (guidesM ? "x") (guidesM ? "y")    :: Styled Drawing
+  let dataD     = drawData (mappedAndScaledDataWithSpecial plot)  :: Styled Drawing
+      guidesD   = drawGuides (scaledGuides plot ? "x") (scaledGuides plot ? "y")    :: Styled Drawing
       axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
   in mconcat [dataD, axesD, guidesD]
   where
-    -- mappedAndScaledDataWSpecial, guidesM, axesNames
-
     axesNames = axesNames1 ++ repeat ""                              :: [Str]
-
     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
+    plot = createPlot dat aess
 
 
+-- visualizeWithStyle2 :: Show s => [Str] -> Plots -> Styled Drawing
+-- visualizeWithStyle2 axesNames1 dat (Geometry drawData _) aess =
+--   let dataD     = drawData (mappedAndScaledDataWithSpecial plot)  :: Styled Drawing
+--       guidesD   = drawGuides (scaledGuides plot ? "x") (scaledGuides plot ? "y")    :: Styled Drawing
+--       axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
+--   in mconcat [dataD, axesD, guidesD]
+--   where
+--     axesNames = axesNames1 ++ repeat ""                              :: [Str]
+--     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+--       where
+--         xs = fmap (second Just) xs2
+--         ys = fmap (second Just) ys2
+--     plot = createPlot dat aess
+
+createPlot :: [a] -> [Aesthetic a] -> Plot
+createPlot dat aess =
+  Plot mappedData specialData guides bounds mempty
+  where
     aes                 = mconcat aess
-    boundsM             = aestheticBounds aes dat                    :: Map Key (Double, Double)
-    guidesM2            = aestheticGuides aes dat                    :: Map Key [(Double, Str)]
-    guidesM             = normalizeGuides boundsM guidesM2           :: Map Key [(Coord, Str)]
-    specialData         = fmap (aestheticSpecialMapping aes dat) dat :: [Map Key Special]
-    mappedAndScaledDataWSpecial = zipWith mergeMapsL mappedAndScaledData specialData
+    bounds              = aestheticBounds aes dat                       :: Map Key (Double, Double)
+    guides              = aestheticGuides aes dat                       :: Map Key [(Double, Str)]
+    scaledGuides        = normalizeGuides bounds guides                 :: Map Key [(Coord, Str)]
+    specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
+    mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
+
+scaledGuides :: Plot -> Map Key [(Coord, Str)]
+scaledGuides (Plot _ _ guides bounds _) = normalizeGuides bounds guides
+
+mappedAndScaledDataWithSpecial :: Plot -> [Map Key (Coord, Maybe Special)]
+mappedAndScaledDataWithSpecial
+  (Plot mappedData specialData _ bounds _)
+  = zipWith mergeMapsL mappedAndScaledData specialData
       :: [Map Key (Coord, Maybe Special)]
       where
-        mappedAndScaledData = normalizeData boundsM mappedData           :: [Map Key Coord]
-          where
-            mappedData          = fmap (aestheticMapping aes dat) dat        :: [Map Key Double]
+        mappedAndScaledData :: [Map Key Coord]
+        mappedAndScaledData = normalizeData bounds mappedData
 
         mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
         mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
@@ -1212,6 +1215,75 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
               (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
               (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
               (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
+
+data Plots = OnePlot Plot | ManyPlots [Plots]
+
+plotBounds :: Plots -> Map Key (Double, Double)
+plotBounds (OnePlot p)    = bounds p
+plotBounds (ManyPlots []) = mempty
+plotBounds (ManyPlots ps) = foldr1 outerBounds (fmap plotBounds ps)
+
+-- Data/guides/labels is mapped but not scaled
+data Plot = Plot
+  { mappedData        :: [Map Key Double]
+  , specialData       :: [Map Key Special]
+  , guides            :: Map Key [(Double, Str)]
+  , bounds            :: Map Key (Double, Double)
+  , geometry          :: Geometry
+  }
+-- When drawing plots:
+-- Calculate bounds using foldr maxBounds
+
+
+
+{-
+TODO embed Geom in plot such that
+  - Plots are monoidal
+  - Monoidal composition of plots
+    - Retains association of geoms to subplots (i.e. geoms are NOT unified)
+    - Does not retain association of bounds to subplots (i.e. bounds ARE unified)
+
+-}
+
+-- isEmptyPlot :: Plot -> Bool
+-- isEmptyPlot (Plot [] [] a b _) = Data.Map.null a && Data.Map.null b
+-- isEmptyPlot _ = False
+
+outerBounds :: (Ord k) => Map k (Double, Double) -> Map k (Double, Double) -> Map k (Double, Double)
+outerBounds = Data.Map.unionWith g
+  where
+    g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
+
+-- instance Monoid Plot where
+--   mempty = Plot mempty mempty mempty mempty
+--   mappend a@(Plot a1 a2 a3 a4) b@(Plot b1 b2 b3 b4)
+--     | isEmptyPlot a = b
+--     | otherwise = Plot  (a1 <> b1)
+--                         (a2 <> b2)
+--                         a3
+--                         (a4 `maxBounds` b4)
+
+
+
+{-
+instance Monoid Plot where
+  mempty = Plot mempty mempty mempty mempty mempty mempty
+  mappend (Plot a1 a2 a3 a4 a5 a6) (Plot b1 b2 b3 b4 b5 b6) =
+    Plot (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5) (a6 <> b6)
+-}
+
+
+
+normalizeGuides :: Map Key (Double, Double) -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
+normalizeGuides b m = normalizeGuides' b m
+
+normalizeData :: Map Key (Double, Double) -> [Map Key Double] -> [Map Key (Coord)]
+normalizeData b m = fmap (normalizeData' b) m
+
+-- TODO nice Identity vs Compose pattern!
+normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
+normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
+
 
 
 -- TEST
@@ -1258,10 +1330,19 @@ instance HasScale Name where
 instance HasScale Gender where
   scale = const categorical
 
-data Person = P1 { personName :: Name, personAge :: Int, personHeight :: Double }
+data Person = P1
+  { personName :: Name
+  , personAge :: Int
+  , personHeight :: Double
+  }
   deriving (Eq, Ord, Show)
 
-data Person2 = P2 { person2Name :: Name, person2Age :: Int, person2Height :: Double, person2Gender :: Gender }
+data Person2 = P2
+  { person2Name   :: Name
+  , person2Age    :: Int
+  , person2Height :: Double
+  , person2Gender :: Gender
+  }
   deriving (Eq, Ord, Show)
 
 $(makeFields ''Person)
@@ -1436,7 +1517,8 @@ test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
   ]
   where
     customDr :: Drawing
-    customDr = Lubeck.Drawing.fillColor Colors.whitesmoke $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.square
+    customDr = Lubeck.Drawing.fillColor Colors.whitesmoke
+      $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.square
 
     dat :: [(Int,Int)]
     dat = zip

@@ -2,6 +2,7 @@
 
 module Components.Layout
   ( fullsizeLayout2
+  , fullsizeLayout2'
   , fullsizeLayout4
   , verticalStackLayout2
   , horizontalStackLayout2
@@ -115,8 +116,8 @@ layout2 tabs action toolbar l1 l2 =
              SwitchView 1 -> l2
              _            -> E.text "Select an option"
 
-fullsizeLayout2 :: Signal Int -> Layout -> Layout -> IO Layout
-fullsizeLayout2 idxS l1 l2 = do
+fullsizeLayout2' :: Signal Int -> Layout -> Layout -> IO (Layout, Signal Int)
+fullsizeLayout2' idxS l1 l2 = do
   (layoutSink, layoutEvents) <- newSyncEventOf (undefined :: LayoutAction)
   z                          <- pollBehavior (current idxS)
   let externalSwitchS        = fmap SwitchView idxS
@@ -127,8 +128,10 @@ fullsizeLayout2 idxS l1 l2 = do
   let tabsToolbarV           = fmap (tabsW (fmap name tabs) layoutSink) switchS
   let topV                   = liftA4 (layout2 tabs) switchS tabsToolbarV (view l1) (view l2)
 
-  return $ mkLayoutFullsize2 topV (Just (fmap toIdx switchS)) Nothing
+  return ((mkLayoutFullsize2 topV (Just (fmap toIdx switchS)) Nothing), (fmap (\(SwitchView x) -> x) switchS))
 
+fullsizeLayout2 :: Signal Int -> Layout -> Layout -> IO Layout
+fullsizeLayout2 idxS l1 l2 = fullsizeLayout2' idxS l1 l2 >>= return . fst
 --------------------------------------------------------------------------------
 
 layout4 tabs action toolbar l1 l2 l3 l4 =

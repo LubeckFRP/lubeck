@@ -52,12 +52,16 @@ Main differences from Diagrams:
 -}
 module Lubeck.Drawing
   (
-    Str(..)
+  -- * Str type
+  -- ** (should be moved to a separate package)
+    Str
   , toStr
   , packStr
   , unpackStr
   , replaceStr
   , takeStr
+  , fromJSString
+  , toJSString
 
   -- * Creating drawings
   -- ** Geometry
@@ -234,6 +238,7 @@ import qualified Linear.V3
 import qualified Linear.V4
 
 import qualified Data.List.Split
+import Data.String (IsString(..))
 
 import qualified Text.XML.Light
 import qualified Text.XML.Light as X
@@ -250,26 +255,35 @@ import Web.VirtualDom.Svg (Svg)
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
-import Lubeck.Util(showJS)
+-- import Lubeck.Util(showJS)
 #endif
 
+toStr :: Show a => a -> Str
+toStr = packStr . show
+
+newtype Str = Str { getStr :: StrBase }
+  deriving (Eq, Ord, Monoid, IsString)
+instance Show Str where
+  show (Str x) = show x
+
+
 #ifdef __GHCJS__
-type Str = JSString
-toStr :: Show a => a -> Str
-toStr      = showJS
-packStr    = Data.JSString.pack
-unpackStr  = Data.JSString.unpack
-takeStr    = Data.JSString.take
-replaceStr = Data.JSString.replace
+type StrBase = JSString
+fromJSString  = Str
+toJSString    = getStr
+packStr       = Str . Data.JSString.pack
+unpackStr     = Data.JSString.unpack . getStr
+takeStr n  = Str . Data.JSString.take n . getStr
+replaceStr (Str a) (Str b) (Str c) = Str $ Data.JSString.replace a b c
 #else
-type Str = String
-toStr :: Show a => a -> Str
-toStr     = show
-packStr   = id
-unpackStr = id
-takeStr   = take
+type StrBase = String
+fromJSString () = ""
+toJSString _    = ()
+packStr         = Str
+unpackStr       = getStr
+takeStr n = Str . take n . getStr
 replaceStr :: Str -> Str -> Str -> Str
-replaceStr old new = Data.List.intercalate new . Data.List.Split.splitOn old
+replaceStr (Str old) (Str new) (Str orig) = Str $ Data.List.intercalate new $ Data.List.Split.splitOn old orig
 #endif
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
@@ -1213,9 +1227,9 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
 
     svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
     svgTopNode w h vb = E.svg
-      [ A.width w
-      , A.height h
-      , A.viewBox vb ]
+      [ A.width (getStr w)
+      , A.height (getStr h)
+      , A.viewBox (getStr vb) ]
 
     placeOrigo :: Drawing -> Drawing
     placeOrigo = case originPlacement of
@@ -1230,7 +1244,11 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
         pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
 
     embedToSvg :: Embed -> Svg
-    embedToSvg _ = mempty -- TODO
+    embedToSvg (EmbedContent str) = E.text (toJSString str)
+    embedToSvg (EmbedNode name attrs children) =
+      VD.node (toJSString name)
+        (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
+        (fmap embedToSvg children)
 
     toSvg1 :: [E.Property] -> Drawing -> [Svg]
     toSvg1 ps x = let
@@ -1250,20 +1268,20 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
             ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
             []
           (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-            ([A.points (pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
+            ([A.points (getStr $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
             []
           Text s -> single $ E.text'
             ([A.x "0", A.y "0"]++ps)
-            [E.text s]
+            [E.text $ getStr s]
           Embed e -> single $ embedToSvg e
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
           Transf t x -> single $ E.g
-            [A.transform $ "matrix" <> toStr (negY $ transformationToMatrix t) <> ""]
+            [A.transform $ "matrix" <> (getStr . toStr) (negY $ transformationToMatrix t) <> ""]
             (toSvg1 ps x)
           Style s x  -> single $ E.g
-            [A.style $ styleToAttrString s]
+            [A.style $ getStr $ styleToAttrString s]
             (toSvg1 ps x)
           Prop p x   -> toSvg1 (p:ps) x
           -- No point in embedding handlers to empty groups, but render anyway

@@ -9,9 +9,19 @@ setup-info:
   source:
    ghcjs-0.2.0.20151230.3_ghc-7.10.2:
     url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
+
     # Official release URL
     #  url: http://ghcjs.luite.com/master-20151230.tar.gz
     # For details, see https://github.com/ghcjs/ghcjs/issues/444
+
+# compiler: ghcjs-0.2.0.20160315_ghc-7.10.2
+# compiler-check: match-exact
+# setup-info:
+#   ghcjs:
+#       source:
+#             ghcjs-0.2.0.20160315_ghc-7.10.2:
+#                     url: "http://ghcjs.luite.com/master-20160315.tar.gz"
+
 
 packages:
 - '.'
@@ -19,12 +29,12 @@ packages:
 - location:
     git: git@github.com:ghcjs/ghcjs-ffiqq.git
     commit: da31b18582542fcfceade5ef6b2aca66662b9e20
-- location:
-    git: git@github.com:BeautifulDestinations/virtual-dom.git
-    commit: 77d6c103ebe6e4adb87190a19553efb0674e3fdc
 # - location:
-    # git: git@github.com:EugeneN/virtual-dom.git
-    # commit: f0dc216e2accd87bb721f539d14d32fc1a9b712c
+    # git: git@github.com:BeautifulDestinations/virtual-dom.git
+    # commit: 77d6c103ebe6e4adb87190a19553efb0674e3fdc
+- location:
+    git: git@github.com:EugeneN/virtual-dom.git
+    commit: ef22d73f79b9ae60fc2d182c098f2a777071b0f2
 - location:
     git: git@github.com:msakai/data-interval.git
     commit: f57e950e53e5499f1cbc2609382521bf52105b5e
