@@ -119,16 +119,15 @@ submitBtnW sink _ =
         [ buttonWidget "Submit" sink () ]
     ]
 
-pageToSessState :: Signal Int -> SessionPage -> IO SessionState
-pageToSessState counterS (SessionPage timeSent label imgs) = do
+pageDataToSessState :: Signal Int -> SPageData -> IO SessionState
+pageDataToSessState counterS (SPageData timeReq label imgs) = do
   pageNum <- pollBehavior (current counterS)
-  SessionState imgs Map.empty pageNum label timeSent <$> getCurrentTime
+  SessionState imgs Map.empty pageNum label timeReq <$> getCurrentTime
 
-makeSessionImages :: Int -> SessionState -> [SessionImage]
-makeSessionImages sid (SessionState imgs imgStates sessPage label stime ctime) = 
-    map makeSessionImage imgs
+makeSessionPage :: Int -> SessionState -> SessionPage  
+makeSessionPage sid (SessionState imgs imgStates pageNum label stime ctime) = 
+    SessionPage stime pageNum sid (IL.id label) $ map makeSessionImage imgs
   where
-    sessionImg = SessionImage sid sessPage (IL.id label)
     selectedAsList = sortBy (comparing snd) $ Map.toList imgStates  
 
     calcTimeDelta :: UTCTime -> UTCTime -> UTCTime -> UTCTime
@@ -138,14 +137,14 @@ makeSessionImages sid (SessionState imgs imgStates sessPage label stime ctime) =
     makeSessionImage :: I.Image -> SessionImage
     makeSessionImage img =
       case lookup img selectedAsList of
-        Nothing -> sessionImg (I.id img) Nothing Nothing
+        Nothing -> SessionImage (I.id img) Nothing Nothing
         Just t -> let Just idx = elemIndex (img,t) selectedAsList
-                  in sessionImg (I.id img) (Just idx) (Just t)  
+                  in SessionImage (I.id img) (Just t) (Just idx)
 
-sendSessionImages :: Int -> Behavior SessionState -> IO (Either AppError Ok)
-sendSessionImages sid sessionStateB = do 
+sendSessionPage :: Int -> Behavior SessionState -> IO (Either AppError Ok)
+sendSessionPage sid sessionStateB = do 
   state <- pollBehavior sessionStateB
-  postSessionData testAPI $ SessionData $ makeSessionImages sid state 
+  postSessionPage testAPI $ makeSessionPage sid state 
 
 main = do
   let nImgsPerPage = 9
@@ -155,15 +154,15 @@ main = do
 
   -- | Initialize app
   initSession <- initializeSession' testAPI nImgsPerPage
-  let Session sid sp@(SessionPage serverTime initLabel initImgs) = initSession
+  let Session sid start sp@(SPageData timeReq initLabel initImgs) = initSession
   (submitS, submitE) <- componentR () submitBtnW
   counterS <- accumS 0 (fmap (const (+1)) submitE)
-  initState <- pageToSessState counterS sp
+  initState <- pageDataToSessState counterS sp
   
   -- | Get data from server and display as SessionState
   newPageE <- withErrorIO notifSink $ 
-    withBusy busySink (const $ getSessionPage testAPI nImgsPerPage) <$> submitE
-  newSessionStateE <- reactimateIOAsync $ fmap (pageToSessState counterS) newPageE
+    withBusy busySink (const $ getNewPage testAPI nImgsPerPage) <$> submitE
+  newSessionStateE <- reactimateIOAsync $ fmap (pageDataToSessState counterS) newPageE
   promptS <- componentListen promptW <$> stepperS initLabel (fmap label newPageE)
   
   (imgGridS,imgGridE) <- componentEvent initState imgGridW newSessionStateE
@@ -171,6 +170,6 @@ main = do
 
   -- | on submit, send session data to server
   withErrorIO notifSink $
-    withBusy busySink (const $ sendSessionImages sid sessionStateB) <$> submitE  
+    withBusy busySink (const $ sendSessionPage sid sessionStateB) <$> submitE  
 
   runAppReactive $ render <$> promptS <*> imgGridS <*> submitS
