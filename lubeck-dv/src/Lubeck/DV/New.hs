@@ -1275,17 +1275,17 @@ createPlot dat aess geom = OnePlot $ createSinglePlot dat aess geom
 
 visualizePlot :: Plot -> Styled Drawing
 visualizePlot
-  (OnePlot plot) = visualizeSinglePlot (plotBounds (OnePlot plot)) plot
+  (OnePlot plot) = visualizeSinglePlot (plotBounds (OnePlot plot)) True plot
 visualizePlot
-  (ManyPlots plots) = mconcat $ fmap (visualizeSinglePlot (plotBounds (ManyPlots plots))) plots
+  (ManyPlots plots) = mconcat $ zipWith (visualizeSinglePlot (plotBounds (ManyPlots plots))) (True : repeat False) plots
 
-visualizeSinglePlot :: Bounds -> SinglePlot -> Styled Drawing
-visualizeSinglePlot bounds plot = mconcat [dataD, axesD, guidesD]
+visualizeSinglePlot :: Bounds -> Bool -> SinglePlot -> Styled Drawing
+visualizeSinglePlot bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
   where
     drawData  = geomMapping $ geometry plot
     dataD     = drawData (mappedAndScaledDataWithSpecial (Just bounds) plot)  :: Styled Drawing
-    guidesD   = drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")    :: Styled Drawing
-    axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
+    guidesD   = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")    :: Styled Drawing
+    axesD     = if not includeGuides then mempty else Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
 
     axesNames = {-axesNames1 ++-} repeat ""                              :: [Str]
     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
@@ -1593,7 +1593,61 @@ test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
       [1..4] [1..4]
 
 -- Multiple plots composed
+
 test20 = exportTestDrawing $ visualizePlot $
   createPlot (zip "hans" "sven" :: [(Char,Char)]) [x<~_1,y<~_2] scatter
     <>
   createPlot (zip "hans" "svfn" :: [(Char,Char)]) [x<~_1,y<~_2] line
+
+
+{-
+  Same type/scale.
+-}
+test21 = exportTestDrawing $ visualizePlot $
+  createPlot (zip
+    ([1..10] :: [Int])
+    ([2,5,1,2,5,-6,7,2,3,9] :: [Int])
+    ) [x<~_1,y<~_2]
+    line
+    <>
+  createPlot (zip
+    ([1..10] :: [Int])
+    ([12,5,1,2,5,-6,7,2,13,15] :: [Int])
+    )
+    [x<~_1,y<~_2]
+    area
+
+{-
+  Different Y scales
+-}
+test22 = exportTestDrawing $ visualizePlot $
+  createPlot (zip
+    ([1..10] :: [Int])
+    ([0,1,5,5,4,3,4,4,4,3] :: [Int])
+    ) [x<~_1,y<~_2]
+    line
+    <>
+  createPlot (zip
+    ([1..10] :: [Int])
+    ("AAABBBZQqz" :: [Char])
+    )
+    [x<~_1,y<~_2]
+    area
+
+
+{-
+  Different X scales
+-}
+test23 = exportTestDrawing $ visualizePlot $
+  createPlot (zip
+    ([1..10] :: [Int])
+    ([0,1,5,5,4,3,4,4,4,3] :: [Int])
+    ) [x<~_1,y<~_2]
+    line
+    <>
+  createPlot (zip
+    ([11..20] :: [Int])
+    ("AAABBBZQqz" :: [Char])
+    )
+    [x<~_1,y<~_2]
+    area
