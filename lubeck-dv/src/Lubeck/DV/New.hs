@@ -114,14 +114,18 @@ module Lubeck.DV.New
   -- * Aesthetics
   , Key
   , Aesthetic
+  -- * Position
   , x
   , y
+  -- * Color
   , color
   , strokeColor
   , fillColor
+  -- * Geometrical
   , size
   , shape
   , thickness
+  -- * Intervals/Bounds
   , yMin
   , bound
   , crossLineX
@@ -386,6 +390,7 @@ strokeColor = customAesthetic "strokeColor"
 fillColor = customAesthetic "fillColor"
 
 -- | Map values to the size of a plot element.
+-- Used by 'pointG' and 'image'.
 size = customAesthetic "size"
 
 -- | Map values to the shape of a plot element.
@@ -1004,14 +1009,19 @@ imageG = Geometry g [""]
     g ms = mconcat $ fmap singleImage ms
 
     singleImage :: Map Key (Coord, Maybe Special) -> Styled Drawing
-    singleImage m = case (m ?! "x", m ?! "y", m ?! "image") of
-    -- TODO listen to width etc
-      (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialDrawing dr))) -> do
-        style <- ask
-        return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
-          $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
-          $ dr
-      _ -> mempty
+    singleImage m = let
+      size = case (m ?! "size") of
+        Nothing               -> 1
+        Just (Normalized x,_) -> x
+      in case (m ?! "x", m ?! "y", m ?! "image") of
+        -- TODO listen to width etc
+        (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialDrawing dr))) -> do
+          style <- ask
+          return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
+            $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+            $ Lubeck.Drawing.scale size
+            $ dr
+        _ -> mempty
 
 labelG :: Geometry
 labelG = Geometry g [""]
@@ -1587,6 +1597,53 @@ test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
     customDr :: Drawing
     customDr = Lubeck.Drawing.fillColor Colors.whitesmoke
       $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.square
+
+    dat :: [(Int,Int)]
+    dat = zip
+      [1..4] [1..4]
+
+-- Custom image.
+test11 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+  [ x <~ _1 `withScale` categorical
+  , y <~ _2 `withScale` linearIntegral
+  , contramap (const customDr) image <~ _2
+  ]
+  where
+    customDr :: Drawing
+    customDr = Lubeck.Drawing.fillColor Colors.turquoise
+      $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.triangle
+
+    dat :: [(Int,Int)]
+    dat = zip
+      [1..4] [1..4]
+
+-- Custom image with size.
+test12 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+  [ x <~ _1 `withScale` categorical
+  , y <~ _2 `withScale` linearIntegral
+  , size <~ _1
+  , contramap (const customDr) image <~ _2
+  ]
+  where
+    customDr :: Drawing
+    customDr = Lubeck.Drawing.fillColor Colors.turquoise
+      $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.triangle
+
+    dat :: [(Int,Int)]
+    dat = zip
+      [1..4] [1..4]
+
+-- Custom image with size (linearly transformed).
+test13 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+  [ x <~ _1 `withScale` categorical
+  , y <~ _2 `withScale` linearIntegral
+  , contramap (\x -> -1*x + 1) size <~ _1
+  , contramap (const customDr) image <~ _2
+  ]
+  where
+    customDr :: Drawing
+    customDr = Lubeck.Drawing.fillColor Colors.turquoise
+      $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.triangle
 
     dat :: [(Int,Int)]
     dat = zip

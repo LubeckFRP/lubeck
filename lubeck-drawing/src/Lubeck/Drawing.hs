@@ -172,6 +172,7 @@ module Lubeck.Drawing
   , transparent
   , circle
   , square
+  , triangle
   , horizontalLine
   , verticalLine
   , segments
@@ -781,6 +782,14 @@ circle    = Circle
 square :: Drawing
 square = Rect
 
+{-| An equilateral triangle. -}
+triangle :: Drawing
+triangle =
+    Lubeck.Drawing.translate (V2 (-1/2) (-(eqTriAlt/3))) $ Lubeck.Drawing.polygon
+      [V2 1 0, V2 (-1/2) eqTriAlt, V2 (-1/2) (-eqTriAlt)]
+  where
+    eqTriAlt = sqrt 3 / 2
+
 {-| A centered horizontal line of length one. -}
 horizontalLine :: Drawing
 horizontalLine = translateX (-0.5) Line
@@ -789,11 +798,20 @@ horizontalLine = translateX (-0.5) Line
 verticalLine :: Drawing
 verticalLine = rotate (turn/4) horizontalLine
 
-{-| Draw a sequence of line segments. -}
+{-| Draw a sequence of line segments.
+
+Similar to 'polygon' except endpoints are not joined.
+-}
 segments :: [V2 Double] -> Drawing
 segments = Lines False
 
-{-| Draw a polygon. -}
+{-| Draw a polygon.
+
+Similar to 'polygon' except endpoints are not joined.
+
+Argument vectors need not have a zero sum (if they do not an implicit extra
+endpoint is assumed.
+-}
 polygon :: [V2 Double] -> Drawing
 polygon = Lines True
 
