@@ -1741,3 +1741,17 @@ test23 = exportTestDrawing $ visualizePlot $
     )
     [x<~_1,y<~_2]
     area
+
+
+{-
+  Same type/scale.
+-}
+test24 = exportTestDrawing $ visualizePlot $ mconcat $ zipWith putTogether geoms dat
+  where
+    putTogether = \geom dat -> createPlot (zip [1..10::Int] dat) [x<~_1,y<~_2] geom
+    geoms = [pointG, line, area, pointG <> line]
+    dat =
+      [ [2,5,1,2,5,-6,7,2,3,9] :: [Int]
+      , [1,1,1,1,2,2,2,2,3,3]
+      , [-1,-2,-3,-3,-3,-3,-3,-3,-3,-3]
+      ]
