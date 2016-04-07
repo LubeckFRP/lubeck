@@ -11,6 +11,7 @@
   , TupleSections
   , FlexibleContexts
   , NoImplicitPrelude
+  , QuasiQuotes
   , CPP
   , TypeSynonymInstances
   #-}
@@ -183,6 +184,8 @@ import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
 import Control.Monad.Reader (ask)
 import qualified Data.Colour.Names as Colors
+
+import NeatInterpolation(string)
 
 import Lubeck.Drawing (Drawing, Str, toStr, packStr, unpackStr)
 import Lubeck.DV.Styling (StyledT, Styled)
@@ -1648,6 +1651,36 @@ test13 = visualizeTest dat (mconcat [labelG, scatter, imageG])
     dat :: [(Int,Int)]
     dat = zip
       [1..4] [1..4]
+
+-- Custom image with size (linearly transformed).
+test14 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+  [ x <~ _1 `withScale` categorical
+  , y <~ _2 `withScale` linearIntegral
+  , contramap (\x -> -1*x + 1) size <~ _1
+  , contramap (const customDr) image <~ _2
+  ]
+  where
+    customDr :: Drawing
+    customDr = Lubeck.Drawing.fillColor Colors.turquoise
+      $ Lubeck.Drawing.scale 50 $ foo
+
+    dat :: [(Int,Int)]
+    dat = zip
+      [1..4] [1..4]
+
+Just foo =
+  Lubeck.Drawing.addEmbeddedSVGFromStr $ packStr $ [string|
+          <rect x="-0.5" y="-0.5" width="1" height="1" style="fill:blue">
+                    <animateTransform attributeName="transform"
+                          attributeType="XML"
+                          type="rotate"
+                          from="0 0 0"
+                          to="360 0 0"
+                          dur="10s"
+                          repeatCount="indefinite"/>
+          </rect>
+
+  |]
 
 -- Multiple plots composed
 
