@@ -27,53 +27,55 @@ import qualified BD.Data.ImageLR as I
 import qualified BD.Data.ImageLabel as IL
 
 data Session = Session
-  { sid :: Int
-  , content :: SessionPage
+  { id :: Int
+  , start_time :: UTCTime 
+  , page_data :: SPageData
   } deriving (GHC.Generic, Show, Eq)
 
 instance FromJSON Session
 
-data SessionPage = SessionPage
-  { time_sent :: UTCTime
+data SPageData = SPageData 
+  { time_req :: UTCTime
   , label :: IL.Label
-  , imgs :: [I.Image]
+  , images :: [I.Image]
   } deriving (GHC.Generic, Show, Eq)
 
-instance FromJSON SessionPage
+instance FromJSON SPageData
 
-data SessionData = SessionData
-  { session_data :: [SessionImage] }
-  deriving (GHC.Generic)
+data SessionPage = SessionPage
+  { time_sent :: UTCTime
+  , page_number :: Int
+  , session_id :: Int
+  , label_id :: Int 
+  , session_images :: [SessionImage]
+  } deriving (GHC.Generic, Show, Eq)
 
-instance ToJSON SessionData
+instance ToJSON SessionPage
 
 data SessionImage = SessionImage
-  { session_id :: Int
-  , session_page :: Int
-  , label_id :: Int
-  , image_id :: Int
-  , num_selected :: Maybe Int
+  { image_id :: Int
   , time_selected :: Maybe UTCTime
+  , num_selected :: Maybe Int
   } deriving (GHC.Generic, Show, Eq) 
 
 instance ToJSON SessionImage
 
 initializeSession :: API -> Int -> IO (Either AppError Session)
 initializeSession api n =
-  first ApiError <$> getAPIEither api ("label-refiner/session/new/" <> showJS n)
+  first ApiError <$> getAPIEither api ("label-refiner/session/init/" <> showJS n)
 
 initializeSession' :: API -> Int -> IO Session
 initializeSession' api n =
-  unsafeGetAPI api ("label-refiner/session/new/" <> showJS n)
+  unsafeGetAPI api ("label-refiner/session/init/" <> showJS n)
 
-getSessionPage :: API -> Int -> IO (Either AppError SessionPage)
-getSessionPage api n =
-  first ApiError <$> getAPIEither api ("label-refiner/session/page/" <> showJS n)
+getNewPage :: API -> Int -> IO (Either AppError SPageData)
+getNewPage api n =
+  first ApiError <$> getAPIEither api ("label-refiner/session/getpage/" <> showJS n)
 
-getSessionPage' :: API -> Int -> IO SessionPage
-getSessionPage' api n =
-  unsafeGetAPI api ("label-refiner/session/page/" <> showJS n)
+getNewPage' :: API -> Int -> IO SPageData 
+getNewPage' api n =
+  unsafeGetAPI api ("label-refiner/session/getpage/" <> showJS n)
 
-postSessionData :: API -> SessionData -> IO (Either AppError Ok)
-postSessionData api =
-  fmap (first ApiError) . postAPIEither api "label-refiner/session/data"
+postSessionPage :: API -> SessionPage -> IO (Either AppError Ok)
+postSessionPage api =
+  fmap (first ApiError) . postAPIEither api "label-refiner/session/submit"
