@@ -144,9 +144,9 @@ module Lubeck.DV.New
   , visualize
   , visualizeWithStyle
   -- * Top-level (new new)
-  , Plots
-  , visualizePlots
-  , createPlots
+  , Plot
+  , visualizePlot
+  , createPlot
   -- * Debug
   , visualizeTest
   , exportTestDrawing
@@ -1125,7 +1125,7 @@ visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithSt
 debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
 debugInfo dat aess = box
   where
-    plot@(Plot mappedData _ boundsM guidesM _) = createPlot dat aess mempty
+    plot@(SinglePlot mappedData _ boundsM guidesM _) = createSinglePlot dat aess mempty
     aKeys       = Data.Map.keys $ mconcat mappedData
     scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
 
@@ -1179,11 +1179,11 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
-    plot = createPlot dat aess mempty
+    plot = createSinglePlot dat aess mempty
 
 
 
--- visualizeWithStyle2 :: Show s => [Str] -> Plots -> Styled Drawing
+-- visualizeWithStyle2 :: Show s => [Str] -> SinglePlots -> Styled Drawing
 -- visualizeWithStyle2 axesNames1 dat (Geometry drawData _) aess =
 --   let dataD     = drawData (mappedAndScaledDataWithSpecial plot)  :: Styled Drawing
 --       guidesD   = drawGuides (scaledGuides plot ? "x") (scaledGuides plot ? "y")    :: Styled Drawing
@@ -1195,11 +1195,11 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
 --       where
 --         xs = fmap (second Just) xs2
 --         ys = fmap (second Just) ys2
---     plot = createPlot dat aess
+--     plot = createSinglePlot dat aess
 
-createPlot :: [a] -> [Aesthetic a] -> Geometry -> Plot
-createPlot dat aess geometry =
-  Plot mappedData specialData guides bounds geometry
+createSinglePlot :: [a] -> [Aesthetic a] -> Geometry -> SinglePlot
+createSinglePlot dat aess geometry =
+  SinglePlot mappedData specialData guides bounds geometry
   where
     aes                 = mconcat aess
     bounds              = aestheticBounds aes dat                       :: Map Key (Double, Double)
@@ -1209,15 +1209,15 @@ createPlot dat aess geometry =
     mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
 
 
-scaledGuides :: Maybe Bounds -> Plot -> Map Key [(Coord, Str)]
-scaledGuides (Just bounds) (Plot _ _ guides _ _)      = normalizeGuides bounds guides
-scaledGuides Nothing       (Plot _ _ guides bounds _) = normalizeGuides bounds guides
+scaledGuides :: Maybe Bounds -> SinglePlot -> Map Key [(Coord, Str)]
+scaledGuides (Just bounds) (SinglePlot _ _ guides _ _)      = normalizeGuides bounds guides
+scaledGuides Nothing       (SinglePlot _ _ guides bounds _) = normalizeGuides bounds guides
 
-mappedAndScaledDataWithSpecial :: Maybe Bounds -> Plot -> [Map Key (Coord, Maybe Special)]
+mappedAndScaledDataWithSpecial :: Maybe Bounds -> SinglePlot -> [Map Key (Coord, Maybe Special)]
 mappedAndScaledDataWithSpecial
-  Nothing       (Plot mappedData specialData _ bounds _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+  Nothing       (SinglePlot mappedData specialData _ bounds _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
 mappedAndScaledDataWithSpecial
-  (Just bounds) (Plot mappedData specialData _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+  (Just bounds) (SinglePlot mappedData specialData _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
 
 mappedAndScaledDataWithSpecial2 bounds mappedData specialData
   = zipWith mergeMapsL mappedAndScaledData specialData
@@ -1239,7 +1239,7 @@ type Bounds = Map Key (Double, Double)
 
 
 
-plotBounds :: Plots -> Bounds
+plotBounds :: Plot -> Bounds
 plotBounds (OnePlot p)    = bounds p
 plotBounds (ManyPlots []) = mempty
 plotBounds (ManyPlots ps) = foldr1 outerBounds (fmap bounds ps)
@@ -1250,7 +1250,7 @@ plotBounds (ManyPlots ps) = foldr1 outerBounds (fmap bounds ps)
         g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
 
 -- Data/guides/labels is mapped but not scaled
-data Plot = Plot
+data SinglePlot = SinglePlot
   { mappedData        :: [Map Key Double]
   , specialData       :: [Map Key Special]
   , guides            :: Map Key [(Double, Str)]
@@ -1258,8 +1258,8 @@ data Plot = Plot
   , geometry          :: Geometry
   }
 
-data Plots = OnePlot Plot | ManyPlots [Plot]
-instance Monoid Plots where
+data Plot = OnePlot SinglePlot | ManyPlots [SinglePlot]
+instance Monoid Plot where
   mempty = ManyPlots []
   mappend
     (OnePlot a) (OnePlot b) = ManyPlots [a, b]
@@ -1270,17 +1270,17 @@ instance Monoid Plots where
   mappend
     (ManyPlots as) (ManyPlots bs) = ManyPlots (as ++ bs)
 
-createPlots :: [a] -> [Aesthetic a] -> Geometry -> Plots
-createPlots dat aess geom = OnePlot $ createPlot dat aess geom
+createPlot :: [a] -> [Aesthetic a] -> Geometry -> Plot
+createPlot dat aess geom = OnePlot $ createSinglePlot dat aess geom
 
-visualizePlots :: Plots -> Styled Drawing
-visualizePlots
-  (OnePlot plot) = visualizePlot (plotBounds (OnePlot plot)) plot
-visualizePlots
-  (ManyPlots plots) = mconcat $ fmap (visualizePlot (plotBounds (ManyPlots plots))) plots
+visualizePlot :: Plot -> Styled Drawing
+visualizePlot
+  (OnePlot plot) = visualizeSinglePlot (plotBounds (OnePlot plot)) plot
+visualizePlot
+  (ManyPlots plots) = mconcat $ fmap (visualizeSinglePlot (plotBounds (ManyPlots plots))) plots
 
-visualizePlot :: Bounds -> Plot -> Styled Drawing
-visualizePlot bounds plot = mconcat [dataD, axesD, guidesD]
+visualizeSinglePlot :: Bounds -> SinglePlot -> Styled Drawing
+visualizeSinglePlot bounds plot = mconcat [dataD, axesD, guidesD]
   where
     drawData  = geomMapping $ geometry plot
     dataD     = drawData (mappedAndScaledDataWithSpecial (Just bounds) plot)  :: Styled Drawing
@@ -1593,7 +1593,7 @@ test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
       [1..4] [1..4]
 
 -- Multiple plots composed
-test20 = exportTestDrawing $ visualizePlots $
-  createPlots (zip "hans" "sven" :: [(Char,Char)]) [x<~_1,y<~_2] scatter
+test20 = exportTestDrawing $ visualizePlot $
+  createPlot (zip "hans" "sven" :: [(Char,Char)]) [x<~_1,y<~_2] scatter
     <>
-  createPlots (zip "hans" "svfn" :: [(Char,Char)]) [x<~_1,y<~_2] line
+  createPlot (zip "hans" "svfn" :: [(Char,Char)]) [x<~_1,y<~_2] line
