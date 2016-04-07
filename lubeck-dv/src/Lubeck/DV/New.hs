@@ -1766,8 +1766,25 @@ testRad = exportTestDrawing
     , createPlot dat [x<~to (!! 0), y<~to (!! 2)] line
     ]
   where
-    dat :: [[Double]]
-    dat =
+    dat = dataset1
+
+
+testRad2 = exportTestDrawing
+  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+  -- (renderingRectangle .~ V2 800 500 $ mempty)
+  mempty
+  mempty
+  $ visualizePlot $ mconcat
+    [ createPlot dat [x<~to (!! 0), y<~to (!! 1)] line
+    , createPlot dat [x<~to (!! 0), y<~to (!! 2)] line
+    ]
+  where
+    dat = [ [x,cos x,sin x :: Double] | x <- [0,0.1..pi*2] ]
+
+
+
+dataset1 :: [[Double]]
+dataset1 =
       [
           [2,5.5,3.4  ],
           [3,7.9,9.4  ],
