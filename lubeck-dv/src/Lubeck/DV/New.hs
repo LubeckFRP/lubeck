@@ -1204,22 +1204,6 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
         ys = fmap (second Just) ys2
     plot = createSinglePlot dat aess mempty
 
-
-
--- visualizeWithStyle2 :: Show s => [Str] -> SinglePlots -> Styled Drawing
--- visualizeWithStyle2 axesNames1 dat (Geometry drawData _) aess =
---   let dataD     = drawData (mappedAndScaledDataWithSpecial plot)  :: Styled Drawing
---       guidesD   = drawGuides (scaledGuides plot ? "x") (scaledGuides plot ? "y")    :: Styled Drawing
---       axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
---   in mconcat [dataD, axesD, guidesD]
---   where
---     axesNames = axesNames1 ++ repeat ""                              :: [Str]
---     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
---       where
---         xs = fmap (second Just) xs2
---         ys = fmap (second Just) ys2
---     plot = createSinglePlot dat aess
-
 createSinglePlot :: [a] -> [Aesthetic a] -> Geometry -> SinglePlot
 createSinglePlot dat aess geometry =
   SinglePlot mappedData specialData guides bounds geometry
