@@ -20,6 +20,9 @@ module Lubeck.DV.Styling
   , axisTextFontStyle
   , axisTextFontSizePx
 
+  , axisStrokeWidth
+  , axisStrokeColor
+
   , linePlotStrokeColor
   , linePlotStrokeWidth
   , linePlotStrokeType
