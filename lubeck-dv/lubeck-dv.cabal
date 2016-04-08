@@ -28,6 +28,7 @@ library
                      , colour
                      , linear
                      , lubeck-drawing
+                     , neat-interpolation
                      , boxes
   hs-source-dirs:      src
   default-language:    Haskell2010
