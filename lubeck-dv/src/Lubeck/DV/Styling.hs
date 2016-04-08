@@ -10,6 +10,7 @@ module Lubeck.DV.Styling
     Styling
   -- TODO exort all lenses here
   , renderingRectangle
+  , zoom
 
   , axisStrokeWidth
   , axisStrokeColor
@@ -127,6 +128,12 @@ data Styling = Styling
   -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
   , _renderingRectangle               :: V2 Double
 
+  -- ^ Linear transformation to apply to data just before rendering (i.e. after
+  -- data has been mapped and normalized and thus is already in the UHQ).
+  --
+  --
+  , _zoom               :: V2 Double
+
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight
   , _axisTextFontStyle                :: FontStyle
@@ -230,6 +237,7 @@ instance Monoid Styling where
     { _dummy                        = mempty
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
+    , _zoom                         = V2 1 1
 
     , _axisTextFontFamily           = mempty
     , _axisTextFontWeight           = mempty

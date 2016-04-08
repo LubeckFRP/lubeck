@@ -146,13 +146,14 @@ module Lubeck.DV.New
 
 
 
-  -- * Top-level (old new)
+  -- * Top-level
+  , Plot
+  , plot
+  , drawPlot
+  -- ** Top-level (old)
   , visualize
   , visualizeWithStyle
-  -- * Top-level (new new)
-  , Plot
-  , drawPlot
-  , plot
+
   -- * Debug
   , visualizeTest
   , exportTestDrawing
