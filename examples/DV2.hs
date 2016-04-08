@@ -205,6 +205,7 @@ main = do
     ]
   runAppReactive $ fmap (H.text "Please choose a graph:" <>) dS
   where
+    shear x y = shearX x . shearY y
     legend = vsep 0.5
       [ redRect  ||| scale 0.3 (textLeftMiddle "Red")
       , blueRect ||| scale 0.3 (textLeftMiddle "Blue")

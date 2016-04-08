@@ -291,7 +291,7 @@ barData ps = do
   where
     alignB = translate (V2 0 0.5)
     scaleRR = transform . scalingRR
-    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
+    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
 
 -- | Draw a two-dimensional bar graph.
 --
@@ -365,7 +365,7 @@ ratioData (P (V1 v)) = do
   where
     -- TODO move
     alignBL = translate (V2 0.5 0.5)
-    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
+    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
 
 
 -- | Visualizes ratio with colour.
@@ -382,7 +382,7 @@ ratioDataWithColor (P (V2 v1 v2)) = do
   where
     -- TODO move
     alignBL = translate (V2 0.5 0.5)
-    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
+    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
 
 -- TODO consolidate ratioData, ratioDataWithColor
 
@@ -395,7 +395,7 @@ plotRectangle = do
   style <- ask
   return $ transform (scalingRR style) (scale 2 xyCoords)
   where
-    scalingRR style = let r = style^.renderingRectangle in scaling (r^._x) (r^._y)
+    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
 
 -- | Draw a circle size plot.
 circleData :: (Monad m) => [P1 Double] -> StyledT m Drawing

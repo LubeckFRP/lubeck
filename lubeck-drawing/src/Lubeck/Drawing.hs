@@ -104,27 +104,30 @@ module Lubeck.Drawing
   , transformEnvelope
   , transformationToMatrix
   -- ** Raw transformations
-  , translation
-  , translationX
-  , translationY
+  , rotation
   , scaling
   , scalingX
   , scalingY
-  , rotation
-  , shearing
+  , translation
+  , translationX
+  , translationY
+  , shearingX
+  , shearingY
   -- $matrixContructorLayout
   , matrix
   -- ** Applying transformations
   , transform
-  , translate
-  , translateX
-  , translateY
-  , scaleXY
+
+  , rotate
   , scale
   , scaleX
   , scaleY
-  , rotate
-  , shear
+  , translate
+  , translateX
+  , translateY
+  -- , scaleXY
+  , shearX
+  , shearY
 
   -- ** Styling
   , Style
@@ -1043,80 +1046,97 @@ transform _ Em = Em
 transform t dr = Transf t dr
 
 {-| Translates (move) an object. -}
-translation :: Num a => a -> a -> Transformation a
-translation a b = matrix (1,0,0,1,a,b)
+translation :: Num a => V2 a -> Transformation a
+translation (V2 a b) = matrix (1,0,0,1,a,b)
 
 {-| Translates (move) an object along the horizonal axis.
 A positive argument will move the object to the right. -}
 translationX :: Num a => a -> Transformation a
-translationX a = translation a 0
+translationX a = translation (V2 a 0)
 
 {-| Translates (move) an object along the vertical axis.
 A positive argument will move the object upwards (as opposed to standard SVG behavior). -}
 translationY :: Num a => a -> Transformation a
-translationY b = translation 0 b
+translationY b = translation (V2 0 b)
 
-{-| Scales (stretch) an object, preserving its horizontal/vertical proportion. -}
-scaling :: Num a => a -> a -> Transformation a
-scaling a b = matrix (a,0,0,b,0,0)
+{-| Scales (stretches) an object, preserving its horizontal/vertical proportion. -}
+scaling :: Num a => a -> Transformation a
+scaling a = matrix (a,0,0,a,0,0)
 
-{-| Scales(stretch) an object. -}
+{-| Scales (stretches) an object. -}
 scalingX :: Num a => a -> Transformation a
-scalingX a = scaling a 1
+scalingX a = matrix (a,0,0,1,0,0)
 
-{-| Scales (stretch) an object. -}
+{-| Scales (stretches) an object. -}
 scalingY :: Num a => a -> Transformation a
-scalingY b = scaling 1 b
+scalingY b = matrix (1,0,0,b,0,0)
 
 {-| Rotates an object. A positive vale will result in a counterclockwise rotation
     and negative value in a clockwise rotation. -}
-rotation :: Angle Double -> Transformation Double
+rotation :: Floating a => Angle a -> Transformation a
 rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 
+-- {-| Shears an object. -}
+-- shearing :: Num a => a -> a -> Transformation a
+-- shearing a b = matrix (1, b, a, 1, 0, 0)
+
 {-| Shears an object. -}
-shearing :: Num a => a -> a -> Transformation a
-shearing a b = matrix (1, b, a, 1, 0, 0)
+shearingX :: Num a => a -> Transformation a
+shearingX a = matrix (1, 1, a, 1, 0, 0)
+
+{-| Shears an object. -}
+shearingY :: Num a => a -> Transformation a
+shearingY b = matrix (1, b, 1, 1, 0, 0)
 
 
 
 {-| Translate (move) an image. -}
 translate :: V2 Double -> Drawing -> Drawing
-translate (V2 dx dy) = transform $ matrix (1,0,0,1,dx,dy)
+-- translate (V2 dx dy) = transform $ matrix (1,0,0,1,dx,dy)
+translate v = transform $ translation v
 
 {-| Translate (move) an image along the horizonal axis.
 A positive argument will move the image to the right. -}
 translateX :: Double -> Drawing -> Drawing
-translateX x = translate (V2 x 0)
+-- translateX x = translate (V2 x 0)
+translateX x = transform $ translationX x
 
 {-| Translate (move) an image along the vertical axis.
 A positive argument will move the image upwards (as opposed to standard SVG behavior). -}
 translateY :: Double -> Drawing -> Drawing
-translateY y = translate (V2 0 y)
+-- translateY y = translate (V2 0 y)
+translateY y = transform $ translationY y
 
 {-| Scale (stretch) an image. -}
-scaleXY :: Double -> Double -> Drawing -> Drawing
-scaleXY x y = transform $ matrix (x,0,0,y,0,0)
+-- scaleXY :: Double -> Double -> Drawing -> Drawing
+-- scaleXY x y = transform $ matrix (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
 scale :: Double -> Drawing -> Drawing
-scale x = scaleXY x x
+-- scale x = scaleXY x x
+scale a = transform $ scaling a
 
 {-| Scale (stretch) an image horizontally. -}
 scaleX :: Double -> Drawing -> Drawing
-scaleX x = scaleXY x 1
+-- scaleX x = scaleXY x 1
+scaleX a = transform $ scalingX a
 
 {-| Scale (stretch) an image vertically. -}
 scaleY :: Double -> Drawing -> Drawing
-scaleY y = scaleXY 1 y
+-- scaleY y = scaleXY 1 y
+scaleY a = transform $ scalingY a
 
 {-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
 rotate :: Angle Double -> Drawing -> Drawing
-rotate (Radians a) = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+-- rotate (Radians a) = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
 -- NOTE The b,c, signs are inverted because of the reverse y polarity.
+rotate a = transform $ rotation a
 
 {-| Shear an image. -}
-shear :: Double -> Double -> Drawing -> Drawing
-shear a b = transform $ matrix (1, b, a, 1, 0, 0)
+-- shear :: Double -> Double -> Drawing -> Drawing
+-- shear a b = transform $ matrix (1, b, a, 1, 0, 0)
+shearX a = transform $ shearingX a
+shearY a = transform $ shearingY a
 
 {-| A "big" smoke-colored background.
 
