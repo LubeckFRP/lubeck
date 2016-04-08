@@ -95,7 +95,6 @@ module Lubeck.DV.New
 
   -- * Geometry
   , Geometry
-  , ifG
   , pointG
   , line
   , fill
@@ -106,7 +105,9 @@ module Lubeck.DV.New
   , yIntercept
   , labelG
   , imageG
+
   -- ** Legacy
+  , ifG
   , scatter
 
   -- * Coordinates
@@ -822,8 +823,6 @@ data Geometry = Geometry
 instance Monoid Geometry where
   mempty = Geometry mempty mempty
   mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
-
-geom_blank = mempty
 
 
 -- TODO use GG/ggplot terminology vs Wilkinson
