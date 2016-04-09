@@ -180,13 +180,6 @@ searchFormComp = do
 
     initPostQuery = defSimpleAccountQuery
 
-validateGroupname :: Maybe DG.GroupName -> FormValid VError
-validateGroupname x =
-  let validationResult = runValidation1 <$> longString "Group name" 1 80 (fromMaybe "" x) :: Validation VError VSuccess
-  in case validationResult of
-        Success _  -> FormValid
-        Failure es -> FormNotValid es
-
 doAddToGroup :: Sink AddToGroupViewMode
              -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account))
              -> Maybe DG.GroupName

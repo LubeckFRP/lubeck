@@ -13,6 +13,7 @@ module BD.Data.Group
     , addAccountsToGroup
     , deleteGroup
     , undeleteGroup
+    , undeleteGroup'
     ) where
 
 import           Control.Monad
@@ -61,8 +62,9 @@ instance ToJSON GroupExists where
 groupExistsToggle :: GroupExists -> IO (Either AppError Ok)
 groupExistsToggle x = postAPIEither BD.Api.internalAPI "events/group-exists" x >>= return . bimap ApiError id
 
-deleteGroup grp   = groupExistsToggle $ GroupExists (name grp) 0
-undeleteGroup grp = groupExistsToggle $ GroupExists (name grp) 1
+deleteGroup grp        = groupExistsToggle $ GroupExists (name grp) 0
+undeleteGroup grp      = groupExistsToggle $ GroupExists (name grp) 1
+undeleteGroup' grpname = groupExistsToggle $ GroupExists grpname 1
 
 addAccountsToGroup :: GroupName -> [Int] -> IO [Either AppError Ok]
 addAccountsToGroup grp = MP.mapM go
