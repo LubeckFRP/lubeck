@@ -61,6 +61,8 @@ data Action = LoadGroup DG.GroupName
             | DeleteGroup DG.Group
             | SaveAs DG.GroupName (Set.Set Ac.Account)
 
+data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfirm
+
 reloadGroups sink = sink ReloadGroupsList
 
 handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
@@ -79,15 +81,17 @@ handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
       >>= mapM_ (eitherToError notifSink) . Data.List.filter isLeft
     reloadGroups ipcSink
 
-  DeleteGroup grp  -> do
-    withBusy busySink DG.deleteGroup grp >>= eitherToError notifSink
-    reloadGroups ipcSink
-    gridCmdsSink $ Replace [] -- reset grid TODO select other group
+  DeleteGroup grp  -> case Set.null $ DG.members grp of
+      True  -> do
+        withBusy busySink DG.deleteGroup grp >>= eitherToError notifSink
+        reloadGroups ipcSink
+        gridCmdsSink $ Replace [] -- reset grid TODO select other group
+
+      False -> notifSink . Just . apiError $ "Can't delete non-empty group"
 
   ShowGroup g    -> gridCmdsSink $ Replace (Set.toList (DG.members g))
 
   _              -> print "other act"
-
 
 confirmDialogComponent :: JSString -> IO (Signal Html, Events Bool)
 confirmDialogComponent prompt = do
@@ -150,8 +154,6 @@ groupSelector busySink notifSink groupsListS = do
 
     widget :: Widget (Maybe DG.GroupsNamesList) (Maybe DG.GroupName)
     widget x y = panel' . groupSelectW x $ y
-
-data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfirm
 
 actionsToolbar :: Sink Action -> Signal (Maybe DG.Group) -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
 actionsToolbar actionsSink sgS selectionSnapshotS = do
