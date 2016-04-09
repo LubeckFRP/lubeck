@@ -82,11 +82,28 @@ handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
   DeleteGroup grp  -> do
     withBusy busySink DG.deleteGroup grp >>= eitherToError notifSink
     reloadGroups ipcSink
+    gridCmdsSink $ Replace [] -- reset grid TODO select other group
 
   ShowGroup g    -> gridCmdsSink $ Replace (Set.toList (DG.members g))
 
   _              -> print "other act"
 
+
+confirmDialogComponent :: JSString -> IO (Signal Html, Events Bool)
+confirmDialogComponent prompt = do
+  (sink, ev) <- newSyncEventOf (undefined :: Bool)
+  evS <- stepperS False ev
+  let v = fmap (widget sink) evS
+  return (v, ev)
+  where
+    widget sink _ =
+      modalPopup' $ formPanel
+        [ E.div [A.class_ "confirm-dialog-body"] [E.text prompt]
+        , toolbar' . buttonGroup $
+            [ buttonOkIcon "Ok"     "ok" False [ Ev.click $ \e -> sink True ]
+            , button       "Cancel"      False [ Ev.click $ \e -> sink False ]
+            ]
+        ]
 
 groupSelector :: Sink BusyCmd -> Sink (Maybe Notification) -> Signal (Maybe DG.GroupsNamesList) -> IO (Signal Html, Signal (Maybe DG.Group))
 groupSelector busySink notifSink groupsListS = do
@@ -134,7 +151,7 @@ groupSelector busySink notifSink groupsListS = do
     widget :: Widget (Maybe DG.GroupsNamesList) (Maybe DG.GroupName)
     widget x y = panel' . groupSelectW x $ y
 
-data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone
+data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfirm
 
 actionsToolbar :: Sink Action -> Signal (Maybe DG.Group) -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
 actionsToolbar actionsSink sgS selectionSnapshotS = do
@@ -143,24 +160,35 @@ actionsToolbar actionsSink sgS selectionSnapshotS = do
 
   (newGroupV, submitNGe) <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
   (saveAsV, submitSAe)   <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
+  (confirmDeleteV, delEv) <- confirmDialogComponent "Are you sure?"
 
   subscribeEvent (FRP.filterJust submitNGe) $ actionsSink . CreateNewGroup
   subscribeEvent (FRP.filterJust submitSAe) $ \n -> do
     sel' <- pollBehavior (current selectionSnapshotS)
     let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel'
     actionsSink $ SaveAs n sel
+  subscribeEvent (FRP.filter (== True) delEv) $ const $ do -- TODO first only
+    curGrp <- pollBehavior (current sgS) -- XXX ???
+    case curGrp of
+      Just g  -> actionsSink $ DeleteGroup g
+      Nothing -> return ()
 
   subscribeEvent submitNGe $ const . popupSink $ ShowNone
   subscribeEvent submitSAe $ const . popupSink $ ShowNone
+  subscribeEvent delEv     $ const . popupSink $ ShowNone
 
   let toolbarV = fmap (toolbarW popupSink actionsSink) toolbarDataS
-  topL         <- overlayLayout2 (fmap f popupSig) (mkLayoutPure toolbarV) (mkLayoutPure newGroupV) (mkLayoutPure saveAsV)
+  topL         <- overlayLayout3 (fmap f popupSig) (mkLayoutPure toolbarV)
+                                                   (mkLayoutPure newGroupV)
+                                                   (mkLayoutPure saveAsV)
+                                                   (mkLayoutPure confirmDeleteV)
   return topL
 
   where
-    f ShowNone   = 0
-    f ShowCreate = 1
-    f ShowSaveAs = 2
+    f ShowNone          = 0
+    f ShowCreate        = 1
+    f ShowSaveAs        = 2
+    f ShowDeleteConfirm = 3
 
 
     toolbarDataS = (,) <$> sgS <*> selectionSnapshotS :: Signal (Maybe DG.Group, Maybe (Set.Set Ac.Account, GridAction Ac.Account))
@@ -187,7 +215,7 @@ actionsToolbar actionsSink sgS selectionSnapshotS = do
                          else [A.disabled True]
           deleteAttr = case grp of
                          Nothing -> [A.disabled True]
-                         Just g  -> [Ev.click $ \e -> sink $ DeleteGroup g]
+                         Just g  -> [Ev.click $ \e -> popupSink ShowDeleteConfirm]
           msg        = case Set.size sel of
                          0 -> "No accounts selected"
                          1 -> "1 account selected"
