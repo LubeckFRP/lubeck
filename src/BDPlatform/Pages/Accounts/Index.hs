@@ -57,8 +57,10 @@ accountsIndexPage busySink notifSink ipcSink usernameB navS = do
 
   pageIPCSink ReloadGroupsList -- XXX maybe run this on Nav to the current page only?
 
-  accountSearchView <- accountSearch busySink notifSink ipcSink pageIPCSink usernameB groupsListS navS
-  manageAccounsView <- manageAccouns busySink notifSink ipcSink pageIPCSink usernameB groupsListS navS
+  let ctx = Ctx busySink notifSink pageIPCSink groupsListS
+
+  accountSearchView <- accountSearch ctx
+  manageAccounsView <- manageAccouns ctx
   compositeL        <- fullsizeLayout2 (pure 0)
                                        (mkLayoutPure' accountSearchView "Find accounts")
                                        (mkLayoutPure' manageAccounsView "Manage groups")

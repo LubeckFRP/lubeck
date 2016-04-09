@@ -11,6 +11,8 @@ module BD.Data.Group
     , loadGroupsNames
     , loadGroup
     , addAccountsToGroup
+    , deleteGroup
+    , undeleteGroup
     ) where
 
 import           Control.Monad
@@ -46,6 +48,21 @@ data AccountInGroupToggle = AccountInGroupToggle
   } deriving (GHC.Generic)
 
 instance ToJSON AccountInGroupToggle
+
+data GroupExists = GroupExists
+  { ge_group_name  :: JSString
+  , ge_status      :: Int
+  } deriving (GHC.Generic)
+
+instance ToJSON GroupExists where
+  toJSON = Data.Aeson.Types.genericToJSON
+    Data.Aeson.Types.defaultOptions { Data.Aeson.Types.fieldLabelModifier = drop 3 }
+
+groupExistsToggle :: GroupExists -> IO (Either AppError Ok)
+groupExistsToggle x = postAPIEither BD.Api.internalAPI "events/group-exists" x >>= return . bimap ApiError id
+
+deleteGroup grp   = groupExistsToggle $ GroupExists (name grp) 0
+undeleteGroup grp = groupExistsToggle $ GroupExists (name grp) 1
 
 addAccountsToGroup :: GroupName -> [Int] -> IO [Either AppError Ok]
 addAccountsToGroup grp = MP.mapM go

@@ -293,22 +293,9 @@ resultsOrNoneComp results ctx = do
     searchResultsToGridCmd Empty      = Replace []
     searchResultsToGridCmd (Found xs) = Replace xs
 
-data Ctx = Ctx
-  { _busySink   :: Sink BusyCmd
-  , _notifSink  :: Sink (Maybe Notification)
-  , _pageIPC    :: Sink AccountsPageAction
-  , _groupsList :: Signal (Maybe DG.GroupsNamesList)
-  }
 
-accountSearch :: Sink BusyCmd
-              -> Sink (Maybe Notification)
-              -> Sink IPCMessage
-              -> Sink AccountsPageAction
-              -> Behavior (Maybe JSString)
-              -> Signal (Maybe DG.GroupsNamesList)
-              -> Signal Nav
-              -> IO (Signal Html)
-accountSearch busySink notifSink ipcSink pageIPCSink mUserNameB groupsListS navS = do
+accountSearch :: Ctx -> IO (Signal Html)
+accountSearch (Ctx busySink notifSink pageIPCSink groupsListS) = do
   (srchResSink, srchResEvents) <- newSyncEventOf (undefined    :: SearchResults)
   results                      <- stepperS Empty srchResEvents :: IO (Signal SearchResults)
 
