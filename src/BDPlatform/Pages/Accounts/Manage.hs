@@ -54,23 +54,26 @@ import           Components.Layout
 import           BDPlatform.Pages.Accounts.Common
 import           BDPlatform.Pages.Accounts.Types
 
-data Action = LoadGroup DG.GroupName
-            | ShowGroup DG.Group
+data Action = ShowGroup DG.Group
             | ActionNoop
             | CreateNewGroup DG.GroupName
             | DeleteGroup DG.Group
             | SaveAs DG.GroupName (Set.Set Ac.Account)
+            | DeleteMembers DG.Group [Ac.Account]
+            -- | LoadGroup DG.GroupName
 
 data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfirm
 
 reloadGroups sink = sink ReloadGroupsList
 
+-- loadGroup busySink notifSink gridCmdsSink groupname = do
+--   gridCmdsSink $ Replace [] -- reset grid
+--   (group, errors) <- withBusy busySink DG.loadGroup groupname
+--   mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
+--   gridCmdsSink $ Replace (Set.toList (DG.members group))
+
 handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
-  LoadGroup groupname -> do
-    gridCmdsSink $ Replace [] -- reset grid
-    (group, errors) <- withBusy busySink DG.loadGroup groupname
-    mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
-    gridCmdsSink $ Replace (Set.toList (DG.members group))
+  -- LoadGroup groupname -> loadGroup busySink notifSink gridCmdsSink groupname
 
   CreateNewGroup name -> do
     withBusy busySink DG.undeleteGroup' name >>= eitherToError notifSink
@@ -89,7 +92,13 @@ handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
 
       False -> notifSink . Just . apiError $ "Can't delete non-empty group"
 
-  ShowGroup g    -> gridCmdsSink $ Replace (Set.toList (DG.members g))
+  ShowGroup g -> gridCmdsSink $ Replace (Set.toList (DG.members g))
+
+  DeleteMembers g xs -> do
+    withBusy2 busySink DG.removeAccountsFromGroup (DG.name g) (fmap Ac.id xs)
+      >>= mapM_ (eitherToError notifSink) . Data.List.filter isLeft
+    reloadGroups ipcSink
+    -- loadGroup busySink notifSink gridCmdsSink (DG.name g) -- TODO push changes form groupSelector
 
   _              -> print "other act"
 
@@ -117,6 +126,7 @@ groupSelector busySink notifSink groupsListS = do
   let v              = fmap (widget nameSink) groupsListS
 
   subscribeEvent (FRP.filterJust nameEv) $ void . forkIO . load grpSink
+  subscribeEvent (updates groupsListS) $ const $ pollBehavior (current gS) >>= nameSink . fmap DG.name
 
   return (v, gS)
 
@@ -133,7 +143,7 @@ groupSelector busySink notifSink groupsListS = do
             selectWithPromptWidget
               (makeOpts gnl)
               (contramapSink (toAction . filterGroup gnl) sink)
-              (firstGroupName gnl) ]
+              "select no group (firstGroupName gnl)" ]
 
       where
         gnl = fromMaybe [] gnl'
@@ -242,6 +252,12 @@ manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
   let showGroupE = fmap ShowGroup (FRP.filterJust $ updates sgS)
   subscribeEvent (actionsE <> showGroupE) $ void . forkIO . handleActions busySink notifSink pageIPCSink gridCmdsSink
 
+  subscribeEvent (fmap fromDelete (FRP.filter isDelete gridActionE)) $ \xs -> do
+    g <- pollBehavior (current sgS)
+    case g of
+      Just g -> actionsSink $ DeleteMembers g xs
+      Nothing -> return ()
+
   toolbarL         <- actionsToolbar actionsSink sgS selectionSnapshotS
   let selectGroupL = mkLayoutPure selectGroupV
   let gridL        = mkLayoutPure gridView
@@ -252,3 +268,10 @@ manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
 
   where
     gridOptions = defaultGridOptions{otherButton = False}
+
+    isDelete :: GridAction a -> Bool
+    isDelete (Delete _)   = True
+    isDelete _            = False
+
+    -- fromDelete :: GridAction a -> a
+    fromDelete (Delete x) = x
