@@ -65,12 +65,6 @@ data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfir
 
 reloadGroups sink = sink ReloadGroupsList
 
--- loadGroup busySink notifSink gridCmdsSink groupname = do
---   gridCmdsSink $ Replace [] -- reset grid
---   (group, errors) <- withBusy busySink DG.loadGroup groupname
---   mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
---   gridCmdsSink $ Replace (Set.toList (DG.members group))
-
 handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
   CreateNewGroup name -> do
     withBusy busySink DG.undeleteGroup' name >>= eitherToError notifSink
@@ -85,7 +79,6 @@ handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
       True  -> do
         withBusy busySink DG.deleteGroup grp >>= eitherToError notifSink
         reloadGroups ipcSink
-        -- gridCmdsSink $ Replace [] -- reset grid TODO select other group
 
       False -> notifSink . Just . apiError $ "Can't delete non-empty group"
 
@@ -154,7 +147,7 @@ groupSelector busySink notifSink groupsListS = do
 
         curGrp = fromMaybe "non-existing-option" (DG.name <$> curGrp')
 
-        makeOpts gnl = zip gnl gnl
+        makeOpts gnl = let x = Data.List.sort gnl in zip x x
 
         filterGroup _ Nothing = []
         filterGroup gnl (Just grpname) = Data.List.filter (byName grpname) gnl
@@ -173,18 +166,20 @@ groupSelector busySink notifSink groupsListS = do
 
 actionsToolbar :: Sink Action -> Signal (Maybe DG.Group) -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
 actionsToolbar actionsSink sgS selectionSnapshotS = do
-  (popupSink, popupEvnt) <- newSyncEventOf (undefined :: ToolbarPopupActions)
-  popupSig               <- stepperS ShowNone popupEvnt -- TODO helper newSyncSignalOf
+  (popupSink, popupEvnt)  <- newSyncEventOf (undefined :: ToolbarPopupActions)
+  popupSig                <- stepperS ShowNone popupEvnt -- TODO helper newSyncSignalOf
 
-  (newGroupV, submitNGe) <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
-  (saveAsV, submitSAe)   <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
+  (newGroupV, submitNGe)  <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
+  (saveAsV, submitSAe)    <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
   (confirmDeleteV, delEv) <- confirmDialogComponent "Are you sure?"
 
   subscribeEvent (FRP.filterJust submitNGe) $ actionsSink . CreateNewGroup
+
   subscribeEvent (FRP.filterJust submitSAe) $ \n -> do
     sel' <- pollBehavior (current selectionSnapshotS)
     let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel'
     actionsSink $ SaveAs n sel
+
   subscribeEvent (FRP.filter (== True) delEv) $ const $ do -- TODO first only
     curGrp <- pollBehavior (current sgS) -- XXX ???
     case curGrp of
@@ -261,7 +256,7 @@ manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
   subscribeEvent (fmap fromDelete (FRP.filter isDelete gridActionE)) $ \xs -> do
     g <- pollBehavior (current sgS)
     case g of
-      Just g -> actionsSink $ DeleteMembers g xs
+      Just g -> actionsSink $ DeleteMembers g xs -- TODO ask confirm.
       Nothing -> return ()
 
   toolbarL         <- actionsToolbar actionsSink sgS selectionSnapshotS

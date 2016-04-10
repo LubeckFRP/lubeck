@@ -83,7 +83,7 @@ selectCreateGroupW outputSink (isValid, (gnl, val)) =
         , inlineMessage cantSubmitMsg ]
     ]
   where
-    makeOpts gnl = zip gnl gnl
+    makeOpts gnl = let x = Data.List.sort gnl in zip x x 
 
     filterGroup _ Nothing = []
     filterGroup gnl (Just grpname) = Data.List.filter (byName grpname) gnl
