@@ -54,13 +54,12 @@ import           Components.Layout
 import           BDPlatform.Pages.Accounts.Common
 import           BDPlatform.Pages.Accounts.Types
 
-data Action = ShowGroup DG.Group
+data Action = ShowGroup (Maybe DG.Group)
             | ActionNoop
             | CreateNewGroup DG.GroupName
             | DeleteGroup DG.Group
             | SaveAs DG.GroupName (Set.Set Ac.Account)
             | DeleteMembers DG.Group [Ac.Account]
-            -- | LoadGroup DG.GroupName
 
 data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfirm
 
@@ -73,8 +72,6 @@ reloadGroups sink = sink ReloadGroupsList
 --   gridCmdsSink $ Replace (Set.toList (DG.members group))
 
 handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
-  -- LoadGroup groupname -> loadGroup busySink notifSink gridCmdsSink groupname
-
   CreateNewGroup name -> do
     withBusy busySink DG.undeleteGroup' name >>= eitherToError notifSink
     reloadGroups ipcSink
@@ -88,17 +85,18 @@ handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
       True  -> do
         withBusy busySink DG.deleteGroup grp >>= eitherToError notifSink
         reloadGroups ipcSink
-        gridCmdsSink $ Replace [] -- reset grid TODO select other group
+        -- gridCmdsSink $ Replace [] -- reset grid TODO select other group
 
       False -> notifSink . Just . apiError $ "Can't delete non-empty group"
 
-  ShowGroup g -> gridCmdsSink $ Replace (Set.toList (DG.members g))
+  ShowGroup g' -> case g' of
+    Just g  -> gridCmdsSink $ Replace (Set.toList (DG.members g))
+    Nothing -> gridCmdsSink $ Replace []
 
   DeleteMembers g xs -> do
     withBusy2 busySink DG.removeAccountsFromGroup (DG.name g) (fmap Ac.id xs)
       >>= mapM_ (eitherToError notifSink) . Data.List.filter isLeft
     reloadGroups ipcSink
-    -- loadGroup busySink notifSink gridCmdsSink (DG.name g) -- TODO push changes form groupSelector
 
   _              -> print "other act"
 
@@ -121,12 +119,18 @@ confirmDialogComponent prompt = do
 groupSelector :: Sink BusyCmd -> Sink (Maybe Notification) -> Signal (Maybe DG.GroupsNamesList) -> IO (Signal Html, Signal (Maybe DG.Group))
 groupSelector busySink notifSink groupsListS = do
   (nameSink, nameEv) <- newSyncEventOf (undefined :: Maybe DG.GroupName)
-  (grpSink, grpEv)   <- newSyncEventOf (undefined :: DG.Group)
-  gS                 <- stepperS Nothing (fmap Just grpEv)
-  let v              = fmap (widget nameSink) groupsListS
+  (grpSink, grpEv)   <- newSyncEventOf (undefined :: Maybe DG.Group)
+  gS                 <- stepperS Nothing grpEv
+  let xxx            = (,) <$> groupsListS <*> gS :: Signal (Maybe DG.GroupsNamesList, Maybe DG.Group)
+  let v              = fmap (widget nameSink) xxx
 
   subscribeEvent (FRP.filterJust nameEv) $ void . forkIO . load grpSink
-  subscribeEvent (updates groupsListS) $ const $ pollBehavior (current gS) >>= nameSink . fmap DG.name
+  subscribeEvent (updates groupsListS) $ \gl -> do
+    curGrp <- pollBehavior (current gS)
+    case Data.List.elem <$> (DG.name <$> curGrp) <*> gl of
+      Just True  -> nameSink $ DG.name <$> curGrp
+      Just False -> grpSink Nothing
+      Nothing    -> return ()
 
   return (v, gS)
 
@@ -134,19 +138,21 @@ groupSelector busySink notifSink groupsListS = do
     load sink groupname = do
       (group, errors) <- withBusy busySink DG.loadGroup groupname
       mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
-      sink group
+      sink $ Just group
 
-    groupSelectW :: Widget (Maybe DG.GroupsNamesList) (Maybe DG.GroupName)
-    groupSelectW sink gnl' =
-      toolbar $
-        [ buttonGroup' $
-            selectWithPromptWidget
-              (makeOpts gnl)
-              (contramapSink (toAction . filterGroup gnl) sink)
-              "select no group (firstGroupName gnl)" ]
+    groupSelectW :: Widget (Maybe DG.GroupsNamesList, Maybe DG.Group) (Maybe DG.GroupName)
+    groupSelectW sink (gnl', curGrp') =
+      toolbar' $
+        buttonGroup' $
+          selectWithPromptWidget
+            (makeOpts gnl)
+            (contramapSink (toAction . filterGroup gnl) sink)
+            curGrp
 
       where
         gnl = fromMaybe [] gnl'
+
+        curGrp = fromMaybe "non-existing-option" (DG.name <$> curGrp')
 
         makeOpts gnl = zip gnl gnl
 
@@ -162,7 +168,7 @@ groupSelector busySink notifSink groupsListS = do
         firstGroupName [] = ""
         firstGroupName xs = head xs
 
-    widget :: Widget (Maybe DG.GroupsNamesList) (Maybe DG.GroupName)
+    widget :: Widget (Maybe DG.GroupsNamesList, Maybe DG.Group) (Maybe DG.GroupName)
     widget x y = panel' . groupSelectW x $ y
 
 actionsToolbar :: Sink Action -> Signal (Maybe DG.Group) -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
@@ -249,7 +255,7 @@ manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
   selectionSnapshotS                                           <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE)) :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
   (selectGroupV, sgS)                                          <- groupSelector busySink notifSink groupsListS
 
-  let showGroupE = fmap ShowGroup (FRP.filterJust $ updates sgS)
+  let showGroupE = fmap ShowGroup (updates sgS)
   subscribeEvent (actionsE <> showGroupE) $ void . forkIO . handleActions busySink notifSink pageIPCSink gridCmdsSink
 
   subscribeEvent (fmap fromDelete (FRP.filter isDelete gridActionE)) $ \xs -> do
