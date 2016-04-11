@@ -50,6 +50,7 @@ import           Components.BusyIndicator         (BusyCmd (..), withBusy,
                                                    withBusy0, withBusy2)
 import           Components.Grid
 import           Components.Layout
+import           Components.ConfirmDialog
 
 import           BDPlatform.Pages.Accounts.Common
 import           BDPlatform.Pages.Accounts.Types
@@ -93,32 +94,6 @@ handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
     reloadGroups ipcSink
 
   _              -> print "other act"
-
--- TODO make overlay layout to work with signal of maybe html for overlay
--- this will remove a need for showDeleteConfirmSig
-confirmDialogComponent :: IO (Signal Html, Signal Bool, Sink (JSString, (Bool -> IO ())))
-confirmDialogComponent = do
-  (askSink, askEv)           <- newSyncEventOf (undefined :: (JSString, (Bool -> IO ())))
-  (showHideSink, showHideEv) <- newSyncEventOf (undefined :: Bool)
-  showDeleteConfirmSig       <- stepperS False showHideEv
-
-  subscribeEvent askEv $ const $ showHideSink True -- show dialog
-
-  asksS <- stepperS Nothing (fmap Just askEv)
-  let v = fmap (widget showHideSink) asksS
-  return (v, showDeleteConfirmSig, askSink)
-
-  where
-    widget showHideSink mbq =
-      let (q, f) = fromMaybe ("huh?", (const . return $ ())) mbq
-      in modalPopup' $ formPanel
-        [ E.div [A.class_ "confirm-dialog-body"] [E.text q]
-        , toolbar' . buttonGroup $
-            [ buttonOkIcon "Ok"     "ok" False [ Ev.click $ \e -> f True  >> showHideSink False ] -- hide dialog
-            , button       "Cancel"      False [ Ev.click $ \e -> f False >> showHideSink False ]
-            ]
-        ]
-
 
 groupSelector :: Sink BusyCmd -> Sink (Maybe Notification) -> Signal (Maybe DG.GroupsNamesList) -> IO (Signal Html, Signal (Maybe DG.Group))
 groupSelector busySink notifSink groupsListS = do
@@ -256,7 +231,7 @@ actionsToolbar actionsSink sgS selectionSnapshotS = do
 
 manageAccouns :: Ctx -> IO (Signal Html)
 manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
-  (actionsSink, actionsE)                                      <- newSyncEventOf (undefined                                     :: Action)
+  (actionsSink, actionsE)                                      <- newSyncEventOf (undefined :: Action)
   (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent (Just gridOptions) [] itemMarkup
   selectionSnapshotS                                           <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE)) :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
   (selectGroupV, sgS)                                          <- groupSelector busySink notifSink groupsListS
