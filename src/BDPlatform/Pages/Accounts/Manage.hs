@@ -119,6 +119,9 @@ groupSelector busySink notifSink groupsListS = do
       mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
       sink $ Just group
 
+    widget :: Widget (Maybe DG.GroupsNamesList, Maybe DG.Group) (Maybe DG.GroupName)
+    widget x y = panel' . groupSelectW x $ y
+
     groupSelectW :: Widget (Maybe DG.GroupsNamesList, Maybe DG.Group) (Maybe DG.GroupName)
     groupSelectW sink (gnl', curGrp') =
       toolbar' $
@@ -147,9 +150,6 @@ groupSelector busySink notifSink groupsListS = do
         firstGroupName [] = ""
         firstGroupName xs = head xs
 
-    widget :: Widget (Maybe DG.GroupsNamesList, Maybe DG.Group) (Maybe DG.GroupName)
-    widget x y = panel' . groupSelectW x $ y
-
 actionsToolbar :: Sink Action -> Signal (Maybe DG.Group) -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
 actionsToolbar actionsSink sgS selectionSnapshotS = do
   (popupSink, popupEvnt)  <- newSyncEventOf (undefined :: ToolbarPopupActions)
@@ -161,17 +161,13 @@ actionsToolbar actionsSink sgS selectionSnapshotS = do
 
   subscribeEvent (FRP.filterJust submitNGe) $ actionsSink . CreateNewGroup
 
-  subscribeEvent (FRP.filterJust submitSAe) $ \n -> do
-    sel' <- pollBehavior (current selectionSnapshotS)
-    let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel'
-    actionsSink $ SaveAs n sel
+  subscribeEvent (FRP.filterJust submitSAe) $ \n ->
+    pollBehavior (current selectionSnapshotS) >>= mapM_ (actionsSink . SaveAs n . fst)
 
-  subscribeEvent (FRP.filter (== ShowDeleteConfirm) popupEvnt) $ const $ do -- TODO first only
-    curGrp <- pollBehavior (current sgS) -- XXX ???
-    case curGrp of
-      Just g  -> confirm ( "Are you sure you want to delete group " <> DG.name g <> "?"
-                         , \r -> if r then actionsSink (DeleteGroup g) else return ())
-      Nothing -> return ()
+  subscribeEvent (FRP.filter (== ShowDeleteConfirm) popupEvnt) $ const $ do
+    pollBehavior (current sgS) >>=
+      mapM_ (\g  -> confirm ( "Are you sure you want to delete group " <> DG.name g <> "?"
+                            , flip when $ actionsSink $ DeleteGroup g ))
 
   subscribeEvent submitNGe $ const . popupSink $ ShowNone
   subscribeEvent submitSAe $ const . popupSink $ ShowNone
@@ -188,7 +184,6 @@ actionsToolbar actionsSink sgS selectionSnapshotS = do
     f ShowCreate        = 1
     f ShowSaveAs        = 2
     f ShowDeleteConfirm = 3
-
 
     toolbarDataS = (,) <$> sgS <*> selectionSnapshotS :: Signal (Maybe DG.Group, Maybe (Set.Set Ac.Account, GridAction Ac.Account))
 
@@ -238,21 +233,18 @@ manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
 
   (confirmDialogV, toggleConfigmDialogS, confirm)              <- confirmDialogComponent
 
-
   let showGroupE = fmap ShowGroup (updates sgS)
   subscribeEvent (actionsE <> showGroupE) $ void . forkIO . handleActions busySink notifSink pageIPCSink gridCmdsSink
 
   subscribeEvent (fmap fromDelete (FRP.filter isDelete gridActionE)) $ \xs ->
-    pollBehavior (current sgS) >>= \g -> case g of
-      Just g' -> confirm ( "Do you really want to delete " <> formatAccountsToDelete xs <> " from the group " <> DG.name g' <> "?"
-                         , \r -> if r then actionsSink (DeleteMembers g' xs) else return () )
-      Nothing -> return ()
+    pollBehavior (current sgS) >>=
+      mapM_  (\g -> confirm ( "Do you really want to delete " <> formatAccountsToDelete xs <> " from the group " <> DG.name g <> "?"
+                            , flip when $ actionsSink $ DeleteMembers g xs ))
 
-  toolbarL         <- actionsToolbar actionsSink sgS selectionSnapshotS
-  let selectGroupL = mkLayoutPure selectGroupV
-  gridL            <- overlayLayout toggleConfigmDialogS (mkLayoutPure gridView) (mkLayoutPure confirmDialogV)
-  headerL          <- verticalStackLayout2 selectGroupL toolbarL
-  topL             <- verticalStackLayout2 headerL gridL
+  toolbarL <- actionsToolbar actionsSink sgS selectionSnapshotS
+  gridL    <- overlayLayout toggleConfigmDialogS (mkLayoutPure gridView) (mkLayoutPure confirmDialogV)
+  headerL  <- verticalStackLayout2 (mkLayoutPure selectGroupV) toolbarL
+  topL     <- verticalStackLayout2 headerL gridL
 
   return $ view topL
 
