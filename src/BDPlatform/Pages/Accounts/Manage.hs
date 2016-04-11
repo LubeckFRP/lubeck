@@ -62,6 +62,7 @@ data Action = ShowGroup (Maybe DG.Group)
             | DeleteMembers DG.Group [Ac.Account]
 
 data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfirm
+  deriving Eq
 
 reloadGroups sink = sink ReloadGroupsList
 
@@ -93,21 +94,31 @@ handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
 
   _              -> print "other act"
 
-confirmDialogComponent :: JSString -> IO (Signal Html, Events Bool)
-confirmDialogComponent prompt = do
-  (sink, ev) <- newSyncEventOf (undefined :: Bool)
-  evS <- stepperS False ev
-  let v = fmap (widget sink) evS
-  return (v, ev)
+-- TODO make overlay layout to work with signal of maybe html for overlay
+-- this will remove a need for showDeleteConfirmSig
+confirmDialogComponent :: IO (Signal Html, Signal Bool, Sink (JSString, (Bool -> IO ())))
+confirmDialogComponent = do
+  (askSink, askEv)           <- newSyncEventOf (undefined :: (JSString, (Bool -> IO ())))
+  (showHideSink, showHideEv) <- newSyncEventOf (undefined :: Bool)
+  showDeleteConfirmSig       <- stepperS False showHideEv
+
+  subscribeEvent askEv $ const $ showHideSink True -- show dialog
+
+  asksS <- stepperS Nothing (fmap Just askEv)
+  let v = fmap (widget showHideSink) asksS
+  return (v, showDeleteConfirmSig, askSink)
+
   where
-    widget sink _ =
-      modalPopup' $ formPanel
-        [ E.div [A.class_ "confirm-dialog-body"] [E.text prompt]
+    widget showHideSink mbq =
+      let (q, f) = fromMaybe ("huh?", (const . return $ ())) mbq
+      in modalPopup' $ formPanel
+        [ E.div [A.class_ "confirm-dialog-body"] [E.text q]
         , toolbar' . buttonGroup $
-            [ buttonOkIcon "Ok"     "ok" False [ Ev.click $ \e -> sink True ]
-            , button       "Cancel"      False [ Ev.click $ \e -> sink False ]
+            [ buttonOkIcon "Ok"     "ok" False [ Ev.click $ \e -> f True  >> showHideSink False ] -- hide dialog
+            , button       "Cancel"      False [ Ev.click $ \e -> f False >> showHideSink False ]
             ]
         ]
+
 
 groupSelector :: Sink BusyCmd -> Sink (Maybe Notification) -> Signal (Maybe DG.GroupsNamesList) -> IO (Signal Html, Signal (Maybe DG.Group))
 groupSelector busySink notifSink groupsListS = do
@@ -171,7 +182,7 @@ actionsToolbar actionsSink sgS selectionSnapshotS = do
 
   (newGroupV, submitNGe)  <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
   (saveAsV, submitSAe)    <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
-  (confirmDeleteV, delEv) <- confirmDialogComponent "Are you sure?"
+  (confirmDeleteV, toggleShowS, confirm) <- confirmDialogComponent
 
   subscribeEvent (FRP.filterJust submitNGe) $ actionsSink . CreateNewGroup
 
@@ -180,21 +191,21 @@ actionsToolbar actionsSink sgS selectionSnapshotS = do
     let sel = fst $ fromMaybe (Set.empty, Components.Grid.Noop) sel'
     actionsSink $ SaveAs n sel
 
-  subscribeEvent (FRP.filter (== True) delEv) $ const $ do -- TODO first only
+  subscribeEvent (FRP.filter (== ShowDeleteConfirm) popupEvnt) $ const $ do -- TODO first only
     curGrp <- pollBehavior (current sgS) -- XXX ???
     case curGrp of
-      Just g  -> actionsSink $ DeleteGroup g
+      Just g  -> confirm ( "Are you sure you want to delete group " <> DG.name g <> "?"
+                         , \r -> if r then actionsSink (DeleteGroup g) else return ())
       Nothing -> return ()
 
   subscribeEvent submitNGe $ const . popupSink $ ShowNone
   subscribeEvent submitSAe $ const . popupSink $ ShowNone
-  subscribeEvent delEv     $ const . popupSink $ ShowNone
 
   let toolbarV = fmap (toolbarW popupSink actionsSink) toolbarDataS
-  topL         <- overlayLayout3 (fmap f popupSig) (mkLayoutPure toolbarV)
+  toolbarL     <- overlayLayout toggleShowS (mkLayoutPure toolbarV) (mkLayoutPure confirmDeleteV)
+  topL         <- overlayLayout2 (fmap f popupSig) toolbarL
                                                    (mkLayoutPure newGroupV)
                                                    (mkLayoutPure saveAsV)
-                                                   (mkLayoutPure confirmDeleteV)
   return topL
 
   where
@@ -250,18 +261,21 @@ manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
   selectionSnapshotS                                           <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE)) :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
   (selectGroupV, sgS)                                          <- groupSelector busySink notifSink groupsListS
 
+  (confirmDialogV, toggleConfigmDialogS, confirm)              <- confirmDialogComponent
+
+
   let showGroupE = fmap ShowGroup (updates sgS)
   subscribeEvent (actionsE <> showGroupE) $ void . forkIO . handleActions busySink notifSink pageIPCSink gridCmdsSink
 
-  subscribeEvent (fmap fromDelete (FRP.filter isDelete gridActionE)) $ \xs -> do
-    g <- pollBehavior (current sgS)
-    case g of
-      Just g -> actionsSink $ DeleteMembers g xs -- TODO ask confirm.
+  subscribeEvent (fmap fromDelete (FRP.filter isDelete gridActionE)) $ \xs ->
+    pollBehavior (current sgS) >>= \g -> case g of
+      Just g' -> confirm ( "Do you really want to delete " <> formatAccountsToDelete xs <> " from the group " <> DG.name g' <> "?"
+                         , \r -> if r then actionsSink (DeleteMembers g' xs) else return () )
       Nothing -> return ()
 
   toolbarL         <- actionsToolbar actionsSink sgS selectionSnapshotS
   let selectGroupL = mkLayoutPure selectGroupV
-  let gridL        = mkLayoutPure gridView
+  gridL            <- overlayLayout toggleConfigmDialogS (mkLayoutPure gridView) (mkLayoutPure confirmDialogV)
   headerL          <- verticalStackLayout2 selectGroupL toolbarL
   topL             <- verticalStackLayout2 headerL gridL
 
@@ -269,6 +283,14 @@ manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
 
   where
     gridOptions = defaultGridOptions{otherButton = False}
+
+    formatAccountsToDelete as | length as == 0 = "no account"
+                              | length as == 1 = "account " <> Ac.username (head as)
+                              | length as < 5  = "accounts " <> joinWith ", " (fmap Ac.username (take 4 as))
+                              | length as > 4  = "accounts " <> joinWith ", " (fmap Ac.username (take 3 as))
+                                                             <> " and " <> showJS (length as - 3) <> " other accounts"
+
+    joinWith = Data.JSString.intercalate
 
     isDelete :: GridAction a -> Bool
     isDelete (Delete _)   = True
