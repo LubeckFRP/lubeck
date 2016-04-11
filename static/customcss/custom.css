@@ -451,3 +451,7 @@ div, h1, h2, img, p, span {
 .btn-link:focus, .btn-link:active {
   outline: 0;
 }
+
+.confirm-dialog-body {
+  margin-bottom: 30px;
+}

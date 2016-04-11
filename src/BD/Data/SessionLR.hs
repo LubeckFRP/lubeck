@@ -62,20 +62,20 @@ instance ToJSON SessionImage
 
 initializeSession :: API -> Int -> IO (Either AppError Session)
 initializeSession api n =
-  first ApiError <$> getAPIEither api ("label-refiner/session/init/" <> showJS n)
+  first ApiError <$> getAPIEither api ("session/init/" <> showJS n)
 
 initializeSession' :: API -> Int -> IO Session
 initializeSession' api n =
-  unsafeGetAPI api ("label-refiner/session/init/" <> showJS n)
+  unsafeGetAPI api ("session/init/" <> showJS n)
 
 getNewPage :: API -> Int -> IO (Either AppError SPageData)
 getNewPage api n =
-  first ApiError <$> getAPIEither api ("label-refiner/session/getpage/" <> showJS n)
+  first ApiError <$> getAPIEither api ("session/getpage/" <> showJS n)
 
 getNewPage' :: API -> Int -> IO SPageData 
 getNewPage' api n =
-  unsafeGetAPI api ("label-refiner/session/getpage/" <> showJS n)
+  unsafeGetAPI api ("session/getpage/" <> showJS n)
 
 postSessionPage :: API -> SessionPage -> IO (Either AppError Ok)
 postSessionPage api =
-  fmap (first ApiError) . postAPIEither api "label-refiner/session/submit"
+  fmap (first ApiError) . postAPIEither api "session/submit"
