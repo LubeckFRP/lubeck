@@ -77,6 +77,7 @@ library
                      , Components.Map
                      , Components.Grid
                      , Components.Layout
+                     , Components.ConfirmDialog
   build-depends:       base
                      , base-prelude
                      , virtual-dom
