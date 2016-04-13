@@ -34,6 +34,12 @@ validURL fn s  = case NU.parseURI (Data.JSString.unpack s) of
     where
       proto = Data.JSString.toLower . Data.JSString.pack . NU.uriScheme $ uri
 
+usernameString :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
+usernameString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isAlphanum fn s
+
+longWord :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
+longWord fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isAlphanum fn s
+
 longString :: JSString -> Int -> Int -> JSString -> Validation VError VSuccess
 longString fn minl maxl s = runValidation2 <$> lengthBetween fn minl maxl s <*> isPrintable fn s
 

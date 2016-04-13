@@ -170,7 +170,7 @@ loadTrackedHashtags notifSink thtsInitSink = do
 
 validateHTag :: JSString -> FormValid VError
 validateHTag newHTag =
-  let validationResult = runValidation1 <$> longString "Hashtag" 1 80 newHTag :: Validation VError VSuccess
+  let validationResult = runValidation1 <$> longWord "Hashtag" 1 80 newHTag :: Validation VError VSuccess
   in case validationResult of
         Success _  -> FormValid
         Failure es -> FormNotValid es
