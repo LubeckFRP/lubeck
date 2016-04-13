@@ -56,7 +56,7 @@ data ChangePasswordViewForm = ChangePasswordViewForm { oldPassword  :: JSString
 
 --------------------------------------------------------------------------------
 
-validateUsername fn = longString fn 3 30
+validateUsername fn = usernameString fn 3 30
 validatePassword fn = passwordString fn 3 30
 validateAccName fn  = longString fn 3 30
 
@@ -123,7 +123,7 @@ createUserComp :: Sink BusyCmd -> Sink (Maybe Notification) -> Sink CurrentUserA
 createUserComp busySink notifSink actionsSink = do
   (createUserView, createUserE) <- formWithValidationComponent validateCreateUser
                                                                emptyCreateUserForm
-                                                               (createUserW actionsSink)     :: IO (Signal Html, Events Auth.CreateUserForm)
+                                                               (createUserW actionsSink) :: IO (Signal Html, Events Auth.CreateUserForm)
 
   subscribeEvent createUserE $ void . forkIO . createUser busySink notifSink actionsSink
   return createUserView
@@ -176,7 +176,7 @@ currentUserIndexPage busySink notifSink ipcSink userS authS = do
   createUserView     <- createUserComp     busySink notifSink actionsSink
 
   toolbarL'          <- overlayLayout (fmap f actionsS) (mkLayoutPure toolbarView) (mkLayoutPure createUserView)
-  toolbarL           <- overlayLayout (fmap g actionsS) toolbarL' (mkLayoutPure changePasswordView)
+  toolbarL           <- overlayLayout (fmap g actionsS) toolbarL'                  (mkLayoutPure changePasswordView)
   topL               <- verticalStackLayout2 toolbarL (mkLayoutPure userView)
 
   subscribeEvent (FRP.filter (== CUALogout) actionEvents) $ const $ ipcSink Logout
