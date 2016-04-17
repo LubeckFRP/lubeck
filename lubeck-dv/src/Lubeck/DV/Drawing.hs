@@ -82,7 +82,6 @@ module Lubeck.DV.Drawing
   -- * Drawing axes
   , ticks
   , ticksNoFilter
-  , barPlotTicks
 
   -- * Drawing axes
   , labeledAxis
@@ -597,9 +596,6 @@ ticksNoFilter xt yt = do
       , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
       , fontWeight = style^.tickTextFontWeight
       }
-
-barPlotTicks :: [Str] -> [Str] -> Styled Drawing
-barPlotTicks = undefined
 
 
 -- | Draw X and Y axis.
