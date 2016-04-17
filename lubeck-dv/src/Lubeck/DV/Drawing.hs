@@ -110,18 +110,13 @@ import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
 import Control.Monad.Reader
--- import Data.AffineSpace
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid
 import Data.Map(Map)
--- import Data.VectorSpace
 import qualified Data.Colour.Names as Colors
--- import qualified Data.VectorSpace as VS
 
 import Linear.Vector
 import Linear.Affine
--- import Linear.Matrix hiding (translation)
--- import Linear.Metric -- Needed?
 import Linear.V0
 import Linear.V1
 import Linear.V2
