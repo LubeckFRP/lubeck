@@ -1,6 +1,13 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections,
-  TemplateHaskell, ConstraintKinds, CPP #-}
+{-# LANGUAGE
+    GeneralizedNewtypeDeriving
+  , OverloadedStrings
+  , QuasiQuotes
+  , OverloadedStrings
+  , TupleSections
+  , TemplateHaskell
+  , ConstraintKinds
+  #-}
 
 -- |
 -- Basics for drawing plots.

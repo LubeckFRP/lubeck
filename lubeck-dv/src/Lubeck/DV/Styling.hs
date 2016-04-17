@@ -1,6 +1,12 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections,
-  TemplateHaskell, ConstraintKinds #-}
+{-# LANGUAGE
+    GeneralizedNewtypeDeriving
+  , OverloadedStrings
+  , TemplateHaskell
+  , OverloadedStrings
+  , TupleSections
+  , ConstraintKinds
+  #-}
 
 module Lubeck.DV.Styling
   (
