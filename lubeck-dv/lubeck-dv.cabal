@@ -15,10 +15,9 @@ library
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling
-                     , Lubeck.DV.Animation
-                     , Lubeck.DV.Interactive
   build-depends:       base
                      , base-prelude
+                     , lubeck-core
                      , contravariant
                      , mtl
                      , transformers
