@@ -20,29 +20,19 @@ import Control.Lens.TH
 import Control.Lens(Getter, to)
 import Control.Lens(_1, _2, _3, _4) -- TODO debug
 import Control.Lens.Operators hiding ((<~))
--- import Control.Lens.TH (makeLenses, makeFields)
--- import Control.Monad.Reader (ask)
 import Data.Functor.Contravariant (Contravariant(..))
--- import Data.Map(Map)
 import Data.Time(UTCTime)
 import Linear.Affine (Point(..))
 import Linear.V1 (V1(..), _x)
 import Linear.V2 (V2(..), _y)
--- import Linear.V3 (V3(..))
 import NeatInterpolation(string)
 
 import qualified Data.Char
 import qualified Data.List
--- import qualified Data.Map
--- import qualified Data.Maybe
--- import qualified Data.Time
--- import qualified Data.Time.Format
--- import qualified Text.PrettyPrint.Boxes as B
 import qualified Data.Colour.Names as Colors
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
--- import Lubeck.DV.Styling (StyledT, Styled, Styling, renderingRectangle)
 
 import qualified Lubeck.Drawing
 import Lubeck.DV
