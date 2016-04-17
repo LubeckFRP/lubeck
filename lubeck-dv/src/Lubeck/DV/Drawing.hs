@@ -143,6 +143,16 @@ transformIntoRect style = transformPoint (scalingX (style^.renderingRectangle._x
 relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
 
+-- TODO more general pattern here
+c_1_2 :: V1 n -> V2 n -> V3 n
+
+c_1_1 (V1 x)   (V1 y)   = V2 x y
+c_2_1 (V2 x y) (V1 z)   = V3 x y z
+c_1_2 (V1 x)   (V2 y z) = V3 x y z
+c_2_2 (V2 a b) (V2 c d) = V4 a b c d
+
+
+
 -- | Draw data for a scatter plot.
 --
 --   X and Y coordinates map to points in the plotting rectangle.
@@ -205,6 +215,7 @@ lineDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
 lineDataWithColor []     = mempty
 lineDataWithColor [_]    = mempty
 lineDataWithColor _ = error "TODO"
+
 
 fillData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 fillData []     = mempty
