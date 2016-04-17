@@ -185,8 +185,8 @@ import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
 import qualified Data.Colour.Names as Colors
 
-import Lubeck.Drawing (Drawing, Str, toStr, packStr, unpackStr)
-import Lubeck.Drawing (RenderingOptions(..), OriginPlacement(..)  )
+import Lubeck.Str (Str, toStr, packStr, unpackStr)
+import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 import Lubeck.DV.Styling (StyledT, Styled, Styling, renderingRectangle)
 
 import qualified Lubeck.Drawing

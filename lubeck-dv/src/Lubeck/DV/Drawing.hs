@@ -129,6 +129,7 @@ import Linear.V2
 import Linear.V3
 import Linear.V4
 
+import Lubeck.Str
 import Lubeck.Drawing
 import Lubeck.DV.Styling
 import qualified Lubeck.Drawing

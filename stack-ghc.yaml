@@ -1,6 +1,7 @@
 
 flags: {}
 packages:
+- 'lubeck-core'
 - 'lubeck-frp'
 - 'lubeck-drawing'
 - 'lubeck-dv'

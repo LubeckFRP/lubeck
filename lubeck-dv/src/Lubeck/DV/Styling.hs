@@ -1,6 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections,
-  TemplateHaskell, ConstraintKinds, CPP #-}
+  TemplateHaskell, ConstraintKinds #-}
 
 module Lubeck.DV.Styling
   (
@@ -101,23 +101,19 @@ import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Writer
--- import Data.AffineSpace
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid
--- import Data.VectorSpace
 import qualified Data.Colour.Names as Colors
--- import qualified Data.VectorSpace as VS
 
 import Linear.Vector
 import Linear.Affine
--- import Linear.Matrix hiding (translation)
--- import Linear.Metric -- Needed?
 import Linear.V0
 import Linear.V1
 import Linear.V2
 import Linear.V3
 import Linear.V4
 
+import Lubeck.Str
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
 
