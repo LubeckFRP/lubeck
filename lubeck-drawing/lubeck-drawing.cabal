@@ -20,7 +20,6 @@ library
                      , unordered-containers
                      , semigroups
                      , linear
-                    --  , vector-space
                      , colour
                      , xml
                      , containers
