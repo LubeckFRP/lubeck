@@ -328,6 +328,27 @@ barDataWithColor3 :: (Monad m) => [P4 Double] -> StyledT m Drawing
 -- barDataWithColor4 :: [R5] -> StyledT m Drawing
 [barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
 
+
+barDataWithColorN  :: (Monad m) => [[P2 Double]] -> StyledT m Drawing
+barDataWithColorN pss = do
+  -- TODO draw all dimensions
+  let ps = head pss
+
+  style <- ask
+  let barWidth = 1/fromIntegral (length ps + 1)
+  let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
+  -- TODO derive color from value below
+  -- The color we recieve is *always* scaled to be in [0..1]
+  -- Do we interpolate this over the palette, or is there a better way?
+  --  Do we need to generalize geoms so that they also have access to *unscaled data*?
+  let base = alignB $ fillColorA ((style^.barPlotBarColors) !! 0) $ square
+  return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
+    fmap (\(P (V2 v color)) -> scaleX barWidth $ scaleY v $ base) ps
+  where
+    alignB = translate (V2 0 0.5)
+    scaleRR = transform . scalingRR
+    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
+
 -- | Visualizes a discrete count.
 --
 -- By default, this renders as a set of squares, coloured and grouped by the given element count.
