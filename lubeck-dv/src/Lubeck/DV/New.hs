@@ -1155,14 +1155,18 @@ debugInfo dat aess = box
     aKeys       = Data.Map.keys $ mconcat mappedData
     scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
 
-    tab0 = B.vcat B.left $ map (toBox) dat
-    tab1 = makeTable (fmap (toBox) $ aKeys)
+    {-
+      Create some basic text-based table views for he
+      Based on the 'boxes' package.
+    -}
+    rawDataTable = B.vcat B.left $ map (toBox) dat
+    mappedDataTable = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
     -- tab1a = makeTable (fmap (toBox) $ aKeys)
       -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
-    tab2 = makeTable (fmap (toBox) $ aKeys)
+    scaledDataTable = makeTable (fmap (toBox) $ aKeys)
       (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing plot))
-    tab = makeTable ["Aesthetic", "Scale base", "PlotBounds", "Guide"]
+    aestheticTableTable = makeTable ["Aesthetic", "Scale base", "PlotBounds", "Guide"]
       (fmap (\k ->
         [ toBox k
         , B.text $ maybe "" show $ Data.Map.lookup k scaleBaseNM
@@ -1171,11 +1175,13 @@ debugInfo dat aess = box
         ]) $ Data.Map.keys guidesM)
 
     box = B.vsep 1 B.left
-      [ "Raw data    " B.<+> tab0
-      , "Mapped data " B.<+> tab1 -- TODO show "special" data here too!
-      , "Scaled data " B.<+> tab2
-      , "Aesthetics  " B.<+> tab
+      [ "Raw data    " B.<+> rawDataTable
+      , "Mapped data " B.<+> mappedDataTable -- TODO show "special" data here too!
+      , "Scaled data " B.<+> scaledDataTable
+      , "Aesthetics  " B.<+> aestheticTableTable
       ]
+
+    toBox :: Show a => a -> B.Box
     toBox = B.text . show
 
     -- | Make a box table (row-major order).
