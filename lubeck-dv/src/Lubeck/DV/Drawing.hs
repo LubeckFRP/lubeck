@@ -133,7 +133,13 @@ import Lubeck.Drawing
 import Lubeck.DV.Styling
 import qualified Lubeck.Drawing
 
--- TODO consolidate origin, intoRect
+-- Util
+transformIntoRect :: Styling -> P2 Double -> P2 Double
+transformIntoRect style = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
+
+-- Util
+relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
+relOrigin p = p .-. 0
 
 -- | Draw data for a scatter plot.
 --
@@ -148,14 +154,12 @@ scatterData ps = do
             $ strokeWidth (style^.scatterPlotStrokeWidth)
             $ strokeColorA (style^.scatterPlotStrokeColor)
             $ scale (style^.scatterPlotSize) circle
-  let origin = P $ V2 0 0
-  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  -- draw
-  return $ mconcat $ fmap (\p -> translate (p .-. origin) base) (fmap intoRect ps)
-  -- return ()
+  return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ fmap (transformIntoRect style) ps
 
 scatterDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
-scatterDataWithColor = undefined
+scatterDataWithColor ps = undefined
+
+
 
 -- | Draw data for a scatter plot, ignoring Y values.
 --
@@ -167,11 +171,7 @@ scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
-  let origin = P $ V2 0 0
-  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  -- draw
-  return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) (fmap intoRect ps)
-  -- return ()
+  return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ fmap (transformIntoRect style) ps
 
 -- | Draw data for a scatter plot ignoring X values.
 --
@@ -183,9 +183,7 @@ scatterDataY :: (Monad m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
-  let origin = P $ V2 0 0
-  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) (fmap intoRect ps)
+  return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) $ fmap (transformIntoRect style) ps
 
 -- | Draw data for a line plot.
 --
@@ -199,23 +197,12 @@ lineData (p:ps) = do
                 . strokeColorA  (style^.linePlotStrokeColor)
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
-  let origin = P $ V2 0 0
-  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
+  return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
 lineDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
 lineDataWithColor []     = mempty
 lineDataWithColor [_]    = mempty
 lineDataWithColor _ = error "TODO"
--- lineDataWithColor (p:ps) = do
---   style <- ask
---   let lineStyle = id
---                 . strokeColorA  (style^.linePlotStrokeColor)
---                 . fillColorA    (style^.linePlotFillColor)
---                 . strokeWidth   (style^.linePlotStrokeWidth)
---   let origin = P $ V3 0 0 0
---   let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
---   return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
 
 fillData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 fillData []     = mempty
@@ -226,9 +213,7 @@ fillData (p:ps) = do
                 -- . strokeColorA  (style^.linePlotStrokeColor)
                 . fillColorA    (style^.linePlotFillColor)
                 -- . strokeWidth   (style^.linePlotStrokeWidth)
-  let origin = P $ V2 0 0
-  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  return $ translate (intoRect pProjX .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect $ addExtraPoints (p:ps)
+  return $ translate (relOrigin (transformIntoRect style pProjX)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) $ addExtraPoints (p:ps)
 
   where
     -- Because of projection (below!), ignore y value for 1st point
@@ -252,9 +237,7 @@ areaData' (p:ps) = do
   style <- ask
   let lineStyle = id
                 . fillColorA    (style^.linePlotFillColor)
-  let origin = P $ V2 0 0
-  let intoRect = transformPoint (scalingX (style^.renderingRectangle._x) <> scalingY (style^.renderingRectangle._y))
-  return $ translate (intoRect p .-. origin) $ lineStyle $ segments $ betweenPoints $ fmap intoRect (p:ps)
+  return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
 -- | Draw a step chart.
 --
