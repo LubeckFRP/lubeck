@@ -13,9 +13,15 @@ library
   exposed-modules:     Lubeck.FRP
                      , Lubeck.FRP.Events
                      , Lubeck.FRP.History
-                     , Lubeck.App
                      , Lubeck.Str
                      , Lubeck.Drawing
+                     , Lubeck.DV
+                     , Lubeck.DV.New
+                     , Lubeck.DV.Drawing
+                     , Lubeck.DV.SimpleNormalized
+                     , Lubeck.DV.Styling
+
+                     , Lubeck.App
                      , Lubeck.Util
                      , Lubeck.Forms
                      , Lubeck.Forms.Basic
@@ -23,13 +29,6 @@ library
                      , Lubeck.Forms.Select
                      , Lubeck.Forms.Interval
                      , Lubeck.Forms.File
-                     , Lubeck.DV
-                     , Lubeck.DV.New
-                     , Lubeck.DV.Drawing
-                     , Lubeck.DV.SimpleNormalized
-                     , Lubeck.DV.Styling
-                     , Lubeck.DV.Animation
-                     , Lubeck.DV.Interactive
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
