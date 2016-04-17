@@ -84,13 +84,13 @@ module Lubeck.DV.Styling
   -- *** Utility
   , withDefaultStyle
 
-  -- ** DV Monad
-  , DV
-  , DV_T
-  , askStyling
-  , localStyling
-  , draw
-  , postDrawing
+  -- -- ** DV Monad
+  -- , DV
+  -- , DV_T
+  -- , askStyling
+  -- , localStyling
+  -- , draw
+  -- , postDrawing
   )
 where
 
@@ -333,42 +333,42 @@ withDefaultStyleT :: StyledT m a -> m a
 withDefaultStyleT x = getStyledT x mempty
 
 
-
-type DV = DV_T Identity
--- DV_S = DV_T Identity
--- DV_I = DV_T Behavior
-
-newtype DV_T m a = DV_T { _getDV_T :: ReaderT Styling (WriterT Drawing m) a }
-  deriving (Functor, Applicative, Monad, MonadReader Styling, MonadWriter Drawing)
-{-
-ReaderT Styling (WriterT Drawing m) a
-Styling -> WriterT Drawing m a
-Styling -> m (a, Drawing)
--}
-
-
-liftDV :: Monad m => m a -> DV_T m a
-liftDV = DV_T . lift . lift
-
-instance (Monad m, Monoid a) => Monoid (DV_T m a) where
-  mempty = pure mempty
-  mappend = liftA2 mappend
-
--- | Get current styling (i.e. for drawing)
-askStyling :: Monad m => DV_T m Styling
-askStyling = ask
-
--- | Apply a local styling (i.e. for subgraphs)
-localStyling :: Monad m => (Styling -> Styling) -> DV_T m a -> DV_T m a
-localStyling = local
-
--- | Draw something to the screen
-draw :: Monad m => Drawing -> DV_T m ()
-draw = tell
-
-drawM :: Monad m => m Drawing -> DV_T m ()
-drawM x = pass $ fmap (\d -> ((), (<> d))) $ liftDV x
-
--- | Apply a transformation to the current drawing (useful for facets etc).
-postDrawing :: Monad m => (Drawing -> Drawing) -> DV_T m a -> DV_T m a
-postDrawing = censor
+--
+-- type DV = DV_T Identity
+-- -- DV_S = DV_T Identity
+-- -- DV_I = DV_T Behavior
+--
+-- newtype DV_T m a = DV_T { _getDV_T :: ReaderT Styling (WriterT Drawing m) a }
+--   deriving (Functor, Applicative, Monad, MonadReader Styling, MonadWriter Drawing)
+-- {-
+-- ReaderT Styling (WriterT Drawing m) a
+-- Styling -> WriterT Drawing m a
+-- Styling -> m (a, Drawing)
+-- -}
+--
+--
+-- liftDV :: Monad m => m a -> DV_T m a
+-- liftDV = DV_T . lift . lift
+--
+-- instance (Monad m, Monoid a) => Monoid (DV_T m a) where
+--   mempty = pure mempty
+--   mappend = liftA2 mappend
+--
+-- -- | Get current styling (i.e. for drawing)
+-- askStyling :: Monad m => DV_T m Styling
+-- askStyling = ask
+--
+-- -- | Apply a local styling (i.e. for subgraphs)
+-- localStyling :: Monad m => (Styling -> Styling) -> DV_T m a -> DV_T m a
+-- localStyling = local
+--
+-- -- | Draw something to the screen
+-- draw :: Monad m => Drawing -> DV_T m ()
+-- draw = tell
+--
+-- drawM :: Monad m => m Drawing -> DV_T m ()
+-- drawM x = pass $ fmap (\d -> ((), (<> d))) $ liftDV x
+--
+-- -- | Apply a transformation to the current drawing (useful for facets etc).
+-- postDrawing :: Monad m => (Drawing -> Drawing) -> DV_T m a -> DV_T m a
+-- postDrawing = censor
