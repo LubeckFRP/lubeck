@@ -101,7 +101,6 @@ module Lubeck.DV.New
 
   -- ** Legacy
   , ifG
-  , scatter
 
   -- * Coordinates
   -- $coordinates

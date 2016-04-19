@@ -141,8 +141,8 @@ relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
 
 -- TODO more general pattern here
+-- Capture with TFs?
 c_1_2 :: V1 n -> V2 n -> V3 n
-
 c_1_1 (V1 x)   (V1 y)   = V2 x y
 c_2_1 (V2 x y) (V1 z)   = V3 x y z
 c_1_2 (V1 x)   (V2 y z) = V3 x y z

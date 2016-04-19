@@ -120,7 +120,7 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = visualizeTest people (mconcat [scatter, line, fill])
+test = visualizeTest people (mconcat [pointG, line, fill])
   [ mempty
   , color <~ gender
   -- , shape <~ gender
@@ -138,7 +138,7 @@ test3 = visualizeTest ( [ ] :: [(UTCTime, Int)]) line
   , y <~ to snd
   ]
 
-test4 = visualizeTest ("hello world" :: String) scatter [x <~ id, y <~ id]
+test4 = visualizeTest ("hello world" :: String) pointG [x <~ id, y <~ id]
 
 
 
@@ -174,9 +174,9 @@ test6 = do
     [ x <~ to fst
     , y <~ to snd
     ]
-  geom = mconcat [scatter, line, fill]
+  geom = mconcat [pointG, line, fill]
 
-test7 = visualizeTest dat (mconcat [scatter, line, fill])
+test7 = visualizeTest dat (mconcat [pointG, line, fill])
   [ mempty
   , x     <~ to (\(x,_,_) -> x)
   , y     <~ to (\(_,x,_) -> x)
@@ -249,7 +249,7 @@ test8c = visualizeTest dat (mconcat [area])
      ]
 
 -- Cross-lines
-test9 = visualizeTest dat (mconcat [scatter, xIntercept, yIntercept])
+test9 = visualizeTest dat (mconcat [pointG, xIntercept, yIntercept])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , crossLineX <~ _3
@@ -262,7 +262,7 @@ test9 = visualizeTest dat (mconcat [scatter, xIntercept, yIntercept])
       [True,False,False,True] [False,False,True,True]
 
 -- Labels and custom images
-test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+test10 = visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (("value is "<>). toStr) label <~ _1
@@ -278,7 +278,7 @@ test10 = visualizeTest dat (mconcat [labelG, scatter, imageG])
       [1..4] [1..4]
 
 -- Custom image.
-test11 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+test11 = visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (const customDr) image <~ _2
@@ -293,7 +293,7 @@ test11 = visualizeTest dat (mconcat [labelG, scatter, imageG])
       [1..4] [1..4]
 
 -- Custom image with size.
-test12 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+test12 = visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , size <~ _1
@@ -309,7 +309,7 @@ test12 = visualizeTest dat (mconcat [labelG, scatter, imageG])
       [1..4] [1..4]
 
 -- Custom image with size (linearly transformed).
-test13 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+test13 = visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (\x -> -1*x + 1) size <~ _1
@@ -325,7 +325,7 @@ test13 = visualizeTest dat (mconcat [labelG, scatter, imageG])
       [1..4] [1..4]
 
 -- Custom image with size (linearly transformed).
-test14 = visualizeTest dat (mconcat [labelG, scatter, imageG])
+test14 = visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (\x -> -1*x + 1) size <~ _1
@@ -357,7 +357,7 @@ test14 = visualizeTest dat (mconcat [labelG, scatter, imageG])
 -- Multiple plots composed
 
 test20 = exportTestDrawing mempty mempty $ drawPlot $
-  plot (zip "hans" "sven" :: [(Char,Char)]) [x<~_1,y<~_2] scatter
+  plot (zip "hans" "sven" :: [(Char,Char)]) [x<~_1,y<~_2] pointG
     <>
   plot (zip "hans" "svfn" :: [(Char,Char)]) [x<~_1,y<~_2] line
 
