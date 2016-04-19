@@ -76,10 +76,10 @@ module Lubeck.DV.Styling
 
   -- ** Running a style
   -- *** Styled monad
-  , Styled(..)
+  , Styled
   , getStyled
   -- *** StyledT monad transformer
-  , StyledT(..)
+  , StyledT
   , getStyledT
   -- *** Utility
   , withDefaultStyle

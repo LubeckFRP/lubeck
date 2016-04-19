@@ -33,12 +33,12 @@ module Lubeck.DV.New
   , Scale
   , linear
   , linearIntegral
-  , LinearPlotBounds(..)
   , linearWithOptions
+  , LinearPlotBounds(..)
   , categorical
-  , CategoricalPlotBounds(..)
-  , categoricalWithOptions
   , categoricalEnum
+  , categoricalWithOptions
+  , CategoricalPlotBounds(..)
   , timeScale
   , timeScaleWithOptions
   , TimeRendering(..)
@@ -256,6 +256,9 @@ type PlotBounds = Map Key (Double, Double)
 {-|
 An 'Aesthetic' maps a single tuple or record to a set of aesthetic attributes such
 as position, color or shape.
+
+Standard aesthetics such as 'x', 'y' and 'color' are provided, but you can also
+add your own aesthetics using 'customAesthetic'.
 -}
 data Aesthetic a = Aesthetic
   { aestheticMapping       :: [a] -> a -> Map Key Double
@@ -405,6 +408,13 @@ image = customAesthetic' dummyScale (const Nothing) Just "image"
 
 -- SCALE
 
+{-|
+A 'Scale' provides a way of mapping values into the real domain, and scaling
+them as necessary to fit into the visualization.
+
+Scales also generate visual guides that helps the viewer understand the data
+(conceptually allowing the user to /inverse/ the mapping and scaling).
+-}
 data Scale a = Scale
   { scaleMapping  :: [a] -> a -> Double
       -- ^ Given dataset @vs@, map single value @v@ into the real domain.
@@ -510,6 +520,10 @@ data CategoricalPlotBounds
   = UseDataPlotBounds             -- ^ PlotBounds will be @[1..n]@ where n is number of elements
   | PadDataPlotBounds Int Int     -- ^ Using (AddToDataPlotBounds a b), bounds will be @[1-a..n+b]@ where n is number of elements
   | Standard                  -- ^ Same as @PadDataPlotBounds 1 1@
+
+{-|
+Like 'categorical', but with more custom options.
+-}
 categoricalWithOptions :: (Ord a, Show a)
   => CategoricalPlotBounds
   -> Scale a
@@ -657,6 +671,9 @@ timeScale = timeScaleWithOptions StandardTR
 
 data TimeRendering = StandardTR | MonthYearTR
 
+{-|
+Like 'timeScale', but with more custom options.
+-}
 timeScaleWithOptions :: TimeRendering -> Scale UTCTime
 timeScaleWithOptions timeRendering = Scale
   { scaleMapping  = mapping
@@ -857,6 +874,16 @@ scatter = pointG
 
 -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
 
+{-|
+Point geometry.
+Can be combined with line and fill.
+
+Aesthetics:
+
+@
+x, y
+@
+-}
 pointG :: Geometry
 pointG = Geometry tot [""]
   where
@@ -867,7 +894,16 @@ pointG = Geometry tot [""]
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $
       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+{-|
+Line geometry.
+Can be combined with point and fill.
 
+Aesthetics:
+
+@
+x, y
+@
+-}
 line :: Geometry
 line = Geometry tot [""]
   where
@@ -879,6 +915,18 @@ line = Geometry tot [""]
     baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $
       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
+{-|
+Fill geometry. Similar to area, except that the lower bound is always the same as the X axis.
+Can be combined with line and point.
+
+See also area, area2.
+
+Aesthetics:
+
+@
+x, y
+@
+-}
 fill :: Geometry
 fill = Geometry tot [""]
   where
@@ -890,14 +938,13 @@ fill = Geometry tot [""]
     baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 {-|
-Like 'point', but renders the set of values between 'y' and 'yMin' instead of 'y'.
+Bar geometry.
 
-Dims            x,y   x,0,y x,yMin,y
-Not connected   point bar   interval
-Connected       line  fill  area
+Aesthetics:
 
--- Wilkinson: Point, Line, Area, Interval, Path, Schema ("box"), Contour
-
+@
+y
+@
 -}
 bars :: Geometry
 bars = Geometry tot [""]
@@ -915,7 +962,15 @@ bars = Geometry tot [""]
 
 
 {-|
-Like 'fill', but renders the area between 'y' and 'yMin' instead of between 'y' and 0.
+Fill geometry.
+
+Similar to 'fill', but renders the area between 'y' and 'yMin' instead of between 'y' and 0.
+
+Aesthetics:
+
+@
+x, yMin, y
+@
 -}
 area :: Geometry
 area = Geometry tot [""]
@@ -929,7 +984,18 @@ area = Geometry tot [""]
       V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 {-|
-Like 'fill', but renders the area between {x, y, bound:False} and {x, y, bound:True}
+An alternative version of 'area' that expects the lower and upper bounds to be distinct points
+in the data sets, distinguished by the @bound@ aesthetic.
+
+@
+{x, y, bound:False}, {x, y, bound:True} ~ {x, y, y2}
+@
+
+Aesthetics:
+
+@
+x, y, bound
+@
 -}
 area2 :: Geometry
 area2 = Geometry tot [""]
@@ -954,20 +1020,46 @@ area2 = Geometry tot [""]
         ps2 = zipWith (\x y -> P (V2 x y)) xs2 ys2
 
 
--- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
+
+{-|
+A line intercepting X values. Drawn if @crossLineX@ is present and non-zero.
+
+Aesthetics:
+
+@
+x, y, crossLineX
+@
+-}
 xIntercept :: Geometry
 xIntercept = ifG "crossLineX" (Geometry g [""])
   where
    g ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $
     V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
--- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
+{-|
+A line intercepting Y values. Drawn if @crossLineY@ is present and non-zero.
+
+Aesthetics:
+
+@
+x, y, crossLineY
+@
+-}
 yIntercept :: Geometry
 yIntercept = ifG "crossLineY" (Geometry g [""])
   where
    g ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $
     V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
+{-|
+Draws a custom image specified by the 'image' aesthetic.
+
+Aesthetics:
+
+@
+x, y, image
+@
+-}
 imageG :: Geometry
 imageG = Geometry g [""]
   where
@@ -988,6 +1080,15 @@ imageG = Geometry g [""]
             $ dr
         _ -> mempty
 
+{-|
+Draws custom text specified by the 'label' aesthetic.
+
+Aesthetics:
+
+@
+x, y, labe
+@
+-}
 labelG :: Geometry
 labelG = Geometry g [""]
   where
@@ -1247,13 +1348,13 @@ plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
       where
         g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
 
-{-
+{-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
 plot :: [a] -> [Aesthetic a] -> Geometry -> Plot
 plot dat aess geom = Plot [createSinglePlot dat aess geom]
 
-{-
+{-|
 Convert the given visualization to a 'Drawing'.
 
 The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.

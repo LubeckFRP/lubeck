@@ -50,6 +50,8 @@ module Lubeck.DV.Drawing
   -- ** Lines
   , lineData
   , lineDataWithColor
+
+  -- ** Area/Fill
   , fillData
   , areaData
   , areaData'
@@ -61,7 +63,6 @@ module Lubeck.DV.Drawing
   , barData2
   , barData3
   , barData4
-
   , barDataWithColor
   , barDataWithColor2
   , barDataWithColor3
