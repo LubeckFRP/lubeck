@@ -889,7 +889,7 @@ pointG = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.scatterData $ fmap (\m -> P $
+    baseL _ ms = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 1) $ fmap (\m -> P $
       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 {-|
 Line geometry.
@@ -909,7 +909,7 @@ line = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.lineData $ fmap (\m -> P $
+    baseL _ ms = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData 1 1) $ fmap (\m -> P $
       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 {-|
@@ -932,7 +932,7 @@ fill = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.fillData $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+    baseL _ ms = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData 0) $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
 {-|
 Bar geometry.
@@ -952,10 +952,7 @@ bars = Geometry tot [""]
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL _ ms = Lubeck.DV.Drawing.barData $ fmap (\m -> P $
-      V1 (getNormalized $ m ! "y")
-        -- (getNormalized $ m ! "y")
-        )
-        ms
+      V1 (getNormalized $ m ! "y")) ms
 
 
 {-|
@@ -977,7 +974,7 @@ area = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $
+    baseL _ ms = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData 0) $ fmap (\m -> P $
       V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
 {-|
@@ -1002,7 +999,7 @@ area2 = Geometry tot [""]
       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
 
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.areaData' (ps1 <> reverse ps2)
+    baseL _ ms = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
       where
         k = "bound"
         lowMappings  = filterCoords not k ms

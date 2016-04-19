@@ -45,6 +45,8 @@ import Lubeck.DV.ColorPalette
   , getColorFromPalette
   , paletteToColor
   )
+import Lubeck.DV.LineStyles
+  ( extractLineStyle )
 
 -- Util
 transformIntoRect :: Styling -> P2 Double -> P2 Double
@@ -76,17 +78,17 @@ TODO
 -}
 
 data ScatterData = ScatterData
-  { scatterDataColor :: AlphaColour Double
+  { scatterDataColor :: Double
   }
 
 
-scatterData :: (Monad m) => [P2 Double] -> StyledT m Drawing
-scatterData ps = do
+scatterData :: (Monad m) => ScatterData -> [P2 Double] -> StyledT m Drawing
+scatterData (ScatterData colorN) ps = do
   style <- ask
   let base  = id
-            $ fillColorA (style^.scatterPlotFillColor.to paletteToColor)
+            $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` colorN))
             $ strokeWidth (style^.scatterPlotStrokeWidth)
-            $ strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor)
+            $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
             $ scale (style^.scatterPlotSize) circle
   return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ fmap (transformIntoRect style) ps
 
@@ -103,29 +105,30 @@ scatterDataY ps = do
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) $ fmap (transformIntoRect style) ps
 
 data LineData = LineData
-  { lineDataColor :: AlphaColour Double
-  , lineDataShape :: [Double]
+  { lineDataColor :: Double
+  , lineDataShape :: Double
   }
 
-lineData :: (Monad m) => [P2 Double] -> StyledT m Drawing
-lineData []     = mempty
-lineData [_]    = mempty
-lineData (p:ps) = do
+lineData :: (Monad m) => LineData -> [P2 Double] -> StyledT m Drawing
+lineData _ []     = mempty
+lineData _ [_]    = mempty
+lineData (LineData colorN dashN) (p:ps) = do
   style <- ask
   let lineStyle = id
-                . strokeColorA  (style^.linePlotStrokeColor.to paletteToColor)
+                . strokeColorA  (style^.linePlotStrokeColor.to (`getColorFromPalette` colorN))
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
+                . dash (style^.linePlotStroke. to (`extractLineStyle` dashN))
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
 data AreaData = AreaData
-  { areaDataColor :: AlphaColour Double
+  { areaDataColor :: Double
   }
 
-fillData :: (Monad m) => [P2 Double] -> StyledT m Drawing
-fillData []     = mempty
-fillData [_]    = mempty
-fillData (p:ps) = do
+fillData :: (Monad m) => AreaData -> [P2 Double] -> StyledT m Drawing
+fillData _ []     = mempty
+fillData _ [_]    = mempty
+fillData _ (p:ps) = do
   style <- ask
   let lineStyle = id
                 -- . strokeColorA  (style^.linePlotStrokeColor)
@@ -142,16 +145,16 @@ fillData (p:ps) = do
       where
         proj (P (V2 x _)) = P (V2 x 0)
 
-areaData :: (Monad m) => [P3 Double] -> StyledT m Drawing
-areaData ps = areaData' $
+areaData :: (Monad m) => AreaData -> [P3 Double] -> StyledT m Drawing
+areaData i ps = areaData' i $
   fmap (\p -> P $ V2 (p^._x) (p^._z)) ps
     <>
   fmap (\p -> P $ V2 (p^._x) (p^._y)) (reverse ps)
 
-areaData' :: (Monad m) => [P2 Double] -> StyledT m Drawing
-areaData' []     = mempty
-areaData' [_]    = mempty
-areaData' (p:ps) = do
+areaData' :: (Monad m) => AreaData -> [P2 Double] -> StyledT m Drawing
+areaData' _ []     = mempty
+areaData' _ [_]    = mempty
+areaData' _ (p:ps) = do
   style <- ask
   let lineStyle = fillColorA (style^.linePlotFillColor.to paletteToColor)
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
@@ -171,14 +174,14 @@ areaData' (p:ps) = do
 --
 -- See /Visualize this/, p. 124
 stepData :: (Monad m) => P2 Double -> [V2 Double] -> StyledT m Drawing
-stepData z vs = lineData (offsetVectors z vs)
+stepData z vs = lineData (LineData 1 1) (offsetVectors z vs)
 
 -- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
 --   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
 --
 --   Can be combined with `scatterData`, `scatterDataX` etc.
 linearData :: (Monad m) => Double -> Double -> StyledT m Drawing
-linearData a b = lineData $ fmap (\x -> P $ x `V2` f x) [0,1]
+linearData a b = lineData (LineData 1 1) $ fmap (\x -> P $ x `V2` f x) [0,1]
   where
     f x = a*x + b
 
