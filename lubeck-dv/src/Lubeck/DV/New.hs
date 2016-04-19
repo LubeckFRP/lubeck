@@ -118,6 +118,7 @@ module Lubeck.DV.New
   -- * Top-level
   , Plot
   , plot
+  , plotWithTitles
   , drawPlot
   -- ** Top-level (old)
   , visualize
@@ -1216,7 +1217,7 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
       where
         xs = fmap (second Just) xs2
         ys = fmap (second Just) ys2
-    plot = createSinglePlot dat aess mempty
+    plot = createSinglePlot [] dat aess mempty -- axes names drawn separately
 
 
 -- {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
@@ -1228,7 +1229,7 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
 debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
 debugInfo dat aess = box
   where
-    plot@(SinglePlot mappedData _ boundsM guidesM _) = createSinglePlot dat aess mempty
+    plot@(SinglePlot mappedData _ boundsM guidesM _ _) = createSinglePlot [] dat aess mempty
     aKeys       = Data.Map.keys $ mconcat mappedData
     scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
 
@@ -1274,9 +1275,9 @@ debugInfo dat aess = box
 
 
 
-createSinglePlot :: [a] -> [Aesthetic a] -> Geometry -> SinglePlot
-createSinglePlot dat aess geometry =
-  SinglePlot mappedData specialData guides bounds geometry
+createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> SinglePlot
+createSinglePlot titles dat aess geometry =
+  SinglePlot mappedData specialData guides bounds geometry titles
   where
     aes                 = mconcat aess
     bounds              = aestheticPlotBounds aes dat                       :: PlotBounds
@@ -1287,8 +1288,8 @@ createSinglePlot dat aess geometry =
 
 
 scaledGuides :: Maybe PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
-scaledGuides (Just bounds) (SinglePlot _ _ guides _ _)      = normalizeGuides bounds guides
-scaledGuides Nothing       (SinglePlot _ _ guides bounds _) = normalizeGuides bounds guides
+scaledGuides (Just bounds) (SinglePlot _ _ guides _ _ _)      = normalizeGuides bounds guides
+scaledGuides Nothing       (SinglePlot _ _ guides bounds _ _) = normalizeGuides bounds guides
 
 
 -- TODO Identity vs Compose pattern (normalizeGuides' vs normalizeData')
@@ -1306,9 +1307,9 @@ normalizeData b m = fmap (normalizeData' b) m
 
 mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> [Map Key (Coord, Maybe Special)]
 mappedAndScaledDataWithSpecial
-  Nothing       (SinglePlot mappedData specialData _ bounds _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+  Nothing       (SinglePlot mappedData specialData _ bounds _ _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
 mappedAndScaledDataWithSpecial
-  (Just bounds) (SinglePlot mappedData specialData _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+  (Just bounds) (SinglePlot mappedData specialData _ _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
 
 mappedAndScaledDataWithSpecial2 bounds mappedData specialData
   = zipWith mergeMapsL mappedAndScaledData specialData
@@ -1334,6 +1335,7 @@ data SinglePlot = SinglePlot
   , guides            :: Map Key [(Double, Str)]
   , bounds            :: PlotBounds
   , geometry          :: Geometry
+  , axesTitles        :: [Str]
   }
 
 newtype Plot = Plot [SinglePlot]
@@ -1352,7 +1354,13 @@ plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
 plot :: [a] -> [Aesthetic a] -> Geometry -> Plot
-plot dat aess geom = Plot [createSinglePlot dat aess geom]
+plot dat aess geom = Plot [createSinglePlot [] dat aess geom]
+
+{-|
+Create a visualization the given data set using the given aesthetics and geometries.
+-}
+plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> Plot
+plotWithTitles titles dat aess geom = Plot [createSinglePlot titles dat aess geom]
 
 {-|
 Convert the given visualization to a 'Drawing'.
@@ -1378,7 +1386,7 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
         axesD = if not includeGuides then mempty else Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
 
         -- TODO derive names from aesthetic instead
-        axesNames = {-axesNames1 ++-} repeat ""                              :: [Str]
+        axesNames = axesTitles plot :: [Str]
         drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
           where
             xs = fmap (second Just) xs2
