@@ -9,102 +9,7 @@
   , ConstraintKinds
   #-}
 
--- |
--- Basics for drawing plots.
---
--- TODO nice docs
---
--- Essentially:
---
--- * This modlules draws basic static, animated and interactive graphics
---   For static graphics, use 'Styled', for animatedinteractive, use 'StyledT Behavior' or similar.
---
--- * Looks are provided by the 'Styled' monad. Use lens API to modify styling attributes.
---
--- * TODO substyling
---
--- * Data is generally recieved in R^n. Do normalization and axes  elsewhere.
---
--- This module should NOT handle:
---
---  * Data normalization (it expects everything in the unit hypercube)
---
---  * Fancy overloading (all data is in concrete types: arguments to functions below)
---
---  * Styling (everything parameterized on the style record)
---
---    ** Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
 module Lubeck.DV.Drawing
-  -- (
-  -- -- * Drawing data
-  --
-  -- -- $normalizeInputPoint
-  -- -- $normalizeInputScalar
-  --
-  -- -- ** Scatter
-  --   scatterData
-  -- , scatterDataWithColor
-  -- , scatterDataX
-  -- , scatterDataY
-  --
-  -- -- ** Lines
-  -- , lineData
-  -- , lineDataWithColor
-  --
-  -- -- ** Area/Fill
-  -- , fillData
-  -- , areaData
-  -- , areaData'
-  -- , stepData
-  -- , linearData
-  --
-  -- -- ** Bars and sizes
-  -- , barData
-  -- , barData2
-  -- , barData3
-  -- , barData4
-  -- , barDataWithColor
-  -- , barDataWithColor2
-  -- , barDataWithColor3
-  --
-  -- -- , circleData
-  -- -- , circleDataWithColor
-  -- -- , pieChartData
-  --
-  -- -- | Ratios
-  -- , ratioData
-  -- , ratioDataWithColor
-  --
-  -- -- ** Discrete data and counts
-  -- -- , discreteData
-  -- -- , discreteDataGroup
-  -- -- , intData
-  -- -- , discreteHeatMap
-  -- -- , treeMapGraph
-  -- -- , treeMapGraphWithColor
-  --
-  --
-  -- -- * Drawing axes
-  -- , ticks
-  -- , ticksNoFilter
-  --
-  -- -- * Drawing axes
-  -- , labeledAxis
-  --
-  -- -- * Drawing legends
-  -- , quantLegend
-  -- , intervalLegend
-  -- , scaleLegend
-  --
-  -- -- * Drawing titles
-  -- , title
-  --
-  -- -- * Drawing overlays/explanatories
-  -- -- , overlay
-  --
-  -- -- * Utility
-  -- , plotRectangle
-  -- )
   where
 
 import Prelude hiding (div)
@@ -148,33 +53,26 @@ transformIntoRect style = transformPoint (scalingX (style^.renderingRectangle._x
 -- Util
 relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
+--
+-- -- TODO more general pattern here
+-- -- Capture with TFs?
+-- addV1_2 :: V1 n -> V2 n -> V3 n
+-- addV1_1 (V1 x)   (V1 y)   = V2 x y
+-- addV2_1 (V2 x y) (V1 z)   = V3 x y z
+-- addV1_2 (V1 x)   (V2 y z) = V3 x y z
+-- addV2_2 (V2 a b) (V2 c d) = V4 a b c d
+--
+-- addP1_2 :: P1 n -> P2 n -> P3 n
+-- addP1_2 (P a) (P b) = P $ addV1_2 a b
 
--- TODO more general pattern here
--- Capture with TFs?
-addV1_2 :: V1 n -> V2 n -> V3 n
-addV1_1 (V1 x)   (V1 y)   = V2 x y
-addV2_1 (V2 x y) (V1 z)   = V3 x y z
-addV1_2 (V1 x)   (V2 y z) = V3 x y z
-addV2_2 (V2 a b) (V2 c d) = V4 a b c d
-
-addP1_2 :: P1 n -> P2 n -> P3 n
-addP1_2 (P a) (P b) = P $ addV1_2 a b
 
 {-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-TODO
-
-This whole module should arguably be scrapped (or at least moved to *.Internal).
-
-The API will have to change a lot to accomodate more aesthetics (from the new top-level API)
-and I don't want to be burdened with keeping both APIs nice and in sync. For now
-concentrate on rewriting everything until the other wavy line below.
-
-
 TODO
 Support fixed colors in point, line, fill, area2
 scatterData, lineData, fillData, areaData'
 
+TODO
+  scatter plot with different colors on elements
 -}
 
 data ScatterData = ScatterData
@@ -182,11 +80,6 @@ data ScatterData = ScatterData
   }
 
 
--- | Draw data for a scatter plot.
---
---   X and Y coordinates map to points in the plotting rectangle.
---
---   Can be combined with `scatterDataX`, `scatterDataY` and `lineData`.
 scatterData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
@@ -197,46 +90,23 @@ scatterData ps = do
             $ scale (style^.scatterPlotSize) circle
   return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ fmap (transformIntoRect style) ps
 
-scatterDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
-scatterDataWithColor ps = undefined
-
-scatterDataWithFixedColor :: Monad m => Double -> [P2 Double] -> StyledT m Drawing
-scatterDataWithFixedColor c ps = scatterDataWithColor [ addP1_2 (P $ V1 c) p | p <- ps ]
-
-
--- | Draw data for a scatter plot, ignoring Y values.
---
---   By default the X coordinate of each given point is rendered as a vertical line at the corresponding position
---   in the plotting rectangle.
---
---   Can be combined with `scatterData`, `lineData` etc.
 scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ fmap (transformIntoRect style) ps
 
--- | Draw data for a scatter plot ignoring X values.
---
---   By default the X coordinate of each given point is rendered as a horizontal line at the corresponding position
---   in the plotting rectangle.
---
---   Can be combined with `scatterData`, `lineData` etc.
 scatterDataY :: (Monad m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) $ fmap (transformIntoRect style) ps
 
-
 data LineData = LineData
   { lineDataColor :: AlphaColour Double
   , lineDataShape :: [Double]
   }
 
--- | Draw data for a line plot.
---
---   Can be combined with `scatterData`, `scatterDataX` etc.
 lineData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 lineData []     = mempty
 lineData [_]    = mempty
@@ -285,6 +155,8 @@ areaData' (p:ps) = do
   style <- ask
   let lineStyle = fillColorA (style^.linePlotFillColor.to paletteToColor)
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
+
+
 
 
 

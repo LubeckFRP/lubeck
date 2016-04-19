@@ -869,10 +869,6 @@ filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
     truish (Just (Normalized n, _)) = n > 0.5
 
 
-{-# DEPRECATED scatter "Use 'pointG" #-}
-scatter :: Geometry
-scatter = pointG
-
 -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
 
 {-|
