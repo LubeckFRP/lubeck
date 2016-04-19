@@ -12,6 +12,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Lubeck.Drawing
   build-depends:       base
+                     , lubeck-core
                      , text
                      , mtl
                      , transformers
@@ -19,7 +20,6 @@ library
                      , unordered-containers
                      , semigroups
                      , linear
-                    --  , vector-space
                      , colour
                      , xml
                      , containers

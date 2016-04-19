@@ -33,6 +33,7 @@ import Control.Monad(forever)
 -- import Text.Blaze.Internal (customParent)
 
 import Lubeck.FRP
+import Lubeck.Str (unpackStr)
 import Lubeck.DV.Drawing
 import Lubeck.DV.Styling
 import Lubeck.DV.SimpleNormalized

@@ -379,6 +379,10 @@ div, h1, h2, img, p, span {
     color: grey;
 }
 
+.grid-cell-selected {
+  background-color: lightblue;
+}
+
 .grid-item-wrapper .acc-pic img {
   width: 50px;
   border-radius: 50%;
@@ -450,4 +454,8 @@ div, h1, h2, img, p, span {
 }
 .btn-link:focus, .btn-link:active {
   outline: 0;
+}
+
+.confirm-dialog-body {
+  margin-bottom: 30px;
 }

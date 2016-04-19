@@ -6,8 +6,10 @@ import           Prelude                          hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
-import           Control.Monad                    (void)
+import           Control.Monad                    (void, when)
 import           Data.Foldable                    (forM_)
+import           Data.Either                      (isLeft)
+import           Data.Either.Validation
 import qualified Data.List
 import           Data.Maybe
 import           Data.Monoid
@@ -42,79 +44,224 @@ import qualified BD.Query.AccountQuery            as AQ
 import           BD.Types
 
 import           BDPlatform.HTMLCombinators
+import           BDPlatform.Validators
 import           BDPlatform.Types
 import           Components.BusyIndicator         (BusyCmd (..), withBusy,
                                                    withBusy0, withBusy2)
 import           Components.Grid
+import           Components.Layout
+import           Components.ConfirmDialog
 
 import           BDPlatform.Pages.Accounts.Common
 import           BDPlatform.Pages.Accounts.Types
 
-data Action = LoadGroup DG.GroupName | ActionNoop | CreateNewGroup | DeleteGroup DG.Group
+data Action = ShowGroup (Maybe DG.Group)
+            | ActionNoop
+            | CreateNewGroup DG.GroupName
+            | DeleteGroup DG.Group
+            | SaveAs DG.GroupName (Set.Set Ac.Account)
+            | DeleteMembers DG.Group [Ac.Account]
 
-groupSelectW :: Widget (Maybe DG.GroupsNamesList) Action
-groupSelectW actionsSink gnl' =
-  toolbar $
-    [ buttonGroup' $
-        selectWithPromptWidget
-          (makeOpts gnl)
-          (contramapSink (toAction . filterGroup gnl) actionsSink)
-          (firstGroupName gnl)
+data ToolbarPopupActions = ShowSaveAs | ShowCreate | ShowNone | ShowDeleteConfirm
+  deriving Eq
 
-    -- , buttonGroup' $ -- XXX create new group only when some account selected, the same as in search results
-        -- buttonOkIcon "New group" "plus" False [Ev.click $ \e -> actionsSink CreateNewGroup]
-    ]
+reloadGroups sink = sink ReloadGroupsList
 
-  where
-    gnl = fromMaybe [] gnl'
+handleActions busySink notifSink ipcSink gridCmdsSink act = case act of
+  CreateNewGroup name -> do
+    withBusy busySink DG.undeleteGroup' name >>= eitherToError notifSink
+    reloadGroups ipcSink
 
-    makeOpts gnl = zip gnl gnl
+  SaveAs name as      -> do
+    withBusy2 busySink DG.addAccountsToGroup name (fmap Ac.id (Set.toList as))
+      >>= mapM_ (eitherToError notifSink) . Data.List.filter isLeft
+    reloadGroups ipcSink
 
-    filterGroup _ Nothing = []
-    filterGroup gnl (Just grpname) = Data.List.filter (byName grpname) gnl
+  DeleteGroup grp  -> case Set.null $ DG.members grp of
+      True  -> do
+        withBusy busySink DG.deleteGroup grp >>= eitherToError notifSink
+        reloadGroups ipcSink
 
-    byName name x = name == x
+      False -> notifSink . Just . apiError $ "Can't delete non-empty group"
 
-    toAction []     = ActionNoop
-    toAction [x]    = LoadGroup x
-    toAction (x:xs) = LoadGroup x -- XXX ???
+  ShowGroup g' -> case g' of
+    Just g  -> gridCmdsSink $ Replace (Set.toList (DG.members g))
+    Nothing -> gridCmdsSink $ Replace []
 
-    firstGroupName [] = ""
-    firstGroupName xs = head xs
-
-headerW :: Widget (Maybe DG.GroupsNamesList) Action
-headerW x y = panel' . groupSelectW x $ y
-
-layout header grid = panel [header, grid]
-
-handleActions busySink notifSink gridCmdsSink act = case act of
-  LoadGroup groupname -> do
-    gridCmdsSink $ Replace [] -- reset grid
-    (group, errors) <- withBusy busySink DG.loadGroup groupname
-    mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
-    gridCmdsSink $ Replace (Set.toList (DG.members group))
+  DeleteMembers g xs -> do
+    withBusy2 busySink DG.removeAccountsFromGroup (DG.name g) (fmap Ac.id xs)
+      >>= mapM_ (eitherToError notifSink) . Data.List.filter isLeft
+    reloadGroups ipcSink
 
   _              -> print "other act"
 
-manageAccouns :: Sink BusyCmd
-              -> Sink (Maybe Notification)
-              -> Sink IPCMessage
-              -> Sink AccountsPageAction
-              -> Behavior (Maybe JSString)
-              -> Signal (Maybe DG.GroupsNamesList)
-              -> Signal Nav
-              -> IO (Signal Html)
-manageAccouns busySink notifSink ipcSink pageIPCSink mUserNameB groupsListS navS = do
+groupSelector :: Sink BusyCmd -> Sink (Maybe Notification) -> Signal (Maybe DG.GroupsNamesList) -> IO (Signal Html, Signal (Maybe DG.Group))
+groupSelector busySink notifSink groupsListS = do
+  (nameSink, nameEv) <- newSyncEventOf (undefined :: Maybe DG.GroupName)
+  (grpSink, grpEv)   <- newSyncEventOf (undefined :: Maybe DG.Group)
+  gS                 <- stepperS Nothing grpEv
+  let xxx            = (,) <$> groupsListS <*> gS :: Signal (Maybe DG.GroupsNamesList, Maybe DG.Group)
+  let v              = fmap (widget nameSink) xxx
+
+  subscribeEvent (FRP.filterJust nameEv) $ void . forkIO . load grpSink
+  subscribeEvent (updates groupsListS) $ \gl -> do
+    curGrp <- pollBehavior (current gS)
+    case Data.List.elem <$> (DG.name <$> curGrp) <*> gl of
+      Just True  -> nameSink $ DG.name <$> curGrp
+      Just False -> grpSink Nothing
+      Nothing    -> return ()
+
+  return (v, gS)
+
+  where
+    load sink groupname = do
+      (group, errors) <- withBusy busySink DG.loadGroup groupname
+      mapM_ (\e -> notifSink . Just . apiError $ "Error during loading group members for group " <> groupname ) errors
+      sink $ Just group
+
+    widget :: Widget (Maybe DG.GroupsNamesList, Maybe DG.Group) (Maybe DG.GroupName)
+    widget x y = panel' . groupSelectW x $ y
+
+    groupSelectW :: Widget (Maybe DG.GroupsNamesList, Maybe DG.Group) (Maybe DG.GroupName)
+    groupSelectW sink (gnl', curGrp') =
+      toolbar' $
+        buttonGroup' $
+          selectWithPromptWidget
+            (makeOpts gnl)
+            (contramapSink (toAction . filterGroup gnl) sink)
+            curGrp
+
+      where
+        gnl = fromMaybe [] gnl'
+
+        curGrp = fromMaybe "non-existing-option" (DG.name <$> curGrp')
+
+        makeOpts gnl = let x = Data.List.sort gnl in zip x x
+
+        filterGroup _ Nothing = []
+        filterGroup gnl (Just grpname) = Data.List.filter (byName grpname) gnl
+
+        byName name x = name == x
+
+        toAction []     = Nothing
+        toAction [x]    = Just x
+        toAction (x:xs) = Just x -- XXX ???
+
+        firstGroupName [] = ""
+        firstGroupName xs = head xs
+
+actionsToolbar :: Sink Action -> Signal (Maybe DG.Group) -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)) -> IO Layout
+actionsToolbar actionsSink sgS selectionSnapshotS = do
+  (popupSink, popupEvnt)  <- newSyncEventOf (undefined :: ToolbarPopupActions)
+  popupSig                <- stepperS ShowNone popupEvnt -- TODO helper newSyncSignalOf
+
+  (newGroupV, submitNGe)  <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
+  (saveAsV, submitSAe)    <- formWithValidationComponent validateGroupname Nothing inputGroupNameW :: IO (Signal Html, Events (Maybe JSString))
+  (confirmDeleteV, toggleShowS, confirm) <- confirmDialogComponent
+
+  subscribeEvent (FRP.filterJust submitNGe) $ actionsSink . CreateNewGroup
+
+  subscribeEvent (FRP.filterJust submitSAe) $ \n ->
+    pollBehavior (current selectionSnapshotS) >>= mapM_ (actionsSink . SaveAs n . fst)
+
+  subscribeEvent (FRP.filter (== ShowDeleteConfirm) popupEvnt) $ const $ do
+    pollBehavior (current sgS) >>=
+      mapM_ (\g  -> confirm ( "Are you sure you want to delete group " <> DG.name g <> "?"
+                            , flip when $ actionsSink $ DeleteGroup g ))
+
+  subscribeEvent submitNGe $ const . popupSink $ ShowNone
+  subscribeEvent submitSAe $ const . popupSink $ ShowNone
+
+  let toolbarV = fmap (toolbarW popupSink actionsSink) toolbarDataS
+  toolbarL     <- overlayLayout toggleShowS (mkLayoutPure toolbarV) (mkLayoutPure confirmDeleteV)
+  topL         <- overlayLayout2 (fmap f popupSig) toolbarL
+                                                   (mkLayoutPure newGroupV)
+                                                   (mkLayoutPure saveAsV)
+  return topL
+
+  where
+    f ShowNone          = 0
+    f ShowCreate        = 1
+    f ShowSaveAs        = 2
+    f ShowDeleteConfirm = 3
+
+    toolbarDataS = (,) <$> sgS <*> selectionSnapshotS :: Signal (Maybe DG.Group, Maybe (Set.Set Ac.Account, GridAction Ac.Account))
+
+    inputGroupNameW :: Widget (FormValid VError, Maybe DG.GroupName) (Submit (Maybe DG.GroupName))
+    inputGroupNameW outputSink (isValid, val) =
+      let (canSubmitAttr, cantSubmitMsg) = case isValid of
+                                             FormValid       -> ([Ev.click $ \e -> outputSink $ Submit val], "")
+                                             FormNotValid es -> ([A.disabled True], showValidationErrors es)
+      in modalPopup' $ formPanel_ [Ev.keyup $ \e -> when (which e == 13) $ outputSink (Submit val) ]
+        [ longStringWidget "Group name" False (contramapSink (\new -> DontSubmit (Just new)) outputSink) (fromMaybe "" val)
+
+        , formRowWithNoLabel' . toolbarLeft' . buttonGroupLeft $
+            [ buttonOkIcon "Submit" "group" False canSubmitAttr
+            , button       "Cancel"         False [ Ev.click $ \e -> outputSink (Submit Nothing) ]
+            , inlineMessage cantSubmitMsg ]
+        ]
+
+    toolbarW :: Sink ToolbarPopupActions -> Widget (Maybe DG.Group, Maybe (Set.Set Ac.Account, GridAction Ac.Account)) Action
+    toolbarW popupSink sink (grp, x) =
+      let sel        = fst $ fromMaybe (Set.empty, Components.Grid.Noop) x
+          saveAtr    = if Set.size sel > 0
+                         then [Ev.click $ \e -> popupSink ShowSaveAs]
+                         else [A.disabled True]
+          deleteAttr = case grp of
+                         Nothing -> [A.disabled True]
+                         Just g  -> [Ev.click $ \e -> popupSink ShowDeleteConfirm]
+          msg        = case Set.size sel of
+                         0 -> "No accounts selected"
+                         1 -> "1 account selected"
+                         x -> showJS x <> " accounts selected"
+      in toolbar
+          [ buttonGroup
+              [ buttonIcon   "Save as new"   "save" False saveAtr
+              , buttonDanger "Delete group"         False deleteAttr ]
+          , buttonGroup
+              [ buttonOkIcon "New group"     "plus" False [Ev.click $ \e -> popupSink ShowCreate] ]
+          , buttonGroup
+              [ inlineMessage msg ]
+          ]
+
+manageAccouns :: Ctx -> IO (Signal Html)
+manageAccouns (Ctx busySink notifSink pageIPCSink groupsListS) = do
   (actionsSink, actionsE)                                      <- newSyncEventOf (undefined :: Action)
-
   (gridView, gridCmdsSink, gridActionE, gridItemsE, selectedB) <- gridComponent (Just gridOptions) [] itemMarkup
+  selectionSnapshotS                                           <- stepperS Nothing (fmap Just (snapshot selectedB gridActionE)) :: IO (Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account)))
+  (selectGroupV, sgS)                                          <- groupSelector busySink notifSink groupsListS
 
-  subscribeEvent actionsE $ void . forkIO . handleActions busySink notifSink gridCmdsSink
+  (confirmDialogV, toggleConfigmDialogS, confirm)              <- confirmDialogComponent
 
-  let headerView                                               = fmap (headerW actionsSink) groupsListS
-  let view                                                     = layout <$> headerView <*> gridView
+  let showGroupE = fmap ShowGroup (updates sgS)
+  subscribeEvent (actionsE <> showGroupE) $ void . forkIO . handleActions busySink notifSink pageIPCSink gridCmdsSink
 
-  return view
+  subscribeEvent (fmap fromDelete (FRP.filter isDelete gridActionE)) $ \xs ->
+    pollBehavior (current sgS) >>=
+      mapM_  (\g -> confirm ( "Do you really want to delete " <> formatAccountsToDelete xs <> " from the group " <> DG.name g <> "?"
+                            , flip when $ actionsSink $ DeleteMembers g xs ))
+
+  toolbarL <- actionsToolbar actionsSink sgS selectionSnapshotS
+  gridL    <- overlayLayout toggleConfigmDialogS (mkLayoutPure gridView) (mkLayoutPure confirmDialogV)
+  headerL  <- verticalStackLayout2 (mkLayoutPure selectGroupV) toolbarL
+  topL     <- verticalStackLayout2 headerL gridL
+
+  return $ view topL
 
   where
     gridOptions = defaultGridOptions{otherButton = False}
+
+    formatAccountsToDelete as | length as == 0 = "no account"
+                              | length as == 1 = "account " <> Ac.username (head as)
+                              | length as < 5  = "accounts " <> joinWith ", " (fmap Ac.username (take 4 as))
+                              | length as > 4  = "accounts " <> joinWith ", " (fmap Ac.username (take 3 as))
+                                                             <> " and " <> showJS (length as - 3) <> " other accounts"
+
+    joinWith = Data.JSString.intercalate
+
+    isDelete :: GridAction a -> Bool
+    isDelete (Delete _)   = True
+    isDelete _            = False
+
+    -- fromDelete :: GridAction a -> a
+    fromDelete (Delete x) = x

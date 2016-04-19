@@ -1,0 +1,16 @@
+
+name:                lubeck-core
+version:             0.1.0.0
+synopsis:            Lubeck core libraries
+license:             AllRightsReserved
+license-file:        LICENSE
+author:              Beautiful Destinations
+maintainer:          hans@beautifuldestinations.com
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     Lubeck.Str
+  build-depends:       base, split
+  hs-source-dirs:      src
+  default-language:    Haskell2010

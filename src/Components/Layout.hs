@@ -8,6 +8,8 @@ module Components.Layout
   , horizontalStackLayout2
   , toggleLayout2
   , overlayLayout
+  , overlayLayout2
+  , overlayLayout3
   , Layout(..)
   , view
   , name
@@ -65,6 +67,8 @@ data Layout = LayoutFullsize2 (LayoutSpec Int)
             | LayoutHorizontalStack (LayoutSpec Int)
             | LayoutToggle (LayoutSpec Int) -- TODO better name
             | LayoutOverlay (LayoutSpec Bool)
+            | LayoutOverlay2 (LayoutSpec Int)
+            | LayoutOverlay3 (LayoutSpec Int)
             | LayoutPure (LayoutSpec ())
 -- TODO instances
 
@@ -74,6 +78,8 @@ mkLayoutVerticalStack a b c   = LayoutVerticalStack $ LayoutSpec a b c
 mkLayoutHorizontalStack a b c = LayoutHorizontalStack $ LayoutSpec a b c
 mkLayoutToggle a b c          = LayoutToggle $ LayoutSpec a b c
 mkLayoutOverlay a b c         = LayoutOverlay $ LayoutSpec a b c
+mkLayoutOverlay2 a b c        = LayoutOverlay2 $ LayoutSpec a b c
+mkLayoutOverlay3 a b c        = LayoutOverlay3 $ LayoutSpec a b c
 mkLayoutPure a                = LayoutPure $ LayoutSpec a Nothing Nothing
 mkLayoutPure' a b             = LayoutPure $ LayoutSpec a Nothing (Just b)
 
@@ -84,6 +90,8 @@ view (LayoutVerticalStack x)   = _lView x
 view (LayoutHorizontalStack x) = _lView x
 view (LayoutToggle x)          = _lView x
 view (LayoutOverlay x)         = _lView x
+view (LayoutOverlay2 x)        = _lView x
+view (LayoutOverlay3 x)        = _lView x
 view (LayoutPure x)            = _lView x
 
 name :: Layout -> Maybe ViewName
@@ -93,6 +101,8 @@ name (LayoutVerticalStack x)   = _lName x
 name (LayoutHorizontalStack x) = _lName x
 name (LayoutToggle x)          = _lName x
 name (LayoutOverlay x)         = _lName x
+name (LayoutOverlay2 x)        = _lName x
+name (LayoutOverlay3 x)        = _lName x
 name (LayoutPure x)            = _lName x
 
 liftA4 :: Applicative f => (a -> b -> c -> d -> e) -> (f a -> f b -> f c -> f d -> f e)
@@ -210,3 +220,34 @@ overlayLayout :: Signal Bool -> Layout -> Layout -> IO Layout
 overlayLayout z l1 l2 = do
   let topV = layoutPopup <$> z <*> (view l1) <*> (view l2)
   return $ mkLayoutOverlay topV (Just z) Nothing
+
+--------------------------------------------------------------------------------
+
+layoutPopup2 z l1 l2 l3 = panel body
+  where
+    body = case z of
+      0 -> [l1]
+      1 -> [l1, l2]
+      2 -> [l1, l3]
+      _ -> [l1]
+
+overlayLayout2 :: Signal Int -> Layout -> Layout -> Layout -> IO Layout
+overlayLayout2 z l1 l2 l3 = do
+  let topV = layoutPopup2 <$> z <*> (view l1) <*> (view l2) <*> (view l3)
+  return $ mkLayoutOverlay2 topV (Just z) Nothing
+
+--------------------------------------------------------------------------------
+
+layoutPopup3 z l1 l2 l3 l4 = panel body
+  where
+    body = case z of
+      0 -> [l1]
+      1 -> [l1, l2]
+      2 -> [l1, l3]
+      3 -> [l1, l4]
+      _ -> [l1]
+
+overlayLayout3 :: Signal Int -> Layout -> Layout -> Layout -> Layout -> IO Layout
+overlayLayout3 z l1 l2 l3 l4 = do
+  let topV = layoutPopup3 <$> z <*> (view l1) <*> (view l2) <*> (view l3) <*> (view l4)
+  return $ mkLayoutOverlay3 topV (Just z) Nothing

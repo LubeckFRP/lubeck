@@ -83,7 +83,7 @@ selectCreateGroupW outputSink (isValid, (gnl, val)) =
         , inlineMessage cantSubmitMsg ]
     ]
   where
-    makeOpts gnl = zip gnl gnl
+    makeOpts gnl = let x = Data.List.sort gnl in zip x x 
 
     filterGroup _ Nothing = []
     filterGroup gnl (Just grpname) = Data.List.filter (byName grpname) gnl
@@ -179,13 +179,6 @@ searchFormComp = do
     f FormVisible = 0
 
     initPostQuery = defSimpleAccountQuery
-
-validateGroupname :: Maybe DG.GroupName -> FormValid VError
-validateGroupname x =
-  let validationResult = runValidation1 <$> longString "Group name" 1 80 (fromMaybe "" x) :: Validation VError VSuccess
-  in case validationResult of
-        Success _  -> FormValid
-        Failure es -> FormNotValid es
 
 doAddToGroup :: Sink AddToGroupViewMode
              -> Signal (Maybe (Set.Set Ac.Account, GridAction Ac.Account))
@@ -293,22 +286,9 @@ resultsOrNoneComp results ctx = do
     searchResultsToGridCmd Empty      = Replace []
     searchResultsToGridCmd (Found xs) = Replace xs
 
-data Ctx = Ctx
-  { _busySink   :: Sink BusyCmd
-  , _notifSink  :: Sink (Maybe Notification)
-  , _pageIPC    :: Sink AccountsPageAction
-  , _groupsList :: Signal (Maybe DG.GroupsNamesList)
-  }
 
-accountSearch :: Sink BusyCmd
-              -> Sink (Maybe Notification)
-              -> Sink IPCMessage
-              -> Sink AccountsPageAction
-              -> Behavior (Maybe JSString)
-              -> Signal (Maybe DG.GroupsNamesList)
-              -> Signal Nav
-              -> IO (Signal Html)
-accountSearch busySink notifSink ipcSink pageIPCSink mUserNameB groupsListS navS = do
+accountSearch :: Ctx -> IO (Signal Html)
+accountSearch (Ctx busySink notifSink pageIPCSink groupsListS) = do
   (srchResSink, srchResEvents) <- newSyncEventOf (undefined    :: SearchResults)
   results                      <- stepperS Empty srchResEvents :: IO (Signal SearchResults)
 

@@ -23,72 +23,23 @@ import qualified Data.Colour.Names as Colors
 import Data.Time (UTCTime(..), DiffTime, Day(..), diffUTCTime, addUTCTime)
 import qualified Data.Time.Format
 
--- TODO Debug
-import Control.Concurrent(forkIO, threadDelay)
-import Control.Monad(forever)
+-- -- TODO Debug
+-- import Control.Concurrent(forkIO, threadDelay)
+-- import Control.Monad(forever)
 
 import Linear.Vector
 import Linear.Affine
--- import Linear.Matrix hiding (translation)
--- import Linear.Metric -- Needed?
 import Linear.V0
 import Linear.V1
 import Linear.V2
 import Linear.V3
 import Linear.V4
 
--- import Lubeck.FRP
--- import Lubeck.App (Html, runAppReactive)
--- import Lubeck.Forms
-  -- (Widget, Widget', component, bothWidget)
--- import Lubeck.Forms.Basic
-
+import Lubeck.Str (Str, toStr, packStr, unpackStr, takeStr, replaceStr)
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
 import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
 import Lubeck.DV.Styling(withDefaultStyle, Styled)
-
-
--- -- TODO to many variants of these
--- -- componentRW as currently implemented arguably does the wrong thing, by forwarding incoming events
--- -- (why wrong: this can easily be accomplished by merging with the input, while the other way around is nothing
--- -- so straightforward)
---
--- -- The most general version:
--- -- (b -> a -> a) -> (c -> a -> a) -> a -> WT r a b -> E c -> IO (S r, S a)
---
--- compo :: WidgetT r a a -> a -> Events a -> IO (Signal r, Events a)
--- compo widget z input = do
---   (view, output, inputSink) <- componentRW z widget
---   subscribeEvent input inputSink
---   return (view, output)
---
--- compo_ :: WidgetT r a a -> a -> Events a -> IO (Signal r)
--- compo_ w z i = fmap fst $ compo w z i
---
--- compoS_ :: WidgetT r a a -> Signal a -> IO (Signal r)
--- compoS_ w i = do
---   z <- pollBehavior $ current i
---   let u = updates i
---   compo_ w z u
---
---
--- -- TODO nicer conventions for event listeners
--- -- * Standarize Names
--- -- * Add more of them
--- -- * Variants without the event (i.e. for "mouseover", "mouseout" etc)
---
--- -- Basic non-interactive plots
--- circleWithMouseOver :: WidgetT Drawing Bool Bool
--- circleWithMouseOver output state =
---   addProperty (SvgEv.onMouseOver $ const $ output True) $
---   addProperty (SvgEv.onMouseOut $ const $ output False) $
---   mconcat
---     [ fillColorA ((if state then Colors.lightblue else Colors.blue) `withOpacity` 0.5) $ scale 250 circle
---     , axisY
---     , axisX
---     ]
-
 
 utcTimeToApproxReal :: UTCTime -> Double
 utcTimeToApproxReal t = realToFrac $ (t `diffUTCTime` refTime) / (1000000000000)
@@ -102,9 +53,6 @@ refTime = case Data.Time.Format.parseTimeM True Data.Time.Format.defaultTimeLoca
     Just t -> t
     _      -> error "Should not happen"
 
--- unDay = toModifiedJulianDay
--- day   = ModifiedJulianDay
---
 
 {-|
 Draw a simple line plot. Steps performed:

@@ -52,20 +52,9 @@ Main differences from Diagrams:
 -}
 module Lubeck.Drawing
   (
-  -- * Str type
-  -- ** (should be moved to a separate package)
-    Str
-  , toStr
-  , packStr
-  , unpackStr
-  , replaceStr
-  , takeStr
-  , fromJSString
-  , toJSString
-
   -- * Creating drawings
   -- ** Geometry
-  , Point(..)
+    Point(..)
   , V1(..)
   , V2(..)
   , V3(..)
@@ -252,42 +241,13 @@ import qualified Text.XML.Light as X
 import Linear.Epsilon
 #endif
 
+import Lubeck.Str
+
 #ifdef __GHCJS__
-import GHCJS.Types(JSString)
-import qualified Data.JSString
 import Web.VirtualDom.Svg (Svg)
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
--- import Lubeck.Util(showJS)
-#endif
-
-toStr :: Show a => a -> Str
-toStr = packStr . show
-
-newtype Str = Str { getStr :: StrBase }
-  deriving (Eq, Ord, Monoid, IsString)
-instance Show Str where
-  show (Str x) = show x
-
-
-#ifdef __GHCJS__
-type StrBase = JSString
-fromJSString  = Str
-toJSString    = getStr
-packStr       = Str . Data.JSString.pack
-unpackStr     = Data.JSString.unpack . getStr
-takeStr n  = Str . Data.JSString.take n . getStr
-replaceStr (Str a) (Str b) (Str c) = Str $ Data.JSString.replace a b c
-#else
-type StrBase = String
-fromJSString () = ""
-toJSString _    = ()
-packStr         = Str
-unpackStr       = getStr
-takeStr n = Str . take n . getStr
-replaceStr :: Str -> Str -> Str -> Str
-replaceStr (Str old) (Str new) (Str orig) = Str $ Data.List.intercalate new $ Data.List.Split.splitOn old orig
 #endif
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
@@ -1265,9 +1225,9 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
 
     svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
     svgTopNode w h vb = E.svg
-      [ A.width (getStr w)
-      , A.height (getStr h)
-      , A.viewBox (getStr vb) ]
+      [ A.width (toJSString w)
+      , A.height (toJSString h)
+      , A.viewBox (toJSString vb) ]
 
     placeOrigo :: Drawing -> Drawing
     placeOrigo = case originPlacement of
@@ -1306,20 +1266,20 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
             ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
             []
           (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-            ([A.points (getStr $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
+            ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
             []
           Text s -> single $ E.text'
             ([A.x "0", A.y "0"]++ps)
-            [E.text $ getStr s]
+            [E.text $ toJSString s]
           Embed e -> single $ embedToSvg e
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
           Transf t x -> single $ E.g
-            [A.transform $ "matrix" <> (getStr . toStr) (negY $ transformationToMatrix t) <> ""]
+            [A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""]
             (toSvg1 ps x)
           Style s x  -> single $ E.g
-            [A.style $ getStr $ styleToAttrString s]
+            [A.style $ toJSString $ styleToAttrString s]
             (toSvg1 ps x)
           Prop p x   -> toSvg1 (p:ps) x
           -- No point in embedding handlers to empty groups, but render anyway
