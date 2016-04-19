@@ -16,6 +16,7 @@ module Lubeck.Str
   , toJSString
   , takeStr
   , replaceStr
+  , intercalateStr
   ) where
 
 import Data.String(IsString(..))
@@ -27,6 +28,7 @@ import GHCJS.Types(JSString)
 import qualified Data.JSString
 #endif
 
+
 newtype Str = Str { getStr :: StrBase }
   deriving (Eq, Ord, Monoid, IsString)
 
@@ -36,15 +38,18 @@ instance Show Str where
 toStr :: Show a => a -> Str
 toStr = packStr . show
 
+intercalateStr :: Str -> [Str] -> Str
+intercalateStr x ys = mconcat $ Data.List.intersperse x ys
+
+
+
+
 packStr    :: String -> Str
 unpackStr  :: Str -> String
 takeStr    :: Int -> Str -> Str
 replaceStr :: Str -> Str -> Str -> Str
 
-
 #ifdef __GHCJS__
-
-
 
 type StrBase = JSString
 
@@ -58,8 +63,7 @@ packStr       = Str . Data.JSString.pack
 unpackStr     = Data.JSString.unpack . getStr
 takeStr n     = Str . Data.JSString.take n . getStr
 
-replaceStr    (Str a) (Str b) (Str c) = Str $ Data.JSString.replace a b c
-
+replaceStr (Str a) (Str b) (Str c) = Str $ Data.JSString.replace a b c
 #else
 
 type StrBase = String

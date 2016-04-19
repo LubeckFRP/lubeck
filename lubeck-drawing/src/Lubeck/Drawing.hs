@@ -131,6 +131,25 @@ module Lubeck.Drawing
   -- *** Applying styles
   , style
 
+  -- *** Line style
+  , dash
+  , dashing
+
+  -- *** Text
+  , text
+  , textMiddle          -- TODO depracate
+  , textEnd             -- TODO depracate
+  , textLeftMiddle
+  , textMiddleMiddle
+  , textRightMiddle
+  , TextAnchor(..)
+  , AlignmentBaseline(..)
+  , FontStyle(..)
+  , FontSize(..)
+  , FontWeight(..)
+  , TextOptions(..)
+  , textWithOptions
+
   -- ** Events
   , addProperty
 
@@ -169,20 +188,6 @@ module Lubeck.Drawing
   , verticalLine
   , segments
   , polygon
-  -- ** Text
-  , text
-  , textMiddle          -- TODO depracate
-  , textEnd             -- TODO depracate
-  , textLeftMiddle
-  , textMiddleMiddle
-  , textRightMiddle
-  , TextAnchor(..)
-  , AlignmentBaseline(..)
-  , FontStyle(..)
-  , FontSize(..)
-  , FontWeight(..)
-  , TextOptions(..)
-  , textWithOptions
 
   -- ** Utility
   , xyAxis
@@ -423,24 +428,24 @@ transformPoint t (P (V2 x y)) =
   in P $ V2 (a*x+c*y+e) (b*x+d*y+f)
 
 {-| -}
-newtype Style = S { getS :: Map Str Str }
-  deriving (Monoid)
+newtype Style = Style_ { getStyle_ :: Map Str Str }
+  deriving (Show, Monoid)
 
 {-| -}
 emptyStyle :: Style
-emptyStyle = S $ Data.Map.empty
+emptyStyle = Style_ $ Data.Map.empty
 
 {-| -}
 styleNamed :: Str -> Str -> Style
-styleNamed k v = S $ Data.Map.singleton k v
+styleNamed k v = Style_ $ Data.Map.singleton k v
 
 {-| -}
 apStyle :: Style -> Style -> Style
-apStyle (S a) (S b) = S $ Data.Map.union a b
+apStyle (Style_ a) (Style_ b) = Style_ $ Data.Map.union a b
 
 {-| -}
 styleToAttrString :: Style -> Str
-styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getS
+styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
 
 -- | Embed an arbitrary SVG property on a drawing.
 --
@@ -777,6 +782,32 @@ endpoint is assumed.
 -}
 polygon :: [V2 Double] -> Drawing
 polygon = Lines True
+
+
+{-|
+Line dash style.
+
+>>> dash [1]
+>>> dash [5, 5]
+>>> dash [15, 10, 5, 10]
+
+https://developer.mozilla.org/en/docs/Web/SVG/Attribute/stroke-dasharray
+-}
+dashing :: [Double] -> Style
+dashing [] = mempty
+dashing ns = styleNamed "stroke-dasharray" (intercalateStr ", " $ map toStr ns)
+
+{-
+Line dash style.
+
+>>> dash [1]
+>>> dash [5, 5]
+>>> dash [15, 10, 5, 10]
+
+https://developer.mozilla.org/en/docs/Web/SVG/Attribute/stroke-dasharray
+-}
+dash :: [Double] -> Drawing -> Drawing
+dash = style . dashing
 
 {-| Draw text. See also 'textWithOptions'. -}
 text :: Str -> Drawing

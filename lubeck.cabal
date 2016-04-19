@@ -21,6 +21,7 @@ library
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling
                      , Lubeck.DV.ColorPalette
+                     , Lubeck.DV.LineStyles
 
                      , Lubeck.App
                      , Lubeck.Util

@@ -28,7 +28,7 @@ module Lubeck.DV.Styling
 
   , linePlotStrokeColor
   , linePlotStrokeWidth
-  , linePlotStrokeType
+  , linePlotStroke
   , linePlotFillColor
 
   , scatterPlotStrokeColor
@@ -122,6 +122,13 @@ import Lubeck.DV.ColorPalette
   , paletteFromList
   , getColorFromPalette
   )
+import Lubeck.DV.LineStyles
+  ( LineStyles
+  , defaultLineStyles
+  , lineStylesFromList
+  , extractLineStyle
+  , lineStyleFromLineStyles
+  )
 
 data VerticalHorizontal = Vertical | Horizontal
 -- How to display a bar plot with more than two dimensions.§
@@ -150,7 +157,7 @@ data Styling = Styling
   -- Line plots
   , _linePlotStrokeColor              :: Palette Double
   , _linePlotStrokeWidth              :: Double
-  , _linePlotStrokeType               :: () -- TODO
+  , _linePlotStroke                   :: LineStyles
   , _linePlotFillColor                :: Palette Double
 
   -- Scatter plots
@@ -253,7 +260,7 @@ instance Monoid Styling where
 
     , _linePlotStrokeColor          = singleColour $ Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
-    , _linePlotStrokeType           = mempty
+    , _linePlotStroke               = mempty
     -- , _linePlotFillColor            = Colors.black `withOpacity` 0
     , _linePlotFillColor            = singleColour $ Colors.red `withOpacity` 0.2
 

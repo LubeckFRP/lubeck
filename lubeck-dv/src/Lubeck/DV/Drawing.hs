@@ -35,76 +35,77 @@
 --
 --    ** Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
 module Lubeck.DV.Drawing
-  (
-  -- * Drawing data
-
-  -- $normalizeInputPoint
-  -- $normalizeInputScalar
-
-  -- ** Scatter
-    scatterData
-  , scatterDataWithColor
-  , scatterDataX
-  , scatterDataY
-
-  -- ** Lines
-  , lineData
-  , lineDataWithColor
-
-  -- ** Area/Fill
-  , fillData
-  , areaData
-  , areaData'
-  , stepData
-  , linearData
-
-  -- ** Bars and sizes
-  , barData
-  , barData2
-  , barData3
-  , barData4
-  , barDataWithColor
-  , barDataWithColor2
-  , barDataWithColor3
-
-  -- , circleData
-  -- , circleDataWithColor
-  -- , pieChartData
-
-  -- | Ratios
-  , ratioData
-  , ratioDataWithColor
-
-  -- ** Discrete data and counts
-  -- , discreteData
-  -- , discreteDataGroup
-  -- , intData
-  -- , discreteHeatMap
-  -- , treeMapGraph
-  -- , treeMapGraphWithColor
-
-
-  -- * Drawing axes
-  , ticks
-  , ticksNoFilter
-
-  -- * Drawing axes
-  , labeledAxis
-
-  -- * Drawing legends
-  , quantLegend
-  , intervalLegend
-  , scaleLegend
-
-  -- * Drawing titles
-  , title
-
-  -- * Drawing overlays/explanatories
-  -- , overlay
-
-  -- * Utility
-  , plotRectangle
-  ) where
+  -- (
+  -- -- * Drawing data
+  --
+  -- -- $normalizeInputPoint
+  -- -- $normalizeInputScalar
+  --
+  -- -- ** Scatter
+  --   scatterData
+  -- , scatterDataWithColor
+  -- , scatterDataX
+  -- , scatterDataY
+  --
+  -- -- ** Lines
+  -- , lineData
+  -- , lineDataWithColor
+  --
+  -- -- ** Area/Fill
+  -- , fillData
+  -- , areaData
+  -- , areaData'
+  -- , stepData
+  -- , linearData
+  --
+  -- -- ** Bars and sizes
+  -- , barData
+  -- , barData2
+  -- , barData3
+  -- , barData4
+  -- , barDataWithColor
+  -- , barDataWithColor2
+  -- , barDataWithColor3
+  --
+  -- -- , circleData
+  -- -- , circleDataWithColor
+  -- -- , pieChartData
+  --
+  -- -- | Ratios
+  -- , ratioData
+  -- , ratioDataWithColor
+  --
+  -- -- ** Discrete data and counts
+  -- -- , discreteData
+  -- -- , discreteDataGroup
+  -- -- , intData
+  -- -- , discreteHeatMap
+  -- -- , treeMapGraph
+  -- -- , treeMapGraphWithColor
+  --
+  --
+  -- -- * Drawing axes
+  -- , ticks
+  -- , ticksNoFilter
+  --
+  -- -- * Drawing axes
+  -- , labeledAxis
+  --
+  -- -- * Drawing legends
+  -- , quantLegend
+  -- , intervalLegend
+  -- , scaleLegend
+  --
+  -- -- * Drawing titles
+  -- , title
+  --
+  -- -- * Drawing overlays/explanatories
+  -- -- , overlay
+  --
+  -- -- * Utility
+  -- , plotRectangle
+  -- )
+  where
 
 import Prelude hiding (div)
 import qualified Prelude
@@ -168,8 +169,17 @@ This whole module should arguably be scrapped (or at least moved to *.Internal).
 The API will have to change a lot to accomodate more aesthetics (from the new top-level API)
 and I don't want to be burdened with keeping both APIs nice and in sync. For now
 concentrate on rewriting everything until the other wavy line below.
+
+
+TODO
+Support fixed colors in point, line, fill, area2
+scatterData, lineData, fillData, areaData'
+
 -}
 
+data ScatterData = ScatterData
+  { scatterDataColor :: AlphaColour Double
+  }
 
 
 -- | Draw data for a scatter plot.
@@ -218,6 +228,12 @@ scatterDataY ps = do
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) $ fmap (transformIntoRect style) ps
 
+
+data LineData = LineData
+  { lineDataColor :: AlphaColour Double
+  , lineDataShape :: [Double]
+  }
+
 -- | Draw data for a line plot.
 --
 --   Can be combined with `scatterData`, `scatterDataX` etc.
@@ -232,14 +248,9 @@ lineData (p:ps) = do
                 . strokeWidth   (style^.linePlotStrokeWidth)
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
-lineDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
-lineDataWithColor []     = mempty
-lineDataWithColor [_]    = mempty
-lineDataWithColor _ = error "TODO"
-
-lineDataWithFixedColor :: Monad m => Double -> [P2 Double] -> StyledT m Drawing
-lineDataWithFixedColor c ps = lineDataWithColor [ addP1_2 (P $ V1 c) p | p <- ps ]
-
+data AreaData = AreaData
+  { areaDataColor :: AlphaColour Double
+  }
 
 fillData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 fillData []     = mempty
@@ -352,18 +363,6 @@ barDataWithColor3 :: (Monad m) => [P4 Double] -> StyledT m Drawing
 -- barDataWithColor4 :: [R5] -> StyledT m Drawing
 [barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
 
-data LineData
-  = LineData
-  { linePos   :: V2 Double
-  , lineScale :: Double
-  , lineColor :: Double
-  }
-
-data BarData
-  = BarData
-  { barHeight :: Double
-  , barColor  :: Double
-  }
 {-
   Full insternal spec of a bar graph:
     - Stylings

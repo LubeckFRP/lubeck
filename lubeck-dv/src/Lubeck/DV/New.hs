@@ -90,6 +90,7 @@ module Lubeck.DV.New
   , color
   , strokeColor
   , fillColor
+  , lineStyle
   -- * Geometrical
   , size
   , shape
@@ -353,7 +354,7 @@ instance Contravariant Aesthetic where
 
 
 
-x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
+x, y, color, strokeColor, fillColor, lineStyle, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
 
 -- | Map values to the X axis of a plot.
 x = customAesthetic "x"
@@ -373,6 +374,9 @@ strokeColor = customAesthetic "strokeColor"
 
 -- | Map values to the color of a plot element.
 fillColor = customAesthetic "fillColor"
+
+-- | Map values to the line style of a plot element.
+lineStyle = customAesthetic "lineStyle"
 
 -- | Map values to the size of a plot element.
 -- Used by 'pointG' and 'image'.
@@ -868,10 +872,6 @@ filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
     truish Nothing                  = False
     truish (Just (Normalized n, _)) = n > 0.5
 
-
-{-# DEPRECATED scatter "Use 'pointG" #-}
-scatter :: Geometry
-scatter = pointG
 
 -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
 
