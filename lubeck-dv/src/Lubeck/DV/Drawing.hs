@@ -115,7 +115,7 @@ import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
 import Control.Monad.Reader
-import Data.Colour (Colour, AlphaColour, withOpacity, blend)
+import Data.Colour (Colour, AlphaColour, withOpacity, blend, alphaChannel)
 import Data.Monoid
 import Data.Map(Map)
 import qualified Data.Colour.Names as Colors
@@ -335,7 +335,7 @@ barDataWithColor3 :: (Monad m) => [P4 Double] -> StyledT m Drawing
 
 data LineData
   = LineData
-  { linePos :: V2 Double
+  { linePos   :: V2 Double
   , lineScale :: Double
   , lineColor :: Double
   }
@@ -343,7 +343,7 @@ data LineData
 data BarData
   = BarData
   { barHeight :: Double
-  , barColor :: Double
+  , barColor  :: Double
   }
 {-
   Full insternal spec of a bar graph:
@@ -590,6 +590,8 @@ ticksNoFilter xt yt = do
   let colFgB     = style^.basicTickColor
   let colBgX     = style^.backgroundTickStrokeColorX
   let colBgY     = style^.backgroundTickStrokeColorY
+  let drawBgX    = not $ isTransparent colBgX
+  let drawBgY    = not $ isTransparent colBgY
 
   -- TODO derive properly
   -- let tlMin      = style^.basicTickLength
@@ -604,7 +606,8 @@ ticksNoFilter xt yt = do
           \(pos,str) -> translateX (pos * x) $ mconcat
             [ mempty
             -- Inside quadrant (background) grid
-            , strokeWidth widthBgX $ strokeColorA colBgX $ scale y $ translateY (0.5) verticalLine
+            , if not drawBgX then mempty else
+                strokeWidth widthBgX $ strokeColorA colBgX $ scale y $ translateY (0.5) verticalLine
             -- Outside quadrant tick
             , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
             -- Text
@@ -614,7 +617,8 @@ ticksNoFilter xt yt = do
           \(pos,str) -> translateY (pos * y) $ mconcat
             [ mempty
             -- Inside quadrant (background) grid
-            , strokeWidth widthBgY $ strokeColorA colBgY $ scale x $ translateX (0.5) horizontalLine
+            , if not drawBgY then mempty else
+                strokeWidth widthBgY $ strokeColorA colBgY $ scale x $ translateX (0.5) horizontalLine
             -- Outside quadrant tick
             , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
             -- Text
@@ -639,7 +643,7 @@ ticksNoFilter xt yt = do
       , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
       , fontWeight = style^.tickTextFontWeight
       }
-
+    isTransparent color = abs (alphaChannel color) < 0.001
 
 -- | Draw X and Y axis.
 labeledAxis
@@ -669,15 +673,6 @@ labeledAxis labelX labelY = do
       , fontStyle  = style^.axisTextFontStyle
       , fontSize   = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
       }
-
-
-    -- crossLineX, crossLineY :: Double -> Drawing
-    -- crossLineX n = translateX (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisY
-    -- crossLineY n = translateY (n * 300) $ strokeWidth 2 $ strokeColor Colors.lightblue $ axisX
-
-
-
-
 
 -- These are all low-level drawing functions.
 --
