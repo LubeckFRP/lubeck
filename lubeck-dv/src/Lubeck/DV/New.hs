@@ -10,43 +10,12 @@
   #-}
 
 {-|
-A high-level type safe Data Visualization library.
+A plotting/data visualization library.
 
-TODO basic tutorial
+Tutorial TODO
 
-Example
----
+For examples, see the @test@ directory.
 
-@
-newtype Day = Day Int
-  deriving (Eq, Ord, Show, Num, Real, HasScale)
-
-data LikeType = ProjLike | RealLike
-  deriving (Eq, Ord, Show)
-
-instance HasScale LikeType where scale _ = categorical
-
-data LikeCount = LikeCount { _time :: Day, _count :: Int, _likeType :: LikeType }
-  deriving (Eq, Ord, Show)
-
-$(makeLenses ''LikeCount)
-
-likeCounts :: [LikeCount]
-likeCounts =
-  [ LikeCount 0 112000 RealLike
-  , LikeCount 1 115000 RealLike
-  , LikeCount 1 118000 RealLike
-  , LikeCount 0 112000 ProjLike
-  , LikeCount 1 113000 ProjLike
-  , LikeCount 1 114000 ProjLike
-  ]
-
-test = visualizeTest likeCounts fill
-  [ x     <~ time
-  , y     <~ count
-  , color <~ likeType
-  ]
-@
 -}
 module Lubeck.DV.New
   (
@@ -64,7 +33,7 @@ module Lubeck.DV.New
   , Scale
   , linear
   , linearIntegral
-  , IntegralPlotBounds(..)
+  , LinearPlotBounds(..)
   , linearWithOptions
   , categorical
   , CategoricalPlotBounds(..)
@@ -108,6 +77,9 @@ module Lubeck.DV.New
   -- * Coordinates
   -- $coordinates
 
+
+
+
   -- * Aesthetics
   , Key
   , Aesthetic
@@ -138,6 +110,10 @@ module Lubeck.DV.New
 
   -- ** Mapping aesthetics
   , (<~)
+
+
+
+
 
   -- * Top-level
   , Plot
@@ -573,7 +549,6 @@ categoricalEnum = Scale
     [minBound..maxBound `asTypeOf` head vs]
   , scaleBaseName = "categoricalEnum"
   }
--- TODO could be written without the asTypeOf using ScopedTypeVariables
 
 {-|
 A linear scale.
@@ -592,9 +567,9 @@ linearIntegral = linearWithOptions True UseMin
 {-|
 How to choose lower bound for a scale.
 
-TODO should really be called 'LinearPlotBounds'.
+Used to be called 'IntegralPlotBounds'.
 -}
-data IntegralPlotBounds
+data LinearPlotBounds
   = UseZero                     -- ^ Use zero.
   | InterpZeroAndMin Double     -- ^ Interpolate between zero and minimum value (0.5 for middle).
   | UseMin                      -- ^ Use minimum value.
@@ -606,7 +581,7 @@ linearWithOptions :: (Real a, Show a)
   => Bool
     -- ^ If true, use the integral version of show (i.e. no decimals).
     --   If false, a predefined number of decimal places is used
-  -> IntegralPlotBounds
+  -> LinearPlotBounds
     -- ^ How to deterine bounds .
   -> Scale a
 linearWithOptions
@@ -616,7 +591,6 @@ linearWithOptions
   { scaleMapping  = \vs v -> realToFrac v
   -- TODO resize LB to 0?
   , scalePlotBounds   = bounds
-  -- TODO more alternatives
   , scaleGuides   = guides
   -- , scaleGuides   = \vs -> [(0, "0"), (1, "1")]
   -- , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, toStr v)) $ sortNub vs
