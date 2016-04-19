@@ -90,7 +90,6 @@ module Lubeck.DV.New
   , color
   , strokeColor
   , fillColor
-  , lineStyle
   -- * Geometrical
   , size
   , shape
@@ -354,7 +353,7 @@ instance Contravariant Aesthetic where
 
 
 
-x, y, color, strokeColor, fillColor, lineStyle, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
+x, y, color, strokeColor, fillColor, size, shape, thickness, crossLineX, crossLineY :: HasScale a => Aesthetic a
 
 -- | Map values to the X axis of a plot.
 x = customAesthetic "x"
@@ -374,9 +373,6 @@ strokeColor = customAesthetic "strokeColor"
 
 -- | Map values to the color of a plot element.
 fillColor = customAesthetic "fillColor"
-
--- | Map values to the line style of a plot element.
-lineStyle = customAesthetic "lineStyle"
 
 -- | Map values to the size of a plot element.
 -- Used by 'pointG' and 'image'.
@@ -872,6 +868,10 @@ filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
     truish Nothing                  = False
     truish (Just (Normalized n, _)) = n > 0.5
 
+
+{-# DEPRECATED scatter "Use 'pointG" #-}
+scatter :: Geometry
+scatter = pointG
 
 -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
 
@@ -1386,7 +1386,7 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
         axesD = if not includeGuides then mempty else Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
 
         -- TODO derive names from aesthetic instead
-        axesNames = axesTitles plot :: [Str]
+        axesNames = axesTitles plot <> repeat mempty :: [Str]
         drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
           where
             xs = fmap (second Just) xs2
