@@ -36,15 +36,13 @@
 --    ** Whatever the value of this the data will be rendered "correctly" (if not "intelligibly")
 module Lubeck.DV.Drawing
   (
-    Str(..)
-
   -- * Drawing data
 
   -- $normalizeInputPoint
   -- $normalizeInputScalar
 
   -- ** Scatter
-  , scatterData
+    scatterData
   , scatterDataWithColor
   , scatterDataX
   , scatterDataY
