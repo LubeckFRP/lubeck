@@ -149,6 +149,17 @@ c_2_1 (V2 x y) (V1 z)   = V3 x y z
 c_1_2 (V1 x)   (V2 y z) = V3 x y z
 c_2_2 (V2 a b) (V2 c d) = V4 a b c d
 
+{-
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TODO
+
+This whole module should arguably be scrapped (or at least moved to *.Internal).
+
+The API will have to change a lot to accomodate more aesthetics (from the new top-level API)
+and I don't want to be burdened with keeping both APIs nice and in sync. For now
+concentrate on rewriting everything until the other wavy line below.
+-}
+
 
 
 -- | Draw data for a scatter plot.
@@ -322,6 +333,27 @@ barDataWithColor3 :: (Monad m) => [P4 Double] -> StyledT m Drawing
 -- barDataWithColor4 :: [R5] -> StyledT m Drawing
 [barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
 
+data LineData
+  = LineData
+  { linePos :: V2 Double
+  , lineScale :: Double
+  , lineColor :: Double
+  }
+
+data BarData
+  = BarData
+  { barHeight :: Double
+  , barColor :: Double
+  }
+{-
+  Full insternal spec of a bar graph:
+    - Stylings
+      stack/dodge (behavior when number of dimensions > 1)
+      transpose (transposed or not)
+    - Data
+      height
+      color
+-}
 
 barDataWithColorN  :: (Monad m) => [[P2 Double]] -> StyledT m Drawing
 barDataWithColorN pss = do
@@ -342,6 +374,13 @@ barDataWithColorN pss = do
     alignB = translate (V2 0 0.5)
     scaleRR = transform . scalingRR
     scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
+
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
+
 
 -- | Visualizes a discrete count.
 --
