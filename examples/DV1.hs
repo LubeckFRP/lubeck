@@ -34,6 +34,7 @@ import Control.Monad(forever)
 
 import Lubeck.FRP
 import Lubeck.DV.Drawing
+import Lubeck.DV.ColorPalette
 import Lubeck.DV.Styling
 import Lubeck.DV.SimpleNormalized
 import Lubeck.App (Html, runAppReactive)
@@ -126,8 +127,8 @@ main = do
   where
     plotStyle = id
       $ renderingRectangle  .~ V2 500 250
-      $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
-      $ barPlotBarColors    .~ cycle [Colors.purple `withOpacity` 0.5]
+      $ linePlotStrokeColor .~ singleColour (Colors.blue  `withOpacity` 0.5)
+      $ barPlotBarColors    .~ singleColour (Colors.purple `withOpacity` 0.5)
       $ mempty
 
     ps           = zipWith _p rand1 rand2

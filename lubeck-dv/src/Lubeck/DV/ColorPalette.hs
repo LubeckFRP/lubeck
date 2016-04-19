@@ -17,6 +17,7 @@ TODO
 -}
 module Lubeck.DV.ColorPalette
   ( Palette
+  , singleColor
   , singleColour
   , paletteFromList
   , getColorFromPalette
@@ -46,7 +47,7 @@ import Linear.V3
 import Linear.V4
 
 
-{-
+{-|
 Provides an infinite supply of colors. Conceptually a function from real numbers to colors.
 These are used to specify colors in stylings.
 
@@ -64,23 +65,32 @@ instance Show (Palette a) where
   -- TODO nicer
   show (Palette f) = "<<color palette>>"
 
-{-
+{-|
+Use the same color for everything. Not recommended if your
+-}
+singleColor :: AlphaColour a -> Palette a
+singleColor = Palette . pure
+
+{-|
 Use the same color for everything. Not recommended if your
 -}
 singleColour :: AlphaColour a -> Palette a
 singleColour = Palette . pure
 
-{-
+{-|
 Create a alette from a list (finite or infinite).
 -}
 paletteFromList :: [AlphaColour a] -> Palette a
 paletteFromList xs = Palette $ \n -> cycle xs !! floor n
 
-{-
+{-|
 Extract color from the given palette.
 -}
 getColorFromPalette :: Palette a -> Double -> AlphaColour a
 getColorFromPalette = getPalette
 
+{-|
+Default color for a given palette.
+-}
 paletteToColor :: Palette a -> AlphaColour a
 paletteToColor p = getColorFromPalette p 1

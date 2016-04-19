@@ -31,6 +31,7 @@ import Control.Monad(forever)
 import Lubeck.FRP
 import Lubeck.DV.Drawing
 import Lubeck.DV.Styling
+import Lubeck.DV.ColorPalette
 import Lubeck.DV.SimpleNormalized
 import Lubeck.App (Html, runAppReactive)
 import Lubeck.Forms
@@ -83,8 +84,8 @@ main = do
     greenCircle = scale 10 $ fillColorA (Colors.green `withOpacity` 0.4) circle
     plotStyle = id
       $ renderingRectangle  .~ V2 500 250
-      $ linePlotStrokeColor .~ (Colors.blue  `withOpacity` 0.5)
-      $ barPlotBarColors    .~ cycle [Colors.purple `withOpacity` 0.5]
+      $ linePlotStrokeColor .~ singleColor (Colors.blue  `withOpacity` 0.5)
+      $ barPlotBarColors    .~ singleColor (Colors.purple `withOpacity` 0.5)
       $ mempty
 
     ps           = zipWith _p rand1 rand2
