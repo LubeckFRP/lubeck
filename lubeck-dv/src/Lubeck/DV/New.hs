@@ -298,10 +298,15 @@ instance Monoid (Aesthetic a) where
   mappend (Aesthetic a1 a2 a3 a4 a5) (Aesthetic b1 b2 b3 b4 b5)
     = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)
 
--- | Make a custom aesthetic attribute.
+{- |
+Make a custom aesthetic attribute.
+-}
 customAesthetic :: HasScale a => Key -> Aesthetic a
 customAesthetic = customAesthetic' scale (const Nothing) (const Nothing)
 
+{- |
+Make a custom aesthetic attribute.
+-}
 customAesthetic' :: (a -> Scale a) -> (a -> Maybe Str) -> (a -> Maybe Drawing) -> Key -> Aesthetic a
 customAesthetic' scale toMStr toMDrawing n =
     Aesthetic mapping specialMapping genPlotBounds genGuides getScaleBaseName
@@ -1242,9 +1247,17 @@ plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
       where
         g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
 
+{-
+Create a visualization the given data set using the given aesthetics and geometries.
+-}
 plot :: [a] -> [Aesthetic a] -> Geometry -> Plot
 plot dat aess geom = Plot [createSinglePlot dat aess geom]
 
+{-
+Convert the given visualization to a 'Drawing'.
+
+The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.
+-}
 drawPlot :: Plot -> Styled Drawing
 drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
   where
