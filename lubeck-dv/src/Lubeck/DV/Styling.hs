@@ -258,13 +258,15 @@ instance Monoid Styling where
                                       , Colors.black `withOpacity` 1
                                       )
 
-    , _linePlotStrokeColor          = singleColour $ Colors.red `withOpacity` 0.6
+    , _linePlotStrokeColor          = paletteFromList $ fmap (`withOpacity` 0.6) [Colors.red, Colors.green, Colors.blue]
     , _linePlotStrokeWidth          = 2.5
-    , _linePlotStroke               = mempty
-    -- , _linePlotFillColor            = Colors.black `withOpacity` 0
-    , _linePlotFillColor            = singleColour $ Colors.red `withOpacity` 0.2
+    , _linePlotStroke               = defaultLineStyles
 
-    , _scatterPlotStrokeColor       = singleColour $ Colors.red `withOpacity` 0.6
+    -- TODO should arguably be renamed area/fill
+    -- , _linePlotFillColor            = Colors.black `withOpacity` 0
+    , _linePlotFillColor            = paletteFromList $ fmap (`withOpacity` 0.2) [Colors.red, Colors.green, Colors.blue]
+
+    , _scatterPlotStrokeColor       = paletteFromList $ fmap (`withOpacity` 0.6) [Colors.red, Colors.green, Colors.blue]
     , _scatterPlotStrokeWidth       = 1
     -- , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
     , _scatterPlotFillColor         = singleColour $ Colors.white `withOpacity` 1

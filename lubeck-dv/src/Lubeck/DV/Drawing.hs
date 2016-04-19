@@ -118,7 +118,7 @@ lineData (LineData colorN dashN) (p:ps) = do
                 . strokeColorA  (style^.linePlotStrokeColor.to (`getColorFromPalette` colorN))
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
-                . dash (style^.linePlotStroke. to (`extractLineStyle` dashN))
+                . dash          (style^.linePlotStroke. to (`extractLineStyle` dashN))
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
 data AreaData = AreaData
@@ -128,11 +128,11 @@ data AreaData = AreaData
 fillData :: (Monad m) => AreaData -> [P2 Double] -> StyledT m Drawing
 fillData _ []     = mempty
 fillData _ [_]    = mempty
-fillData _ (p:ps) = do
+fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
                 -- . strokeColorA  (style^.linePlotStrokeColor)
-                . fillColorA    (style^.linePlotFillColor.to paletteToColor)
+                . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
                 -- . strokeWidth   (style^.linePlotStrokeWidth)
   return $ translate (relOrigin (transformIntoRect style pProjX)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) $ addExtraPoints (p:ps)
 
@@ -154,9 +154,9 @@ areaData i ps = areaData' i $
 areaData' :: (Monad m) => AreaData -> [P2 Double] -> StyledT m Drawing
 areaData' _ []     = mempty
 areaData' _ [_]    = mempty
-areaData' _ (p:ps) = do
+areaData' (AreaData colorN) (p:ps) = do
   style <- ask
-  let lineStyle = fillColorA (style^.linePlotFillColor.to paletteToColor)
+  let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
 

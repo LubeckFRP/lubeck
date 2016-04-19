@@ -452,6 +452,39 @@ test24 = exportTestDrawing mempty mempty $ drawPlot $ mconcat $ zipWith putToget
       ]
 
 
+
+-- TODO test30 and test31 should be the same
+test30 = exportTestDrawing
+  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+  -- (renderingRectangle .~ V2 800 500 $ mempty)
+  mempty
+  mempty
+  $ drawPlot $ mconcat
+    [ plot dat [x<~to (!! 0), y<~to (!! 1),       ((2::Double) >$ color)] line
+    -- , plot dat [x<~to (!! 0), y<~to (!! 2),       ((1::Double) >$ color)] line
+    -- , plot dat [x<~to (!! 0), (0.3::Double) >$ y, ((2::Double) >$ color)] line
+    ]
+  where
+    dat = [ [x,cos x,sin x :: Double] | x <- [0,0.1..pi*2] ]
+
+test31 = exportTestDrawing
+  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+  -- (renderingRectangle .~ V2 800 500 $ mempty)
+  mempty
+  mempty
+  $ drawPlot $ mconcat
+    [ plot dat1 [x<~to (!! 0), y<~to (!! 1), ((0::Double) >$ color), ((0::Double) >$ lineType)] line
+    , plot dat2 [x<~to (!! 0), y<~to (!! 1), ((1::Double) >$ color), ((1::Double) >$ lineType)] line
+    , plot dat3 [x<~to (!! 0), y<~to (!! 1), ((2::Double) >$ color), ((2::Double) >$ lineType)] line
+    ]
+  where
+    dat1 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat2 = [ [x,sin x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
+
+
+
+
 testRad = exportTestDrawing
   (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
   (renderingRectangle .~ V2 800 500 $ mempty) $ drawPlot $ mconcat
@@ -473,6 +506,8 @@ testRad2 = exportTestDrawing
     ]
   where
     dat = [ [x,cos x,sin x :: Double] | x <- [0,0.1..pi*2] ]
+
+
 
 
 
