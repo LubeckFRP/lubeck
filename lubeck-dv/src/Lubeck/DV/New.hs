@@ -105,7 +105,6 @@ module Lubeck.DV.New
   -- * Coordinates
   -- $coordinates
 
-
   -- * Aesthetics
   , Key
   , Aesthetic
@@ -136,8 +135,6 @@ module Lubeck.DV.New
 
   -- ** Mapping aesthetics
   , (<~)
-
-
 
   -- * Top-level
   , Plot

@@ -2,9 +2,7 @@
 {-# LANGUAGE CPP #-}
 
 module Lubeck.DV
-  ( module Lubeck.DV.Drawing
-  , module Lubeck.DV.New
-  , module Lubeck.DV.SimpleNormalized
+  ( module Lubeck.DV.New
   , module Lubeck.DV.Styling
   )
 where
