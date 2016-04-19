@@ -916,7 +916,7 @@ line = Geometry tot [""]
     --   (Just (lt:_), _         ) -> baseL lt 0 ms
     --   (_,           _)          -> baseL 0 0 ms
 
-    tot m ms = case (lineTypes; m, colors ms) of
+    tot m ms = case (lineTypes m, colors ms) of
       (Just (lt:_), Nothing) -> baseL lt 0 ms
       (_,           Nothing) -> baseL 0 0 ms
       (Just (lt:_), Just xs) -> mconcat $ fmap (\color -> baseL lt color $ atColor color ms) xs
