@@ -23,10 +23,10 @@ import           Data.Bifunctor   (first)
 
 data Image = Image
  { id :: Int
- , img_url :: Text
+ , imgUrl :: Text
  , filename :: Text
- , img_src :: Int
- , bd_shared :: Bool
+ , imgSrc :: Int
+ , bdShared :: Bool
  } deriving (GHC.Generic, Show, Eq, Ord)
 
 instance ToJSON Image

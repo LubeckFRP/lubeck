@@ -111,6 +111,7 @@ library
                      , either
                      , boxes
                      , network-uri
+                     , uuid
   hs-source-dirs:      src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
@@ -277,6 +278,7 @@ executable bd-label-refiner
                      , aeson
                      , text
                      , containers
+                     , uuid
                      , ghcjs-base
   default-language:    Haskell2010
 
