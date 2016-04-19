@@ -66,22 +66,21 @@ module Lubeck.DV.Drawing
   , barDataWithColor2
   , barDataWithColor3
 
-  , circleData
-  , circleDataWithColor
-  , pieChartData
+  -- , circleData
+  -- , circleDataWithColor
+  -- , pieChartData
 
   -- | Ratios
   , ratioData
   , ratioDataWithColor
 
   -- ** Discrete data and counts
-  , discreteData
-  , discreteDataGroup
-  , intData
-  , discreteHeatMap
-
-  , treeMapGraph
-  , treeMapGraphWithColor
+  -- , discreteData
+  -- , discreteDataGroup
+  -- , intData
+  -- , discreteHeatMap
+  -- , treeMapGraph
+  -- , treeMapGraphWithColor
 
 
   -- * Drawing axes
@@ -100,7 +99,7 @@ module Lubeck.DV.Drawing
   , title
 
   -- * Drawing overlays/explanatories
-  , overlay
+  -- , overlay
 
   -- * Utility
   , plotRectangle
@@ -351,13 +350,6 @@ barDataWithColorN pss = do
 discreteData :: (Enum a, Monad m) => [(a, Int)] -> StyledT m Drawing
 discreteData = undefined
 
--- | Similar to 'discreteData', but groups and counts equal elements in the given list.
---
--- >>> discreteDataGroup [True,True,False,True]
---
-discreteDataGroup :: (Ord a, Monad m) => [a] -> StyledT m Drawing
-discreteDataGroup = undefined
-
 -- TODO calendar map, see Visualize this p70
 
 -- | Discrete 2D heat map
@@ -365,8 +357,8 @@ discreteDataGroup = undefined
 -- heatDiscrete2D :: (Enum a, Enum b) => (a -> b -> Double)
 
 -- | Visualizes an integer.
-intData :: (Monad m) => P1 Int -> StyledT m Drawing
-intData (P (V1 n)) = discreteDataGroup (replicate n ())
+-- intData :: (Monad m) => P1 Int -> StyledT m Drawing
+-- intData (P (V1 n)) = discreteDataGroup (replicate n ())
 
 -- | Visualizes a ratio. Similar to 'barData', but only shows a single element.
 --
@@ -412,20 +404,20 @@ plotRectangle = do
   where
     scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
 
--- | Draw a circle size plot.
-circleData :: (Monad m) => [P1 Double] -> StyledT m Drawing
-circleData = undefined
--- TODO use a ratio/percantage type wrapper
--- TODO use area not radius
-
--- | Draw a pie chart.
-pieChartData :: (Monad m) => [P1 Double] -> StyledT m Drawing
-pieChartData = undefined
--- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
-
--- | Draw
-circleDataWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
-circleDataWithColor = undefined
+-- -- | Draw a circle size plot.
+-- circleData :: (Monad m) => [P1 Double] -> StyledT m Drawing
+-- circleData = undefined
+-- -- TODO use a ratio/percantage type wrapper
+-- -- TODO use area not radius
+--
+-- -- | Draw a pie chart.
+-- pieChartData :: (Monad m) => [P1 Double] -> StyledT m Drawing
+-- pieChartData = undefined
+-- -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
+--
+-- -- | Draw
+-- circleDataWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
+-- circleDataWithColor = undefined
 
 -- circleDataWithColor = do
 --   s <- getStyling
@@ -447,8 +439,8 @@ circleDataWithColor = undefined
 -- sizedData :: [R] -> Styled Drawing -> Styled Drawing
 
 -- | Draw a tree map.
-treeMapGraph :: (Monad m) => [P1 Double] -> StyledT m Drawing
-treeMapGraph = undefined
+-- treeMapGraph :: (Monad m) => [P1 Double] -> StyledT m Drawing
+-- treeMapGraph = undefined
 -- TODO use a ratio/percantage type wrapper
 
 
@@ -466,14 +458,14 @@ See also "Visualize this, p 157"
 
 
 -- | Like 'treeMapGraph', mapping the last dimension to colour.
-treeMapGraphWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
-treeMapGraphWithColor = undefined
+-- treeMapGraphWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
+-- treeMapGraphWithColor = undefined
 
 -- | Draw a discrete heat map.
 --
 -- Example http://bokeh.pydata.org/en/latest/docs/gallery/les_mis.html
-discreteHeatMap :: (Monad m) => [a] -> [b] -> (a -> b -> Double) -> StyledT m Drawing
-discreteHeatMap = undefined
+-- discreteHeatMap :: (Monad m) => [a] -> [b] -> (a -> b -> Double) -> StyledT m Drawing
+-- discreteHeatMap = undefined
 -- TODO use a ratio/percantage type wrapper
 
 
@@ -505,10 +497,6 @@ scaleLegend = undefined
 -- | Draw a title.
 title :: Str -> StyledT m Drawing
 title = undefined
-
--- | Draw a number of overlays which supports showing/hiding based on a current "focus".
-overlay :: Map p Drawing -> m [p] -> StyledT m Drawing
-overlay = undefined
 
 
 -- TODO alternating tick size (i.e. every 50 year, 100 year etc)
