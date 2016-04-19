@@ -7,14 +7,14 @@ module BD.Data.SessionLR where
 import           Control.Applicative
 
 import           Data.Aeson
-import qualified Data.Aeson.Types
+import           Data.Aeson.Types
 import           Data.Data
 import           Data.Monoid
-import           Data.JSString    (JSString, pack)
-import           Data.String      (fromString)
+import           Data.JSString    (JSString)
 import           Data.Time.Clock  (UTCTime)
 import           Data.Bifunctor   (first)
-import           Data.Text        (Text, unpack)
+import           Data.Text        (Text, unpack, pack)
+import           Data.UUID        (UUID, fromString)
 import           Prelude hiding   (id)
 
 import qualified GHC.Generics     as GHC
@@ -26,56 +26,63 @@ import           BD.Types hiding  (Text)
 import qualified BD.Data.ImageLR as I
 import qualified BD.Data.ImageLabel as IL
 
-data Session = Session
-  { id :: Int
-  , start_time :: UTCTime 
-  , page_data :: SPageData
-  } deriving (GHC.Generic, Show, Eq)
+instance ToJSON UUID where
+  toJSON = String . pack . show
 
-instance FromJSON Session
+instance FromJSON UUID where
+  parseJSON json@(String t) = 
+    let uuidString = unpack t
+    in case fromString uuidString of
+         Just uuid -> pure uuid 
+         Nothing   -> typeMismatch "UUID" json 
+  parseJSON unknown = typeMismatch "UUID" unknown
 
 data SPageData = SPageData 
   { time_req :: UTCTime
   , label :: IL.Label
   , images :: [I.Image]
-  } deriving (GHC.Generic, Show, Eq)
-
+  } deriving (GHC.Generic, Eq)
 instance FromJSON SPageData
 
-data SessionPage = SessionPage
-  { time_sent :: UTCTime
-  , page_number :: Int
-  , session_id :: Int
-  , label_id :: Int 
+data CPageData = CPageData
+  { session_page :: SessionPage
   , session_images :: [SessionImage]
-  } deriving (GHC.Generic, Show, Eq)
+  } deriving (GHC.Generic, Eq)
+instance ToJSON CPageData
 
+data SessionPage = SessionPage
+  { pageId :: Maybe Int -- Nothing by Default 
+  , timeSent :: UTCTime
+  , pageNumber :: Int
+  , sessionId :: UUID 
+  , labelId :: Int 
+  } deriving (GHC.Generic, Eq)
 instance ToJSON SessionPage
 
 data SessionImage = SessionImage
-  { image_id :: Int
-  , time_selected :: Maybe UTCTime
-  , num_selected :: Maybe Int
-  } deriving (GHC.Generic, Show, Eq) 
-
+  { sessionPageId :: Maybe Int -- Nothing by Default 
+  , imageId :: Int
+  , timeSelected :: Maybe UTCTime
+  , numSelected :: Maybe Int
+  } deriving (GHC.Generic, Eq) 
 instance ToJSON SessionImage
 
-initializeSession :: API -> Int -> IO (Either AppError Session)
+initializeSession :: API -> Int -> IO (Either AppError (UUID, SPageData))
 initializeSession api n =
   first ApiError <$> getAPIEither api ("session/init/" <> showJS n)
 
-initializeSession' :: API -> Int -> IO Session
+initializeSession' :: API -> Int -> IO (UUID, SPageData) 
 initializeSession' api n =
   unsafeGetAPI api ("session/init/" <> showJS n)
 
 getNewPage :: API -> Int -> IO (Either AppError SPageData)
 getNewPage api n =
-  first ApiError <$> getAPIEither api ("session/getpage/" <> showJS n)
+  first ApiError <$> getAPIEither api ("session/page/" <> showJS n)
 
 getNewPage' :: API -> Int -> IO SPageData 
 getNewPage' api n =
-  unsafeGetAPI api ("session/getpage/" <> showJS n)
+  unsafeGetAPI api ("session/page/" <> showJS n)
 
-postSessionPage :: API -> SessionPage -> IO (Either AppError Ok)
-postSessionPage api =
+postCPageData :: API -> CPageData -> IO (Either AppError Ok)
+postCPageData api =
   fmap (first ApiError) . postAPIEither api "session/submit"

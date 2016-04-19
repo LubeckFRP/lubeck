@@ -88,7 +88,7 @@ showJS = fromString . show
 
 mkAPIpath api path = do
   g <- newStdGen
-  let salt = fromString $ Prelude.take 20 $ (randomRs ('a', 'z') g)
+  let salt = fromString . Prelude.take 20 $ randomRs ('a', 'z') g
   return $ canonicalUrl <> querySep <> salt
 
   where
@@ -184,7 +184,7 @@ postAPI api path value = do
     request requestURI body = Request { reqMethod          = POST
                                       , reqURI             = requestURI
                                       , reqLogin           = Nothing
-                                      , reqHeaders         = []
+                                      , reqHeaders         = headers api
                                       , reqWithCredentials = xhrWithCredentials
                                       , reqData            = StringData body
                                       }

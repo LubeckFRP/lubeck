@@ -39,6 +39,7 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import           Data.List
 import           Data.Ord                       (comparing)
+import           Data.UUID                      (UUID)
 
 import           BD.Api
 import           BD.Types
@@ -53,13 +54,17 @@ import           BD.Data.SessionLR
 type ImageStates = Map.Map I.Image UTCTime
 
 data SessionState = SessionState
-  { images :: [I.Image]
+  { sessionId :: UUID 
+  , images :: [I.Image]
   , imageStates :: ImageStates
   , sessionPage :: Int
   , sessionLabel :: Label
   , serverTime :: UTCTime
   , clientTime :: UTCTime
   }
+
+lrAPI :: API
+lrAPI = testAPI 
 
 render :: Html -> Html -> Html -> Html
 render prompt imageGrid submitBtn = E.div
@@ -75,7 +80,7 @@ chunksOf n xs = front : chunksOf n back
     (front,back) = splitAt n xs
 
 imgGridW :: Widget' SessionState
-imgGridW actionSink s@(SessionState imgs imgStates _ _ _ _) =
+imgGridW actionSink s@(SessionState _ imgs imgStates _ _ _ _) =
     E.div [ A.class_ "row" ] $
       map (\irow -> imgRow irow actionSink s) $ chunksOf 3 imgs
   where
@@ -88,7 +93,7 @@ imgGridW actionSink s@(SessionState imgs imgStates _ _ _ _) =
     imgCell actionSink img =
         E.div [ A.class_ "col-md-4"]
           [ E.a (A.class_ "thumbnail" : clickProp : highlightProp)
-              [ E.img [ A.src (I.img_url img) , A.class_ "img-responsive center-block" ]
+              [ E.img [ A.src (I.imgUrl img) , A.class_ "img-responsive center-block" ]
                   []
               ]
           ]
@@ -99,7 +104,7 @@ imgGridW actionSink s@(SessionState imgs imgStates _ _ _ _) =
         highlightProp = [A.style "outline: 4px solid black;" | img `Map.member` imgStates]
 
 toggleImgState :: I.Image -> UTCTime -> SessionState -> SessionState
-toggleImgState img t s@(SessionState imgs imgStates _ _ _ _)
+toggleImgState img t s@(SessionState _ imgs imgStates _ _ _ _)
     | img `Map.member` imgStates = s { imageStates = Map.delete img imgStates }
     | otherwise = s { imageStates = Map.insert img t imgStates }
 
@@ -119,14 +124,16 @@ submitBtnW sink _ =
         [ buttonWidget "Submit" sink () ]
     ]
 
-pageDataToSessState :: Signal Int -> SPageData -> IO SessionState
-pageDataToSessState counterS (SPageData timeReq label imgs) = do
+pageDataToSessState :: UUID -> Signal Int -> SPageData -> IO SessionState
+pageDataToSessState sid counterS (SPageData timeReq label imgs) = do
   pageNum <- pollBehavior (current counterS)
-  SessionState imgs Map.empty pageNum label timeReq <$> getCurrentTime
+  SessionState sid imgs Map.empty pageNum label timeReq <$> getCurrentTime
 
-makeSessionPage :: Int -> SessionState -> SessionPage  
-makeSessionPage sid (SessionState imgs imgStates pageNum label stime ctime) = 
-    SessionPage stime pageNum sid (IL.id label) $ map makeSessionImage imgs
+makeCPageData :: SessionState -> CPageData 
+makeCPageData (SessionState sid imgs imgStates pageNum label stime ctime) = 
+    let sp = SessionPage Nothing stime pageNum sid (IL.id label)
+        simgs = map makeSessionImage imgs
+    in CPageData sp simgs 
   where
     selectedAsList = sortBy (comparing snd) $ Map.toList imgStates  
 
@@ -137,14 +144,14 @@ makeSessionPage sid (SessionState imgs imgStates pageNum label stime ctime) =
     makeSessionImage :: I.Image -> SessionImage
     makeSessionImage img =
       case lookup img selectedAsList of
-        Nothing -> SessionImage (I.id img) Nothing Nothing
+        Nothing -> SessionImage Nothing (I.id img) Nothing Nothing
         Just t -> let Just idx = elemIndex (img,t) selectedAsList
-                  in SessionImage (I.id img) (Just t) (Just idx)
+                  in SessionImage Nothing (I.id img) (Just t) (Just idx)
 
-sendSessionPage :: Int -> Behavior SessionState -> IO (Either AppError Ok)
-sendSessionPage sid sessionStateB = do 
+sendSessionPage :: Behavior SessionState -> IO (Either AppError Ok)
+sendSessionPage sessionStateB = do 
   state <- pollBehavior sessionStateB
-  postSessionPage testAPI $ makeSessionPage sid state 
+  postCPageData lrAPI $ makeCPageData state 
 
 main = do
   let nImgsPerPage = 9
@@ -153,16 +160,15 @@ main = do
   (notifView, notifSink, _) <- notificationsComponent []  
 
   -- | Initialize app
-  initSession <- initializeSession' testAPI nImgsPerPage
-  let Session sid start sp@(SPageData timeReq initLabel initImgs) = initSession
+  (sid, sp@(SPageData timeReq initLabel initImgs)) <- initializeSession' lrAPI nImgsPerPage
   (submitS, submitE) <- componentR () submitBtnW
   counterS <- accumS 0 (fmap (const (+1)) submitE)
-  initState <- pageDataToSessState counterS sp
+  initState <- pageDataToSessState sid counterS sp
   
   -- | Get data from server and display as SessionState
   newPageE <- withErrorIO notifSink $ 
-    withBusy busySink (const $ getNewPage testAPI nImgsPerPage) <$> submitE
-  newSessionStateE <- reactimateIOAsync $ fmap (pageDataToSessState counterS) newPageE
+    withBusy busySink (const $ getNewPage lrAPI nImgsPerPage) <$> submitE
+  newSessionStateE <- reactimateIOAsync $ fmap (pageDataToSessState sid counterS) newPageE
   promptS <- componentListen promptW <$> stepperS initLabel (fmap label newPageE)
   
   (imgGridS,imgGridE) <- componentEvent initState imgGridW newSessionStateE
@@ -170,6 +176,6 @@ main = do
 
   -- | on submit, send session data to server
   withErrorIO notifSink $
-    withBusy busySink (const $ sendSessionPage sid sessionStateB) <$> submitE  
+    withBusy busySink (const $ sendSessionPage sessionStateB) <$> submitE  
 
   runAppReactive $ render <$> promptS <*> imgGridS <*> submitS
