@@ -134,7 +134,7 @@ data Styling = Styling
   -- data has been mapped and normalized and thus is already in the UHQ).
   --
   --
-  , _zoom               :: V2 Double
+  , _zoom                             :: V2 Double
 
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight
@@ -167,6 +167,8 @@ data Styling = Styling
   -- Percentage of horizontal dim taken up by plots, in [0..1] (default 1)
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
   , _barPlotSpaceUsed                 :: Double
+  -- Is this bar plot transposed or not?
+  -- , _barPlotTransposed                :: Bool
 
   , _ratioPlotBackgroundColor         :: AlphaColour Double
   , _ratioPlotForegroundColor         :: AlphaColour Double
