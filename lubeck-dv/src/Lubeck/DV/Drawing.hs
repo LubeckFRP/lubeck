@@ -150,11 +150,14 @@ relOrigin p = p .-. 0
 
 -- TODO more general pattern here
 -- Capture with TFs?
-c_1_2 :: V1 n -> V2 n -> V3 n
-c_1_1 (V1 x)   (V1 y)   = V2 x y
-c_2_1 (V2 x y) (V1 z)   = V3 x y z
-c_1_2 (V1 x)   (V2 y z) = V3 x y z
-c_2_2 (V2 a b) (V2 c d) = V4 a b c d
+addV1_2 :: V1 n -> V2 n -> V3 n
+addV1_1 (V1 x)   (V1 y)   = V2 x y
+addV2_1 (V2 x y) (V1 z)   = V3 x y z
+addV1_2 (V1 x)   (V2 y z) = V3 x y z
+addV2_2 (V2 a b) (V2 c d) = V4 a b c d
+
+addP1_2 :: P1 n -> P2 n -> P3 n
+addP1_2 (P a) (P b) = P $ addV1_2 a b
 
 {-
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -187,6 +190,8 @@ scatterData ps = do
 scatterDataWithColor :: (Monad m) => [P3 Double] -> StyledT m Drawing
 scatterDataWithColor ps = undefined
 
+scatterDataWithFixedColor :: Monad m => Double -> [P2 Double] -> StyledT m Drawing
+scatterDataWithFixedColor c ps = scatterDataWithColor [ addP1_2 (P $ V1 c) p | p <- ps ]
 
 
 -- | Draw data for a scatter plot, ignoring Y values.
@@ -232,6 +237,9 @@ lineDataWithColor []     = mempty
 lineDataWithColor [_]    = mempty
 lineDataWithColor _ = error "TODO"
 
+lineDataWithFixedColor :: Monad m => Double -> [P2 Double] -> StyledT m Drawing
+lineDataWithFixedColor c ps = lineDataWithColor [ addP1_2 (P $ V1 c) p | p <- ps ]
+
 
 fillData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 fillData []     = mempty
@@ -264,9 +272,13 @@ areaData' []     = mempty
 areaData' [_]    = mempty
 areaData' (p:ps) = do
   style <- ask
-  let lineStyle = id
-                . fillColorA    (style^.linePlotFillColor.to paletteToColor)
+  let lineStyle = fillColorA (style^.linePlotFillColor.to paletteToColor)
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
+
+
+
+
+
 
 -- | Draw a step chart.
 --
