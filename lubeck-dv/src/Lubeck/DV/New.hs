@@ -90,12 +90,15 @@ module Lubeck.DV.New
   , Geometry
   , pointG
   , line
-  , fill
-  , bars
   , area
   , area2
+  -- interval
+  , fill
+  , bars
   , xIntercept
   , yIntercept
+  -- path
+  -- schema
   , labelG
   , imageG
 
@@ -741,8 +744,6 @@ withScale g s = to $ \x -> flip Scaled s $ x^.g
 
 infixl 4 `withScale`
 
--- TOP-LEVEL
-
 -- Very similar to (>$$<)
 
 {-|
@@ -767,6 +768,40 @@ x 'contramap' getName
 (<~) a g = contramap (^.g) a
 
 infixl 3 <~
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -801,6 +836,13 @@ Used to represent scaled data.
 -}
 type Coord = Normalized Double
 
+{-|
+Provides a way to draw mapped and scaled data.
+
+You can think of scaled and mapped data matrix of numbers and special values
+(images, labels etc), where each rows correspond to a tuple in the original
+dataset and each column to an aesthetic attribute such as size, position, color etc.
+-}
 data Geometry = Geometry
   { geomMapping         :: [Map Key (Coord, Maybe Special)] -> Styled Drawing
   , geomBaseName        :: [String]
@@ -811,64 +853,10 @@ instance Monoid Geometry where
   mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
 
 
--- TODO use GG/ggplot terminology vs Wilkinson
--- Wilkinson: Point, Line, Area, Interval, Path, Schema ("box"), Contour
-
--- TODO conditional plots (i.e. only show cross line if some "aesthetic" is set)
-
--- TODO interval/area
-
 -- TODO stacking/dodging/jittering
 
 -- TODO how do we know what aesthetics a certain plot listens to?
 -- Is this all dynamic or is types involved?
-
--- TODO ablines, i.e. intercepting lines
--- http://docs.ggplot2.org/current/geom_abline.html
-
-
-{-
-TODO
-GGplot geoms with their Wilkinson equivalents
-
-geom_blank
-  mempty
-  Wilkinson: Point
-geom_point
-  Wilkinson: Line, Path
-geom_segment/geom_curve
-  Wilkinson: Line, Path
-geom_path/geom_line/geom_step
-  Wilkinson: Path
-geom_bar
-  Wilkinson: Point, Interval
-  geom_boxplot(stat_boxplot)
-  Wilkinson: Schema
-
-
-geom_abline(geom_hline, geom_vline)
-geom_bin2d(stat_bin2d, stat_bin_2d)
-geom_contour(stat_contour)
-geom_count(stat_sum)
-geom_crossbar(geom_errorbar, geom_linerange, geom_pointrange)
-geom_density(stat_density)
-geom_density_2d(geom_density2d, stat_density2d, stat_density_2d)
-geom_dotplot
-geom_errorbarh
-geom_freqpoly(geom_histogram, stat_bin)
-geom_hex(stat_bin_hex, stat_binhex)
-geom_jitter
-geom_label(geom_text)
-geom_map
-geom_polygon
-geom_quantile(stat_quantile)
-geom_raster(geom_rect, geom_tile)
-geom_ribbon(geom_area)
-geom_rug
-geom_smooth(stat_smooth)
-geom_violin(stat_ydensity)
--}
-
 
 {-| Render a geometry iff a key is present and has a (scaled) value @> 0.5@.
 
@@ -986,14 +974,6 @@ area2 = Geometry tot [""]
         ys2 = fmap (getNormalized . (! "y")) highMappings
         ps2 = zipWith (\x y -> P (V2 x y)) xs2 ys2
 
-        -- xs  = fmap (getNormalized . (! "x")) lowMappings -- assume xs in lowMappings are the same as in highMappings
-        -- ys1 = fmap (getNormalized . (! "y")) lowMappings
-        -- ys2 = fmap (getNormalized . (! "y")) highMappings
-        -- ps = zipWith3 (\x y1 y2 -> P (V3 x y1 y2)) xs ys1 ys2
-
-    -- baseL _ ms = Lubeck.DV.Drawing.areaData $ fmap (\m -> P $ V3
-      -- (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
-
 
 -- \ Draw a line intercepting X values, iff crossLineY is present and non-zero.
 xIntercept :: Geometry
@@ -1084,26 +1064,44 @@ instance Show a => Show (Normalized a) where
 normalize :: Maybe (Double, Double) -> Double -> Coord
 normalize Nothing        x = Normalized x
 normalize (Just (lb,ub)) x
-  -- FIXME div by zero
+  | abs (ub - lb) < 0.00001      = Normalized x
   | isNaN ((x - lb) / (ub - lb)) = Normalized x
   | otherwise                    = Normalized $ (x - lb) / (ub - lb)
-{-
-(x - lb) / (ub - lb)
-
-
--}
-
-
 
 
 (!) :: (Num b, Ord k) => Map k (b, a) -> k -> b
 m ! k =  maybe 0 id $ fmap fst $ Data.Map.lookup k m
 
-(?) :: (Monoid b, Ord k) => Map k b -> k -> b
-m ? k = maybe mempty id $ Data.Map.lookup k m
+-- (?) :: (Monoid b, Ord k) => Map k b -> k -> b
+-- m ? k = maybe mempty id $ Data.Map.lookup k m
 
 (?!) :: (Ord k) => Map k b -> k -> Maybe b
 m ?! k = Data.Map.lookup k m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1130,6 +1128,9 @@ visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
       axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
   in mconcat [dataD, axesD, guidesD]
   where
+    (?) :: (Monoid b, Ord k) => Map k b -> k -> b
+    m ? k = maybe mempty id $ Data.Map.lookup k m
+
     axesNames = axesNames1 ++ repeat ""                              :: [Str]
     drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
       where
@@ -1276,6 +1277,9 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
     drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled Drawing
     drawPlot1 bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
       where
+        (?) :: (Monoid b, Ord k) => Map k b -> k -> b
+        m ? k = maybe mempty id $ Data.Map.lookup k m
+
         dataD :: Styled Drawing
         dataD = geomMapping (geometry plot) $ mappedAndScaledDataWithSpecial (Just bounds) plot
 
