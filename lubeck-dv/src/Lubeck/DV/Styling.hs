@@ -71,9 +71,6 @@ module Lubeck.DV.Styling
   , backgroundTickStrokeColorX
   , backgroundTickStrokeColorY
 
-  , heatMapColour1
-  , heatMapColour2
-
   -- ** Running a style
   -- *** Styled monad
   , Styled
@@ -119,6 +116,12 @@ import Linear.V4
 import Lubeck.Str
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
+import Lubeck.DV.ColorPalette
+  ( Palette
+  , singleColour
+  , paletteFromList
+  , getColorFromPalette
+  )
 
 data VerticalHorizontal = Vertical | Horizontal
 -- How to display a bar plot with more than two dimensions.§
@@ -145,21 +148,21 @@ data Styling = Styling
   , _axisStrokeColor                  :: (AlphaColour Double, AlphaColour Double)
 
   -- Line plots
-  , _linePlotStrokeColor              :: AlphaColour Double
+  , _linePlotStrokeColor              :: Palette Double
   , _linePlotStrokeWidth              :: Double
   , _linePlotStrokeType               :: () -- TODO
-  , _linePlotFillColor                :: AlphaColour Double
+  , _linePlotFillColor                :: Palette Double
 
   -- Scatter plots
-  , _scatterPlotStrokeColor           :: AlphaColour Double
+  , _scatterPlotStrokeColor           :: Palette Double
   , _scatterPlotStrokeWidth           :: Double
-  , _scatterPlotFillColor             :: AlphaColour Double
+  , _scatterPlotFillColor             :: Palette Double
   , _scatterPlotSize                  :: Double
   , _scatterPlotShape                 :: ()
 
   -- Bar plots
   -- Infinite list of bar colours:
-  , _barPlotBarColors                 :: [AlphaColour Double]
+  , _barPlotBarColors                 :: Palette Double
   , _barPlotWidth                     :: V2 Double
   , _barPlotUngroupedOffset           :: V2 Double
   , _barPlotGroupedOffset             :: V2 Double
@@ -170,8 +173,8 @@ data Styling = Styling
   -- Is this bar plot transposed or not?
   -- , _barPlotTransposed                :: Bool
 
-  , _ratioPlotBackgroundColor         :: AlphaColour Double
-  , _ratioPlotForegroundColor         :: AlphaColour Double
+  , _ratioPlotBackgroundColor         :: Palette Double
+  , _ratioPlotForegroundColor         :: Palette Double
 
   -- Color allocator
     -- TODO idea: to allocate colors to categories/dimensions
@@ -226,11 +229,6 @@ data Styling = Styling
   , _backgroundTickStrokeColorY       :: AlphaColour Double
   , _backgroundTickStrokeWidthX       :: Double
   , _backgroundTickStrokeWidthY       :: Double
-
-  -- Heat maps and related
-  , _heatMapColour1                   :: AlphaColour Double
-  , _heatMapColour2                   :: AlphaColour Double
-
   }
   deriving (Show)
 
@@ -249,22 +247,24 @@ instance Monoid Styling where
     , _axisTextFontSizePx           = 12
 
     , _axisStrokeWidth              = (1.5, 1.5)
-    , _axisStrokeColor              = (Colors.black `withOpacity` 1, Colors.black `withOpacity` 1)
+    , _axisStrokeColor              = ( Colors.black `withOpacity` 1
+                                      , Colors.black `withOpacity` 1
+                                      )
 
-    , _linePlotStrokeColor          = Colors.red `withOpacity` 0.6
+    , _linePlotStrokeColor          = singleColour $ Colors.red `withOpacity` 0.6
     , _linePlotStrokeWidth          = 2.5
     , _linePlotStrokeType           = mempty
     -- , _linePlotFillColor            = Colors.black `withOpacity` 0
-    , _linePlotFillColor            = Colors.red `withOpacity` 0.2
+    , _linePlotFillColor            = singleColour $ Colors.red `withOpacity` 0.2
 
-    , _scatterPlotStrokeColor       = Colors.red `withOpacity` 0.6
+    , _scatterPlotStrokeColor       = singleColour $ Colors.red `withOpacity` 0.6
     , _scatterPlotStrokeWidth       = 1
     -- , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
-    , _scatterPlotFillColor         = Colors.white `withOpacity` 1
+    , _scatterPlotFillColor         = singleColour $ Colors.white `withOpacity` 1
     , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
     , _scatterPlotShape             = mempty
 
-    , _barPlotBarColors             = fmap (`withOpacity` 0.6) $
+    , _barPlotBarColors             = paletteFromList $ fmap (`withOpacity` 0.6) $
                                       [ Colors.red
                                       , Colors.green
                                       , Colors.blue
@@ -278,8 +278,8 @@ instance Monoid Styling where
     , _barPlotStackedOffset         = V2 0   0.1
     , _barPlotSpaceUsed             = 9/10
 
-    , _ratioPlotBackgroundColor     = Colors.whitesmoke `withOpacity` 0.9
-    , _ratioPlotForegroundColor     = Colors.red        `withOpacity` 0.6
+    , _ratioPlotBackgroundColor     = singleColour $ Colors.whitesmoke `withOpacity` 0.9
+    , _ratioPlotForegroundColor     = singleColour $ Colors.red        `withOpacity` 0.6
 
     , _tickTextTurn                 = (0/8, 0)
     , _tickTextAnchor               = (TextAnchorMiddle, TextAnchorEnd)
@@ -305,9 +305,6 @@ instance Monoid Styling where
     , _backgroundTickStrokeColorY   = Colors.lightgrey  `withOpacity` 1
     , _backgroundTickStrokeWidthX   = 1
     , _backgroundTickStrokeWidthY   = 1
-
-    , _heatMapColour1               = Colors.red        `withOpacity` 1
-    , _heatMapColour2               = Colors.purple     `withOpacity` 1
     }
   mappend = const
 

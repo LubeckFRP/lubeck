@@ -20,6 +20,7 @@ library
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling
+                     , Lubeck.DV.ColorPalette
 
                      , Lubeck.App
                      , Lubeck.Util

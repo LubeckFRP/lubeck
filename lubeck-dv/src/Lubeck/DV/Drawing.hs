@@ -132,6 +132,13 @@ import Lubeck.Str
 import Lubeck.Drawing
 import Lubeck.DV.Styling
 import qualified Lubeck.Drawing
+import Lubeck.DV.ColorPalette
+  ( Palette
+  , singleColour
+  , paletteFromList
+  , getColorFromPalette
+  , paletteToColor
+  )
 
 -- Util
 transformIntoRect :: Styling -> P2 Double -> P2 Double
@@ -171,9 +178,9 @@ scatterData :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterData ps = do
   style <- ask
   let base  = id
-            $ fillColorA (style^.scatterPlotFillColor)
+            $ fillColorA (style^.scatterPlotFillColor.to paletteToColor)
             $ strokeWidth (style^.scatterPlotStrokeWidth)
-            $ strokeColorA (style^.scatterPlotStrokeColor)
+            $ strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor)
             $ scale (style^.scatterPlotSize) circle
   return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ fmap (transformIntoRect style) ps
 
@@ -191,7 +198,7 @@ scatterDataWithColor ps = undefined
 scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
 scatterDataX ps = do
   style <- ask
-  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
+  let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ fmap (transformIntoRect style) ps
 
 -- | Draw data for a scatter plot ignoring X values.
@@ -203,7 +210,7 @@ scatterDataX ps = do
 scatterDataY :: (Monad m) => [P2 Double] ->  StyledT m Drawing
 scatterDataY ps = do
   style <- ask
-  let base = strokeColorA (style^.scatterPlotStrokeColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
+  let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
   return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) $ fmap (transformIntoRect style) ps
 
 -- | Draw data for a line plot.
@@ -215,7 +222,7 @@ lineData [_]    = mempty
 lineData (p:ps) = do
   style <- ask
   let lineStyle = id
-                . strokeColorA  (style^.linePlotStrokeColor)
+                . strokeColorA  (style^.linePlotStrokeColor.to paletteToColor)
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
@@ -233,7 +240,7 @@ fillData (p:ps) = do
   style <- ask
   let lineStyle = id
                 -- . strokeColorA  (style^.linePlotStrokeColor)
-                . fillColorA    (style^.linePlotFillColor)
+                . fillColorA    (style^.linePlotFillColor.to paletteToColor)
                 -- . strokeWidth   (style^.linePlotStrokeWidth)
   return $ translate (relOrigin (transformIntoRect style pProjX)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) $ addExtraPoints (p:ps)
 
@@ -258,7 +265,7 @@ areaData' [_]    = mempty
 areaData' (p:ps) = do
   style <- ask
   let lineStyle = id
-                . fillColorA    (style^.linePlotFillColor)
+                . fillColorA    (style^.linePlotFillColor.to paletteToColor)
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
 -- | Draw a step chart.
@@ -290,7 +297,7 @@ barData ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  let base = alignB $ fillColorA ((style^.barPlotBarColors) !! 0) $ square
+  let base = alignB $ fillColorA (style^.barPlotBarColors.to paletteToColor) $ square
   return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\(P (V1 v)) -> scaleX barWidth $ scaleY v $ base) ps
   where
@@ -367,7 +374,7 @@ barDataWithColorN pss = do
   -- The color we recieve is *always* scaled to be in [0..1]
   -- Do we interpolate this over the palette, or is there a better way?
   --  Do we need to generalize geoms so that they also have access to *unscaled data*?
-  let base = alignB $ fillColorA ((style^.barPlotBarColors) !! 0) $ square
+  let base = alignB $ fillColorA (style^.barPlotBarColors.to paletteToColor) $ square
   return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\(P (V2 v color)) -> scaleX barWidth $ scaleY v $ base) ps
   where
@@ -406,8 +413,8 @@ discreteData = undefined
 ratioData :: (Monad m) => P1 Double -> StyledT m Drawing
 ratioData (P (V1 v)) = do
   style <- ask
-  let fg = style^.ratioPlotForegroundColor
-  let bg = style^.ratioPlotBackgroundColor
+  let fg = style^.ratioPlotForegroundColor.to paletteToColor
+  let bg = style^.ratioPlotBackgroundColor.to paletteToColor
   return $ transform (scalingRR style) (fillColorA fg (scaleY v (alignBL square)) <> fillColorA bg (alignBL square))
   where
     -- TODO move
@@ -421,9 +428,12 @@ ratioData (P (V1 v)) = do
 ratioDataWithColor :: (Monad m) => P2 Double -> StyledT m Drawing
 ratioDataWithColor (P (V2 v1 v2)) = do
   style <- ask
-  let bg  = style^.ratioPlotBackgroundColor
-  let fg1 = style^.heatMapColour1
-  let fg2 = style^.heatMapColour2
+  let bg  = style^.ratioPlotBackgroundColor. to paletteToColor
+  -- let fg1 = style^.heatMapColour1
+  -- let fg2 = style^.heatMapColour2
+  -- TODO new styling here
+  let fg1 = style^.ratioPlotForegroundColor.to paletteToColor
+  let fg2 = style^.ratioPlotBackgroundColor.to paletteToColor
   let fg  = blend v2 fg1 fg2
   return $ transform (scalingRR style) (fillColorA fg (scaleY v1 (alignBL square)) <> fillColorA bg (alignBL square))
   where

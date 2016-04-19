@@ -15,6 +15,7 @@ library
                      , Lubeck.DV.Drawing
                      , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling
+                     , Lubeck.DV.ColorPalette
   build-depends:       base
                      , base-prelude
                      , lubeck-core
