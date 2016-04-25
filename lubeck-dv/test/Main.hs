@@ -478,8 +478,8 @@ test31 = exportTestDrawing
     , plot dat3 [x<~to (!! 0), y<~to (!! 1), ((2::Double) >$ color), ((2::Double) >$ lineType)] line
     ]
   where
-    dat1 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
-    dat2 = [ [x,sin x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat1 = [ [x,sin x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
 

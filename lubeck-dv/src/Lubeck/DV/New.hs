@@ -864,8 +864,7 @@ instance Monoid Geometry where
 This is convenient to use with standard 'Bool' or 'Integer' scales.
 -}
 ifG :: Key -> Geometry -> Geometry
-ifG = undefined
--- ifG k (Geometry f n) = Geometry (\ms -> f . filterCoords id k $ m) n
+ifG k (Geometry f n) = Geometry (\m ms -> f m $ filterCoords id k ms) n
 
 filterCoords :: (Bool -> Bool) -> Key -> [Map Key (Coord, a)] -> [Map Key (Coord, a)]
 filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
@@ -911,20 +910,24 @@ line = Geometry tot [""]
   where
     tot :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
     -- tot m ms = case (lineTypes' m, colors' m) of
-    --   (Just (lt:_), Just (c:_)) -> baseL lt c ms
-    --   (_,           Just (c:_)) -> baseL 0 c ms
-    --   (Just (lt:_), _         ) -> baseL lt 0 ms
-    --   (_,           _)          -> baseL 0 0 ms
+      -- (Just (lt:_), _         ) -> baseL lt 0 ms
+      -- (_,           _)          -> baseL 0 0 ms
+      -- (Just (lt:_), Just (c:_)) -> baseL lt c ms
+      -- (_,           Just (c:_)) -> baseL 0 c ms
 
-    tot m ms = case (lineTypes m, colors ms) of
+    tot m ms = case (lineTypes' m, colors' m) of
+
       (Just (lt:_), Nothing) -> baseL lt 0 ms
-      (_,           Nothing) -> baseL 0 0 ms
-      (Just (lt:_), Just xs) -> mconcat $ fmap (\color -> baseL lt color $ atColor color ms) xs
-      (_,           Just xs) -> mconcat $ fmap (\color -> baseL 0  color $ atColor color ms) xs
+      (_,           Nothing) -> baseL 0  0 ms
+      (Just (lt:_), Just xs) -> mconcat $ fmap (\color -> baseL lt color $ atColor2 color ms) xs
+      (_,           Just xs) -> mconcat $ fmap (\color -> baseL 0  color $ atColor2 color ms) xs
 
-    baseL :: Double -> Coord -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
+    baseL :: Double -> Double -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
     baseL (lt) (col) ms = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData col lt) $ fmap (\m -> P $
       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+
+atColor2 :: Double -> [Map Key (Coord, Maybe Special)] -> [Map Key (Coord, Maybe Special)]
+atColor2 _ = id
 
 {-|
 Fill geometry. Similar to area, except that the lower bound is always the same as the X axis.

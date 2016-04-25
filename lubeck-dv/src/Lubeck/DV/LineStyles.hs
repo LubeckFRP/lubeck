@@ -65,11 +65,11 @@ lineStylesFromList xs = LineStyles $ \n -> cycle xs !! floor n
 defaultLineStyles :: LineStyles
 defaultLineStyles = lineStylesFromList
   [ mempty -- solid
-  , [2]
+  -- , [2]
+  -- , [1, 2]
   , [4]
+  , [2, 2, 4]
   , [8]
-  , [1, 2]
-  , [1, 4]
   , [1, 8]
   , [4, 2]
   , [4, 8]
