@@ -38,7 +38,7 @@ import Linear.V4
 import Lubeck.Str (Str, toStr, packStr, unpackStr, takeStr, replaceStr)
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
-import Lubeck.DV.Drawing(scatterData, scatterDataX, lineData, ticks, labeledAxis)
+import Lubeck.DV.Drawing(defLineData, scatterData, scatterDataX, lineData, ticks, labeledAxis)
 import Lubeck.DV.Styling(withDefaultStyle, Styled)
 
 utcTimeToApproxReal :: UTCTime -> Double
@@ -87,7 +87,7 @@ simpleLinePlot _     _     _   _   _   _   _         _         [] = ((id,id), me
 simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, normB), drawing)
   where
     drawing = mconcat
-      [ lineData points
+      [ lineData defLineData points
       , ticks (zip tickOffsetsA (fmap Just tickLabelsA)) (zip tickOffsetsB (fmap Just tickLabelsB))
       , labeledAxis "" ""
       -- , scale 100 smokeBackground

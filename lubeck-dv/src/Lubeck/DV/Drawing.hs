@@ -108,6 +108,7 @@ data LineData = LineData
   { lineDataColor :: Double
   , lineDataShape :: Double
   }
+defLineData = LineData 0 0
 
 lineData :: (Monad m) => LineData -> [P2 Double] -> StyledT m Drawing
 lineData _ []     = mempty
