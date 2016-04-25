@@ -56,7 +56,7 @@ module Lubeck.FRP
   (
   -- * FRP monad
     FRP(..)
-    
+
   -- * Combinators
   , Events
   , Behavior
@@ -479,6 +479,23 @@ reactimateIO (E ioAProvider) = do
 -- this is unsubscribed by the returned UnsubscribeAction.
 
 -- TODO show how reactimateIO can be derived from newEvent/subscribeEvent
+
+{-
+TODO possibly nicer naming convention:
+
+sequenceFRP :: Events (FRP a) -> FRP (Events a)
+sequenceFRP = reactimateIO
+
+sequenceFRP_ :: Events (FRP a) -> FRP ()
+sequenceFRP_ e = sequenceFRP e >> return ()
+
+traverseFRP :: (a -> FRP b) -> Events a -> FRP (Events b)
+traverseFRP f = sequenceFRP . fmap f
+
+traverseFRP_ :: (a -> FRP b) -> Events a -> FRP ()
+traverseFRP_ f e = sequenceFRP (fmap f e) >> return ()
+-}
+
 
 
 
