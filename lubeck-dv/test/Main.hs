@@ -506,12 +506,14 @@ test33 = exportTestDrawing
   mempty
   mempty
   $ drawPlot $ mconcat
-    [ plot dat1 [x<~to (!! 0), y<~to (!! 1), ((0::Double) >$ color)] area2
-    , plot dat2 [x<~to (!! 0), y<~to (!! 1), ((1::Double) >$ color)] area2
+    [ plot (dat1 <> dat2) [x<~to (!! 0), y<~to (!! 1)
+      , bound <~ to (!! 2)
+      , ((23::Double) >$ color)] area2
+    -- , plot dat2 [x<~to (!! 0), y<~to (!! 1), ((1::Double) >$ color)] area2
     ]
   where
-    dat1 = [ [x,sin x] :: [Double] | x <- [0,0.1..pi*2] ]
-    dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat1 = [ [x,sin x,0] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat2 = [ [x,cos x,1] :: [Double] | x <- [0,0.1..pi*2] ]
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
 
