@@ -74,24 +74,24 @@ newtype Table k a = Table [Map k a]
 instance (Ord k, Eq a) => Eq (Table k a) where
   a == b  =  tableToMap a == tableToMap b
 
-tableFromList :: Ord k => [Map k a] -> Table k a
-tableFromList = Table
-
+{-
+Create a table with a single row and column.
+-}
 tableSingleton :: k -> a -> Table k a
 tableSingleton k v = Table $ pure $ Data.Map.singleton k v
 
-tableToList :: Ord k => Table k a -> [Map k a]
-tableToList (Table t) = t
+tableFromList :: Ord k => [Map k a] -> Table k a
+tableFromList = Table
 
-{-
-Returns the header of each column.
+{-|
+Returns the names of each column.
 -}
 tableHeaders :: Ord k => Table k a -> [k]
 tableHeaders (Table t) = ks
   where
     ks = Data.List.nub $ mconcat $ fmap Data.Map.keys t
 
-{-
+{-|
 Returns values in column-major order.
 -}
 tableValues :: Ord k => Table k a -> [[Maybe a]]
@@ -99,9 +99,21 @@ tableValues = toList . tableToMap
   where
     toList = toListOf traverse
 
+{-|
+The number of rows.
+-}
 tableSize :: Ord k => Table k a -> Int
 tableSize (Table t) = length t
 
+{-|
+View the table as a list of key-value mappings.
+-}
+tableToList :: Ord k => Table k a -> [Map k a]
+tableToList (Table t) = t
+
+{-|
+View the table as a map from column name to values.
+-}
 tableToMap :: Ord k => Table k a -> Map k [Maybe a]
 tableToMap (Table t) = Data.Map.fromList $ fmap (\k -> (k, fmap (Data.Map.lookup k) t)) ks
   where
@@ -113,6 +125,14 @@ tableToMap (Table t) = Data.Map.fromList $ fmap (\k -> (k, fmap (Data.Map.lookup
   cross retains data present in only one tableToMap
   overlay throws a way data not present in both
 
+Laws
+  tableSize (crossTablesShort f a b) === min (tableSize a) (tableSize b)
+  tableSize (overlayTablesShort f a b) === min (tableSize a) (tableSize b)
+
+  tableSize (crossTablesLong f a b) === max (tableSize a) (tableSize b)
+    a /= mempty, b /= mempty
+  tableSize (overlayTablesLong f a b) === max (tableSize a) (tableSize b)
+    a /= mempty, b /= mempty
 -}
 
 crossTablesShort :: Ord k => (a -> a -> a) -> Table k a -> Table k a -> Table k a

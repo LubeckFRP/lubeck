@@ -37,24 +37,29 @@ prop_tableAssoc a1 b1 c1  = ((a <> b) <> c) === (a <> (b <> c))
 
 
 
-prop_tableCrossLenghS a b = tableSize (crossTablesShort const a b) === min (tableSize a) (tableSize b)
+prop_tableCrossLenghS f a b = tableSize (crossTablesShort f a b) === min (tableSize a) (tableSize b)
   where
+    f = const
     _ = a :: Table Int Int
 
-prop_tableCrossLenghL a b = a === mempty  .||. b === mempty .||. tableSize (crossTablesLong const a b) === max (tableSize a) (tableSize b)
+prop_tableCrossLenghL a b = a === mempty  .||. b === mempty .||. tableSize (crossTablesLong f a b) === max (tableSize a) (tableSize b)
   where
+    f = const
     _ = a :: Table Int Int
 
-prop_tableOverlayLenghS a b = tableSize (overlayTablesShort const a b) === min (tableSize a) (tableSize b)
+prop_tableOverlayLenghS a b = tableSize (overlayTablesShort f a b) === min (tableSize a) (tableSize b)
   where
+    f = const
     _ = a :: Table Int Int
 
-prop_tableOverlayLenghL a b = a === mempty  .||. b === mempty .||. tableSize (overlayTablesLong const a b) === max (tableSize a) (tableSize b)
+prop_tableOverlayLenghL a b = a === mempty  .||. b === mempty .||. tableSize (overlayTablesLong f a b) === max (tableSize a) (tableSize b)
   where
+    f = const
     _ = a :: Table Int Int
 
 prop_fromListToListIso a = tableFromList (tableToList a) === a
   where
+    f = const
     _ = a :: Table Int Int
 
 prop_fooBar =
