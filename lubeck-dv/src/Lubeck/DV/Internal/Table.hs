@@ -31,6 +31,7 @@ import Data.Set(Set)
 import Data.IntMap(IntMap)
 import Data.IntSet(IntSet)
 
+import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.Functor.Compose
@@ -66,6 +67,20 @@ INTERESTINGLY
     ~  ([k], Int, k -> Int -> Maybe v)
 
 -}
+
+newtype Column a = Column { getColumn_ :: MaybeT ZipList a }
+  deriving (Functor, Applicative, Monad,  Alternative, MonadPlus)
+
+instance Monad ZipList where
+   return = ZipList . repeat
+   ZipList xs >>= f = ZipList $ zipWith ((!!) . cycle . getZipList . f) xs
+      [0..]
+
+columnFromList :: [Maybe a] -> Column a
+columnFromList xs = Column $ MaybeT $ ZipList xs
+
+runColumn :: Column a -> [Maybe a]
+runColumn = getZipList . runMaybeT . getColumn_
 
 
 newtype Table k a = Table [Map k a]
@@ -119,6 +134,14 @@ tableToMap (Table t) = Data.Map.fromList $ fmap (\k -> (k, fmap (Data.Map.lookup
   where
     -- ks :: [[k]]
     ks = Data.List.nub $ mconcat $ fmap Data.Map.keys t
+
+tableToMap' :: Ord k => Table k a -> Map k (Column a)
+tableToMap' = fmap columnFromList . tableToMap
+
+getColumn :: Ord k => k -> Table k a -> Column a
+getColumn k t = case Data.Map.lookup k (tableToMap' t) of
+  Nothing -> empty
+  Just c -> c
 
 {-
   short/long zips

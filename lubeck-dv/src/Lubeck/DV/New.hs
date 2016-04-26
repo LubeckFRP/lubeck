@@ -148,6 +148,7 @@ import Linear.V1 (V1(..), _x)
 import Linear.V2 (V2(..), _y)
 import Linear.V3 (V3(..))
 
+import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.Functor.Compose
@@ -845,6 +846,9 @@ data Cell = Cell
 wrapTable :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Table Key Cell
 wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) (tableFromList a) (tableFromList b)
 
+ifT :: Key -> Table Key Cell -> Table Key Cell
+ifT key = filterRows key (\x -> cScaled x >= 0.5)
+
 -- TODO separate tables by key combination
 -- I.e. partition into subtables such that each subtable has a unique (linetype, color) combination
 
@@ -881,13 +885,51 @@ instance Monoid Geometry3 where
 
 
 ifG = undefined
-filterCoords extractor boolF k = filter (\m -> boolF $ truish $ extractor k)
-  where
-    truish Nothing                  = False
-    truish (Just (Normalized n, _)) = n > 0.5
+-- filterCoords extractor boolF k = filter (\m -> boolF $ truish $ extractor k)
+--   where
+--     truish Nothing                  = False
+--     truish (Just (Normalized n, _)) = n > 0.5
 
 
 -- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
+
+
+
+scaledAttr :: Key -> Table Key Cell -> Column Double
+scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
+
+unscaledAttr :: Key -> Table Key Cell -> Column Double
+unscaledAttr k = fmap cUnscaled . getColumn k
+
+
+    -- g t = case (, t scaledAttr "y", unscaledAttr t "color") of
+
+
+
+-- foo = runColumn $ do
+--   x <- columnFromList [Just 1, Just 2, Just 2]
+--   y <- pure 0
+--   z <- columnFromList [Just 3, Just 4, Nothing]
+--   return $ (x, y, z)
+
+bar = runColumn $ do
+  x <- getColumn "x" t
+  y <- getColumn "y" t
+  -- z <- getColumn "z" t
+  z <- pure 3
+  return $ (x, y, z)
+  where
+    t = crossTablesShort const (tableSingleton "x" 1) (tableSingleton "y" 2)
+
+
+
+pointG_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 0) $ Data.Maybe.catMaybes $ runColumn $ do
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 
 {-|
 Point geometry.
@@ -909,6 +951,15 @@ pointG = Geometry tot [""]
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL (Normalized col) ms = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData col) $ fmap (\m -> P $
       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+
+
+line_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData 0 0) $ Data.Maybe.catMaybes $ runColumn $ do
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 {-|
 Line geometry.
 Can be combined with point and fill.
@@ -940,8 +991,16 @@ line = Geometry tot [""]
     baseL (lt) (col) ms = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData col lt) $ fmap (\m -> P $
       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
-atColor2 :: Double -> [Map Key (Coord, Maybe Special)] -> [Map Key (Coord, Maybe Special)]
-atColor2 _ = id
+    atColor2 :: Double -> [Map Key (Coord, Maybe Special)] -> [Map Key (Coord, Maybe Special)]
+    atColor2 _ = id
+
+fill_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData 0) $ Data.Maybe.catMaybes $ runColumn $ do
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 
 {-|
 Fill geometry. Similar to area, except that the lower bound is always the same as the X axis.
@@ -965,6 +1024,15 @@ fill = Geometry tot [""]
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL (Normalized col) ms = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData col) $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 
+area_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData 0) $ Data.Maybe.catMaybes $ runColumn $ do
+      x    <- scaledAttr "x" t
+      yMin <- scaledAttr "yMin" t
+      y    <- scaledAttr "y" t
+      return $ P $ V3 x yMin y
+
 {-|
 Fill geometry.
 
@@ -986,6 +1054,10 @@ area = Geometry tot [""]
     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
     baseL (Normalized col) ms = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData col) $ fmap (\m -> P $
       V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+
+area2_ = Geometry3 g []
+  where
+    g = const mempty -- TODO
 
 {-|
 An alternative version of 'area' that expects the lower and upper bounds to be distinct points
@@ -1030,6 +1102,12 @@ area2 = Geometry tot [""]
             truish (Just (Normalized n, _)) = n > 0.5
 
 
+bars_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.barData $ Data.Maybe.catMaybes $ runColumn $ do
+      y <- scaledAttr "y" t
+      return $ P $ V1 y
 {-|
 Bar geometry.
 
@@ -1050,6 +1128,24 @@ bars = Geometry tot [""]
     baseL _ ms = Lubeck.DV.Drawing.barData $ fmap (\m -> P $
       V1 (getNormalized $ m ! "y")) ms
 
+
+xIntercept_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t2 = Lubeck.DV.Drawing.scatterDataX $ Data.Maybe.catMaybes $ runColumn $ do
+      let t = ifT "crossLineX" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
+
+yIntercept_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t2 = Lubeck.DV.Drawing.scatterDataY $ Data.Maybe.catMaybes $ runColumn $ do
+      let t = ifT "crossLineY" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 
 {-|
 A line intercepting X values. Drawn if @crossLineX@ is present and non-zero.
@@ -1149,6 +1245,8 @@ labelG = Geometry g [""]
         absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
 
 
+
+-- TODO remove all these
 atColor :: (Eq b, Ord k, IsString k) => b -> [Map k (b, a)] -> [Map k (b, a)]
 atColor c = filter (\m -> fmap fst (m ?! "color") == Just c)
 
