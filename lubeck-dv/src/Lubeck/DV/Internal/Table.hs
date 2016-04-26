@@ -6,6 +6,9 @@
   , OverloadedStrings
   , TupleSections
   , FlexibleContexts
+  , DeriveFoldable
+  , DeriveTraversable
+  , StandaloneDeriving
   , NoImplicitPrelude
   , MultiParamTypeClasses
   , DeriveFunctor
@@ -67,9 +70,15 @@ INTERESTINGLY
     ~  ([k], Int, k -> Int -> Maybe v)
 
 -}
+deriving instance Foldable ZipList
+deriving instance Traversable ZipList
 
 newtype Column a = Column { getColumn_ :: MaybeT ZipList a }
-  deriving (Functor, Applicative, Monad,  Alternative, MonadPlus)
+  deriving (Functor, Applicative, Monad,
+   Foldable, Traversable,
+   Alternative, MonadPlus)
+
+-- TODO good Alternative/MonadPlus?
 
 instance Monad ZipList where
    return = ZipList . repeat

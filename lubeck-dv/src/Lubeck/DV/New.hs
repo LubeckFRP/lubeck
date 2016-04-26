@@ -134,7 +134,7 @@ module Lubeck.DV.New
 where
 
 import BasePrelude
-import Control.Lens(Getter, to)
+import Control.Lens(Getter, to, toListOf)
 import Control.Lens.Operators hiding ((<~))
 import Control.Monad.Reader (ask)
 import Data.Functor.Contravariant (Contravariant(..))
@@ -1033,9 +1033,31 @@ area = geom3ToGeom area_
 --     baseL (Normalized col) ms = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData col) $ fmap (\m -> P $
 --       V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
 
+area2_ :: Geometry3
 area2_ = Geometry3 g []
   where
-    g = const mempty -- TODO
+    g t = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
+      where
+        ps1 = toListOf traverse $ do
+          let high = filterRows "bound" (\x -> cScaled x >= 0.5) t
+          let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
+          x1 <- scaledAttr "x" low
+          y1 <- scaledAttr "y" low
+          x2 <- scaledAttr "x" high
+          y2 <- scaledAttr "y" high
+          let p1 = P (V2 x1 y1)
+          let p2 = P (V2 x2 y2)
+          return p1
+        ps2 = toListOf traverse $ do
+          let high = filterRows "bound" (\x -> cScaled x >= 0.5) t
+          let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
+          x1 <- scaledAttr "x" low
+          y1 <- scaledAttr "y" low
+          x2 <- scaledAttr "x" high
+          y2 <- scaledAttr "y" high
+          let p1 = P (V2 x1 y1)
+          let p2 = P (V2 x2 y2)
+          return p2
 
 {-|
 An alternative version of 'area' that expects the lower and upper bounds to be distinct points
@@ -1052,28 +1074,29 @@ x, y, bound
 @
 -}
 area2 :: Geometry
-area2 = Geometry tot [""]
-  where
-    tot :: a -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
-    tot _ ms = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
-      where
-        k = "bound"
-        lowMappings  = filterCoords not k ms
-        highMappings = filterCoords id  k ms
-
-        xs1 = fmap (getNormalized . (! "x")) lowMappings
-        ys1 = fmap (getNormalized . (! "y")) lowMappings
-        ps1 = zipWith (\x y -> P (V2 x y)) xs1 ys1
-
-        xs2 = fmap (getNormalized . (! "x")) highMappings
-        ys2 = fmap (getNormalized . (! "y")) highMappings
-        ps2 = zipWith (\x y -> P (V2 x y)) xs2 ys2
-
-        filterCoords :: (Bool -> Bool) -> Key -> [Map Key (Coord, a)] -> [Map Key (Coord, a)]
-        filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
-          where
-            truish Nothing                  = False
-            truish (Just (Normalized n, _)) = n > 0.5
+area2 = geom3ToGeom area2_
+-- area2 = Geometry tot [""]
+--   where
+--     tot :: a -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
+--     tot _ ms = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
+--       where
+--         k = "bound"
+--         lowMappings  = filterCoords not k ms
+--         highMappings = filterCoords id  k ms
+--
+--         xs1 = fmap (getNormalized . (! "x")) lowMappings
+--         ys1 = fmap (getNormalized . (! "y")) lowMappings
+--         ps1 = zipWith (\x y -> P (V2 x y)) xs1 ys1
+--
+--         xs2 = fmap (getNormalized . (! "x")) highMappings
+--         ys2 = fmap (getNormalized . (! "y")) highMappings
+--         ps2 = zipWith (\x y -> P (V2 x y)) xs2 ys2
+--
+--         filterCoords :: (Bool -> Bool) -> Key -> [Map Key (Coord, a)] -> [Map Key (Coord, a)]
+--         filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
+--           where
+--             truish Nothing                  = False
+--             truish (Just (Normalized n, _)) = n > 0.5
 
 
 bars = geom3ToGeom bars_
@@ -1223,43 +1246,6 @@ labelG = Geometry g [""]
 
 
 
--- TODO remove all these
-atColor :: (Eq b, Ord k, IsString k) => b -> [Map k (b, a)] -> [Map k (b, a)]
-atColor c = filter (\m -> fmap fst (m ?! "color") == Just c)
-
--- All color values in the dataset or Nothing if there are none
-colors :: [Map Key (Coord, a)] -> Maybe [Coord]
-colors ms = case Data.Maybe.catMaybes $ fmap (fmap fst . (?! "color")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
-lineTypes :: [Map Key (Coord, a)] -> Maybe [Coord]
-lineTypes ms = case Data.Maybe.catMaybes $ fmap (fmap fst . (?! "lineType")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
--- All color values in the dataset or Nothing if there are none
-colors' :: [Map Key Double] -> Maybe [Double]
-colors' ms = case Data.Maybe.catMaybes $ fmap ((?! "color")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
-lineTypes' :: [Map Key Double] -> Maybe [Double]
-lineTypes' ms = case Data.Maybe.catMaybes $ fmap ((?! "lineType")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
-
-
-
 
 {-
 
@@ -1320,13 +1306,9 @@ m ?! k = Data.Map.lookup k m
 
 
 
--- newtype Geometry2 = G2 { unG2 :: Geometry }
-  -- deriving (Monoid)
 type Geometry2 = Geometry
 
 toNewGeom :: Geometry2 -> Geometry
--- toNewGeom = unG2
--- toNewGeom = undefined
 toNewGeom = id
 
 -- TOP-LEVEL
