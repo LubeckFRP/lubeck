@@ -93,4 +93,4 @@ getColorFromPalette = getPalette
 Default color for a given palette.
 -}
 paletteToColor :: Palette a -> AlphaColour a
-paletteToColor p = getColorFromPalette p 1
+paletteToColor p = getColorFromPalette p 0
