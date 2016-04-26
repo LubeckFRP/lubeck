@@ -115,6 +115,7 @@ library
                      , boxes
                      , network-uri
                      , uuid
+                     , QuickCheck
   hs-source-dirs:      src, lubeck-core/src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
