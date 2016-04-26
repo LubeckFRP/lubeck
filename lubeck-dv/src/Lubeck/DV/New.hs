@@ -825,25 +825,6 @@ infixl 3 <~
 
 -- GEOMETRY
 
-{-
-Assuming (Ord k) =>
-
-[a]     ~ (Int, Int -> a)
-Map k v ~ ([k], k -> Maybe v)
-Map k v ~ (Int, Int -> k, Int -> v)  ~  (Int, Int -> (k, v))  ~ [(k, v)]
-
-
-[Map k v]
-  ~ (Int, Int -> Map k v)
-  ~ (Int, Int -> ([k], k -> Maybe v))
-
-
-INTERESTINGLY
-  [Map k a]
-    ~  Map k [Maybe a]
-    ~  ([k], Int, k -> Int -> Maybe v)
-
--}
 
 {-
 A value in @[ x | 0 <= x <= 1]@.
@@ -1297,8 +1278,6 @@ createSinglePlot titles dat aess geometry =
     scaledGuides        = normalizeGuides bounds guides                 :: Map Key [(Coord, Str)]
     specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
     mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
-
-
 
 
 -- TODO Identity vs Compose pattern (normalizeGuides' vs normalizeData')

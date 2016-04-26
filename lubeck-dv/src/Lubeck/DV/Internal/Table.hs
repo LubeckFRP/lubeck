@@ -47,11 +47,29 @@ import qualified Text.PrettyPrint.Boxes as B
 import qualified Data.Colour.Names as Colors
 
 
+{-
+Assuming (Ord k) =>
+
+[a]     ~ (Int, Int -> a)
+Map k v ~ ([k], k -> Maybe v)
+Map k v ~ (Int, Int -> k, Int -> v)  ~  (Int, Int -> (k, v))  ~ [(k, v)]
+
+
+[Map k v]
+  ~ (Int, Int -> Map k v)
+  ~ (Int, Int -> ([k], k -> Maybe v))
+
+
+INTERESTINGLY
+  [Map k a]
+    ~  Map k [Maybe a]
+    ~  ([k], Int, k -> Int -> Maybe v)
+
+-}
+
+
 newtype Table k a = Table [Map k a]
-  deriving (Functor, Monoid
-  -- DEBUG
-  , Show
-  )
+  deriving (Functor, Monoid, Show)
 
 instance (Ord k, Eq a) => Eq (Table k a) where
   a == b  =  tableToMap a == tableToMap b

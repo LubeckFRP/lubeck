@@ -61,8 +61,6 @@ prop_fooBar =
   ( ("foo" -: 1 <> "foo" -: 2) `crLL` ("bar" -: 3) ) === ( ("bar" -: 3) `crLL` ("foo" -: 1 <> "foo" -: 2) )
 
 
-
-
 (-:) = tableSingleton
 infixl 7 -:
 
@@ -70,14 +68,14 @@ crLL = crossTablesLong const
 crSL = crossTablesShort const
 
 
-test :: Table String Int
-test = overlayTablesShort (+) foobar (mconcat $ replicate 10 (("foo" -: 0) `crLL` ("bar" -: 0)))
-  where
-    foobar = mconcat $ take 4 $ cycle [
-      (   ("foo" -: 1)
-       <> ("foo" -: 2)) `crLL` ("bar" -: 3)
-      ,                        "bar" -: 4
-      ]
+-- test :: Table String Int
+-- test = overlayTablesShort (+) foobar (mconcat $ replicate 10 (("foo" -: 0) `crLL` ("bar" -: 0)))
+--   where
+--     foobar = mconcat $ take 4 $ cycle [
+--       (   ("foo" -: 1)
+--        <> ("foo" -: 2)) `crLL` ("bar" -: 3)
+--       ,                        "bar" -: 4
+--       ]
 
 
 
