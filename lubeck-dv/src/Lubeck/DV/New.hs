@@ -875,6 +875,9 @@ instance Monoid Geometry where
   mempty = Geometry mempty mempty
   mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
 
+{-
+Conceptually the same as 'Geometry'. The two types will be unified eventually.
+-}
 data Geometry3 = Geometry3
   { geomMapping3        :: Table Key Cell -> Styled Drawing
   , geomBaseName3       :: [String]
@@ -888,22 +891,12 @@ instance Monoid Geometry3 where
 geom3ToGeom :: Geometry3 -> Geometry
 geom3ToGeom (Geometry3 a b) = Geometry (\x y -> a (wrapTable x y)) b
 
-
 scaledAttr :: Key -> Table Key Cell -> Column Double
 scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
 
 unscaledAttr :: Key -> Table Key Cell -> Column Double
 unscaledAttr k = fmap cUnscaled . getColumn k
 
-
-pointG = geom3ToGeom pointG_
-pointG_ = Geometry3 g []
-  where
-    -- TODO extract color
-    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 0) $ runColumnFinite $ do
-      x <- scaledAttr "x" t
-      y <- scaledAttr "y" t
-      return $ P $ V2 x y
 
 {-|
 Point geometry.
@@ -916,25 +909,15 @@ x, y
 @
 -}
 pointG :: Geometry
--- pointG = Geometry tot [""]
---   where
---     tot _ ms = case colors ms of
---       Nothing -> baseL 0 ms
---       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
---
---     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
---     baseL (Normalized col) ms = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData col) $ fmap (\m -> P $
---       V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
-
-
-line = geom3ToGeom line_
-line_ = Geometry3 g []
+pointG =  geom3ToGeom pointG_
+pointG_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData 0 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 0) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
+
 {-|
 Line geometry.
 Can be combined with point and fill.
@@ -946,37 +929,11 @@ x, y
 @
 -}
 line :: Geometry
-{-
-line = Geometry tot [""]
-  where
-    tot :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
-    -- tot m ms = case (lineTypes' m, colors' m) of
-      -- (Just (lt:_), _         ) -> baseL lt 0 ms
-      -- (_,           _)          -> baseL 0 0 ms
-      -- (Just (lt:_), Just (c:_)) -> baseL lt c ms
-      -- (_,           Just (c:_)) -> baseL 0 c ms
-
-    tot m ms = case (lineTypes' m, colors' m) of
-
-      (Just (lt:_), Nothing) -> baseL lt 0 ms
-      (_,           Nothing) -> baseL 0  0 ms
-      (Just (lt:_), Just xs) -> mconcat $ fmap (\color -> baseL lt color $ atColor2 color ms) xs
-      (_,           Just xs) -> mconcat $ fmap (\color -> baseL 0  color $ atColor2 color ms) xs
-
-    baseL :: Double -> Double -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
-    baseL (lt) (col) ms = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData col lt) $ fmap (\m -> P $
-      V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
-
-    atColor2 :: Double -> [Map Key (Coord, Maybe Special)] -> [Map Key (Coord, Maybe Special)]
-    atColor2 _ = id
--}
-
--- TODO color separation
-fill = geom3ToGeom fill_
-fill_ = Geometry3 g []
+line = geom3ToGeom line_
+line_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData 0 0) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -994,23 +951,15 @@ x, y
 @
 -}
 fill :: Geometry
--- fill = Geometry tot [""]
---   where
---     tot _ ms = case colors ms of
---       Nothing -> baseL 0 ms
---       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
---
---     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
---     baseL (Normalized col) ms = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData col) $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
-
-area_ = Geometry3 g []
+-- TODO color separation
+fill = geom3ToGeom fill_
+fill_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
-      x    <- scaledAttr "x" t
-      yMin <- scaledAttr "yMin" t
-      y    <- scaledAttr "y" t
-      return $ P $ V3 x yMin y
+    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 
 {-|
 Fill geometry.
@@ -1025,17 +974,31 @@ x, yMin, y
 -}
 area :: Geometry
 area = geom3ToGeom area_
--- area = Geometry tot [""]
---   where
---     tot _ ms = case colors ms of
---       Nothing -> baseL 0 ms
---       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
---
---     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
---     baseL (Normalized col) ms = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData col) $ fmap (\m -> P $
---       V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+area_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
+      x    <- scaledAttr "x" t
+      yMin <- scaledAttr "yMin" t
+      y    <- scaledAttr "y" t
+      return $ P $ V3 x yMin y
 
-area2_ :: Geometry3
+{-|
+An alternative version of 'area' that expects the lower and upper bounds to be distinct points
+in the data sets, distinguished by the @bound@ aesthetic.
+
+@
+{x, y, bound:False}, {x, y, bound:True} ~ {x, y, y2}
+@
+
+Aesthetics:
+
+@
+x, y, bound
+@
+-}
+area2 :: Geometry
+area2 = geom3ToGeom area2_
 area2_ = Geometry3 g []
   where
     g t = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
@@ -1054,53 +1017,6 @@ area2_ = Geometry3 g []
           return p2
 
 {-|
-An alternative version of 'area' that expects the lower and upper bounds to be distinct points
-in the data sets, distinguished by the @bound@ aesthetic.
-
-@
-{x, y, bound:False}, {x, y, bound:True} ~ {x, y, y2}
-@
-
-Aesthetics:
-
-@
-x, y, bound
-@
--}
-area2 :: Geometry
-area2 = geom3ToGeom area2_
--- area2 = Geometry tot [""]
---   where
---     tot :: a -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
---     tot _ ms = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
---       where
---         k = "bound"
---         lowMappings  = filterCoords not k ms
---         highMappings = filterCoords id  k ms
---
---         xs1 = fmap (getNormalized . (! "x")) lowMappings
---         ys1 = fmap (getNormalized . (! "y")) lowMappings
---         ps1 = zipWith (\x y -> P (V2 x y)) xs1 ys1
---
---         xs2 = fmap (getNormalized . (! "x")) highMappings
---         ys2 = fmap (getNormalized . (! "y")) highMappings
---         ps2 = zipWith (\x y -> P (V2 x y)) xs2 ys2
---
---         filterCoords :: (Bool -> Bool) -> Key -> [Map Key (Coord, a)] -> [Map Key (Coord, a)]
---         filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
---           where
---             truish Nothing                  = False
---             truish (Just (Normalized n, _)) = n > 0.5
-
-
-bars = geom3ToGeom bars_
-bars_ = Geometry3 g []
-  where
-    -- TODO extract color
-    g t = Lubeck.DV.Drawing.barData $ runColumnFinite $ do
-      y <- scaledAttr "y" t
-      return $ P $ V1 y
-{-|
 Bar geometry.
 
 Aesthetics:
@@ -1110,34 +1026,13 @@ y
 @
 -}
 bars :: Geometry
--- bars = Geometry tot [""]
---   where
---     tot _ ms = case colors ms of
---       Nothing -> baseL 0 ms
---       Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
---
---     baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
---     baseL _ ms = Lubeck.DV.Drawing.barData $ fmap (\m -> P $
---       V1 (getNormalized $ m ! "y")) ms
-
-
-xIntercept_ = Geometry3 g []
+bars = geom3ToGeom bars_
+bars_ = Geometry3 g []
   where
     -- TODO extract color
-    g t2 = Lubeck.DV.Drawing.scatterDataX $ runColumnFinite $ do
-      let t = ifT "crossLineX" t2
-      x <- scaledAttr "x" t
+    g t = Lubeck.DV.Drawing.barData $ runColumnFinite $ do
       y <- scaledAttr "y" t
-      return $ P $ V2 x y
-
-yIntercept_ = Geometry3 g []
-  where
-    -- TODO extract color
-    g t2 = Lubeck.DV.Drawing.scatterDataY $ runColumnFinite $ do
-      let t = ifT "crossLineY" t2
-      x <- scaledAttr "x" t
-      y <- scaledAttr "y" t
-      return $ P $ V2 x y
+      return $ P $ V1 y
 
 {-|
 A line intercepting X values. Drawn if @crossLineX@ is present and non-zero.
@@ -1150,11 +1045,14 @@ x, y, crossLineX
 -}
 xIntercept :: Geometry
 xIntercept = geom3ToGeom xIntercept_
--- xIntercept = ifG "crossLineX" (Geometry g [""])
---   where
---    g _ ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $
---     V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
-
+xIntercept_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t2 = Lubeck.DV.Drawing.scatterDataX $ runColumnFinite $ do
+      let t = ifT "crossLineX" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 {-|
 A line intercepting Y values. Drawn if @crossLineY@ is present and non-zero.
 
@@ -1166,10 +1064,15 @@ x, y, crossLineY
 -}
 yIntercept :: Geometry
 yIntercept = geom3ToGeom yIntercept_
--- yIntercept = ifG "crossLineY" (Geometry g [""])
---   where
---    g _ ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $
---     V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+yIntercept_ = Geometry3 g []
+  where
+    -- TODO extract color
+    g t2 = Lubeck.DV.Drawing.scatterDataY $ runColumnFinite $ do
+      let t = ifT "crossLineY" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
+
 
 {-|
 Draws a custom image specified by the 'image' aesthetic.
