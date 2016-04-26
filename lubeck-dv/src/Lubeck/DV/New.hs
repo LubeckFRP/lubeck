@@ -912,14 +912,14 @@ pointG :: Geometry
 pointG =  geom3ToGeom pointG_
 pointG_ = Geometry3 g []
   where
-    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 2) $ runColumnFinite $ do
+    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData color) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
       where
         -- TODO color separation
-        colors = runColumnFinite $ scaledAttr "color" t
-        defColor = case colors of
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
           [] -> 0
           xs -> head xs
 
@@ -938,10 +938,16 @@ line = geom3ToGeom line_
 line_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData 0 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData color 0) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 Fill geometry. Similar to area, except that the lower bound is always the same as the X axis.
@@ -961,10 +967,16 @@ fill = geom3ToGeom fill_
 fill_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData color) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 Fill geometry.
@@ -982,11 +994,17 @@ area = geom3ToGeom area_
 area_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData color) $ runColumnFinite $ do
       x    <- scaledAttr "x" t
       yMin <- scaledAttr "yMin" t
       y    <- scaledAttr "y" t
       return $ P $ V3 x yMin y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 An alternative version of 'area' that expects the lower and upper bounds to be distinct points
@@ -1006,7 +1024,7 @@ area2 :: Geometry
 area2 = geom3ToGeom area2_
 area2_ = Geometry3 g []
   where
-    g t = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
+    g t = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData color) (ps1 <> reverse ps2)
       where
         ps1 = runColumnFinite $ do
           let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
@@ -1021,6 +1039,12 @@ area2_ = Geometry3 g []
           let p2 = P (V2 x2 y2)
           return p2
 
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
+
 {-|
 Bar geometry.
 
@@ -1034,7 +1058,7 @@ bars :: Geometry
 bars = geom3ToGeom bars_
 bars_ = Geometry3 g []
   where
-    -- TODO extract color
+    -- TODO color, stack, dodge
     g t = Lubeck.DV.Drawing.barData $ runColumnFinite $ do
       y <- scaledAttr "y" t
       return $ P $ V1 y
