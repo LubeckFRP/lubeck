@@ -119,7 +119,7 @@ library
   hs-source-dirs:      src, lubeck-core/src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
-  ghc-options:         -fno-warn-typed-holes -Werror
+  ghc-options:         -fno-warn-typed-holes
 
 executable bd-example-app
   main-is:             examples/Reactive.hs
