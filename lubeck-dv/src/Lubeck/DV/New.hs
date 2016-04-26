@@ -7,6 +7,8 @@
   , TupleSections
   , FlexibleContexts
   , NoImplicitPrelude
+  , MultiParamTypeClasses
+  , DeriveFunctor
   #-}
 
 {-|
@@ -72,7 +74,7 @@ module Lubeck.DV.New
   , imageG
 
   -- ** Legacy
-  , ifG
+  -- , ifG
 
   -- * Coordinates
   -- $coordinates
@@ -132,20 +134,30 @@ module Lubeck.DV.New
 where
 
 import BasePrelude
-import Control.Lens(Getter, to)
+import Control.Lens(Getter, to, toListOf)
 import Control.Lens.Operators hiding ((<~))
 import Control.Monad.Reader (ask)
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Map(Map)
+import Data.Set(Set)
+import Data.IntMap(IntMap)
+import Data.IntSet(IntSet)
 import Data.Time(UTCTime)
 import Linear.Affine (Point(..))
 import Linear.V1 (V1(..), _x)
 import Linear.V2 (V2(..), _y)
 import Linear.V3 (V3(..))
 
+import Control.Monad.Trans.Maybe
+import Control.Monad.Reader
+import Control.Monad.Writer
+import Data.Functor.Compose
 import qualified Data.Char
 import qualified Data.List
 import qualified Data.Map
+import qualified Data.Set
+import qualified Data.IntMap
+import qualified Data.IntSet
 import qualified Data.Maybe
 import qualified Data.Time
 import qualified Data.Time.Format
@@ -155,6 +167,8 @@ import qualified Data.Colour.Names as Colors
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 import Lubeck.DV.Styling (StyledT, Styled, Styling, renderingRectangle)
+import Lubeck.DV.Internal.Normalized
+import Lubeck.DV.Internal.Table
 
 import qualified Lubeck.Drawing
 import qualified Lubeck.DV.Drawing
@@ -218,7 +232,9 @@ blend = (<>)
 This is a variant of 'zipWith'.
 -}
 crossWith :: (a -> b -> c) -> [a] -> [b] -> [c]
-crossWith f a b = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
+crossWith f [] b  = []
+crossWith f a  [] = []
+crossWith f a  b  = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
 
 
@@ -810,25 +826,6 @@ infixl 3 <~
 
 -- GEOMETRY
 
-{-
-Assuming (Ord k) =>
-
-[a]     ~ (Int, Int -> a)
-Map k v ~ ([k], k -> Maybe v)
-Map k v ~ (Int, Int -> k, Int -> v)  ~  (Int, Int -> (k, v))  ~ [(k, v)]
-
-
-[Map k v]
-  ~ (Int, Int -> Map k v)
-  ~ (Int, Int -> ([k], k -> Maybe v))
-
-
-INTERESTINGLY
-  [Map k v]
-    ~  Map k [Maybe v]
-    ~  ([k], Int, k -> Int -> Maybe v)
-
--}
 
 {-
 A value in @[ x | 0 <= x <= 1]@.
@@ -836,6 +833,32 @@ A value in @[ x | 0 <= x <= 1]@.
 Used to represent scaled data.
 -}
 type Coord = Normalized Double
+
+{-
+Each cell contains mapped data in scaled and unscaled form, as well as special data.
+-}
+data Cell = Cell
+  { cUnscaled :: Double
+  , cScaled   :: Coord
+  , cSpecial  :: Maybe Special
+  }
+
+wrapTable :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Table Key Cell
+wrapTable [] _ = mempty
+wrapTable _ [] = mempty
+wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) (tableFromList a) (tableFromList b)
+
+ifT :: Key -> Table Key Cell -> Table Key Cell
+ifT key = filterRows key (\x -> cScaled x >= 0.5)
+
+-- TODO separate tables by key combination
+-- I.e. partition into subtables such that each subtable has a unique (linetype, color) combination
+
+-- TODO how do we know what aesthetics a certain plot listens to?
+-- Is this all dynamic or is types involved?
+
+-- TODO stacking/dodging/jittering
+
 
 {-|
 Provides a way to draw mapped and scaled data.
@@ -848,32 +871,32 @@ data Geometry = Geometry
   { geomMapping         :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
   , geomBaseName        :: [String]
   }
-
 instance Monoid Geometry where
   mempty = Geometry mempty mempty
   mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
 
-
--- TODO stacking/dodging/jittering
-
--- TODO how do we know what aesthetics a certain plot listens to?
--- Is this all dynamic or is types involved?
-
-{-| Render a geometry iff a key is present and has a (scaled) value @> 0.5@.
-
-This is convenient to use with standard 'Bool' or 'Integer' scales.
+{-
+Conceptually the same as 'Geometry'. The two types will be unified eventually.
 -}
-ifG :: Key -> Geometry -> Geometry
-ifG k (Geometry f n) = Geometry (\m ms -> f m $ filterCoords id k ms) n
+data Geometry3 = Geometry3
+  { geomMapping3        :: Table Key Cell -> Styled Drawing
+  , geomBaseName3       :: [String]
+  }
 
-filterCoords :: (Bool -> Bool) -> Key -> [Map Key (Coord, a)] -> [Map Key (Coord, a)]
-filterCoords boolF k = filter (\m -> boolF $ truish $ m ?! k)
-  where
-    truish Nothing                  = False
-    truish (Just (Normalized n, _)) = n > 0.5
+instance Monoid Geometry3 where
+  mempty = Geometry3 mempty mempty
+  mappend (Geometry3 a1 a2) (Geometry3 b1 b2) = Geometry3 (a1 <> b1) (a2 <> b2)
 
+-- TODO remove
+geom3ToGeom :: Geometry3 -> Geometry
+geom3ToGeom (Geometry3 a b) = Geometry (\x y -> a (wrapTable x y)) b
 
--- TODO change fillColor/strokeColor/strokeWith/strokeType/shape
+scaledAttr :: Key -> Table Key Cell -> Column Double
+scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
+
+unscaledAttr :: Key -> Table Key Cell -> Column Double
+unscaledAttr k = fmap cUnscaled . getColumn k
+
 
 {-|
 Point geometry.
@@ -886,15 +909,20 @@ x, y
 @
 -}
 pointG :: Geometry
-pointG = Geometry tot [""]
+pointG =  geom3ToGeom pointG_
+pointG_ = Geometry3 g []
   where
-    tot m ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
+    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData color) $ runColumnFinite $ do
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
-    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL (Normalized col) ms = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData col) $ fmap (\m -> P $
-      V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
 {-|
 Line geometry.
 Can be combined with point and fill.
@@ -906,28 +934,20 @@ x, y
 @
 -}
 line :: Geometry
-line = Geometry tot [""]
+line = geom3ToGeom line_
+line_ = Geometry3 g []
   where
-    tot :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
-    -- tot m ms = case (lineTypes' m, colors' m) of
-      -- (Just (lt:_), _         ) -> baseL lt 0 ms
-      -- (_,           _)          -> baseL 0 0 ms
-      -- (Just (lt:_), Just (c:_)) -> baseL lt c ms
-      -- (_,           Just (c:_)) -> baseL 0 c ms
-
-    tot m ms = case (lineTypes' m, colors' m) of
-
-      (Just (lt:_), Nothing) -> baseL lt 0 ms
-      (_,           Nothing) -> baseL 0  0 ms
-      (Just (lt:_), Just xs) -> mconcat $ fmap (\color -> baseL lt color $ atColor2 color ms) xs
-      (_,           Just xs) -> mconcat $ fmap (\color -> baseL 0  color $ atColor2 color ms) xs
-
-    baseL :: Double -> Double -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
-    baseL (lt) (col) ms = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData col lt) $ fmap (\m -> P $
-      V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
-
-atColor2 :: Double -> [Map Key (Coord, Maybe Special)] -> [Map Key (Coord, Maybe Special)]
-atColor2 _ = id
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData color 0) $ runColumnFinite $ do
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 Fill geometry. Similar to area, except that the lower bound is always the same as the X axis.
@@ -942,14 +962,21 @@ x, y
 @
 -}
 fill :: Geometry
-fill = Geometry tot [""]
+-- TODO color separation
+fill = geom3ToGeom fill_
+fill_ = Geometry3 g []
   where
-    tot m ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
-
-    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL (Normalized col) ms = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData col) $ fmap (\m -> P $ V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData color) $ runColumnFinite $ do
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 Fill geometry.
@@ -963,15 +990,21 @@ x, yMin, y
 @
 -}
 area :: Geometry
-area = Geometry tot [""]
+area = geom3ToGeom area_
+area_ = Geometry3 g []
   where
-    tot m ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
-
-    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL (Normalized col) ms = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData col) $ fmap (\m -> P $
-      V3 (getNormalized $ m ! "x") (getNormalized $ m ! "yMin") (getNormalized $ m ! "y")) ms
+    -- TODO extract color
+    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData color) $ runColumnFinite $ do
+      x    <- scaledAttr "x" t
+      yMin <- scaledAttr "yMin" t
+      y    <- scaledAttr "y" t
+      return $ P $ V3 x yMin y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 An alternative version of 'area' that expects the lower and upper bounds to be distinct points
@@ -988,26 +1021,29 @@ x, y, bound
 @
 -}
 area2 :: Geometry
-area2 = Geometry tot [""]
+area2 = geom3ToGeom area2_
+area2_ = Geometry3 g []
   where
-    tot m ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
-
-    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 1) (ps1 <> reverse ps2)
+    g t = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData color) (ps1 <> reverse ps2)
       where
-        k = "bound"
-        lowMappings  = filterCoords not k ms
-        highMappings = filterCoords id  k ms
+        ps1 = runColumnFinite $ do
+          let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
+          x1 <- scaledAttr "x" low
+          y1 <- scaledAttr "y" low
+          let p1 = P (V2 x1 y1)
+          return p1
+        ps2 = runColumnFinite $ do
+          let high = filterRows "bound" (\x -> cScaled x >= 0.5) t
+          x2 <- scaledAttr "x" high
+          y2 <- scaledAttr "y" high
+          let p2 = P (V2 x2 y2)
+          return p2
 
-        xs1 = fmap (getNormalized . (! "x")) lowMappings
-        ys1 = fmap (getNormalized . (! "y")) lowMappings
-        ps1 = zipWith (\x y -> P (V2 x y)) xs1 ys1
-
-        xs2 = fmap (getNormalized . (! "x")) highMappings
-        ys2 = fmap (getNormalized . (! "y")) highMappings
-        ps2 = zipWith (\x y -> P (V2 x y)) xs2 ys2
+        -- TODO color separation
+        colors = runColumnFinite $ unscaledAttr "color" t
+        color = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 Bar geometry.
@@ -1019,16 +1055,13 @@ y
 @
 -}
 bars :: Geometry
-bars = Geometry tot [""]
+bars = geom3ToGeom bars_
+bars_ = Geometry3 g []
   where
-    tot m ms = case colors ms of
-      Nothing -> baseL 0 ms
-      Just xs -> mconcat $ fmap (\color -> baseL color $ atColor color ms) xs
-
-    baseL :: Coord -> [Map Key (Coord, a)] -> Styled Drawing
-    baseL _ ms = Lubeck.DV.Drawing.barData $ fmap (\m -> P $
-      V1 (getNormalized $ m ! "y")) ms
-
+    -- TODO color, stack, dodge
+    g t = Lubeck.DV.Drawing.barData $ runColumnFinite $ do
+      y <- scaledAttr "y" t
+      return $ P $ V1 y
 
 {-|
 A line intercepting X values. Drawn if @crossLineX@ is present and non-zero.
@@ -1040,11 +1073,15 @@ x, y, crossLineX
 @
 -}
 xIntercept :: Geometry
-xIntercept = ifG "crossLineX" (Geometry g [""])
+xIntercept = geom3ToGeom xIntercept_
+xIntercept_ = Geometry3 g []
   where
-   g m ms = Lubeck.DV.Drawing.scatterDataX $ fmap (\m -> P $
-    V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
-
+    -- TODO extract color
+    g t2 = Lubeck.DV.Drawing.scatterDataX $ runColumnFinite $ do
+      let t = ifT "crossLineX" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 {-|
 A line intercepting Y values. Drawn if @crossLineY@ is present and non-zero.
 
@@ -1055,10 +1092,16 @@ x, y, crossLineY
 @
 -}
 yIntercept :: Geometry
-yIntercept = ifG "crossLineY" (Geometry g [""])
+yIntercept = geom3ToGeom yIntercept_
+yIntercept_ = Geometry3 g []
   where
-   g m ms = Lubeck.DV.Drawing.scatterDataY $ fmap (\m -> P $
-    V2 (getNormalized $ m ! "x") (getNormalized $ m ! "y")) ms
+    -- TODO extract color
+    g t2 = Lubeck.DV.Drawing.scatterDataY $ runColumnFinite $ do
+      let t = ifT "crossLineY" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
+
 
 {-|
 Draws a custom image specified by the 'image' aesthetic.
@@ -1072,7 +1115,7 @@ x, y, image
 imageG :: Geometry
 imageG = Geometry g [""]
   where
-    g m ms = mconcat $ fmap singleImage ms
+    g _ ms = mconcat $ fmap singleImage ms
 
     singleImage :: Map Key (Coord, Maybe Special) -> Styled Drawing
     singleImage m = let
@@ -1101,7 +1144,7 @@ x, y, labe
 labelG :: Geometry
 labelG = Geometry g [""]
   where
-    g m ms = mconcat $ fmap singleLabel ms
+    g _ ms = mconcat $ fmap singleLabel ms
 
     singleLabel :: Map Key (Coord, Maybe Special) -> Styled Drawing
     singleLabel m = case (m ?! "x", m ?! "y", m ?! "label") of
@@ -1127,42 +1170,10 @@ labelG = Geometry g [""]
       where
         absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
 
-atColor :: (Eq b, Ord k, IsString k) => b -> [Map k (b, a)] -> [Map k (b, a)]
-atColor c = filter (\m -> fmap fst (m ?! "color") == Just c)
-
--- All color values in the dataset or Nothing if there are none
-colors :: [Map Key (Coord, a)] -> Maybe [Coord]
-colors ms = case Data.Maybe.catMaybes $ fmap (fmap fst . (?! "color")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
-lineTypes :: [Map Key (Coord, a)] -> Maybe [Coord]
-lineTypes ms = case Data.Maybe.catMaybes $ fmap (fmap fst . (?! "lineType")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
--- All color values in the dataset or Nothing if there are none
-colors' :: [Map Key Double] -> Maybe [Double]
-colors' ms = case Data.Maybe.catMaybes $ fmap ((?! "color")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
-
-lineTypes' :: [Map Key Double] -> Maybe [Double]
-lineTypes' ms = case Data.Maybe.catMaybes $ fmap ((?! "lineType")) ms of
-  [] -> Nothing
-  xs -> Just $ sortNub xs
-  where
-    sortNub = Data.List.nub . Data.List.sort
 
 
 
-
+{-
 
 {-| Tag a value to keep track of the fact that it is /normalized/, i.e. in the unit hypercube. -}
 newtype Normalized a = Normalized { getNormalized :: a }
@@ -1179,9 +1190,11 @@ normalize (Just (lb,ub)) x
   | isNaN ((x - lb) / (ub - lb)) = Normalized x
   | otherwise                    = Normalized $ (x - lb) / (ub - lb)
 
+-}
 
-(!) :: (Num b, Ord k) => Map k (b, a) -> k -> b
-m ! k =  maybe 0 id $ fmap fst $ Data.Map.lookup k m
+
+-- (!) :: (Num b, Ord k) => Map k (b, a) -> k -> b
+-- m ! k =  maybe 0 id $ fmap fst $ Data.Map.lookup k m
 
 -- (?) :: (Monoid b, Ord k) => Map k b -> k -> b
 -- m ? k = maybe mempty id $ Data.Map.lookup k m
@@ -1219,41 +1232,120 @@ m ?! k = Data.Map.lookup k m
 
 
 
+type Geometry2 = Geometry
 
+toNewGeom :: Geometry2 -> Geometry
+toNewGeom = id
 
 -- TOP-LEVEL
 
 
 
-{-| Convenient wrapper for 'visualize' using 'mempty' style. -}
-visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
-visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
+
+-- Data/guides/labels is mapped but not scaled
+data SinglePlot = SinglePlot
+  { mappedData        :: [Map Key Double]
+  , specialData       :: [Map Key Special]
+  , guides            :: Map Key [(Double, Str)]
+  , bounds            :: PlotBounds
+  , geometry          :: Geometry2
+  , axesTitles        :: [Str]
+  }
+
+createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry2 -> SinglePlot
+createSinglePlot titles dat aess geometry =
+  SinglePlot mappedData specialData guides bounds geometry titles
+  where
+    aes                 = mconcat aess
+    bounds              = aestheticPlotBounds aes dat                   :: PlotBounds
+    guides              = aestheticGuides aes dat                       :: Map Key [(Double, Str)]
+    scaledGuides        = normalizeGuides bounds guides                 :: Map Key [(Coord, Str)]
+    specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
+    mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
+
+
+-- TODO Identity vs Compose pattern (normalizeGuides' vs normalizeData')
+
+normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
+normalizeGuides b m = normalizeGuides' b m
+  where
+    normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
+
+normalizeData :: PlotBounds -> [Map Key Double] -> [Map Key Coord]
+normalizeData b m = fmap (normalizeData' b) m
+  where
+    normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
+
+
+mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> [Map Key (Coord, Maybe Special)]
+mappedAndScaledDataWithSpecial
+  Nothing       (SinglePlot mappedData specialData _ bounds _ _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+mappedAndScaledDataWithSpecial
+  (Just bounds) (SinglePlot mappedData specialData _ _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+  = zipWith mergeMapsL mappedAndScaledData specialData
+      :: [Map Key (Coord, Maybe Special)]
+      where
+        mappedAndScaledData :: [Map Key Coord]
+        mappedAndScaledData = normalizeData bounds mappedData
+
+        mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
+        mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
+          where
+            g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
+              (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
+              (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
+              (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
+
+
+newtype Plot = Plot [SinglePlot]
+  deriving (Monoid)
+
 
 {-|
-The main entry-point of the library.
+Convert the given visualization to a 'Drawing'.
+
+The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.
 -}
-visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
-visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
--- visualizeWithStyle axesNames1 dat (Geometry drawData _) aess =
-  -- let dataD     = drawData (mappedAndScaledDataWithSpecial Nothing plot)  :: Styled Drawing
-  --     guidesD   = drawGuides (scaledGuides Nothing plot ? "x") (scaledGuides Nothing plot ? "y")    :: Styled Drawing
-  --     axesD     = Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1) :: Styled Drawing
-  -- in mconcat [dataD, axesD, guidesD]
-  -- where
-  --   (?) :: (Monoid b, Ord k) => Map k b -> k -> b
-  --   m ? k = maybe mempty id $ Data.Map.lookup k m
-  --
-  --   axesNames = axesNames1 ++ repeat ""                              :: [Str]
-  --   drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
-  --     where
-  --       xs = fmap (second Just) xs2
-  --       ys = fmap (second Just) ys2
-  --   plot = createSinglePlot [] dat aess mempty -- axes names drawn separately
+drawPlot :: Plot -> Styled Drawing
+drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
+  where
+    plotPlotBounds :: Plot -> PlotBounds
+    plotPlotBounds (Plot []) = mempty
+    plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
+      where
+        outerPlotBounds :: (Ord k) => Map k (Double, Double) -> Map k (Double, Double) -> Map k (Double, Double)
+        outerPlotBounds = Data.Map.unionWith g
+          where
+            g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
+
+    drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled Drawing
+    drawPlot1 bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
+      where
+        (?) :: (Monoid b, Ord k) => Map k b -> k -> b
+        m ? k = maybe mempty id $ Data.Map.lookup k m
+
+        dataD :: Styled Drawing
+        -- TODO only place where we actually look at the geom
+        dataD = (geomMapping $ toNewGeom $ geometry plot) (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
+
+        guidesD :: Styled Drawing
+        guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
+
+        axesD :: Styled Drawing
+        axesD = if not includeGuides then mempty else Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
 
 
--- {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
--- printDebugInfo :: Show s => [s] -> [Aesthetic s] -> IO ()
--- printDebugInfo dat aess = putStrLn $ debugInfo dat aess
+        scaledGuides :: Maybe PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
+        scaledGuides (Just bounds) (SinglePlot _ _ guides _ _ _)      = normalizeGuides bounds guides
+        scaledGuides Nothing       (SinglePlot _ _ guides bounds _ _) = normalizeGuides bounds guides
+
+        -- TODO derive names from aesthetic instead
+        axesNames = axesTitles plot <> repeat mempty :: [Str]
+        drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+          where
+            xs = fmap (second Just) xs2
+            ys = fmap (second Just) ys2
 
 
 {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
@@ -1305,130 +1397,32 @@ debugInfo dat aess = box
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
 
 
-
-createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> SinglePlot
-createSinglePlot titles dat aess geometry =
-  SinglePlot mappedData specialData guides bounds geometry titles
-  where
-    aes                 = mconcat aess
-    bounds              = aestheticPlotBounds aes dat                       :: PlotBounds
-    guides              = aestheticGuides aes dat                       :: Map Key [(Double, Str)]
-    scaledGuides        = normalizeGuides bounds guides                 :: Map Key [(Coord, Str)]
-    specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
-    mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
-
-
-scaledGuides :: Maybe PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
-scaledGuides (Just bounds) (SinglePlot _ _ guides _ _ _)      = normalizeGuides bounds guides
-scaledGuides Nothing       (SinglePlot _ _ guides bounds _ _) = normalizeGuides bounds guides
-
-
--- TODO Identity vs Compose pattern (normalizeGuides' vs normalizeData')
-
-normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
-normalizeGuides b m = normalizeGuides' b m
-  where
-    normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
-
-normalizeData :: PlotBounds -> [Map Key Double] -> [Map Key Coord]
-normalizeData b m = fmap (normalizeData' b) m
-  where
-    normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
-
-
-mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> [Map Key (Coord, Maybe Special)]
-mappedAndScaledDataWithSpecial
-  Nothing       (SinglePlot mappedData specialData _ bounds _ _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-mappedAndScaledDataWithSpecial
-  (Just bounds) (SinglePlot mappedData specialData _ _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-
-mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-  = zipWith mergeMapsL mappedAndScaledData specialData
-      :: [Map Key (Coord, Maybe Special)]
-      where
-        mappedAndScaledData :: [Map Key Coord]
-        mappedAndScaledData = normalizeData bounds mappedData
-
-        mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-        mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
-          where
-            g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
-              (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-              (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
-              (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
-
-
-
--- Data/guides/labels is mapped but not scaled
-data SinglePlot = SinglePlot
-  { mappedData        :: [Map Key Double]
-  , specialData       :: [Map Key Special]
-  , guides            :: Map Key [(Double, Str)]
-  , bounds            :: PlotBounds
-  , geometry          :: Geometry
-  , axesTitles        :: [Str]
-  }
-
-newtype Plot = Plot [SinglePlot]
-  deriving (Monoid)
-
-plotPlotBounds :: Plot -> PlotBounds
-plotPlotBounds (Plot []) = mempty
-plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
-  where
-    outerPlotBounds :: (Ord k) => Map k (Double, Double) -> Map k (Double, Double) -> Map k (Double, Double)
-    outerPlotBounds = Data.Map.unionWith g
-      where
-        g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
-
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plot :: [a] -> [Aesthetic a] -> Geometry -> Plot
+plot :: [a] -> [Aesthetic a] -> Geometry2 -> Plot
 plot dat aess geom = Plot [createSinglePlot [] dat aess geom]
 
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> Plot
+plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry2 -> Plot
 plotWithTitles titles dat aess geom = Plot [createSinglePlot titles dat aess geom]
 
+
+{-| Convenient wrapper for 'visualize' using 'mempty' style. -}
+visualize :: Show s => [Str] -> [s] -> Geometry2 -> [Aesthetic s] -> Drawing
+visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
+
 {-|
-Convert the given visualization to a 'Drawing'.
-
-The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.
+The main entry-point of the library.
 -}
-drawPlot :: Plot -> Styled Drawing
-drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
-  where
-    drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled Drawing
-    drawPlot1 bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
-      where
-        (?) :: (Monoid b, Ord k) => Map k b -> k -> b
-        m ? k = maybe mempty id $ Data.Map.lookup k m
-
-        dataD :: Styled Drawing
-        dataD = geomMapping (geometry plot) (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
-
-        guidesD :: Styled Drawing
-        guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
-
-        axesD :: Styled Drawing
-        axesD = if not includeGuides then mempty else Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
-
-        -- TODO derive names from aesthetic instead
-        axesNames = axesTitles plot <> repeat mempty :: [Str]
-        drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
-          where
-            xs = fmap (second Just) xs2
-            ys = fmap (second Just) ys2
+visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry2 -> [Aesthetic s] -> Styled Drawing
+visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
 
 
 
-
-
-
-visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
+visualizeTest :: Show s => [s] -> Geometry2 -> [Aesthetic s] -> IO ()
 visualizeTest dat geom aess = do
   -- printDebugInfo dat aess
   putStrLn $ B.render $ debugInfo dat aess

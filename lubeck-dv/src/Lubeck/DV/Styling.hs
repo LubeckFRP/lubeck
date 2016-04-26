@@ -258,29 +258,22 @@ instance Monoid Styling where
                                       , Colors.black `withOpacity` 1
                                       )
 
-    , _linePlotStrokeColor          = paletteFromList $ fmap (`withOpacity` 0.6) [Colors.red, Colors.green, Colors.blue]
+    , _linePlotStrokeColor          = paletteFromList $ fmap (`withOpacity` 0.6) defColorList
     , _linePlotStrokeWidth          = 2.5
     , _linePlotStroke               = defaultLineStyles
 
     -- TODO should arguably be renamed area/fill
     -- , _linePlotFillColor            = Colors.black `withOpacity` 0
-    , _linePlotFillColor            = paletteFromList $ fmap (`withOpacity` 0.2) [Colors.red, Colors.green, Colors.blue]
+    , _linePlotFillColor            = paletteFromList $ fmap (`withOpacity` 0.2) defColorList
 
-    , _scatterPlotStrokeColor       = paletteFromList $ fmap (`withOpacity` 0.6) [Colors.red, Colors.green, Colors.blue]
+    , _scatterPlotStrokeColor       = paletteFromList $ fmap (`withOpacity` 0.6) defColorList
     , _scatterPlotStrokeWidth       = 1
     -- , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
     , _scatterPlotFillColor         = singleColour $ Colors.white `withOpacity` 1
     , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
     , _scatterPlotShape             = mempty
 
-    , _barPlotBarColors             = paletteFromList $ fmap (`withOpacity` 0.6) $
-                                      [ Colors.red
-                                      , Colors.green
-                                      , Colors.blue
-                                      , Colors.pink
-                                      , Colors.orange
-                                      , Colors.purple
-                                      ]
+    , _barPlotBarColors             = paletteFromList $ fmap (`withOpacity` 0.6) $ defColorList
     , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
     , _barPlotUngroupedOffset       = V2 0.5 0
     , _barPlotGroupedOffset         = V2 0   0
@@ -316,6 +309,33 @@ instance Monoid Styling where
     , _backgroundTickStrokeWidthY   = 1
     }
   mappend = const
+
+defColorList =
+  [ Colors.red
+  , Colors.green
+  , Colors.blue
+  , Colors.pink
+  , Colors.orange
+  , Colors.purple
+  , Colors.paleturquoise
+  , Colors.deepskyblue
+  , Colors.steelblue
+  , Colors.darkgreen
+  , Colors.coral
+  , Colors.cornsilk
+  , Colors.oldlace
+  , Colors.crimson
+  , Colors.mediumaquamarine
+  , Colors.azure
+  , Colors.dodgerblue
+  , Colors.cornflowerblue
+  , Colors.slateblue
+  , Colors.goldenrod
+  , Colors.magenta
+  , Colors.hotpink
+  , Colors.darkmagenta
+  , Colors.midnightblue
+  ]
 
 type Styled = StyledT Identity
 

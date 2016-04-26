@@ -369,7 +369,8 @@ test21 = exportTestDrawing mempty mempty $ drawPlot $
   plot (zip
     ([1..10] :: [Int])
     ([2,5,1,2,5,-6,7,2,3,9] :: [Int])
-    ) [x<~_1,y<~_2]
+    )
+    [x<~_1,y<~_2]
     line
     <>
   plot (zip
@@ -377,7 +378,7 @@ test21 = exportTestDrawing mempty mempty $ drawPlot $
     ([12,5,1,2,5,-6,7,2,13,15] :: [Int])
     )
     [x<~_1,y<~_2]
-    area
+    fill
 
 {-
   Different Y scales
@@ -394,7 +395,7 @@ test22 = exportTestDrawing mempty mempty $ drawPlot $
     ("AAABBBZQqz" :: [Char])
     )
     [x<~_1,y<~_2]
-    area
+    fill
 
 
 {-
@@ -412,7 +413,21 @@ test23 = exportTestDrawing mempty mempty $ drawPlot $
     ("AAABBBZQqz" :: [Char])
     )
     [x<~_1,y<~_2]
-    area
+    fill
+
+{-
+  Same type/scale.
+-}
+test24 = exportTestDrawing mempty mempty $ drawPlot $ mconcat $ zipWith putTogether geoms dat
+  where
+    putTogether = \geom dat -> plot (zip [1..10::Int] dat) [x<~_1,y<~_2] geom
+    geoms = [pointG, line, fill, pointG <> line]
+    dat =
+      [ [2,5,1,2,5,-6,7,2,3,9] :: [Int]
+      , [1,1,1,1,2,2,2,2,3,3]
+      , [-1,-2,-3,-3,-3,-3,-3,-3,-3,-3]
+      ]
+
 
 {-
   Bar plot.
@@ -437,19 +452,6 @@ test25 = exportTestDrawing mempty mempty $ drawPlot $
       |]
     sortNub = Data.List.nub . Data.List.sort
 
-
-{-
-  Same type/scale.
--}
-test24 = exportTestDrawing mempty mempty $ drawPlot $ mconcat $ zipWith putTogether geoms dat
-  where
-    putTogether = \geom dat -> plot (zip [1..10::Int] dat) [x<~_1,y<~_2] geom
-    geoms = [pointG, line, area, pointG <> line]
-    dat =
-      [ [2,5,1,2,5,-6,7,2,3,9] :: [Int]
-      , [1,1,1,1,2,2,2,2,3,3]
-      , [-1,-2,-3,-3,-3,-3,-3,-3,-3,-3]
-      ]
 
 
 
@@ -482,7 +484,37 @@ test31 = exportTestDrawing
     dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
+test32 = exportTestDrawing
+  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+  -- (renderingRectangle .~ V2 800 500 $ mempty)
+  mempty
+  mempty
+  $ drawPlot $ mconcat
+    [ plot dat1 [x<~to (!! 0), y<~to (!! 1), ((0::Double) >$ color)] pointG
+    , plot dat2 [x<~to (!! 0), y<~to (!! 1), ((1::Double) >$ color)] pointG
+    , plot dat3 [x<~to (!! 0), y<~to (!! 1), ((2::Double) >$ color)] pointG
+    ]
+  where
+    dat1 = [ [x,sin x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
+-- TODO
+test33 = exportTestDrawing
+  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+  -- (renderingRectangle .~ V2 800 500 $ mempty)
+  mempty
+  mempty
+  $ drawPlot $ mconcat
+    [ plot (dat1 <> dat2) [x<~to (!! 0), y<~to (!! 1)
+      , bound <~ to (!! 2)
+      , ((23::Double) >$ color)] area2
+    -- , plot dat2 [x<~to (!! 0), y<~to (!! 1), ((1::Double) >$ color)] area2
+    ]
+  where
+    dat1 = [ [x,sin x,0] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat2 = [ [x,cos x,1] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
 
 testRad = exportTestDrawing
