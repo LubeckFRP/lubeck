@@ -15,13 +15,26 @@
   #-}
 
 module Lubeck.DV.Internal.Table
-  -- ( Table
-  -- , tableFromList
-  -- , tableToMap
-  -- , tableToList
-  -- , overlayTablesLong
-  -- , overlayTablesShort
-  -- )
+  -- ** Table type
+  ( Table
+  , tableFromList
+  , tableToMap
+  , tableToList
+  , overlayTablesLong
+  , overlayTablesShort
+  , crossTablesLong
+  , crossTablesShort
+  , filterRows
+  , getColumn
+  -- ** Column type
+  , Column
+  , columnFromList
+  , runColumn
+  , runColumnFinite
+  -- ** Utility
+  , prettyTable
+  , printTable
+  )
 where
 
 import BasePrelude
@@ -174,10 +187,9 @@ getColumn k t = case Data.Map.lookup k (tableToMap' t) of
   overlay throws a way data not present in both
 
 Laws
-  tableSize (crossTablesShort f a b) === min (tableSize a) (tableSize b)
+  tableSize (crossTablesShort f a b)   === min (tableSize a) (tableSize b)
   tableSize (overlayTablesShort f a b) === min (tableSize a) (tableSize b)
-
-  tableSize (crossTablesLong f a b) === max (tableSize a) (tableSize b)
+  tableSize (crossTablesLong f a b)   === max (tableSize a) (tableSize b)
     a /= mempty, b /= mempty
   tableSize (overlayTablesLong f a b) === max (tableSize a) (tableSize b)
     a /= mempty, b /= mempty
@@ -233,46 +245,12 @@ combine2 a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUp
 combine2With :: Ord k => (a -> b1 -> b) -> Map k a -> Map k b1 -> Map k b
 combine2With f a b = fmap (uncurry f) $ combine2 a b
 
+{-|
 
-
--- Show/Print
-
-printTable :: (Ord k, Show k, Show a) => Table k a -> IO ()
-printTable x = putStrLn  $ B.render $ showTable x
-
-showTable :: (Ord k, Show k, Show a) => Table k a -> B.Box
-showTable t = makeTable (fmap toBox $ tableHeaders t) (fmap (fmap toBox) $ transpose $ tableValues t)
+-}
+prettyTable :: (Ord k, Show k, Show a) => Table k a -> B.Box
+prettyTable t = makeTable (fmap toBox $ tableHeaders t) (fmap (fmap toBox) $ transpose $ tableValues t)
   where
-    -- plot@(SinglePlot mappedData _ boundsM guidesM _ _) = createSinglePlot [] dat aess mempty
-    -- aKeys       = Data.Map.keys $ mconcat mappedData
-    -- scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
-    --
-    -- {-
-    --   Create some basic text-based table views for he
-    --   Based on the 'boxes' package.
-    -- -}
-    -- rawDataTable = B.vcat B.left $ map (toBox) dat
-    -- mappedDataTable = makeTable (fmap (toBox) $ aKeys)
-    --   (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
-    -- -- tab1a = makeTable (fmap (toBox) $ aKeys)
-    --   -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
-    -- scaledDataTable = makeTable (fmap (toBox) $ aKeys)
-    --   (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing plot))
-    -- aestheticTableTable = makeTable ["Aesthetic", "Scale base", "PlotBounds", "Guide"]
-    --   (fmap (\k ->
-    --     [ toBox k
-    --     , B.text $ maybe "" show $ Data.Map.lookup k scaleBaseNM
-    --     , B.text $ maybe "" show $ Data.Map.lookup k boundsM
-    --     , B.text $ maybe "" show $ Data.Map.lookup k guidesM
-    --     ]) $ Data.Map.keys guidesM)
-    --
-    -- box = B.vsep 1 B.left
-    --   [ "Raw data    " B.<+> rawDataTable
-    --   , "Mapped data " B.<+> mappedDataTable -- TODO show "special" data here too!
-    --   , "Scaled data " B.<+> scaledDataTable
-    --   , "Aesthetics  " B.<+> aestheticTableTable
-    --   ]
-
     toBox :: Show a => a -> B.Box
     toBox = B.text . show
 
@@ -286,3 +264,6 @@ showTable t = makeTable (fmap toBox $ tableHeaders t) (fmap (fmap toBox) $ trans
       where
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
+
+printTable :: (Ord k, Show k, Show a) => Table k a -> IO ()
+printTable x = putStrLn  $ B.render $ prettyTable x
