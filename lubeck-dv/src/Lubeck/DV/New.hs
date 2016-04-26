@@ -912,11 +912,16 @@ pointG :: Geometry
 pointG =  geom3ToGeom pointG_
 pointG_ = Geometry3 g []
   where
-    -- TODO extract color
-    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 2) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
+      where
+        -- TODO color separation
+        colors = runColumnFinite $ scaledAttr "color" t
+        defColor = case colors of
+          [] -> 0
+          xs -> head xs
 
 {-|
 Line geometry.

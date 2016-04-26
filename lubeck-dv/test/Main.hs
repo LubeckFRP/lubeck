@@ -484,7 +484,35 @@ test31 = exportTestDrawing
     dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
+test32 = exportTestDrawing
+  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+  -- (renderingRectangle .~ V2 800 500 $ mempty)
+  mempty
+  mempty
+  $ drawPlot $ mconcat
+    [ plot dat1 [x<~to (!! 0), y<~to (!! 1), ((0::Double) >$ color)] pointG
+    , plot dat2 [x<~to (!! 0), y<~to (!! 1), ((1::Double) >$ color)] pointG
+    , plot dat3 [x<~to (!! 0), y<~to (!! 1), ((2::Double) >$ color)] pointG
+    ]
+  where
+    dat1 = [ [x,sin x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
+-- TODO
+test33 = exportTestDrawing
+  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+  -- (renderingRectangle .~ V2 800 500 $ mempty)
+  mempty
+  mempty
+  $ drawPlot $ mconcat
+    [ plot dat1 [x<~to (!! 0), y<~to (!! 1), ((0::Double) >$ color)] area2
+    , plot dat2 [x<~to (!! 0), y<~to (!! 1), ((1::Double) >$ color)] area2
+    ]
+  where
+    dat1 = [ [x,sin x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
+    dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
 
 testRad = exportTestDrawing
