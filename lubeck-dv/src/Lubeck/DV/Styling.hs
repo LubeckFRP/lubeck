@@ -310,8 +310,6 @@ instance Monoid Styling where
     }
   mappend = const
 
-incompletePattern [] = 1
-
 {-
 A somewhat arbitrary list. Used as a default palette for most colored elements.
 -}

@@ -15,8 +15,9 @@
   #-}
 
 module Lubeck.DV.Internal.Table
+  (
   -- ** Table type
-  ( Table
+    Table
   , tableFromList
   , tableToMap
   , tableToList
