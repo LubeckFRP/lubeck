@@ -884,10 +884,19 @@ data Geometry = Geometry
   { geomMapping         :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
   , geomBaseName        :: [String]
   }
-
 instance Monoid Geometry where
   mempty = Geometry mempty mempty
   mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
+
+data Geometry3 = Geometry3
+  { geomMapping3        :: Table Key Cell -> Styled Drawing
+  , geomBaseName3       :: [String]
+  }
+
+instance Monoid Geometry3 where
+  mempty = Geometry3 mempty mempty
+  mappend (Geometry3 a1 a2) (Geometry3 b1 b2) = Geometry3 (a1 <> b1) (a2 <> b2)
+
 
 
 ifG = undefined

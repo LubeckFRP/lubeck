@@ -48,19 +48,13 @@ import qualified Data.Colour.Names as Colors
 
 
 newtype Table k a = Table [Map k a]
-  deriving (Eq, Functor, Monoid
+  deriving (Functor, Monoid
   -- DEBUG
   , Show
   )
 
-{-
-Filter a row by looking at a single key.
--}
-filterRows :: Ord k => k -> (a -> Bool) -> Table k a -> Table k a
-filterRows k p (Table t) = Table $ filter (\m -> justJust p $ Data.Map.lookup k m) t
-  where
-    justJust p (Just x) = p x
-    justJust p Nothing  = False
+instance (Ord k, Eq a) => Eq (Table k a) where
+  a == b  =  tableToMap a == tableToMap b
 
 tableFromList :: Ord k => [Map k a] -> Table k a
 tableFromList = Table
@@ -71,24 +65,30 @@ tableSingleton k v = Table $ pure $ Data.Map.singleton k v
 tableToList :: Ord k => Table k a -> [Map k a]
 tableToList (Table t) = t
 
+{-
+Returns the header of each column.
+-}
 tableHeaders :: Ord k => Table k a -> [k]
 tableHeaders (Table t) = ks
   where
     ks = Data.List.nub $ mconcat $ fmap Data.Map.keys t
 
+{-
+Returns values in column-major order.
+-}
 tableValues :: Ord k => Table k a -> [[Maybe a]]
 tableValues = toList . tableToMap
   where
     toList = toListOf traverse
+
+tableSize :: Ord k => Table k a -> Int
+tableSize (Table t) = length t
 
 tableToMap :: Ord k => Table k a -> Map k [Maybe a]
 tableToMap (Table t) = Data.Map.fromList $ fmap (\k -> (k, fmap (Data.Map.lookup k) t)) ks
   where
     -- ks :: [[k]]
     ks = Data.List.nub $ mconcat $ fmap Data.Map.keys t
-
-vcatTables :: [Table k a] -> Table k a
-vcatTables = mconcat
 
 {-
   short/long zips
@@ -119,6 +119,20 @@ overlayTablesLong f (Table a) (Table b) = Table $ crossWith (combine2With f) a b
     crossWith f a  [] = []
     crossWith f a  b  = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
+
+{-
+Filter a row by looking at a single key.
+-}
+filterRows :: Ord k => k -> (a -> Bool) -> Table k a -> Table k a
+filterRows k p (Table t) = Table $ filter (\m -> justJust p $ Data.Map.lookup k m) t
+  where
+    justJust p (Just x) = p x
+    justJust p Nothing  = False
+
+
+
+-- Internal
+
 combine2 :: Ord k => Map k a -> Map k b -> Map k (a, b)
 combine2 a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
   where
@@ -132,6 +146,10 @@ combine2 a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUp
 
 combine2With :: Ord k => (a -> b1 -> b) -> Map k a -> Map k b1 -> Map k b
 combine2With f a b = fmap (uncurry f) $ combine2 a b
+
+
+
+-- Show/Print
 
 printTable :: (Ord k, Show k, Show a) => Table k a -> IO ()
 printTable x = putStrLn  $ B.render $ showTable x
@@ -182,18 +200,3 @@ showTable t = makeTable (fmap toBox $ tableHeaders t) (fmap (fmap toBox) $ trans
       where
         longestHeader = maximum $ fmap (length . B.render) headers
         belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
-
-
-(-:) = tableSingleton
-crLL = crossTablesLong const
-crSL = crossTablesShort const
-
-
-test :: Table String Int
-test = overlayTablesShort (+) foobar (mconcat $ replicate 10 (("foo" -: 0) `crLL` ("bar" -: 0)))
-  where
-    foobar = mconcat $ take 4 $ cycle [
-      (   ("foo" -: 1)
-       <> ("foo" -: 2)) `crLL` ("bar" -: 3)
-      ,                        "bar" -: 4
-      ]
