@@ -165,83 +165,83 @@ executable bd-example-history
                      , ghcjs-base
   default-language:    Haskell2010
 
-executable bd-example-plots
-  main-is:             examples/DV1.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , time
-                     , linear
-                     , colour
-                     , random
-                     , lens
-                     , ghcjs-base
-  default-language:    Haskell2010
-
-executable bd-example-plots2
-  main-is:             examples/DV2.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , time
-                     , linear
-                     , colour
-                     , random
-                     , lens
-                     , ghcjs-base
-  default-language:    Haskell2010
-
-executable bd-example-plots3
-  main-is:             examples/DV3.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , time
-                     , linear
-                     , colour
-                     , random
-                     , lens
-                     , ghcjs-base
-  default-language:    Haskell2010
-
-executable bd-example-plots4
-  main-is:             examples/DV4.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , time
-                     , linear
-                     , colour
-                     , random
-                     , lens
-                     , ghcjs-base
-  default-language:    Haskell2010
-
-executable bd-example-plots5
-  main-is:             examples/DV5.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , time
-                     , linear
-                     , colour
-                     , random
-                     , lens
-                     , ghcjs-base
-  default-language:    Haskell2010
-
-executable bd-example-plots6
-  main-is:             examples/DV6.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , time
-                     , linear
-                     , colour
-                     , random
-                     , lens
-                     , ghcjs-base
-  default-language:    Haskell2010
+-- executable bd-example-plots
+--   main-is:             examples/DV1.hs
+--   build-depends:       base
+--                      , lubeck
+--                      , virtual-dom
+--                      , time
+--                      , linear
+--                      , colour
+--                      , random
+--                      , lens
+--                      , ghcjs-base
+--   default-language:    Haskell2010
+--
+-- executable bd-example-plots2
+--   main-is:             examples/DV2.hs
+--   build-depends:       base
+--                      , lubeck
+--                      , virtual-dom
+--                      , time
+--                      , linear
+--                      , colour
+--                      , random
+--                      , lens
+--                      , ghcjs-base
+--   default-language:    Haskell2010
+--
+-- executable bd-example-plots3
+--   main-is:             examples/DV3.hs
+--   build-depends:       base
+--                      , lubeck
+--                      , virtual-dom
+--                      , time
+--                      , linear
+--                      , colour
+--                      , random
+--                      , lens
+--                      , ghcjs-base
+--   default-language:    Haskell2010
+--
+-- executable bd-example-plots4
+--   main-is:             examples/DV4.hs
+--   build-depends:       base
+--                      , lubeck
+--                      , virtual-dom
+--                      , time
+--                      , linear
+--                      , colour
+--                      , random
+--                      , lens
+--                      , ghcjs-base
+--   default-language:    Haskell2010
+--
+-- executable bd-example-plots5
+--   main-is:             examples/DV5.hs
+--   build-depends:       base
+--                      , lubeck
+--                      , virtual-dom
+--                      , time
+--                      , linear
+--                      , colour
+--                      , random
+--                      , lens
+--                      , ghcjs-base
+--   default-language:    Haskell2010
+--
+-- executable bd-example-plots6
+--   main-is:             examples/DV6.hs
+--   build-depends:       base
+--                      , lubeck
+--                      , virtual-dom
+--                      , time
+--                      , linear
+--                      , colour
+--                      , random
+--                      , lens
+--                      , ghcjs-base
+--   default-language:    Haskell2010
 
 executable bd-bdplatform
   main-is:             src/BDPlatform.hs
