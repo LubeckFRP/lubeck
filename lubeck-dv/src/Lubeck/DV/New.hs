@@ -844,6 +844,8 @@ data Cell = Cell
   }
 
 wrapTable :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Table Key Cell
+wrapTable [] _ = mempty
+wrapTable _ [] = mempty
 wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) (tableFromList a) (tableFromList b)
 
 ifT :: Key -> Table Key Cell -> Table Key Cell
@@ -898,7 +900,7 @@ pointG = geom3ToGeom pointG_
 pointG_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 0) $ Data.Maybe.catMaybes $ runColumn $ do
+    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData 0) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -929,7 +931,7 @@ line = geom3ToGeom line_
 line_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData 0 0) $ Data.Maybe.catMaybes $ runColumn $ do
+    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData 0 0) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -974,7 +976,7 @@ fill = geom3ToGeom fill_
 fill_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData 0) $ Data.Maybe.catMaybes $ runColumn $ do
+    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -1004,7 +1006,7 @@ fill :: Geometry
 area_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData 0) $ Data.Maybe.catMaybes $ runColumn $ do
+    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData 0) $ runColumnFinite $ do
       x    <- scaledAttr "x" t
       yMin <- scaledAttr "yMin" t
       y    <- scaledAttr "y" t
@@ -1038,24 +1040,16 @@ area2_ = Geometry3 g []
   where
     g t = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData 0) (ps1 <> reverse ps2)
       where
-        ps1 = toListOf traverse $ do
-          let high = filterRows "bound" (\x -> cScaled x >= 0.5) t
+        ps1 = runColumnFinite $ do
           let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
           x1 <- scaledAttr "x" low
           y1 <- scaledAttr "y" low
-          x2 <- scaledAttr "x" high
-          y2 <- scaledAttr "y" high
           let p1 = P (V2 x1 y1)
-          let p2 = P (V2 x2 y2)
           return p1
-        ps2 = toListOf traverse $ do
+        ps2 = runColumnFinite $ do
           let high = filterRows "bound" (\x -> cScaled x >= 0.5) t
-          let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
-          x1 <- scaledAttr "x" low
-          y1 <- scaledAttr "y" low
           x2 <- scaledAttr "x" high
           y2 <- scaledAttr "y" high
-          let p1 = P (V2 x1 y1)
           let p2 = P (V2 x2 y2)
           return p2
 
@@ -1103,7 +1097,7 @@ bars = geom3ToGeom bars_
 bars_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.barData $ Data.Maybe.catMaybes $ runColumn $ do
+    g t = Lubeck.DV.Drawing.barData $ runColumnFinite $ do
       y <- scaledAttr "y" t
       return $ P $ V1 y
 {-|
@@ -1130,7 +1124,7 @@ bars :: Geometry
 xIntercept_ = Geometry3 g []
   where
     -- TODO extract color
-    g t2 = Lubeck.DV.Drawing.scatterDataX $ Data.Maybe.catMaybes $ runColumn $ do
+    g t2 = Lubeck.DV.Drawing.scatterDataX $ runColumnFinite $ do
       let t = ifT "crossLineX" t2
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
@@ -1139,7 +1133,7 @@ xIntercept_ = Geometry3 g []
 yIntercept_ = Geometry3 g []
   where
     -- TODO extract color
-    g t2 = Lubeck.DV.Drawing.scatterDataY $ Data.Maybe.catMaybes $ runColumn $ do
+    g t2 = Lubeck.DV.Drawing.scatterDataY $ runColumnFinite $ do
       let t = ifT "crossLineY" t2
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
@@ -1267,8 +1261,8 @@ normalize (Just (lb,ub)) x
 -}
 
 
-(!) :: (Num b, Ord k) => Map k (b, a) -> k -> b
-m ! k =  maybe 0 id $ fmap fst $ Data.Map.lookup k m
+-- (!) :: (Num b, Ord k) => Map k (b, a) -> k -> b
+-- m ! k =  maybe 0 id $ fmap fst $ Data.Map.lookup k m
 
 -- (?) :: (Monoid b, Ord k) => Map k b -> k -> b
 -- m ? k = maybe mempty id $ Data.Map.lookup k m

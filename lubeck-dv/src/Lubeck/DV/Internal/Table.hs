@@ -76,12 +76,22 @@ deriving instance Traversable ZipList
 newtype Column a = Column { getColumn_ :: MaybeT ZipList a }
   deriving (Functor, Applicative, Monad,
    Foldable, Traversable,
-   Alternative, MonadPlus)
+   Alternative
+   )
+
+-- instance Alternative Column where
+--   empty = Column (MaybeT (ZipList empty))
+--   (Column (MaybeT (ZipList a))) <|> (Column (MaybeT (ZipList b))) = Column (MaybeT (ZipList $ a <|> b))
+--
+-- instance MonadPlus Column where
+--   mzero = empty
+--   mplus = (<|>)
 
 -- TODO good Alternative/MonadPlus?
 
 instance Monad ZipList where
    return = ZipList . repeat
+   ZipList [] >>= _ = ZipList []
    ZipList xs >>= f = ZipList $ zipWith ((!!) . cycle . getZipList . f) xs
       [0..]
 
@@ -91,6 +101,12 @@ columnFromList xs = Column $ MaybeT $ ZipList xs
 runColumn :: Column a -> [Maybe a]
 runColumn = getZipList . runMaybeT . getColumn_
 
+runColumnFinite :: Column a -> [a]
+runColumnFinite = fmap fromJust . takeWhile isJust . runColumn
+  where
+    isJust (Just _) = True
+    isJust _        = False
+    fromJust (Just x) = x
 
 newtype Table k a = Table [Map k a]
   deriving (Functor, Monoid, Show)
