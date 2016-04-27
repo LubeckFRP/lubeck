@@ -63,7 +63,7 @@ import           Lubeck.Types
 import           Prelude                        hiding (div)
 import qualified Prelude
 import           Data.Interval                  (Interval, interval, Extended(..), lowerBound, upperBound)
-import           BD.Types
+-- import           BD.Types
 
 
 eitherToError :: Sink (Maybe Notification) -> Either AppError a -> IO (Maybe a)

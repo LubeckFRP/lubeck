@@ -4,6 +4,7 @@ module BDPlatform.HTMLCombinators where
 
 import           Data.Maybe
 import           Data.Monoid
+import           Data.String
 
 import qualified Web.VirtualDom.Html            as E
 import qualified Web.VirtualDom.Html.Attributes as A
@@ -71,7 +72,7 @@ mediaGroupLeft media body =
         [ E.div [A.class_ "media-left"] [ media ]
         , E.div [A.class_ "media-body"] [ body ] ]
 
-colOffset n        = E.div [A.class_ $ "col-xs-" <> showJS (12 - n) <> " col-xs-offset-" <> showJS n] 
+colOffset n        = E.div [A.class_ $ "col-xs-" <> showJS (12 - n) <> " col-xs-offset-" <> showJS n]
 colOffset' n x     = colOffset n [x]
 
 toolbarLeft        = E.div [A.class_ "btn-toolbar"]

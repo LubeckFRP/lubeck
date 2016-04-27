@@ -45,8 +45,8 @@ import           Lubeck.Types
 import           Lubeck.FRP
 import           Lubeck.Util                    (newSyncEventOf, showJS)
 
-import           BD.Types
-import           BDPlatform.Types
+-- import           BD.Types
+-- import           BDPlatform.Types
 import           BDPlatform.HTMLCombinators
 
 

@@ -28,7 +28,7 @@ import           Lubeck.FRP
 import           Lubeck.Types
 import           Lubeck.Util
 
-import           BD.Types
+-- import           BD.Types
 
 
 notificationW :: Widget [Notification] Int

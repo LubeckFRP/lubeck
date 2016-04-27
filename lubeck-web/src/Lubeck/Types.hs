@@ -2,19 +2,20 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Lubeck.Types
-  (
-  -- * Notifications
-    Notification(..)
-  , apiError
-  , blError
-  , notImplError
-  -- * Forms
-  , FormValid(..)
-  , Validator
-  -- ** IO
-  , FormValidIO(..)
-  , ValidatorIO
-  ) where
+  -- (
+  -- -- * Notifications
+  --   Notification(..)
+  -- , apiError
+  -- , blError
+  -- , notImplError
+  -- -- * Forms
+  -- , FormValid(..)
+  -- , Validator
+  -- -- ** IO
+  -- , FormValidIO(..)
+  -- , ValidatorIO
+  -- )
+  where
 
 import           Control.Monad
 import qualified Data.Aeson.Types
@@ -23,7 +24,9 @@ import           Data.Monoid
 import qualified GHC.Generics     as GHC
 
 import           GHCJS.Types      (JSString)
-import           BD.Types
+-- import           BD.Types
+
+data AppError = ApiError JSString | BLError JSString | NotImplementedError JSString
 
 
 data Notification = NError AppError | NInfo JSString | NWarning JSString | NSuccess JSString

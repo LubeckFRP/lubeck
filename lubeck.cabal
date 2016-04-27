@@ -116,7 +116,7 @@ library
                      , network-uri
                      , uuid
                      , QuickCheck
-  hs-source-dirs:      src, lubeck-core/src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src
+  hs-source-dirs:      src, lubeck-core/src, lubeck-frp/src, lubeck-drawing/src, lubeck-dv/src, lubeck-web/src
   default-language:    Haskell2010
   cpp-options:         -DGHCJS_BROWSER
   ghc-options:         -fno-warn-typed-holes
@@ -271,7 +271,7 @@ executable bd-bdplatform
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-label-refiner
-  main-is:             src/LabelRefiner.hs
+  main-is:             srclr/LabelRefiner.hs
   build-depends:       base
                      , lubeck
                      , virtual-dom

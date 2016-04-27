@@ -1,0 +1,44 @@
+
+flags: {}
+
+compiler: ghcjs-0.2.0.20151230.3_ghc-7.10.2
+compiler-check: match-exact
+setup-info:
+ ghcjs:
+  source:
+   ghcjs-0.2.0.20151230.3_ghc-7.10.2:
+    url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
+
+packages:
+- 'lubeck-core'
+- 'lubeck-frp'
+- 'lubeck-drawing'
+- 'lubeck-dv'
+- 'lubeck-web'
+
+# flags:
+#   lubeck-core:
+#     using-ghcjs: true
+#   lubeck-web:
+#     using-ghcjs: true
+
+- location:
+    git: git@github.com:ghcjs/ghcjs-ffiqq.git
+    commit: da31b18582542fcfceade5ef6b2aca66662b9e20
+# - location:
+    # git: git@github.com:BeautifulDestinations/virtual-dom.git
+    # commit: 77d6c103ebe6e4adb87190a19553efb0674e3fdc
+- location:
+    git: git@github.com:EugeneN/virtual-dom.git
+    commit: ef22d73f79b9ae60fc2d182c098f2a777071b0f2
+- location:
+    git: git@github.com:msakai/data-interval.git
+    commit: f57e950e53e5499f1cbc2609382521bf52105b5e
+- location:
+    git: git@github.com:msakai/extended-reals.git
+    commit: c724f6fcece279873354f576b9099579cb42f8ec
+- location:
+    git: https://github.com/EugeneN/ghcjs-base.git
+    commit: 861ef792b91063cf01daa573bcb4d96f4db0cf09
+extra-deps: [ ListZipper-1.2.0.2 ]
+resolver: lts-3.20
