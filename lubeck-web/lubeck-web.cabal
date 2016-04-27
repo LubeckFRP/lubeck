@@ -21,6 +21,13 @@ library
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
+                     , Components.Notifications
+                     , Components.BusyIndicator
+                     , Components.MainMenu
+                     , Components.Map
+                     , Components.Grid
+                     , Components.Layout
+                     , Components.ConfirmDialog
 
   build-depends:       base
                      , base-prelude
