@@ -1,0 +1,31 @@
+
+name:                lubeck-web
+version:             0.1.0.0
+synopsis:            Lubeck web libraries
+license:             AllRightsReserved
+license-file:        LICENSE
+author:              Beautiful Destinations
+maintainer:          hans@beautifuldestinations.com
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     Lubeck.App
+                     , Lubeck.Util
+                     , Lubeck.Forms
+                     , Lubeck.Forms.Basic
+                     , Lubeck.Forms.Button
+                     , Lubeck.Forms.Select
+                     , Lubeck.Forms.Interval
+                     , Lubeck.Forms.File
+                     , Lubeck.Html
+                     , Lubeck.Web.History
+                     , Lubeck.Web.URI
+
+  build-depends:       base
+                     , base-prelude
+                     , virtual-dom
+                     , ghcjs-ffiqq
+                     , ghcjs-base
+  hs-source-dirs:      src
+  default-language:    Haskell2010
