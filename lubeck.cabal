@@ -271,7 +271,7 @@ executable bd-bdplatform
   ghc-options:         -fno-warn-typed-holes
 
 executable bd-label-refiner
-  main-is:             src/LabelRefiner.hs
+  main-is:             srclr/LabelRefiner.hs
   build-depends:       base
                      , lubeck
                      , virtual-dom
