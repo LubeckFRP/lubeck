@@ -243,35 +243,8 @@ executable bd-example-history
 --                      , ghcjs-base
 --   default-language:    Haskell2010
 
-executable bd-bdplatform
-  main-is:             src/BDPlatform.hs
-  build-depends:       base
-                     , lubeck
-                     , virtual-dom
-                     , ghcjs-base
-                     , ghcjs-ffiqq
-                     , stm
-                     , text
-                     , mtl
-                     , time
-                     , containers
-                     , unordered-containers
-                     , lens
-                     , xml
-                     , neat-interpolation
-                     , data-default
-                     , containers
-                     , aeson
-                     , bytestring
-                     , monad-parallel
-                     , ListZipper
-                     , either
-                     , network-uri
-  default-language:    Haskell2010
-  ghc-options:         -fno-warn-typed-holes
-
 executable bd-label-refiner
-  main-is:             srclr/LabelRefiner.hs
+  main-is:             src/LabelRefiner.hs
   build-depends:       base
                      , lubeck
                      , virtual-dom
