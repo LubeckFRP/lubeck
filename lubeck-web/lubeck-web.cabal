@@ -13,6 +13,7 @@ library
   exposed-modules:     Lubeck.App
                      , Lubeck.Util
                      , Lubeck.Forms
+                     , Lubeck.Types
                      , Lubeck.Forms.Basic
                      , Lubeck.Forms.Button
                      , Lubeck.Forms.Select
