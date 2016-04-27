@@ -22,6 +22,3 @@ instance ToJSON JSString where
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
-
-data AppError = ApiError JSString | BLError JSString | NotImplementedError JSString
-  -- deriving (Show)

@@ -21,19 +21,17 @@ library
                      , Lubeck.Html
                      , Lubeck.Web.History
                      , Lubeck.Web.URI
-                     , Components.Notifications
-                     , Components.BusyIndicator
-                     , Components.MainMenu
-                     , Components.Map
-                     , Components.Grid
-                     , Components.Layout
-                     , Components.ConfirmDialog
+                    --  , Components.Notifications
+                    --  , Components.BusyIndicator
+                    --  , Components.MainMenu
+                    --  , Components.Map
+                    --  , Components.Grid
+                    --  , Components.Layout
+                    --  , Components.ConfirmDialog
 
   build-depends:       base
                      , base-prelude
                      , virtual-dom
-                     , ghcjs-ffiqq
-                     , ghcjs-base
                      , data-interval
                      , time
                      , aeson
@@ -42,6 +40,10 @@ library
                      , data-default
                      , containers
                      , random
+                     , lubeck-frp
+  if impl(ghcjs)
+    build-depends:     ghcjs-base
+                     , ghcjs-ffiqq
 
   hs-source-dirs:      src
   default-language:    Haskell2010

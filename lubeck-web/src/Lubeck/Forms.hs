@@ -90,8 +90,6 @@ import           Control.Lens                   (Iso, Iso', Lens, Lens', Prism,
 import qualified Control.Lens
 import           Control.Lens.TH                (makeLenses)
 
-import           BD.Types
-
 {-|
 Provides a way of:
 

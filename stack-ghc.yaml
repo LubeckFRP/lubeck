@@ -5,4 +5,5 @@ packages:
 - 'lubeck-frp'
 - 'lubeck-drawing'
 - 'lubeck-dv'
+- 'lubeck-web'
 resolver: lts-3.20
