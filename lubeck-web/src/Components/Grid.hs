@@ -28,7 +28,7 @@ import           Lubeck.FRP
 import qualified Lubeck.FRP                     as FRP
 import           Lubeck.Util
 
-import           BD.Types
+-- import           BD.Types
 import           BDPlatform.HTMLCombinators
 
 

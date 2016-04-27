@@ -43,7 +43,7 @@ import           Lubeck.Forms
 import           Lubeck.FRP
 import           Lubeck.Util
 
-import           BD.Types
+-- import           BD.Types
 
 data Point = Point { lat :: Double, lon :: Double } deriving Show
 type Line = (Point, Point)
