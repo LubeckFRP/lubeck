@@ -9,7 +9,7 @@
   , ConstraintKinds
   #-}
 
-module Lubeck.DV.Drawing
+module Lubeck.DV.Internal.Render
   where
 
 import Prelude hiding (div)

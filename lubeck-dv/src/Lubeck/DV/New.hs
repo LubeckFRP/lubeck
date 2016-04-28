@@ -171,8 +171,8 @@ import Lubeck.DV.Internal.Normalized
 import Lubeck.DV.Internal.Table
 
 import qualified Lubeck.Drawing
-import qualified Lubeck.DV.Drawing
 import qualified Lubeck.DV.Styling
+import qualified Lubeck.DV.Internal.Render
 
 {-$data
 
@@ -912,7 +912,7 @@ pointG :: Geometry
 pointG =  geom3ToGeom pointG_
 pointG_ = Geometry3 g []
   where
-    g t = Lubeck.DV.Drawing.scatterData (Lubeck.DV.Drawing.ScatterData color) $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.scatterData (Lubeck.DV.Internal.Render.ScatterData color) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -938,7 +938,7 @@ line = geom3ToGeom line_
 line_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.lineData (Lubeck.DV.Drawing.LineData color 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.lineData (Lubeck.DV.Internal.Render.LineData color 0) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -967,7 +967,7 @@ fill = geom3ToGeom fill_
 fill_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.fillData (Lubeck.DV.Drawing.AreaData color) $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.fillData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -994,7 +994,7 @@ area = geom3ToGeom area_
 area_ = Geometry3 g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Drawing.areaData (Lubeck.DV.Drawing.AreaData color) $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.areaData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
       x    <- scaledAttr "x" t
       yMin <- scaledAttr "yMin" t
       y    <- scaledAttr "y" t
@@ -1024,7 +1024,7 @@ area2 :: Geometry
 area2 = geom3ToGeom area2_
 area2_ = Geometry3 g []
   where
-    g t = Lubeck.DV.Drawing.areaData' (Lubeck.DV.Drawing.AreaData color) (ps1 <> reverse ps2)
+    g t = Lubeck.DV.Internal.Render.areaData' (Lubeck.DV.Internal.Render.AreaData color) (ps1 <> reverse ps2)
       where
         ps1 = runColumnFinite $ do
           let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
@@ -1059,7 +1059,7 @@ bars = geom3ToGeom bars_
 bars_ = Geometry3 g []
   where
     -- TODO color, stack, dodge
-    g t = Lubeck.DV.Drawing.barData $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.barData $ runColumnFinite $ do
       y <- scaledAttr "y" t
       return $ P $ V1 y
 
@@ -1077,7 +1077,7 @@ xIntercept = geom3ToGeom xIntercept_
 xIntercept_ = Geometry3 g []
   where
     -- TODO extract color
-    g t2 = Lubeck.DV.Drawing.scatterDataX $ runColumnFinite $ do
+    g t2 = Lubeck.DV.Internal.Render.scatterDataX $ runColumnFinite $ do
       let t = ifT "crossLineX" t2
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
@@ -1096,7 +1096,7 @@ yIntercept = geom3ToGeom yIntercept_
 yIntercept_ = Geometry3 g []
   where
     -- TODO extract color
-    g t2 = Lubeck.DV.Drawing.scatterDataY $ runColumnFinite $ do
+    g t2 = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do
       let t = ifT "crossLineY" t2
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
@@ -1333,7 +1333,7 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
         guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
 
         axesD :: Styled Drawing
-        axesD = if not includeGuides then mempty else Lubeck.DV.Drawing.labeledAxis (axesNames !! 0) (axesNames !! 1)
+        axesD = if not includeGuides then mempty else Lubeck.DV.Internal.Render.labeledAxis (axesNames !! 0) (axesNames !! 1)
 
 
         scaledGuides :: Maybe PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
@@ -1342,7 +1342,7 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
 
         -- TODO derive names from aesthetic instead
         axesNames = axesTitles plot <> repeat mempty :: [Str]
-        drawGuides xs2 ys2 = Lubeck.DV.Drawing.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+        drawGuides xs2 ys2 = Lubeck.DV.Internal.Render.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
           where
             xs = fmap (second Just) xs2
             ys = fmap (second Just) ys2
