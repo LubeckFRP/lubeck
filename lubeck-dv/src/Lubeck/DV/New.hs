@@ -58,7 +58,7 @@ module Lubeck.DV.New
 
 
   -- * Geometry
-  , Geometry3
+  , Geometry
   , pointG
   , line
   , area
@@ -873,14 +873,14 @@ You can think of scaled and mapped data matrix of numbers and special values
 (images, labels etc), where each rows correspond to a tuple in the original
 dataset and each column to an aesthetic attribute such as size, position, color etc.
 -}
-data Geometry3 = Geometry3
+data Geometry = Geometry
   { geomMapping3        :: Table Key Cell -> Styled Drawing
   , geomBaseName3       :: [String]
   }
 
-instance Monoid Geometry3 where
-  mempty = Geometry3 mempty mempty
-  mappend (Geometry3 a1 a2) (Geometry3 b1 b2) = Geometry3 (a1 <> b1) (a2 <> b2)
+instance Monoid Geometry where
+  mempty = Geometry mempty mempty
+  mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
 
 scaledAttr :: Key -> Table Key Cell -> Column Double
 scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
@@ -902,8 +902,8 @@ Aesthetics:
 x, y
 @
 -}
-pointG :: Geometry3
-pointG = Geometry3 g []
+pointG :: Geometry
+pointG = Geometry g []
   where
     g t = Lubeck.DV.Internal.Render.scatterData (Lubeck.DV.Internal.Render.ScatterData color) $ runColumnFinite $ do
       x <- scaledAttr "x" t
@@ -926,8 +926,8 @@ Aesthetics:
 x, y
 @
 -}
-line :: Geometry3
-line = Geometry3 g []
+line :: Geometry
+line = Geometry g []
   where
     -- TODO extract color
     g t = Lubeck.DV.Internal.Render.lineData (Lubeck.DV.Internal.Render.LineData color 0) $ runColumnFinite $ do
@@ -953,9 +953,9 @@ Aesthetics:
 x, y
 @
 -}
-fill :: Geometry3
+fill :: Geometry
 -- TODO color separation
-fill = Geometry3 g []
+fill = Geometry g []
   where
     -- TODO extract color
     g t = Lubeck.DV.Internal.Render.fillData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
@@ -980,8 +980,8 @@ Aesthetics:
 x, yMin, y
 @
 -}
-area :: Geometry3
-area = Geometry3 g []
+area :: Geometry
+area = Geometry g []
   where
     -- TODO extract color
     g t = Lubeck.DV.Internal.Render.areaData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
@@ -1010,8 +1010,8 @@ Aesthetics:
 x, y, bound
 @
 -}
-area2 :: Geometry3
-area2 = Geometry3 g []
+area2 :: Geometry
+area2 = Geometry g []
   where
     g t = Lubeck.DV.Internal.Render.areaData' (Lubeck.DV.Internal.Render.AreaData color) (ps1 <> reverse ps2)
       where
@@ -1043,8 +1043,8 @@ Aesthetics:
 y
 @
 -}
-bars :: Geometry3
-bars = Geometry3 g []
+bars :: Geometry
+bars = Geometry g []
   where
     -- TODO color, stack, dodge
     g t = Lubeck.DV.Internal.Render.barData $ runColumnFinite $ do
@@ -1060,8 +1060,8 @@ Aesthetics:
 x, y, crossLineX
 @
 -}
-xIntercept :: Geometry3
-xIntercept = Geometry3 g []
+xIntercept :: Geometry
+xIntercept = Geometry g []
   where
     -- TODO extract color
     g t2 = Lubeck.DV.Internal.Render.scatterDataX $ runColumnFinite $ do
@@ -1078,8 +1078,8 @@ Aesthetics:
 x, y, crossLineY
 @
 -}
-yIntercept :: Geometry3
-yIntercept = Geometry3 g []
+yIntercept :: Geometry
+yIntercept = Geometry g []
   where
     -- TODO extract color
     g t2 = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do
@@ -1098,8 +1098,8 @@ Aesthetics:
 x, y, image
 @
 -}
-imageG :: Geometry3
-imageG = Geometry3 g [""]
+imageG :: Geometry
+imageG = Geometry g [""]
   where
     g t = mconcat $ runColumnFinite $ do
       x  <- scaledAttr "x" t
@@ -1130,8 +1130,8 @@ Aesthetics:
 x, y, labe
 @
 -}
-labelG :: Geometry3
-labelG = Geometry3 g [""]
+labelG :: Geometry
+labelG = Geometry g [""]
   where
     g t = mconcat $ runColumnFinite $ do
       x  <- scaledAttr "x" t
@@ -1205,11 +1205,11 @@ data SinglePlot = SinglePlot
   , specialData       :: [Map Key Special]
   , guides            :: Map Key [(Double, Str)]
   , bounds            :: PlotBounds
-  , geometry          :: Geometry3
+  , geometry          :: Geometry
   , axesTitles        :: [Str]
   }
 
-createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry3 -> SinglePlot
+createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> SinglePlot
 createSinglePlot titles dat aess geometry =
   SinglePlot mappedData specialData guides bounds geometry titles
   where
@@ -1358,13 +1358,13 @@ debugInfo dat aess = box
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plot :: [a] -> [Aesthetic a] -> Geometry3 -> Plot
+plot :: [a] -> [Aesthetic a] -> Geometry -> Plot
 plot dat aess geom = Plot [createSinglePlot [] dat aess geom]
 
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry3 -> Plot
+plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> Plot
 plotWithTitles titles dat aess geom = Plot [createSinglePlot titles dat aess geom]
 
 plotLabel :: Str -> [a] -> [Aesthetic a] -> Plot
@@ -1381,16 +1381,16 @@ plotXIntercept dat baseAes =
 
 
 {-| Convenient wrapper for 'visualize' using 'mempty' style. -}
-visualize :: Show s => [Str] -> [s] -> Geometry3 -> [Aesthetic s] -> Drawing
+visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
 visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
 
 {-|
 The main entry-point of the library.
 -}
-visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry3 -> [Aesthetic s] -> Styled Drawing
+visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
 
-visualizeTest :: Show s => [s] -> Geometry3 -> [Aesthetic s] -> IO ()
+visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
 visualizeTest dat geom aess = do
   -- printDebugInfo dat aess
   putStrLn $ B.render $ debugInfo dat aess
