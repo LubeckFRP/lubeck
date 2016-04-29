@@ -1144,8 +1144,8 @@ labelG = Geometry g [""]
 
     baseImage x y str = do
         style <- ask
-        return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
-          $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+        return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.zoom._x * style^.Lubeck.DV.Styling.renderingRectangle._x)
+          $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.zoom._y * style^.Lubeck.DV.Styling.renderingRectangle._y)
           -- TODO font
           $ text_ style str
 
