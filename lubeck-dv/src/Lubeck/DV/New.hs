@@ -874,8 +874,8 @@ You can think of scaled and mapped data matrix of numbers and special values
 dataset and each column to an aesthetic attribute such as size, position, color etc.
 -}
 data Geometry = Geometry
-  { geomMapping3        :: Table Key Cell -> Styled Drawing
-  , geomBaseName3       :: [String]
+  { geomMapping        :: Table Key Cell -> Styled Drawing
+  , geomBaseName       :: [String]
   }
 
 instance Monoid Geometry where
@@ -1284,7 +1284,7 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
 
         dataD :: Styled Drawing
         -- TODO only place where we actually look at the geom
-        dataD = (geomMapping3 $ geometry plot) $
+        dataD = (geomMapping $ geometry plot) $
          wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
 
         guidesD :: Styled Drawing
