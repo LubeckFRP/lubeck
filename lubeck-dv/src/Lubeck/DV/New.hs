@@ -123,6 +123,10 @@ module Lubeck.DV.New
   , plot
   , plotWithTitles
   , drawPlot
+  -- ** Helpers
+  , plotLabel
+  , plotImage
+  , plotXIntercept
   -- ** Top-level (old)
   , visualize
   , visualizeWithStyle
@@ -1408,6 +1412,18 @@ Create a visualization the given data set using the given aesthetics and geometr
 -}
 plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry2 -> Plot
 plotWithTitles titles dat aess geom = Plot [createSinglePlot titles dat aess geom]
+
+plotLabel :: Str -> [a] -> [Aesthetic a] -> Plot
+plotLabel text dat baseAes =
+  plot dat (baseAes <> [text >$ label]) labelG
+
+plotImage :: Drawing -> [a] -> [Aesthetic a] -> Plot
+plotImage drawing dat baseAes =
+  plot dat (baseAes <> [drawing >$ image]) imageG
+
+plotXIntercept :: [a] -> [Aesthetic a] -> Plot
+plotXIntercept dat baseAes =
+  plot dat (baseAes <> [True >$ crossLineX]) xIntercept
 
 
 {-| Convenient wrapper for 'visualize' using 'mempty' style. -}
