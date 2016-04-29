@@ -903,6 +903,9 @@ scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
 unscaledAttr :: Key -> Table Key Cell -> Column Double
 unscaledAttr k = fmap cUnscaled . getColumn k
 
+specialAttr :: Key -> Table Key Cell -> Column (Maybe Special)
+specialAttr k = fmap cSpecial . getColumn k
+
 
 {-|
 Point geometry.
@@ -1119,24 +1122,44 @@ x, y, image
 @
 -}
 imageG :: Geometry
-imageG = Geometry g [""]
+imageG = geom3ToGeom $ Geometry3 g [""]
   where
-    g _ ms = mconcat $ fmap singleImage ms
+    g t = mconcat $ runColumnFinite $ do
+      x  <- scaledAttr "x" t
+      y  <- scaledAttr "y" t
+      sp <- specialAttr "image" t
+      case sp of
+        -- TODO get scaling in Maybe?
+        -- Would require something like (Column a -> Column (Maybe a))
+        Just (SpecialDrawing dr) -> return $ baseImage dr x y (Just 1)
+        Nothing                  -> return mempty
 
-    singleImage :: Map Key (Coord, Maybe Special) -> Styled Drawing
-    singleImage m = let
-      size = case (m ?! "size") of
-        Nothing               -> 1
-        Just (Normalized x,_) -> x
-      in case (m ?! "x", m ?! "y", m ?! "image") of
-        -- TODO listen to width etc
-        (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialDrawing dr))) -> do
-          style <- ask
-          return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
-            $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
-            $ Lubeck.Drawing.scale size
-            $ dr
-        _ -> mempty
+
+    baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
+    baseImage dr x y Nothing     = baseImage dr x y (Just 1)
+    baseImage dr x y (Just size) = do
+      style <- ask
+      return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
+        $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+        $ Lubeck.Drawing.scale size
+        $ dr
+
+    -- g _ ms = mconcat $ fmap singleImage ms
+    --
+    -- singleImage :: Map Key (Coord, Maybe Special) -> Styled Drawing
+    -- singleImage m = let
+    --   size = case (m ?! "size") of
+    --     Nothing               -> 1
+    --     Just (Normalized x,_) -> x
+    --   in case (m ?! "x", m ?! "y", m ?! "image") of
+    --     -- TODO listen to width etc
+    --     (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialDrawing dr))) -> do
+    --       style <- ask
+    --       return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
+    --         $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+    --         $ Lubeck.Drawing.scale size
+    --         $ dr
+    --     _ -> mempty
 
 {-|
 Draws custom text specified by the 'label' aesthetic.
@@ -1449,6 +1472,9 @@ exportTestDrawing :: RenderingOptions -> Styling -> Styled Drawing -> IO ()
 exportTestDrawing drawOpts style finalD = do
   let svgS = Lubeck.Drawing.toSvgStr drawOpts $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
   return ()
-  withSystemTempDirectory "lubeck-dv-test" $ \dir -> do
-    writeFile (dir ++ "test.svg") $ unpackStr svgS
+  -- withSystemTempDirectory "lubeck-dv-test" $ \dir -> do
+  let dir = "/tmp/lubeck-dv-test"
+  do
+    createDirectoryIfMissing True dir
+    writeFile (dir ++ "/test.svg") $ unpackStr svgS
     return ()
