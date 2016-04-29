@@ -1144,23 +1144,6 @@ imageG = geom3ToGeom $ Geometry3 g [""]
         $ Lubeck.Drawing.scale size
         $ dr
 
-    -- g _ ms = mconcat $ fmap singleImage ms
-    --
-    -- singleImage :: Map Key (Coord, Maybe Special) -> Styled Drawing
-    -- singleImage m = let
-    --   size = case (m ?! "size") of
-    --     Nothing               -> 1
-    --     Just (Normalized x,_) -> x
-    --   in case (m ?! "x", m ?! "y", m ?! "image") of
-    --     -- TODO listen to width etc
-    --     (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialDrawing dr))) -> do
-    --       style <- ask
-    --       return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
-    --         $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
-    --         $ Lubeck.Drawing.scale size
-    --         $ dr
-    --     _ -> mempty
-
 {-|
 Draws custom text specified by the 'label' aesthetic.
 
@@ -1171,21 +1154,23 @@ x, y, labe
 @
 -}
 labelG :: Geometry
-labelG = Geometry g [""]
+labelG = geom3ToGeom $ Geometry3 g [""]
   where
-    g _ ms = mconcat $ fmap singleLabel ms
+    g t = mconcat $ runColumnFinite $ do
+      x  <- scaledAttr "x" t
+      y  <- scaledAttr "y" t
+      sp <- specialAttr "label" t
+      case sp of
+        Just (SpecialStr "")  -> return $ mempty
+        Just (SpecialStr str) -> return $ baseImage x y str
+        Nothing               -> return mempty
 
-    singleLabel :: Map Key (Coord, Maybe Special) -> Styled Drawing
-    singleLabel m = case (m ?! "x", m ?! "y", m ?! "label") of
-    -- TODO listen to width etc
-      (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialStr ""))) -> mempty
-      (Just (Normalized x,_), Just (Normalized y,_), Just (_,Just (SpecialStr str))) -> do
+    baseImage x y str = do
         style <- ask
         return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
           $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
           -- TODO font
           $ text_ style str
-      _ -> mempty
 
     text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
       {
@@ -1198,9 +1183,6 @@ labelG = Geometry g [""]
       }
       where
         absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
-
-
-
 
 {-
 
