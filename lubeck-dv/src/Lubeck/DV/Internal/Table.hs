@@ -18,9 +18,11 @@ module Lubeck.DV.Internal.Table
   (
   -- ** Table type
     Table
+  , tableSingleton
   , tableFromList
   , tableToMap
   , tableToList
+  , tableSize
   , overlayTablesLong
   , overlayTablesShort
   , crossTablesLong

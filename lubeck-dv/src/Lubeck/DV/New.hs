@@ -167,6 +167,8 @@ import qualified Data.Time
 import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
 import qualified Data.Colour.Names as Colors
+import System.IO.Temp (withSystemTempDirectory)
+import System.Directory (createDirectoryIfMissing)
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
@@ -1436,19 +1438,17 @@ The main entry-point of the library.
 visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry2 -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
 
-
-
 visualizeTest :: Show s => [s] -> Geometry2 -> [Aesthetic s] -> IO ()
 visualizeTest dat geom aess = do
   -- printDebugInfo dat aess
   putStrLn $ B.render $ debugInfo dat aess
-  let finalD = visualize ["FIRST AXIS", "SECOND AXIS"] dat geom aess
-  let svgS = Lubeck.Drawing.toSvgStr mempty $ finalD
-  writeFile "static/tmp/test2.svg" $ unpackStr svgS
-  return ()
+  let finalD = visualizeWithStyle ["FIRST AXIS", "SECOND AXIS"] dat geom aess
+  exportTestDrawing mempty mempty finalD
 
 exportTestDrawing :: RenderingOptions -> Styling -> Styled Drawing -> IO ()
 exportTestDrawing drawOpts style finalD = do
   let svgS = Lubeck.Drawing.toSvgStr drawOpts $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
-  writeFile "static/tmp/test2.svg" $ unpackStr svgS
   return ()
+  withSystemTempDirectory "lubeck-dv-test" $ \dir -> do
+    writeFile (dir ++ "test.svg") $ unpackStr svgS
+    return ()

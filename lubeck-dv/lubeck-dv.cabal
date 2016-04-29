@@ -16,7 +16,7 @@ library
                      , Lubeck.DV.Styling
                      , Lubeck.DV.ColorPalette
                      , Lubeck.DV.LineStyles
-  other-modules:       Lubeck.DV.Internal.Normalized
+                     , Lubeck.DV.Internal.Normalized
                      , Lubeck.DV.Internal.Table
                      , Lubeck.DV.Internal.Render
   build-depends:       base
@@ -33,7 +33,54 @@ library
                      , lubeck-drawing
                      , neat-interpolation
                      , boxes
-                     , QuickCheck
+                     , temporary
+                     , directory
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -fno-warn-typed-holes
+
+
+test-suite lubeck-dv-test-main
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:        Main.hs
+  build-depends:       base
+                     , base-prelude
+                     , lubeck-core
+                     , contravariant
+                     , mtl
+                     , transformers
+                     , containers
+                     , time
+                     , lens
+                     , colour
+                     , linear
+                     , lubeck-drawing
+                     , neat-interpolation
+                     , boxes
+                     , directory
+                     , temporary
+                     , lubeck-dv
+
+test-suite lubeck-dv-test-table
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:        Table.hs
+  build-depends:       base
+                     , base-prelude
+                     , lubeck-core
+                     , contravariant
+                     , mtl
+                     , transformers
+                     , containers
+                     , time
+                     , lens
+                     , colour
+                     , linear
+                     , lubeck-drawing
+                     , neat-interpolation
+                     , boxes
+                     , directory
+                     , temporary
+                     , lubeck-dv
+                     , QuickCheck

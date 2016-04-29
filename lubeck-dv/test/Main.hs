@@ -35,7 +35,7 @@ import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 
 import qualified Lubeck.Drawing
-import Lubeck.DV
+import Lubeck.DV hiding (visualize, visualizeWithStyle)
 
 
 
@@ -913,4 +913,40 @@ dataset1 =
           [366,2.9,4.3  ]
           ]
 
--- TODO render all and compose
+-- TODO automatically verify the plots look the same
+
+-- The only way to do this reliably is to render the SVGs to bitmap, using
+-- something like http://imagemagick.org/script/index.php
+
+-- For now just render to make sure we have no exceptions
+
+main = do
+  test
+  test2
+  test3
+  test4
+  test5
+  test6
+  test7
+  test8a
+  test8b
+  test8c
+  test9
+  test10
+  test11
+  test12
+  test13
+  test14
+
+  test20
+  test21
+  test22
+  test23
+  test24
+  test25
+
+  test30
+  test31
+  test32
+
+  print "Rendered all test plots"
