@@ -58,7 +58,7 @@ module Lubeck.DV.New
 
 
   -- * Geometry
-  , Geometry
+  , Geometry3
   , pointG
   , line
   , area
@@ -873,17 +873,6 @@ You can think of scaled and mapped data matrix of numbers and special values
 (images, labels etc), where each rows correspond to a tuple in the original
 dataset and each column to an aesthetic attribute such as size, position, color etc.
 -}
-data Geometry = Geometry
-  { geomMapping         :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Styled Drawing
-  , geomBaseName        :: [String]
-  }
-instance Monoid Geometry where
-  mempty = Geometry mempty mempty
-  mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
-
-{-
-Conceptually the same as 'Geometry'. The two types will be unified eventually.
--}
 data Geometry3 = Geometry3
   { geomMapping3        :: Table Key Cell -> Styled Drawing
   , geomBaseName3       :: [String]
@@ -892,10 +881,6 @@ data Geometry3 = Geometry3
 instance Monoid Geometry3 where
   mempty = Geometry3 mempty mempty
   mappend (Geometry3 a1 a2) (Geometry3 b1 b2) = Geometry3 (a1 <> b1) (a2 <> b2)
-
--- TODO remove
-geom3ToGeom :: Geometry3 -> Geometry
-geom3ToGeom (Geometry3 a b) = Geometry (\x y -> a (wrapTable x y)) b
 
 scaledAttr :: Key -> Table Key Cell -> Column Double
 scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
@@ -917,9 +902,8 @@ Aesthetics:
 x, y
 @
 -}
-pointG :: Geometry
-pointG =  geom3ToGeom pointG_
-pointG_ = Geometry3 g []
+pointG :: Geometry3
+pointG = Geometry3 g []
   where
     g t = Lubeck.DV.Internal.Render.scatterData (Lubeck.DV.Internal.Render.ScatterData color) $ runColumnFinite $ do
       x <- scaledAttr "x" t
@@ -942,9 +926,8 @@ Aesthetics:
 x, y
 @
 -}
-line :: Geometry
-line = geom3ToGeom line_
-line_ = Geometry3 g []
+line :: Geometry3
+line = Geometry3 g []
   where
     -- TODO extract color
     g t = Lubeck.DV.Internal.Render.lineData (Lubeck.DV.Internal.Render.LineData color 0) $ runColumnFinite $ do
@@ -970,10 +953,9 @@ Aesthetics:
 x, y
 @
 -}
-fill :: Geometry
+fill :: Geometry3
 -- TODO color separation
-fill = geom3ToGeom fill_
-fill_ = Geometry3 g []
+fill = Geometry3 g []
   where
     -- TODO extract color
     g t = Lubeck.DV.Internal.Render.fillData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
@@ -998,9 +980,8 @@ Aesthetics:
 x, yMin, y
 @
 -}
-area :: Geometry
-area = geom3ToGeom area_
-area_ = Geometry3 g []
+area :: Geometry3
+area = Geometry3 g []
   where
     -- TODO extract color
     g t = Lubeck.DV.Internal.Render.areaData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
@@ -1029,9 +1010,8 @@ Aesthetics:
 x, y, bound
 @
 -}
-area2 :: Geometry
-area2 = geom3ToGeom area2_
-area2_ = Geometry3 g []
+area2 :: Geometry3
+area2 = Geometry3 g []
   where
     g t = Lubeck.DV.Internal.Render.areaData' (Lubeck.DV.Internal.Render.AreaData color) (ps1 <> reverse ps2)
       where
@@ -1063,9 +1043,8 @@ Aesthetics:
 y
 @
 -}
-bars :: Geometry
-bars = geom3ToGeom bars_
-bars_ = Geometry3 g []
+bars :: Geometry3
+bars = Geometry3 g []
   where
     -- TODO color, stack, dodge
     g t = Lubeck.DV.Internal.Render.barData $ runColumnFinite $ do
@@ -1081,9 +1060,8 @@ Aesthetics:
 x, y, crossLineX
 @
 -}
-xIntercept :: Geometry
-xIntercept = geom3ToGeom xIntercept_
-xIntercept_ = Geometry3 g []
+xIntercept :: Geometry3
+xIntercept = Geometry3 g []
   where
     -- TODO extract color
     g t2 = Lubeck.DV.Internal.Render.scatterDataX $ runColumnFinite $ do
@@ -1100,9 +1078,8 @@ Aesthetics:
 x, y, crossLineY
 @
 -}
-yIntercept :: Geometry
-yIntercept = geom3ToGeom yIntercept_
-yIntercept_ = Geometry3 g []
+yIntercept :: Geometry3
+yIntercept = Geometry3 g []
   where
     -- TODO extract color
     g t2 = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do
@@ -1121,8 +1098,8 @@ Aesthetics:
 x, y, image
 @
 -}
-imageG :: Geometry
-imageG = geom3ToGeom $ Geometry3 g [""]
+imageG :: Geometry3
+imageG = Geometry3 g [""]
   where
     g t = mconcat $ runColumnFinite $ do
       x  <- scaledAttr "x" t
@@ -1153,8 +1130,8 @@ Aesthetics:
 x, y, labe
 @
 -}
-labelG :: Geometry
-labelG = geom3ToGeom $ Geometry3 g [""]
+labelG :: Geometry3
+labelG = Geometry3 g [""]
   where
     g t = mconcat $ runColumnFinite $ do
       x  <- scaledAttr "x" t
@@ -1184,34 +1161,6 @@ labelG = geom3ToGeom $ Geometry3 g [""]
       where
         absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
 
-{-
-
-{-| Tag a value to keep track of the fact that it is /normalized/, i.e. in the unit hypercube. -}
-newtype Normalized a = Normalized { getNormalized :: a }
-  deriving (Eq, Ord, Num, Fractional, Real, RealFrac, Floating)
-
-instance Show a => Show (Normalized a) where
-  -- OK because of overloaded literal
-  show (Normalized x) = show x
-
-normalize :: Maybe (Double, Double) -> Double -> Coord
-normalize Nothing        x = Normalized x
-normalize (Just (lb,ub)) x
-  | abs (ub - lb) < 0.00001      = Normalized x
-  | isNaN ((x - lb) / (ub - lb)) = Normalized x
-  | otherwise                    = Normalized $ (x - lb) / (ub - lb)
-
--}
-
-
--- (!) :: (Num b, Ord k) => Map k (b, a) -> k -> b
--- m ! k =  maybe 0 id $ fmap fst $ Data.Map.lookup k m
-
--- (?) :: (Monoid b, Ord k) => Map k b -> k -> b
--- m ? k = maybe mempty id $ Data.Map.lookup k m
-
-(?!) :: (Ord k) => Map k b -> k -> Maybe b
-m ?! k = Data.Map.lookup k m
 
 
 
@@ -1242,11 +1191,8 @@ m ?! k = Data.Map.lookup k m
 
 
 
-
-type Geometry2 = Geometry
-
-toNewGeom :: Geometry2 -> Geometry
-toNewGeom = id
+-- toNewGeom :: Geometry -> Geometry
+-- toNewGeom = id
 
 -- TOP-LEVEL
 
@@ -1259,11 +1205,11 @@ data SinglePlot = SinglePlot
   , specialData       :: [Map Key Special]
   , guides            :: Map Key [(Double, Str)]
   , bounds            :: PlotBounds
-  , geometry          :: Geometry2
+  , geometry          :: Geometry3
   , axesTitles        :: [Str]
   }
 
-createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry2 -> SinglePlot
+createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry3 -> SinglePlot
 createSinglePlot titles dat aess geometry =
   SinglePlot mappedData specialData guides bounds geometry titles
   where
@@ -1338,7 +1284,8 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
 
         dataD :: Styled Drawing
         -- TODO only place where we actually look at the geom
-        dataD = (geomMapping $ toNewGeom $ geometry plot) (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
+        dataD = (geomMapping3 $ geometry plot) $
+         wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
 
         guidesD :: Styled Drawing
         guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
@@ -1411,13 +1358,13 @@ debugInfo dat aess = box
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plot :: [a] -> [Aesthetic a] -> Geometry2 -> Plot
+plot :: [a] -> [Aesthetic a] -> Geometry3 -> Plot
 plot dat aess geom = Plot [createSinglePlot [] dat aess geom]
 
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry2 -> Plot
+plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry3 -> Plot
 plotWithTitles titles dat aess geom = Plot [createSinglePlot titles dat aess geom]
 
 plotLabel :: Str -> [a] -> [Aesthetic a] -> Plot
@@ -1434,16 +1381,16 @@ plotXIntercept dat baseAes =
 
 
 {-| Convenient wrapper for 'visualize' using 'mempty' style. -}
-visualize :: Show s => [Str] -> [s] -> Geometry2 -> [Aesthetic s] -> Drawing
+visualize :: Show s => [Str] -> [s] -> Geometry3 -> [Aesthetic s] -> Drawing
 visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
 
 {-|
 The main entry-point of the library.
 -}
-visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry2 -> [Aesthetic s] -> Styled Drawing
+visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry3 -> [Aesthetic s] -> Styled Drawing
 visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
 
-visualizeTest :: Show s => [s] -> Geometry2 -> [Aesthetic s] -> IO ()
+visualizeTest :: Show s => [s] -> Geometry3 -> [Aesthetic s] -> IO ()
 visualizeTest dat geom aess = do
   -- printDebugInfo dat aess
   putStrLn $ B.render $ debugInfo dat aess
