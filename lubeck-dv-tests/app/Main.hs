@@ -95,23 +95,20 @@ dragSquare d activeS = do
         fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
 -- TODO move
-draggable :: Drawing -> FRP (Signal Drawing, Signal (P2 Double))
+draggable :: Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
 draggable d =  do
   (move, moved :: Events (V2 Double)) <- newEvent
   (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
-
-  let dWithHandlers = addProperty (mousemove (handleMouseMove move)) d
-
+  let (dWithHandlers :: Signal Drawing) = fmap (addProperty (mousemove (handleMouseMove move))) d
   -- TODO handle down/up/out
-
-  return $ (fmap (\(P v) -> translate v dWithHandlers) pos, pos)
+  return $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
   where
     (^+.) = flip (.+^)
     handleMouseMove dest ev = do
       dest $ V2 (movementX ev) (-movementY ev)
       return ()
 
-draggable_ ::  Drawing -> FRP (Signal Drawing)
+draggable_ :: Signal Drawing -> FRP (Signal Drawing)
 draggable_ = fmap fst . draggable
 
 ----------
@@ -149,9 +146,10 @@ main = do
   let redSquare = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 90 square
   let blueSquare = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 90 square
 
-  dc1 <- fmap fst $ draggable pinkCircle
-  dc2 <- fmap fst $ draggable purpleCircle
+  dc1 <- draggable_ $ pure pinkCircle
+  dc2 <- draggable_ $ pure purpleCircle
   (sqs :: Signal Drawing) <- fmap fst $ hoverable (\t -> if t then blueSquare else redSquare)
-  let (sd :: Signal Drawing) = mconcat [fmap (translateX 120) dc1, dc2, sqs]
+  sqs2 <- draggable_ sqs
+  let (sd :: Signal Drawing) = mconcat [fmap (translateX 120) dc1, dc2, sqs2]
 
   runAppReactive $ fmap (toSvg mempty) $ sd
