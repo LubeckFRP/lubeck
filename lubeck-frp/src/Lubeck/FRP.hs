@@ -103,6 +103,7 @@ module Lubeck.FRP
   , subscribeEvent
   , pollBehavior
   , reactimateIO
+  , reactimateIOS
 
   -- * Sink
   , Sink
@@ -623,3 +624,10 @@ updates (S (e,r)) = sample r e
 -- | Convert a signal to a behavior that always has the same as the signal.
 current :: Signal a -> Behavior a
 current (S (e,r)) = r
+
+reactimateIOS :: Signal (FRP a) -> FRP (Signal a)
+reactimateIOS s = do
+  k  <- pollBehavior $ current s
+  x  <- k
+  xs <- reactimateIO (updates s)
+  stepperS x xs

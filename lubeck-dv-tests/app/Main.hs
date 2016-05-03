@@ -17,11 +17,13 @@ import Lubeck.Forms(componentEvent)
 import Lubeck.Forms.Button(multiButtonWidget)
 import Lubeck.App(runAppReactive)
 import Web.VirtualDom.Html(Html, h1, text)
+import qualified Web.VirtualDom as VirtualDom
 
 -- TODO separate/consolidate Html/Svg events
 -- Currently they can be used more or less interchangebly
-import Web.VirtualDom.Html.Events(Event, mousemove)
+import Web.VirtualDom.Html.Events(Event(..), mousemove)
 
+import Data.Colour (withOpacity)
 import Data.Colour.Names as Colors
 
 ----------
@@ -33,10 +35,64 @@ import Data.Colour.Names as Colors
 -- https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/movementX
 -- Easiest would be to just use movementX!
 
+onE e n = VirtualDom.on n . contramapS e
+  where
+    contramapS f k x = k (f x)
+
+mouseover  = onE Event "mouseover"
+mouseout   = onE Event "mouseout"
+-- Note: use over/out rather than enter/leave!
+mouseenter = onE Event "mouseenter"
+mouseleave = onE Event "mouseleave"
+mouseup    = onE Event "mouseup"
+mousedown  = onE Event "mousedown"
+-- mousemove = onE Event "mousemove"
+
 foreign import javascript unsafe "$1.movementX"
   movementX :: Event -> Double
 foreign import javascript unsafe "$1.movementY"
   movementY :: Event -> Double
+
+{-
+TODO all initial arguments *could* be in S/B moinad
+What is the most general interface?
+-}
+
+hoverable :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
+hoverable d = do
+  (overOut, overOuted :: Events Bool) <- newEvent
+  (state :: Signal Bool) <- stepperS False overOuted
+  let dWithHandlers = fmap (addProperty (mouseover (handleMouseOver overOut)) . addProperty (mouseout (handleMouseOut overOut))) d
+  return $ (fmap dWithHandlers state, state)
+  where
+    -- TODO clean up this
+    handleMouseOver dest ev = do
+      dest True
+    handleMouseOut dest ev = do
+      dest False
+
+
+data DragSquare
+  -- Begin creating a square from this point
+  = BeginSquare (P2 Double)
+  -- Continue creating a square (mainly for GUI feedback)
+  | ContinueSquare (P2 Double)
+  -- Finish creating square
+  | EndSquare (P2 Double)
+  -- Abort current square in process
+  | Abort
+
+dragSquare :: Drawing -> Signal Bool -> FRP (Signal Drawing, Signal (P2 Double, P2 Double))
+dragSquare d activeS = do
+  -- TODO
+  (dragSquare, squareDragged :: Events DragSquare) <- newEvent
+
+  let dWithOverlay :: Signal Drawing = flip fmap activeS $ \s -> if s then mconcat [bigTransparent, d] else d
+  return $ (dWithOverlay, pure (0, 0))
+  where
+    -- TODO no color
+    bigTransparent =
+        fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
 -- TODO move
 draggable :: Drawing -> FRP (Signal Drawing, Signal (P2 Double))
@@ -44,7 +100,7 @@ draggable d =  do
   (move, moved :: Events (V2 Double)) <- newEvent
   (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
 
-  let dWithHandlers = (addProperty (mousemove (handleMouseMove move)) d)
+  let dWithHandlers = addProperty (mousemove (handleMouseMove move)) d
 
   -- TODO handle down/up/out
 
@@ -54,6 +110,9 @@ draggable d =  do
     handleMouseMove dest ev = do
       dest $ V2 (movementX ev) (-movementY ev)
       return ()
+
+draggable_ ::  Drawing -> FRP (Signal Drawing)
+draggable_ = fmap fst . draggable
 
 ----------
 
@@ -87,9 +146,12 @@ main = do
 
   let purpleCircle = Lubeck.Drawing.fillColor Colors.purple $ Lubeck.Drawing.scale 190 circle
   let pinkCircle = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
+  let redSquare = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 90 square
+  let blueSquare = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 90 square
 
   dc1 <- fmap fst $ draggable pinkCircle
   dc2 <- fmap fst $ draggable purpleCircle
-  let (sd :: Signal Drawing) = mconcat [fmap (translateX 120) dc1, dc2]
+  (sqs :: Signal Drawing) <- fmap fst $ hoverable (\t -> if t then blueSquare else redSquare)
+  let (sd :: Signal Drawing) = mconcat [fmap (translateX 120) dc1, dc2, sqs]
 
   runAppReactive $ fmap (toSvg mempty) $ sd
