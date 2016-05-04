@@ -117,19 +117,19 @@ withMouseState2 :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing,
 withMouseState2 d = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
-  when debugHandlers $ do
-    subscribeEvent (updates state) print
-    pure ()
+  -- when debugHandlers $ do
+    -- subscribeEvent (updates state) print
+    -- pure ()
   let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
                            ( id
                           --  . addProperty (mouseover $ const $ mouseS MouseOver)
                           --  . addProperty (mouseout  $ const $ mouseS MouseOut)
                           --  . addProperty (mouseup   $ const $ mouseS MouseUp)
                           --  . addProperty (mousedown $ const $ mouseS MouseDown)
-                           . addHandler "onmouseover" (const $ mouseS MouseOver)
-                           . addHandler "onmouseout"  (const $ mouseS MouseOut)
-                           . addHandler "onmouseup"   (const $ mouseS MouseUp)
-                           . addHandler "onmousedown" (const $ mouseS MouseDown)
+                           . addHandler "mouseover" (const $ mouseS MouseOver)
+                           . addHandler "mouseout"  (const $ mouseS MouseOut)
+                           . addHandler "mouseup"   (const $ mouseS MouseUp)
+                           . addHandler "mousedown" (const $ mouseS MouseDown)
                            ) d
   pure $ (dWithHandlers state, state)
 
@@ -227,6 +227,7 @@ dragSquare d activeS = do
 
 ----------
 
+type SDrawing = Signal Drawing
 
 main :: IO ()
 main = do
@@ -247,23 +248,29 @@ main = do
               [x <~ _1, y <~ _2]
           ]
 
-  let plotVD = fmap (\currentZoom -> toSvg mempty (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
-  let plotD = getStyled plotSD mempty :: Drawing
-  plotDNudge <- nudgeable_ $ pure plotD
-  -- runAppReactive $ mconcat [pure $ h1 [] [text "Zoom test"], view1, view2, plotVD]
+  let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
+  -- let plotD = getStyled plotSD mempty :: Drawing
+  (plotSD :: SDrawing) <- draggable_ $ plotVD
 
   let purpleCircle = Lubeck.Drawing.fillColor Colors.purple $ Lubeck.Drawing.scale 190 circle
   let pinkCircle   = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
-  let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 90 square
-  let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 90 square
+  let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
+  let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
 
   dc1 <- nudgeable_ $ pure (pinkCircle ||| redSquare)
   dc2 <- nudgeable_ $ pure purpleCircle
 
-  (sqs :: Signal Drawing) <- hoverable_ (\t -> if t then blueSquare else redSquare)
+  (sqs  :: SDrawing) <- hoverable_ (\t -> if t then blueSquare else redSquare)
   sqs2 <- draggable_ sqs
-  sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqs
+  (sqsb :: SDrawing) <- hoverable_ (\t -> if t then blueSquare else redSquare)
+  sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
-  let (sd :: Signal Drawing) = mconcat [fmap (translateX 120) dc1, dc2, sqs2, sqs2b, plotDNudge]
+  let (sd :: SDrawing) = mconcat
+                [ fmap (translateX 120) dc1
+                , dc2
+                , sqs2
+                , sqs2b
+                , plotSD
+                ]
 
-  runAppReactive $ fmap (toSvg mempty) $ sd
+  runAppReactive $ mconcat [view1, view2, fmap (toSvg mempty) $ sd]
