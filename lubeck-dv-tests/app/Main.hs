@@ -1,5 +1,6 @@
 
-{-# LANGUAGE OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables, TypeFamilies
+  , FlexibleContexts #-}
 
 module Main where
 
@@ -52,6 +53,11 @@ foreign import javascript unsafe "$1.movementX"
   movementX :: Event -> Double
 foreign import javascript unsafe "$1.movementY"
   movementY :: Event -> Double
+foreign import javascript unsafe "$1.screenX"
+  screenX :: Event -> Double
+foreign import javascript unsafe "$1.screenY"
+  screenY :: Event -> Double
+-- TODO right property to read?
 
 {-
 TODO all initial arguments *could* be in S/B moinad
@@ -62,6 +68,69 @@ hoverable :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
 hoverable d = do
   (overOut, overOuted :: Events Bool) <- newEvent
   (state :: Signal Bool) <- stepperS False overOuted
+  let dWithHandlers = fmap ( addProperty (mouseover $ const $ overOut True)
+                           . addProperty (mouseout $ const $ overOut False)
+                           ) d
+  return $ (fmap dWithHandlers state, state)
+
+
+{-
+Diffable is AffineSpace, except the Diff type is just a monoid (rather than an additive group).
+I.e. the vectors/patches can not be inverted.
+
+  (.-.) ~ diff
+  (.+^) ~ patch
+
+-}
+class Monoid (Diff p) => Diffable p where
+  type Diff p :: *
+  diff :: p -> p -> Diff p
+  patch :: p -> Diff p -> p
+
+data MouseEv = MouseNone | MouseUp | MouseDown | MouseOver | MouseOut | MouseMove deriving (Enum, Eq, Ord, Show, Read)
+
+instance Monoid MouseEv where
+  mempty = MouseNone
+  mappend x y = x -- last event to happen as
+
+data MouseState = MouseState { mouseInside :: Bool, mouseDown :: Bool } deriving (Eq, Ord, Show, Read)
+
+instance Monoid MouseState where
+  mempty = MouseState False False -- how do we know this?
+  mappend x y = x -- ?
+
+instance Diffable MouseState where
+  type Diff MouseState = MouseEv
+  diff _ _ = error "TODO MouseState.diff"
+  patch (MouseState inside down) MouseUp   = MouseState inside False
+  patch (MouseState inside down) MouseDown = MouseState inside True
+  patch (MouseState inside down) MouseOver = MouseState True   down
+  -- If mouse goes while button is still pressed, release
+  patch (MouseState inside down) MouseOut  = MouseState False  False
+  patch x _ = x
+
+withMouseState :: (MouseState -> Drawing) -> FRP (Signal Drawing, Signal MouseState)
+withMouseState d = do
+  (mouseS, mouseE :: Events MouseEv) <- newEvent
+  (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
+  let dWithHandlers = fmap ( addProperty (mouseover $ const $ mouseS MouseOver)
+                           . addProperty (mouseout  $ const $ mouseS MouseOut)
+                           . addProperty (mouseup   $ const $ mouseS MouseUp)
+                           . addProperty (mousedown $ const $ mouseS MouseDown)
+                           ) d
+  return $ (fmap dWithHandlers state, state)
+
+
+{-
+data MouseState = MouseState
+  Bool -- is over
+  Bool -- is down
+
+-- TODO generalizes hoverable
+withMouseState :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
+withMouseState d = do
+  (overOut, overOuted :: Events Bool) <- newEvent
+  (state :: Signal Bool) <- stepperS False overOuted
   let dWithHandlers = fmap (addProperty (mouseover (handleMouseOver overOut)) . addProperty (mouseout (handleMouseOut overOut))) d
   return $ (fmap dWithHandlers state, state)
   where
@@ -70,6 +139,7 @@ hoverable d = do
       dest True
     handleMouseOut dest ev = do
       dest False
+-}
 
 
 data DragSquare
@@ -90,8 +160,8 @@ dragSquare d activeS = do
   let dWithOverlay :: Signal Drawing = flip fmap activeS $ \s -> if s then mconcat [bigTransparent, d] else d
   return $ (dWithOverlay, pure (0, 0))
   where
-    -- TODO no color
     bigTransparent =
+      -- TODO no color
         fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
 -- TODO move
