@@ -4,10 +4,9 @@
 
 module Main where
 
-import BasePrelude
+import BasePrelude hiding ((|||))
 import Control.Lens(to, _1, _2, (.~))
 import Linear.Affine ((.+^))
--- import Linear.V2 (V2(..))
 
 import Lubeck.DV
 import Lubeck.FRP
@@ -28,6 +27,8 @@ import Data.Colour (withOpacity)
 import Data.Colour.Names as Colors
 
 ----------
+
+debugHandlers = True
 
 -- TODO handle onmousedown, onmousemove, onmouseout, onmouseup
 -- Ref: http://www.petercollingridge.co.uk/interactive-svg-components/draggable-svg-element
@@ -64,14 +65,13 @@ TODO all initial arguments *could* be in S/B moinad
 What is the most general interface?
 -}
 
-hoverable :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
-hoverable d = do
-  (overOut, overOuted :: Events Bool) <- newEvent
-  (state :: Signal Bool) <- stepperS False overOuted
-  let dWithHandlers = fmap ( addProperty (mouseover $ const $ overOut True)
-                           . addProperty (mouseout $ const $ overOut False)
-                           ) d
-  return $ (fmap dWithHandlers state, state)
+-- hoverable d = do
+--   (overOut, overOuted :: Events Bool) <- newEvent
+--   (state :: Signal Bool) <- stepperS False overOuted
+--   let dWithHandlers = fmap ( addProperty (mouseover $ const $ overOut True)
+--                            . addProperty (mouseout $ const $ overOut False)
+--                            ) d
+--   pure $ (fmap dWithHandlers state, state)
 
 
 {-
@@ -105,41 +105,92 @@ instance Diffable MouseState where
   patch (MouseState inside down) MouseUp   = MouseState inside False
   patch (MouseState inside down) MouseDown = MouseState inside True
   patch (MouseState inside down) MouseOver = MouseState True   down
+
   -- If mouse goes while button is still pressed, release
   patch (MouseState inside down) MouseOut  = MouseState False  False
+
   patch x _ = x
 
-withMouseState :: (MouseState -> Drawing) -> FRP (Signal Drawing, Signal MouseState)
-withMouseState d = do
+
+withMouseState2 :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
+withMouseState2 d = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
-  let dWithHandlers = fmap ( addProperty (mouseover $ const $ mouseS MouseOver)
+  when debugHandlers $ do
+    subscribeEvent (updates state) print
+    pure ()
+  let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap) ( addProperty (mouseover $ const $ mouseS MouseOver)
                            . addProperty (mouseout  $ const $ mouseS MouseOut)
                            . addProperty (mouseup   $ const $ mouseS MouseUp)
                            . addProperty (mousedown $ const $ mouseS MouseDown)
                            ) d
-  return $ (fmap dWithHandlers state, state)
+  pure $ (dWithHandlers state, state)
+
+-- withMouseState_ :: Drawing -> FRP (Signal Drawing, Signal MouseState)
+-- withMouseState_ d = withMouseState2 (fmap $ const d)
+
+-- TODO consolidate with above
+withMouseState_2 :: Signal Drawing -> FRP (Signal Drawing, Signal MouseState)
+withMouseState_2 d = withMouseState2 (const d)
+
+hoverable :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
+hoverable d = fmap (second $ fmap mouseInside) $ withMouseState2 (fmap (d . mouseInside))
+
+hoverable_ :: (Bool -> Drawing) -> FRP (Signal Drawing)
+hoverable_ = fmap fst . hoverable
+
+
+
+nudgeableDraggable :: Behavior Bool -> Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
+nudgeableDraggable allowMove d =  do
+  (move, moved1 :: Events (V2 Double)) <- newEvent
+  let moved = filterJust $ snapshotWith (\allow m -> if allow then Just m else Nothing) allowMove moved1
+  (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
+  let (dWithHandlers :: Signal Drawing) = fmap (addProperty (mousemove (handleMouseMove move))) d
+  -- TODO handle down/up/out
+  pure $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
+  where
+    (^+.) = flip (.+^)
+    handleMouseMove dest ev = do
+      dest $ V2 (movementX ev) (-movementY ev)
+      pure ()
+
+{-
+Make something "nudgeable".
+I.e. it responds to all mousemove events by moving in the same direction.
+-}
+nudgeable :: Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
+nudgeable = nudgeableDraggable (pure True)
+-- Note: Could be optimized by copying nudgeableDraggable and removing the filtering altogether
+
+nudgeable_ :: Signal Drawing -> FRP (Signal Drawing)
+nudgeable_ = fmap fst . nudgeable
+
+{-
+Make something "draggable".
+
+I.e. it responds to mousemove events by moving in the same direction iff the object is "grabbed".
+An object becomes grabbed whenever it recieves a mousedown event and retains that property
+until it recieves a mousedown or mouseup event.
+-}
+draggable :: Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
+draggable d = do
+  (d2, mouseStateS :: Signal MouseState) <- withMouseState_2 d
+  nudgeableDraggable (fmap mouseDown $ current $ mouseStateS) d2
+
+draggable_ :: Signal Drawing -> FRP (Signal Drawing)
+draggable_ = fmap fst . draggable
 
 
 {-
-data MouseState = MouseState
-  Bool -- is over
-  Bool -- is down
-
--- TODO generalizes hoverable
-withMouseState :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
-withMouseState d = do
-  (overOut, overOuted :: Events Bool) <- newEvent
-  (state :: Signal Bool) <- stepperS False overOuted
-  let dWithHandlers = fmap (addProperty (mouseover (handleMouseOver overOut)) . addProperty (mouseout (handleMouseOut overOut))) d
-  return $ (fmap dWithHandlers state, state)
-  where
-    -- TODO clean up this
-    handleMouseOver dest ev = do
-      dest True
-    handleMouseOut dest ev = do
-      dest False
+Displays a pair or plus/minus-labeled buttons.
 -}
+plusMinus :: Str -> Double -> IO (Signal Html, Signal Double)
+plusMinus label init = do
+  (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [("-", (/ 1.1)), ("+", (* 1.1))]) mempty
+  zoom <- accumS init alter
+  pure (mconcat [pure $ text (toJSString label), view], zoom)
+
 
 
 data DragSquare
@@ -158,36 +209,15 @@ dragSquare d activeS = do
   (dragSquare, squareDragged :: Events DragSquare) <- newEvent
 
   let dWithOverlay :: Signal Drawing = flip fmap activeS $ \s -> if s then mconcat [bigTransparent, d] else d
-  return $ (dWithOverlay, pure (0, 0))
+  pure $ (dWithOverlay, pure (0, 0))
   where
     bigTransparent =
       -- TODO no color
         fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
--- TODO move
-draggable :: Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
-draggable d =  do
-  (move, moved :: Events (V2 Double)) <- newEvent
-  (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
-  let (dWithHandlers :: Signal Drawing) = fmap (addProperty (mousemove (handleMouseMove move))) d
-  -- TODO handle down/up/out
-  return $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
-  where
-    (^+.) = flip (.+^)
-    handleMouseMove dest ev = do
-      dest $ V2 (movementX ev) (-movementY ev)
-      return ()
-
-draggable_ :: Signal Drawing -> FRP (Signal Drawing)
-draggable_ = fmap fst . draggable
 
 ----------
 
-plusMinus :: Str -> Double -> IO (Signal Html, Signal Double)
-plusMinus label init = do
-  (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [("-", (/ 1.1)), ("+", (* 1.1))]) mempty
-  zoom <- accumS init alter
-  return (mconcat [pure $ text (toJSString label), view], zoom)
 
 main :: IO ()
 main = do
@@ -209,17 +239,22 @@ main = do
           ]
 
   let plotVD = fmap (\currentZoom -> toSvg mempty (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
+  let plotD = getStyled plotSD mempty :: Drawing
+  plotDNudge <- nudgeable_ $ pure plotD
   -- runAppReactive $ mconcat [pure $ h1 [] [text "Zoom test"], view1, view2, plotVD]
 
   let purpleCircle = Lubeck.Drawing.fillColor Colors.purple $ Lubeck.Drawing.scale 190 circle
-  let pinkCircle = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
-  let redSquare = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 90 square
-  let blueSquare = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 90 square
+  let pinkCircle   = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
+  let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 90 square
+  let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 90 square
 
-  dc1 <- draggable_ $ pure pinkCircle
-  dc2 <- draggable_ $ pure purpleCircle
-  (sqs :: Signal Drawing) <- fmap fst $ hoverable (\t -> if t then blueSquare else redSquare)
+  dc1 <- nudgeable_ $ pure (pinkCircle ||| redSquare)
+  dc2 <- nudgeable_ $ pure purpleCircle
+
+  (sqs :: Signal Drawing) <- hoverable_ (\t -> if t then blueSquare else redSquare)
   sqs2 <- draggable_ sqs
-  let (sd :: Signal Drawing) = mconcat [fmap (translateX 120) dc1, dc2, sqs2]
+  sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqs
+
+  let (sd :: Signal Drawing) = mconcat [fmap (translateX 120) dc1, dc2, sqs2, sqs2b, plotDNudge]
 
   runAppReactive $ fmap (toSvg mempty) $ sd
