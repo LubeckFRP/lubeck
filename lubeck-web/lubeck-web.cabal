@@ -28,6 +28,7 @@ library
                      , Components.Map
                      , Components.Grid
                      , Components.Layout
+                     , Components.Masonry
                      , Components.ConfirmDialog
                      , BDPlatform.HTMLCombinators
 
