@@ -126,10 +126,10 @@ withMouseState2 d = do
                           --  . addProperty (mouseout  $ const $ mouseS MouseOut)
                           --  . addProperty (mouseup   $ const $ mouseS MouseUp)
                           --  . addProperty (mousedown $ const $ mouseS MouseDown)
-                           . addHandler "mouseover" (const $ mouseS MouseOver)
-                           . addHandler "mouseout"  (const $ mouseS MouseOut)
-                           . addHandler "mouseup"   (const $ mouseS MouseUp)
-                           . addHandler "mousedown" (const $ mouseS MouseDown)
+                           . addHandler "onmouseover" (const $ mouseS MouseOver)
+                           . addHandler "onmouseout"  (const $ mouseS MouseOut)
+                           . addHandler "onmouseup"   (const $ mouseS MouseUp)
+                           . addHandler "onmousedown" (const $ mouseS MouseDown)
                            ) d
   pure $ (dWithHandlers state, state)
 

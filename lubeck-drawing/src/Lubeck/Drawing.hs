@@ -1308,19 +1308,19 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
         reflY (V2 adx ady) = V2 adx (negate ady)
       in case x of
           Circle     -> single $ E.circle
-            ([A.r "0.5", noScale]++ps)
+            ([A.r "0.5", noScale]++(ps <> handlersToProperties hs))
             []
           Rect       -> single $ E.rect
-            ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
+            ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++(ps <> handlersToProperties hs))
             []
           Line -> single $ E.line
-            ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
+            ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++(ps <> handlersToProperties hs))
             []
           (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-            ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
+            ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++(ps <> handlersToProperties hs))
             []
           Text s -> single $ E.text'
-            ([A.x "0", A.y "0"]++ps)
+            ([A.x "0", A.y "0"]++(ps <> handlersToProperties hs))
             [E.text $ toJSString s]
           Embed e -> single $ embedToSvg e
 
@@ -1332,11 +1332,12 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           Style s x  -> single $ E.g
             [A.style $ toJSString $ styleToAttrString s]
             (toSvg1 hs ps x)
+
           Prop p x   -> toSvg1 hs (p:ps) x
-          -- TODO
           Prop2 name handler x -> toSvg1 (Data.Map.unionWith apSink (Data.Map.singleton name handler) hs) ps x
+
           -- No point in embedding handlers to empty groups, but render anyway
-          Em         -> single $ E.g ps []
+          Em         -> single $ E.g (ps <> handlersToProperties hs) []
           -- Event handlers applied to a group go on the g node
           -- Note that if handlers and propeties conflict, handlers take precedence
           Ap x y     -> single $ E.g (ps <> handlersToProperties hs) (toSvg1 mempty mempty x ++ toSvg1 mempty mempty y)
