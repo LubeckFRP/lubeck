@@ -50,6 +50,7 @@ mouseup    = onE Event "mouseup"
 mousedown  = onE Event "mousedown"
 -- mousemove = onE Event "mousemove"
 
+
 foreign import javascript unsafe "$1.movementX"
   movementX :: Event -> Double
 foreign import javascript unsafe "$1.movementY"
@@ -119,10 +120,16 @@ withMouseState2 d = do
   when debugHandlers $ do
     subscribeEvent (updates state) print
     pure ()
-  let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap) ( addProperty (mouseover $ const $ mouseS MouseOver)
-                           . addProperty (mouseout  $ const $ mouseS MouseOut)
-                           . addProperty (mouseup   $ const $ mouseS MouseUp)
-                           . addProperty (mousedown $ const $ mouseS MouseDown)
+  let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
+                           ( id
+                          --  . addProperty (mouseover $ const $ mouseS MouseOver)
+                          --  . addProperty (mouseout  $ const $ mouseS MouseOut)
+                          --  . addProperty (mouseup   $ const $ mouseS MouseUp)
+                          --  . addProperty (mousedown $ const $ mouseS MouseDown)
+                           . addHandler "mouseover" (const $ mouseS MouseOver)
+                           . addHandler "mouseout"  (const $ mouseS MouseOut)
+                           . addHandler "mouseup"   (const $ mouseS MouseUp)
+                           . addHandler "mousedown" (const $ mouseS MouseDown)
                            ) d
   pure $ (dWithHandlers state, state)
 
@@ -146,7 +153,9 @@ nudgeableDraggable allowMove d =  do
   (move, moved1 :: Events (V2 Double)) <- newEvent
   let moved = filterJust $ snapshotWith (\allow m -> if allow then Just m else Nothing) allowMove moved1
   (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
+
   let (dWithHandlers :: Signal Drawing) = fmap (addProperty (mousemove (handleMouseMove move))) d
+
   -- TODO handle down/up/out
   pure $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
   where

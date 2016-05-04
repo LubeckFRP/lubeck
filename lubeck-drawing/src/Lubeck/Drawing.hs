@@ -151,6 +151,7 @@ module Lubeck.Drawing
   , textWithOptions
 
   -- ** Events
+  , addHandler
   , addProperty
 
   -- ** Embedded SVG
@@ -249,6 +250,7 @@ import Linear.Epsilon
 import Lubeck.Str
 
 #ifdef __GHCJS__
+import GHCJS.Types(JSVal)
 import Web.VirtualDom.Svg (Svg)
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Svg as E
@@ -447,6 +449,14 @@ apStyle (Style_ a) (Style_ b) = Style_ $ Data.Map.union a b
 styleToAttrString :: Style -> Str
 styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
 
+#ifdef __GHCJS__
+addHandler :: Str -> (JSVal -> IO ()) -> Drawing -> Drawing
+addHandler = Prop2
+#else
+addHandler :: () -> Drawing -> Drawing
+addHandler _ = id
+#endif
+
 -- | Embed an arbitrary SVG property on a drawing.
 --
 --   Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
@@ -592,6 +602,7 @@ envelope x = case x of
   Style _ x     -> envelope x
 #ifdef __GHCJS__
   Prop  _ x     -> envelope x
+  Prop2 _ _ x   -> envelope x
 #endif
   Em            -> mempty
   Ap x y        -> mappend (envelope x) (envelope y)
@@ -712,6 +723,7 @@ data Drawing
 #ifdef __GHCJS__
   -- Embed arbitrary SVG property (typically used for event handlers)
   | Prop !E.Property !Drawing
+  | Prop2 Str (JSVal -> IO ()) Drawing
 #endif
 
   | Em
@@ -1250,7 +1262,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
     (toStr $ floor x)
     (toStr $ floor y)
     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-    (toSvg1 [] $ placeOrigo $ drawing)
+    (toSvg1 mempty mempty $ placeOrigo $ drawing)
   where
     P (V2 x y) = dimensions
 
@@ -1279,8 +1291,16 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
         (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
         (fmap embedToSvg children)
 
-    toSvg1 :: [E.Property] -> Drawing -> [Svg]
-    toSvg1 ps x = let
+    handlersToProperties :: Map Str (JSVal -> IO ()) -> [E.Property]
+    handlersToProperties = fmap (\(n,v) -> VD.on (toJSString n) v) . Data.Map.toList
+
+    -- Because (IO ()) is not a monoid
+    apSink a b x = do
+      a x
+      b x
+
+    toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> [Svg]
+    toSvg1 hs ps x = let
         single x = [x]
         noScale = VD.attribute "vector-effect" "non-scaling-stroke"
         negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
@@ -1308,15 +1328,18 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           -- As long as it is just event handlers, it doesn't matter
           Transf t x -> single $ E.g
             [A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""]
-            (toSvg1 ps x)
+            (toSvg1 hs ps x)
           Style s x  -> single $ E.g
             [A.style $ toJSString $ styleToAttrString s]
-            (toSvg1 ps x)
-          Prop p x   -> toSvg1 (p:ps) x
+            (toSvg1 hs ps x)
+          Prop p x   -> toSvg1 hs (p:ps) x
+          -- TODO
+          Prop2 name handler x -> toSvg1 (Data.Map.unionWith apSink (Data.Map.singleton name handler) hs) ps x
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> single $ E.g ps []
           -- Event handlers applied to a group go on the g node
-          Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
+          -- Note that if handlers and propeties conflict, handlers take precedence
+          Ap x y     -> single $ E.g (ps <> handlersToProperties hs) (toSvg1 mempty mempty x ++ toSvg1 mempty mempty y)
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
@@ -1404,7 +1427,8 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
             (toSvg1 ps x)
 
           -- Ignore event handlers
-          -- Prop p x   -> toSvg1 (p:ps) x
+          Prop  _ x   -> toSvg1 ps x
+          Prop2 _ _ x -> toSvg1 ps x
 
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> single $ mkN "g" ps []
