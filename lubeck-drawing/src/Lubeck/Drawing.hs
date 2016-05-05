@@ -1289,7 +1289,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
     (toStr $ floor x)
     (toStr $ floor y)
     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-    (toSvg1 mempty mempty $ placeOrigo $ drawing)
+    (single $ toSvg1 mempty mempty $ placeOrigo $ drawing)
   where
     P (V2 x y) = dimensions
 
@@ -1332,42 +1332,42 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     reflY (V2 adx ady) = V2 adx (negate ady)
 
-    toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> [Svg]
+    toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> Svg
     toSvg1 hs ps x = case x of
-          Circle     -> single $ E.circle
+          Circle     -> E.circle
             ([A.r "0.5", noScale]++(ps <> handlersToProperties hs))
             []
-          Rect       -> single $ E.rect
+          Rect       -> E.rect
             ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++(ps <> handlersToProperties hs))
             []
-          Line -> single $ E.line
+          Line -> E.line
             ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++(ps <> handlersToProperties hs))
             []
-          (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
+          (Lines closed vs) -> (if closed then E.polygon else E.polyline)
             ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++(ps <> handlersToProperties hs))
             []
-          Text s -> single $ E.text'
+          Text s -> E.text'
             ([A.x "0", A.y "0"]++(ps <> handlersToProperties hs))
             [E.text $ toJSString s]
-          Embed e -> single $ embedToSvg e
+          Embed e -> embedToSvg e
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
-          Transf t x -> single $ E.g
+          Transf t x -> E.g
             [A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""]
             (toSvg1 hs ps x)
-          Style s x  -> single $ E.g
+          Style s x  -> E.g
             [A.style $ toJSString $ styleToAttrString s]
             (toSvg1 hs ps x)
 
-          Prop p x   -> toSvg1 hs (p:ps) x
+          Prop p x             -> toSvg1 hs (p:ps) x
           Prop2 name handler x -> toSvg1 (Data.Map.unionWith apSink (Data.Map.singleton name handler) hs) ps x
 
           -- No point in embedding handlers to empty groups, but render anyway
-          Em         -> single $ E.g (ps <> handlersToProperties hs) []
+          Em         -> E.g (ps <> handlersToProperties hs) []
           -- Event handlers applied to a group go on the g node
           -- Note that if handlers and propeties conflict, handlers take precedence
-          Ap x y     -> single $ E.g (ps <> handlersToProperties hs) (toSvg1 mempty mempty x ++ toSvg1 mempty mempty y)
+          Ap x y     -> E.g (ps <> handlersToProperties hs) (toSvg1 mempty mempty x ++ toSvg1 mempty mempty y)
 
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
