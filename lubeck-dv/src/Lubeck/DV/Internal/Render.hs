@@ -538,10 +538,11 @@ ticksNoFilter xt yt = do
       { textAnchor        = style^.tickTextAnchor.to which
       , alignmentBaseline = style^.tickTextAlignmentBaseline.to which2
       -- TODO read family from style
-      , fontFamily = style^.tickTextFontFamily
-      , fontStyle  = style^.tickTextFontStyle
-      , fontSize   = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
-      , fontWeight = style^.tickTextFontWeight
+      , fontFamily        = style^.tickTextFontFamily
+      , fontStyle         = style^.tickTextFontStyle
+      , fontSize          = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
+      , fontWeight        = style^.tickTextFontWeight
+      , textSelectable    = All False
       }
     isTransparent color = abs (alphaChannel color) < 0.001
 
@@ -567,9 +568,10 @@ labeledAxis labelX labelY = do
     ]
   where
     text_ style= textWithOptions $ mempty
-      { textAnchor = TextAnchorMiddle
-      , fontFamily = style^.axisTextFontFamily
-      , fontWeight = style^.axisTextFontWeight
-      , fontStyle  = style^.axisTextFontStyle
-      , fontSize   = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
+      { textAnchor     = TextAnchorMiddle
+      , fontFamily     = style^.axisTextFontFamily
+      , fontWeight     = style^.axisTextFontWeight
+      , fontStyle      = style^.axisTextFontStyle
+      , fontSize       = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
+      , textSelectable = All False
       }

@@ -151,6 +151,7 @@ module Lubeck.Drawing
   , textWithOptions
 
   -- ** Events
+  , addHandler
   , addProperty
 
   -- ** Embedded SVG
@@ -249,6 +250,7 @@ import Linear.Epsilon
 import Lubeck.Str
 
 #ifdef __GHCJS__
+import GHCJS.Types(JSVal)
 import Web.VirtualDom.Svg (Svg)
 import qualified Web.VirtualDom as VD
 import qualified Web.VirtualDom.Svg as E
@@ -447,10 +449,23 @@ apStyle (Style_ a) (Style_ b) = Style_ $ Data.Map.union a b
 styleToAttrString :: Style -> Str
 styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
 
--- | Embed an arbitrary SVG property on a drawing.
---
---   Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
---   static backends may ignore these properties.
+{-| Add an event handler to the given drawing.
+
+   Handlers are embedde using 'Web.VirtualDom.on' so the same naming conventions apply.
+-}
+#ifdef __GHCJS__
+addHandler :: Str -> (JSVal -> IO ()) -> Drawing -> Drawing
+addHandler = Prop2
+#else
+addHandler :: () -> Drawing -> Drawing
+addHandler _ = id
+#endif
+
+{-| Embed an arbitrary SVG property on a drawing.
+
+  Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
+  static backends may ignore these properties.
+-}
 #ifdef __GHCJS__
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
@@ -592,6 +607,7 @@ envelope x = case x of
   Style _ x     -> envelope x
 #ifdef __GHCJS__
   Prop  _ x     -> envelope x
+  Prop2 _ _ x   -> envelope x
 #endif
   Em            -> mempty
   Ap x y        -> mappend (envelope x) (envelope y)
@@ -712,6 +728,7 @@ data Drawing
 #ifdef __GHCJS__
   -- Embed arbitrary SVG property (typically used for event handlers)
   | Prop !E.Property !Drawing
+  | Prop2 Str (JSVal -> IO ()) Drawing
 #endif
 
   | Em
@@ -943,16 +960,17 @@ data TextOptions = TextOptions
   , fontFamily        :: First Str
   , fontSize          :: First FontSize
   , fontWeight        :: FontWeight
+  , textSelectable    :: All
   }
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid TextOptions where
   mempty
-    = TextOptions mempty mempty mempty mempty mempty mempty
+    = TextOptions mempty mempty mempty mempty mempty mempty mempty
   mappend
-    (TextOptions x1 x2 x3 x4 x5 x6)
-    (TextOptions y1 y2 y3 y4 y5 y6)
-    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4) (x5 <> y5) (x6 <> y6)
+    (TextOptions x1 x2 x3 x4 x5 x6 x7)
+    (TextOptions y1 y2 y3 y4 y5 y6 y7)
+      = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4) (x5 <> y5) (x6 <> y6) (x7 <> y7)
   -- TODO can we derive this?
 
 -- | Text woth options. Idiomatically:
@@ -968,7 +986,7 @@ textWithOptions opts = style allOfThem . Text
   where
     allOfThem = mconcat
       [ _fontWeight, _fontSize, _fontFamily, _fontStyle, _textAnchor
-      , _alignmentBaseline
+      , _alignmentBaseline, _textSelectable
       ]
 
     _fontWeight = case fontWeight opts of
@@ -1013,6 +1031,27 @@ textWithOptions opts = style allOfThem . Text
       AlignmentBaselineAlphabetic     -> styleNamed "dominant-baseline" "alphabetic"
       AlignmentBaselineHanging        -> styleNamed "dominant-baseline" "hanging"
       AlignmentBaselineMathematical   -> styleNamed "dominant-baseline" "mathematical"
+
+    {-
+    *.unselectable {
+       -moz-user-select: -moz-none;
+       -khtml-user-select: none;
+       -webkit-user-select: none;
+       -ms-user-select: none;
+       user-select: none;
+    }
+    -}
+    _textSelectable = case textSelectable opts of
+      All True  -> mempty
+      All False -> mconcat
+                    [ styleNamed "user-select"          "none"
+                    , styleNamed "-moz-user-select"     "-moz-none"
+                    , styleNamed "-khtml-user-select"   "none"
+                    , styleNamed "-webkit-user-select"  "none"
+                    , styleNamed "-ms-user-select"      "none"
+                    -- Mouse pointer
+                    , styleNamed "cursor"               "default"
+                    ]
 
 {-| Apply a [Transformation](#Transformation) to an image.
 
@@ -1250,7 +1289,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
     (toStr $ floor x)
     (toStr $ floor y)
     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-    (toSvg1 [] $ placeOrigo $ drawing)
+    (single $ toSvg1 mempty mempty $ placeOrigo $ drawing)
   where
     P (V2 x y) = dimensions
 
@@ -1279,44 +1318,57 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
         (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
         (fmap embedToSvg children)
 
-    toSvg1 :: [E.Property] -> Drawing -> [Svg]
-    toSvg1 ps x = let
-        single x = [x]
-        noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-        negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-        offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-        reflY (V2 adx ady) = V2 adx (negate ady)
-      in case x of
-          Circle     -> single $ E.circle
-            ([A.r "0.5", noScale]++ps)
+    handlersToProperties :: Map Str (JSVal -> IO ()) -> [E.Property]
+    handlersToProperties = fmap (\(n,v) -> VD.on (toJSString n) v) . Data.Map.toList
+
+    -- Because (IO ()) is not a monoid
+    apSink a b x = do
+      a x
+      b x
+
+    single x = [x]
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    reflY (V2 adx ady) = V2 adx (negate ady)
+
+    toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> Svg
+    toSvg1 hs ps x = case x of
+          Circle     -> E.circle
+            ([A.r "0.5", noScale]++(ps <> handlersToProperties hs))
             []
-          Rect       -> single $ E.rect
-            ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++ps)
+          Rect       -> E.rect
+            ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++(ps <> handlersToProperties hs))
             []
-          Line -> single $ E.line
-            ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++ps)
+          Line -> E.line
+            ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++(ps <> handlersToProperties hs))
             []
-          (Lines closed vs) -> single $ (if closed then E.polygon else E.polyline)
-            ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
+          (Lines closed vs) -> (if closed then E.polygon else E.polyline)
+            ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++(ps <> handlersToProperties hs))
             []
-          Text s -> single $ E.text'
-            ([A.x "0", A.y "0"]++ps)
+          Text s -> E.text'
+            ([A.x "0", A.y "0"]++(ps <> handlersToProperties hs))
             [E.text $ toJSString s]
-          Embed e -> single $ embedToSvg e
+          Embed e -> embedToSvg e
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
-          Transf t x -> single $ E.g
+          Transf t x -> E.g
             [A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""]
-            (toSvg1 ps x)
-          Style s x  -> single $ E.g
+            (single $ toSvg1 hs ps x)
+          Style s x  -> E.g
             [A.style $ toJSString $ styleToAttrString s]
-            (toSvg1 ps x)
-          Prop p x   -> toSvg1 (p:ps) x
+            (single $ toSvg1 hs ps x)
+
+          Prop p x             -> toSvg1 hs (p:ps) x
+          Prop2 name handler x -> toSvg1 (Data.Map.unionWith apSink (Data.Map.singleton name handler) hs) ps x
+
           -- No point in embedding handlers to empty groups, but render anyway
-          Em         -> single $ E.g ps []
+          Em         -> E.g (ps <> handlersToProperties hs) []
           -- Event handlers applied to a group go on the g node
-          Ap x y     -> single $ E.g ps (toSvg1 [] x ++ toSvg1 [] y)
+          -- Note that if handlers and propeties conflict, handlers take precedence
+          Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty x, toSvg1 mempty mempty y]
+
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
@@ -1403,8 +1455,11 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
             [mkA "style" $ styleToAttrString s]
             (toSvg1 ps x)
 
+#ifdef __GHCJS__
           -- Ignore event handlers
-          -- Prop p x   -> toSvg1 (p:ps) x
+          Prop  _ x   -> toSvg1 ps x
+          Prop2 _ _ x -> toSvg1 ps x
+#endif
 
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> single $ mkN "g" ps []
