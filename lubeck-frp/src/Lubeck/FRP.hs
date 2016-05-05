@@ -631,3 +631,13 @@ reactimateIOS s = do
   x  <- k
   xs <- reactimateIO (updates s)
   stepperS x xs
+
+{-|
+Bracket event subscription.
+-}
+withEventSubscribed :: Events a -> Sink a -> IO b -> IO b
+withEventSubscribed e s k = do
+  us <- subscribeEvent e s
+  r <- k
+  us
+  pure r

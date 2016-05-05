@@ -116,9 +116,8 @@ withMouseState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, 
 withMouseState d = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
-  when debugHandlers $ do
+  when debugHandlers $ void $
     subscribeEvent (updates state) print
-    pure ()
   let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
                            ( id
                            . addHandler "mouseover" (const $ mouseS MouseOver)
@@ -128,16 +127,11 @@ withMouseState d = do
                            ) d
   pure $ (dWithHandlers state, state)
 
-withMouseState_ :: Signal Drawing -> FRP (Signal Drawing, Signal MouseState)
-withMouseState_ d = withMouseState (const d)
+hoverable :: (Signal Bool -> Signal Drawing) -> FRP (Signal Drawing, Signal Bool)
+hoverable d = fmap (second $ fmap mouseInside) $ withMouseState (d . fmap mouseInside)
 
-hoverable :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
-hoverable d = fmap (second $ fmap mouseInside) $ withMouseState (fmap (d . mouseInside))
-
-hoverable_ :: (Bool -> Drawing) -> FRP (Signal Drawing)
+hoverable_ :: (Signal Bool -> Signal Drawing) -> FRP (Signal Drawing)
 hoverable_ = fmap fst . hoverable
-
-
 
 nudgeableDraggable :: Behavior Bool -> Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
 nudgeableDraggable allowMove d =  do
@@ -147,7 +141,6 @@ nudgeableDraggable allowMove d =  do
 
   let (dWithHandlers :: Signal Drawing) = fmap (addProperty (mousemove (handleMouseMove move))) d
 
-  -- TODO handle down/up/out
   pure $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
   where
     (^+.) = flip (.+^)
@@ -175,7 +168,7 @@ until it recieves a mousedown or mouseup event.
 -}
 draggable :: Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
 draggable d = do
-  (d2, mouseStateS :: Signal MouseState) <- withMouseState_ d
+  (d2, mouseStateS :: Signal MouseState) <- withMouseState (const d)
   nudgeableDraggable (fmap mouseDown $ current $ mouseStateS) d2
 
 draggable_ :: Signal Drawing -> FRP (Signal Drawing)
@@ -251,9 +244,9 @@ main = do
   dc1 <- nudgeable_ $ pure (pinkCircle ||| redSquare)
   dc2 <- nudgeable_ $ pure purpleCircle
 
-  (sqs  :: SDrawing) <- hoverable_ (\t -> if t then blueSquare else redSquare)
+  (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   sqs2 <- draggable_ sqs
-  (sqsb :: SDrawing) <- hoverable_ (\t -> if t then blueSquare else redSquare)
+  (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
   let (sd :: SDrawing) = mconcat
