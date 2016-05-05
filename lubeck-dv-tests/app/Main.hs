@@ -60,6 +60,10 @@ foreign import javascript unsafe "$1.screenX"
   screenX :: Event -> Double
 foreign import javascript unsafe "$1.screenY"
   screenY :: Event -> Double
+foreign import javascript unsafe "$1.offsetX"
+  offsetX :: Event -> Double
+foreign import javascript unsafe "$1.offsetY"
+  offsetY :: Event -> Double
 -- TODO right property to read?
 
 {-
@@ -89,7 +93,7 @@ class Monoid (Diff p) => Diffable p where
   diff :: p -> p -> Diff p
   patch :: p -> Diff p -> p
 
-data MouseEv = MouseNone | MouseUp | MouseDown | MouseOver | MouseOut | MouseMove deriving (Enum, Eq, Ord, Show, Read)
+data MouseEv = MouseNone | MouseUp | MouseDown | MouseOver | MouseOut | MouseMovedInside deriving (Enum, Eq, Ord, Show, Read)
 
 instance Monoid MouseEv where
   mempty = MouseNone
@@ -111,22 +115,54 @@ instance Diffable MouseState where
   -- If mouse goes while button is still pressed, release
   patch (MouseState inside down) MouseOut  = MouseState False  False
 
+  -- If the mosue is moved, we must be inside
+  patch (MouseState inside down) MouseMovedInside = MouseState True   down
+
   patch x _ = x
 
-withMouseState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
-withMouseState d = do
+withMousePositionState :: (Signal MousePositionState -> Signal Drawing) -> FRP (Signal Drawing, Signal MousePositionState)
+withMousePositionState d = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
+
+  (mousePosS, mousePosE :: Events (P2 Double)) <- newEvent
+  (pos :: Signal (P2 Double)) <- stepperS (P $ V2 0 0) (mousePosE)
+
+  let (posState :: Signal MousePositionState) = liftA2 MousePositionState pos state
   when debugHandlers $ void $
-    subscribeEvent (updates state) print
-  let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
+    subscribeEvent (updates posState) print
+  -- TODO clean up this mess
+
+  let (dWithHandlers :: Signal MousePositionState -> Signal Drawing) = (fmap . fmap)
                            ( id
-                           . addHandler "mouseover" (const $ mouseS MouseOver)
-                           . addHandler "mouseout"  (const $ mouseS MouseOut)
-                           . addHandler "mouseup"   (const $ mouseS MouseUp)
-                           . addHandler "mousedown" (const $ mouseS MouseDown)
+                           . addHandler "mouseover" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOver)
+                           . addHandler "mouseout"  (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOut)
+                           . addHandler "mouseup"   (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseUp)
+                           . addHandler "mousedown" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseDown)
+                           . addHandler "mousemove" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseMovedInside)
                            ) d
-  pure $ (dWithHandlers state, state)
+  pure $ (dWithHandlers posState, posState)
+
+withMouseState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
+withMouseState d = fmap (second $ fmap mouseState) $ withMousePositionState (d . fmap mouseState)
+
+{-|
+Like MouseState, but include position.
+-}
+data MousePositionState = MousePositionState
+  { mousePosition :: P2 Double
+  , mouseState    :: MouseState
+  }
+  deriving (Eq, Ord, Show)
+
+-- TODO this function, 1) without actually moving the drawing, 2) relative the drawing in question
+-- withMousePositionState :: Signal Drawing -> FRP (Signal Drawing, Signal MousePositionState)
+-- withMousePositionState d = do
+--   (d2, p) <- nudgeable d
+--   (d3, ms) <- withMouseState (const d2)
+--   pure $ (d3, liftA2 MousePositionState p ms)
+
+
 
 hoverable :: (Signal Bool -> Signal Drawing) -> FRP (Signal Drawing, Signal Bool)
 hoverable d = fmap (second $ fmap mouseInside) $ withMouseState (d . fmap mouseInside)
@@ -140,14 +176,14 @@ nudgeableDraggable allowMove d =  do
   let moved = filterJust $ snapshotWith (\allow m -> if allow then Just m else Nothing) allowMove moved1
   (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
 
-  let (dWithHandlers :: Signal Drawing) = fmap (addProperty (mousemove (handleMouseMove move))) d
+  -- TODO use addHandler
+  let (dWithHandlers :: Signal Drawing) = fmap (addHandler "mousemove" $ handleMouseMove move) d
 
   pure $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
   where
     (^+.) = flip (.+^)
-    handleMouseMove dest ev = do
+    handleMouseMove dest ev1 = let ev = Event ev1 in
       dest $ V2 (movementX ev) (-movementY ev)
-      pure ()
 
 {-
 Make something "nudgeable".
@@ -174,21 +210,6 @@ draggable d = do
 
 draggable_ :: Signal Drawing -> FRP (Signal Drawing)
 draggable_ = fmap fst . draggable
-
-{-|
-Like MouseState, but include position.
--}
-data MousePositionState = MousePositionState
-  { mousePosition :: P2 Double
-  , mouseState    :: MouseState
-  }
-  deriving (Eq, Ord, Show)
-
-withMousePositionState :: Signal Drawing -> FRP (Signal Drawing, Signal MousePositionState)
-withMousePositionState d = do
-  (d2, p) <- nudgeable d
-  (d3, ms) <- withMouseState (const d2)
-  pure $ (d3, liftA2 MousePositionState p ms)
 
 
 
@@ -236,7 +257,7 @@ dragRect activeS dS = do
   -- TODO
   (dragS, dragE :: Events RectInputEvent) <- newEvent
 
-  (bigTransparent2, bigTransparentMPS) <- withMousePositionState (pure bigTransparent)
+  (bigTransparent2, bigTransparentMPS) <- withMousePositionState (\_ -> pure bigTransparent)
 
   subscribeEvent (updates bigTransparentMPS) print
 
@@ -315,13 +336,12 @@ main = do
   (dr, _) <- dragRect zoomActive sqs2b
   let (sd :: SDrawing) = mconcat
                 [ mempty
-                -- , fmap (translateX 120) dc1
-                -- , dc2
-                -- , sqs2
-                -- , sqs2b
-                -- , plotSD
-                ,   dr
-
+                , dr
+                , fmap (translateX 120) dc1
+                , dc2
+                , sqs2
+                , sqs2b
+                , plotSD
                 ]
 
   runAppReactive $ mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
