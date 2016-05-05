@@ -1355,10 +1355,10 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           -- As long as it is just event handlers, it doesn't matter
           Transf t x -> E.g
             [A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""]
-            (toSvg1 hs ps x)
+            (single $ toSvg1 hs ps x)
           Style s x  -> E.g
             [A.style $ toJSString $ styleToAttrString s]
-            (toSvg1 hs ps x)
+            (single $ toSvg1 hs ps x)
 
           Prop p x             -> toSvg1 hs (p:ps) x
           Prop2 name handler x -> toSvg1 (Data.Map.unionWith apSink (Data.Map.singleton name handler) hs) ps x
@@ -1367,7 +1367,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           Em         -> E.g (ps <> handlersToProperties hs) []
           -- Event handlers applied to a group go on the g node
           -- Note that if handlers and propeties conflict, handlers take precedence
-          Ap x y     -> E.g (ps <> handlersToProperties hs) (toSvg1 mempty mempty x ++ toSvg1 mempty mempty y)
+          Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty x, toSvg1 mempty mempty y]
 
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
