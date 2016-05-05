@@ -331,12 +331,12 @@ dragRect activeS dS = do
 
     dragRect Nothing = mempty
     dragRect (Just rect) =
-      fillColorA (Colors.blue `withOpacity` 0.3) $ rectToTransform rect $ square
+      fillColorA (Colors.blue `withOpacity` 0.3) $ rectToTransform rect $ align BL $ square
     bigTransparent =
       -- Test strange alignment
       -- align BR $
       -- TODO no color
-        fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
+        fillColorA (Colors.green `withOpacity` 0.0) $ Lubeck.Drawing.scale 3000 square
 
 {-
 Displays a pair or plus/minus-labeled buttons.
