@@ -1326,14 +1326,14 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
       a x
       b x
 
+    single x = [x]
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    reflY (V2 adx ady) = V2 adx (negate ady)
+
     toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> [Svg]
-    toSvg1 hs ps x = let
-        single x = [x]
-        noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-        negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-        offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-        reflY (V2 adx ady) = V2 adx (negate ady)
-      in case x of
+    toSvg1 hs ps x = case x of
           Circle     -> single $ E.circle
             ([A.r "0.5", noScale]++(ps <> handlersToProperties hs))
             []
@@ -1368,6 +1368,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
           -- Event handlers applied to a group go on the g node
           -- Note that if handlers and propeties conflict, handlers take precedence
           Ap x y     -> single $ E.g (ps <> handlersToProperties hs) (toSvg1 mempty mempty x ++ toSvg1 mempty mempty y)
+
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
