@@ -93,7 +93,14 @@ class Monoid (Diff p) => Diffable p where
   diff :: p -> p -> Diff p
   patch :: p -> Diff p -> p
 
-data MouseEv = MouseNone | MouseUp | MouseDown | MouseOver | MouseOut | MouseMovedInside deriving (Enum, Eq, Ord, Show, Read)
+data MouseEv
+  = MouseNone -- TODO should we have this?
+  | MouseUp
+  | MouseDown
+  | MouseOver
+  | MouseOut
+  | MouseMovedInside -- TODO should we have this?
+  deriving (Enum, Eq, Ord, Show, Read)
 
 instance Monoid MouseEv where
   mempty = MouseNone
@@ -107,7 +114,14 @@ instance Monoid MouseState where
 
 instance Diffable MouseState where
   type Diff MouseState = MouseEv
-  diff _ _ = error "TODO MouseState.diff"
+  diff (MouseState False d1) (MouseState True d2)  = MouseOut
+  diff (MouseState True  d1) (MouseState False d2) = MouseOver
+  diff (MouseState i1 False) (MouseState i2 True)  = MouseUp
+  diff (MouseState i1 True)  (MouseState i2 False) = MouseDown
+  diff (MouseState i1 d1)    (MouseState i2 d2)
+    | i1 == i2 && d1 == d2 = MouseMovedInside
+    | otherwise            = MouseNone
+
   patch (MouseState inside down) MouseUp   = MouseState inside False
   patch (MouseState inside down) MouseDown = MouseState inside True
   patch (MouseState inside down) MouseOver = MouseState True   down
@@ -237,12 +251,15 @@ data RectInputEvent
   | EndRect (P2 Double)
   -- Abort current square in process
   | AbortRect
+  deriving (Eq, Ord, Show)
 
 {-
 A rectangle, represented as two points.
 -}
 data Rect = Rect (P2 Double) (P2 Double)
+  deriving (Eq, Ord, Show)
 
+{-Finished rects-}
 squares :: Events RectInputEvent -> FRP (Events Rect)
 squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
   where
@@ -250,6 +267,22 @@ squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
     f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect p1 p2))
     f AbortRect        _            = (Nothing, Nothing)
     f (ContinueRect _) (x, _)       = (x,       Nothing)
+
+{-Rects in the making. TODO-}
+squaresTemp :: Events RectInputEvent -> FRP (Events Rect)
+squaresTemp = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
+  where
+    f (BeginRect p1)   _            = (Just p1, Nothing)
+    f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect p1 p2))
+    f AbortRect        _            = (Nothing, Nothing)
+    f (ContinueRect _) (x, _)       = (x,       Nothing)
+
+mpsToRectInput :: P2 Double -> MouseEv -> RectInputEvent
+mpsToRectInput pos MouseDown        = BeginRect pos
+mpsToRectInput pos MouseUp          = EndRect pos
+mpsToRectInput pos MouseOut         = AbortRect
+mpsToRectInput pos _                = ContinueRect pos
+-- mpsToRectInput pos MouseP
 
 {-
 A drag overlay interface.
@@ -263,9 +296,16 @@ dragRect activeS dS = do
   -- TODO
   (dragS, dragE :: Events RectInputEvent) <- newEvent
 
-  (bigTransparent2, bigTransparentMPS) <- withMousePositionState (\_ -> pure bigTransparent)
+  (bigTransparent2, bigTransparentMPS :: Signal MousePositionState)
+    <- withMousePositionState (\_ -> pure bigTransparent)
 
-  subscribeEvent (updates bigTransparentMPS) print
+
+  let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
+  mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
+  mouseMove3 <- squares mouseMove2
+  -- subscribeEvent (updates bigTransparentMPS) print
+  -- subscribeEvent (mouseMove2) print
+  subscribeEvent (mouseMove3) print
 
   -- origina drawing, with the overlay whenever activeS is True
   let dWithOverlay :: Signal Drawing = liftA3 (\bt s d -> if s then mconcat [bt, d] else d) bigTransparent2 activeS dS
@@ -290,10 +330,10 @@ plusMinus label init = do
   pure (mconcat [pure $ text (toJSString label), view], zoom)
 
 
-onOff :: Str -> FRP (Signal Html, Signal Bool)
-onOff label = do
-  (view, alter :: Events Bool) <- componentEvent False selectEnumBoundedWidget mempty
-  state <- stepperS False alter
+onOff :: Str -> Bool -> FRP (Signal Html, Signal Bool)
+onOff label init = do
+  (view, alter :: Events Bool) <- componentEvent init selectEnumBoundedWidget mempty
+  state <- stepperS init alter
   pure (mconcat [pure $ text (toJSString label), view], state)
 -- selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
 
@@ -304,7 +344,7 @@ type SDrawing = Signal Drawing
 
 main :: IO ()
 main = do
-  (view0, zoomActive) <- onOff "Zoom active"
+  (view0, zoomActive) <- onOff "Zoom active" True
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
   let zoomXY = liftA2 V2 zoomX zoomY
