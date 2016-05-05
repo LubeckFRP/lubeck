@@ -112,9 +112,8 @@ instance Diffable MouseState where
 
   patch x _ = x
 
-
-withMouseState2 :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
-withMouseState2 d = do
+withMouseState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
+withMouseState d = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
   when debugHandlers $ do
@@ -122,10 +121,6 @@ withMouseState2 d = do
     pure ()
   let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
                            ( id
-                          --  . addProperty (mouseover $ const $ mouseS MouseOver)
-                          --  . addProperty (mouseout  $ const $ mouseS MouseOut)
-                          --  . addProperty (mouseup   $ const $ mouseS MouseUp)
-                          --  . addProperty (mousedown $ const $ mouseS MouseDown)
                            . addHandler "mouseover" (const $ mouseS MouseOver)
                            . addHandler "mouseout"  (const $ mouseS MouseOut)
                            . addHandler "mouseup"   (const $ mouseS MouseUp)
@@ -133,15 +128,11 @@ withMouseState2 d = do
                            ) d
   pure $ (dWithHandlers state, state)
 
--- withMouseState_ :: Drawing -> FRP (Signal Drawing, Signal MouseState)
--- withMouseState_ d = withMouseState2 (fmap $ const d)
-
--- TODO consolidate with above
-withMouseState_2 :: Signal Drawing -> FRP (Signal Drawing, Signal MouseState)
-withMouseState_2 d = withMouseState2 (const d)
+withMouseState_ :: Signal Drawing -> FRP (Signal Drawing, Signal MouseState)
+withMouseState_ d = withMouseState (const d)
 
 hoverable :: (Bool -> Drawing) -> FRP (Signal Drawing, Signal Bool)
-hoverable d = fmap (second $ fmap mouseInside) $ withMouseState2 (fmap (d . mouseInside))
+hoverable d = fmap (second $ fmap mouseInside) $ withMouseState (fmap (d . mouseInside))
 
 hoverable_ :: (Bool -> Drawing) -> FRP (Signal Drawing)
 hoverable_ = fmap fst . hoverable
@@ -184,7 +175,7 @@ until it recieves a mousedown or mouseup event.
 -}
 draggable :: Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
 draggable d = do
-  (d2, mouseStateS :: Signal MouseState) <- withMouseState_2 d
+  (d2, mouseStateS :: Signal MouseState) <- withMouseState_ d
   nudgeableDraggable (fmap mouseDown $ current $ mouseStateS) d2
 
 draggable_ :: Signal Drawing -> FRP (Signal Drawing)
@@ -266,7 +257,8 @@ main = do
   sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
   let (sd :: SDrawing) = mconcat
-                [ fmap (translateX 120) dc1
+                [ mempty
+                , fmap (translateX 120) dc1
                 , dc2
                 , sqs2
                 , sqs2b
