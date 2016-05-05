@@ -29,7 +29,7 @@ import Data.Colour.Names as Colors
 
 ----------
 
-debugHandlers = True
+debugHandlers = False
 
 -- TODO handle onmousedown, onmousemove, onmouseout, onmouseup
 -- Ref: http://www.petercollingridge.co.uk/interactive-svg-components/draggable-svg-element
@@ -120,6 +120,12 @@ instance Diffable MouseState where
 
   patch x _ = x
 
+{-
+Most general way of creating a drawing with mosue interaction.
+
+Mouse position is relative to the entire drawing area (TODO currently assumes origin is in TL corner).
+Only event handlers sent to the given drawing a are processed (i.e. transparent areas are ignored).
+-}
 withMousePositionState :: (Signal MousePositionState -> Signal Drawing) -> FRP (Signal Drawing, Signal MousePositionState)
 withMousePositionState d = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
@@ -269,7 +275,8 @@ dragRect activeS dS = do
     dragRect =
         fillColorA (Colors.blue `withOpacity` 0.3) $ Lubeck.Drawing.scale 1 square
     bigTransparent =
-      -- addHandler "" $
+      -- Test strange alignment
+      -- align BR $
       -- TODO no color
         fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
