@@ -269,13 +269,16 @@ squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
     f (ContinueRect _) (x, _)       = (x,       Nothing)
 
 {-Rects in the making. TODO-}
-squaresTemp :: Events RectInputEvent -> FRP (Events Rect)
-squaresTemp = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
+squaresTemp :: Events RectInputEvent -> FRP (Signal (Maybe Rect))
+squaresTemp ri = do
+  rs <- squaresTemp2 ri
+  stepperS Nothing rs
+squaresTemp2 :: Events RectInputEvent -> FRP (Events (Maybe Rect))
+squaresTemp2 = fmap (fmap snd) . foldpE f (Nothing, Nothing)
   where
-    f (BeginRect p1)   _            = (Just p1, Nothing)
-    f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect p1 p2))
-    f AbortRect        _            = (Nothing, Nothing)
-    f (ContinueRect _) (x, _)       = (x,       Nothing)
+    f (BeginRect p1)   _             = (Just p1, Just (Rect p1 p1))
+    f (ContinueRect p2) (Just p1, _) = (Just p1, Just (Rect p1 p2))
+    f _ _ = (Nothing, Nothing)
 
 mpsToRectInput :: P2 Double -> MouseEv -> RectInputEvent
 mpsToRectInput pos MouseDown        = BeginRect pos
@@ -303,9 +306,11 @@ dragRect activeS dS = do
   let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
   mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
   mouseMove3 <- squares mouseMove2
+  mouseMove4 <- squaresTemp mouseMove2
   -- subscribeEvent (updates bigTransparentMPS) print
   -- subscribeEvent (mouseMove2) print
   subscribeEvent (mouseMove3) print
+  subscribeEvent (updates mouseMove4) print
 
   -- origina drawing, with the overlay whenever activeS is True
   let dWithOverlay :: Signal Drawing = liftA3 (\bt s d -> if s then mconcat [bt, d] else d) bigTransparent2 activeS dS
