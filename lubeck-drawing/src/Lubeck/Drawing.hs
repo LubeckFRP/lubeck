@@ -1427,9 +1427,11 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
             [mkA "style" $ styleToAttrString s]
             (toSvg1 ps x)
 
+#ifdef __GHCJS__
           -- Ignore event handlers
           Prop  _ x   -> toSvg1 ps x
           Prop2 _ _ x -> toSvg1 ps x
+#endif
 
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> single $ mkN "g" ps []
