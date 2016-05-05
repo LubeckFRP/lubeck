@@ -1039,11 +1039,13 @@ textWithOptions opts = style allOfThem . Text
     _textSelectable = case textSelectable opts of
       All True  -> mempty
       All False -> mconcat
-                    [ styleNamed "-moz-user-select"     "-moz-none"
+                    [ styleNamed "user-select"          "none"
+                    , styleNamed "-moz-user-select"     "-moz-none"
                     , styleNamed "-khtml-user-select"   "none"
                     , styleNamed "-webkit-user-select"  "none"
                     , styleNamed "-ms-user-select"      "none"
-                    , styleNamed "user-select"          "none"
+                    -- Mouse pointer
+                    , styleNamed "cursor"               "default"
                     ]
 
 {-| Apply a [Transformation](#Transformation) to an image.
