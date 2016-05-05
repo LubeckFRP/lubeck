@@ -15,6 +15,7 @@ import Lubeck.Drawing hiding (text)
 -- import Lubeck.Drawing(Drawing, toSvg, V2(..))
 import Lubeck.Forms(componentEvent)
 import Lubeck.Forms.Button(multiButtonWidget)
+import Lubeck.Forms.Select(selectEnumBoundedWidget)
 import Lubeck.App(runAppReactive)
 import Web.VirtualDom.Html(Html, h1, text)
 import qualified Web.VirtualDom as VirtualDom
@@ -174,39 +175,99 @@ draggable d = do
 draggable_ :: Signal Drawing -> FRP (Signal Drawing)
 draggable_ = fmap fst . draggable
 
+{-|
+Like MouseState, but include position.
+-}
+data MousePositionState = MousePositionState
+  { mousePosition :: P2 Double
+  , mouseState    :: MouseState
+  }
+  deriving (Eq, Ord, Show)
+
+withMousePositionState :: Signal Drawing -> FRP (Signal Drawing, Signal MousePositionState)
+withMousePositionState d = do
+  (d2, p) <- nudgeable d
+  (d3, ms) <- withMouseState (const d2)
+  pure $ (d3, liftA2 MousePositionState p ms)
+
+
+
+{-\
+Represents one of a series of actions used to input a rectangle.
+
+A rectangle is considered to have been described whenever:
+
+- An EndRect event is emitted
+- The most recent event, excepting all ContinueRect events, is a BeginRect event
+  (and thus not an AbortRect) event.
+-}
+data RectInputEvent
+  -- Begin creating a square from this point
+  = BeginRect (P2 Double)
+  -- Continue creating a square
+  | ContinueRect (P2 Double)
+  -- Finish creating square
+  | EndRect (P2 Double)
+  -- Abort current square in process
+  | AbortRect
+
+{-
+A rectangle, represented as two points.
+-}
+data Rect = Rect (P2 Double) (P2 Double)
+
+squares :: Events RectInputEvent -> FRP (Events Rect)
+squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
+  where
+    f (BeginRect p1)   _            = (Just p1, Nothing)
+    f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect p1 p2))
+    f AbortRect        _            = (Nothing, Nothing)
+    f (ContinueRect _) (x, _)       = (x,       Nothing)
+
+{-
+A drag overlay interface.
+
+Whenever the given bool signal is False, this behaves exactly as the original drawing signal.
+Otherwise, this displays an invisible drawing across the original image, that registers event
+handlers.
+-}
+dragRect :: Signal Bool -> Signal Drawing -> FRP (Signal Drawing, Events Rect)
+dragRect activeS dS = do
+  -- TODO
+  (dragS, dragE :: Events RectInputEvent) <- newEvent
+
+  (bigTransparent2, bigTransparentMPS) <- withMousePositionState (pure bigTransparent)
+
+  subscribeEvent (updates bigTransparentMPS) print
+
+  -- origina drawing, with the overlay whenever activeS is True
+  let dWithOverlay :: Signal Drawing = liftA3 (\bt s d -> if s then mconcat [bt, d] else d) bigTransparent2 activeS dS
+  pure $ (dWithOverlay, mempty)
+  where
+
+    dragRect =
+        fillColorA (Colors.blue `withOpacity` 0.3) $ Lubeck.Drawing.scale 1 square
+    bigTransparent =
+      -- addHandler "" $
+      -- TODO no color
+        fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
 {-
 Displays a pair or plus/minus-labeled buttons.
 -}
-plusMinus :: Str -> Double -> IO (Signal Html, Signal Double)
+plusMinus :: Str -> Double -> FRP (Signal Html, Signal Double)
 plusMinus label init = do
   (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [("-", (/ 1.1)), ("+", (* 1.1))]) mempty
   zoom <- accumS init alter
   pure (mconcat [pure $ text (toJSString label), view], zoom)
 
 
-
-data DragSquare
-  -- Begin creating a square from this point
-  = BeginSquare (P2 Double)
-  -- Continue creating a square (mainly for GUI feedback)
-  | ContinueSquare (P2 Double)
-  -- Finish creating square
-  | EndSquare (P2 Double)
-  -- Abort current square in process
-  | Abort
-
-dragSquare :: Drawing -> Signal Bool -> FRP (Signal Drawing, Signal (P2 Double, P2 Double))
-dragSquare d activeS = do
-  -- TODO
-  (dragSquare, squareDragged :: Events DragSquare) <- newEvent
-
-  let dWithOverlay :: Signal Drawing = flip fmap activeS $ \s -> if s then mconcat [bigTransparent, d] else d
-  pure $ (dWithOverlay, pure (0, 0))
-  where
-    bigTransparent =
-      -- TODO no color
-        fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
+onOff :: Str -> FRP (Signal Html, Signal Bool)
+onOff label = do
+  (view, alter :: Events Bool) <- componentEvent False selectEnumBoundedWidget mempty
+  state <- stepperS False alter
+  pure (mconcat [pure $ text (toJSString label), view], state)
+-- selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
 
 
 ----------
@@ -215,12 +276,14 @@ type SDrawing = Signal Drawing
 
 main :: IO ()
 main = do
+  (view0, zoomActive) <- onOff "Zoom active"
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
   let zoomXY = liftA2 V2 zoomX zoomY
 
   -- Debug
-  subscribeEvent (updates zoomXY) print
+  when debugHandlers $ void $
+    subscribeEvent (updates zoomXY) print
 
   let (plotSD :: Styled Drawing) = drawPlot $ mconcat
           [ plot (zip [1..10::Double] [31,35,78,23,9,92,53,71,53,42::Double])
@@ -249,13 +312,16 @@ main = do
   (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
+  (dr, _) <- dragRect zoomActive sqs2b
   let (sd :: SDrawing) = mconcat
                 [ mempty
-                , fmap (translateX 120) dc1
-                , dc2
-                , sqs2
-                , sqs2b
-                , plotSD
+                -- , fmap (translateX 120) dc1
+                -- , dc2
+                -- , sqs2
+                -- , sqs2b
+                -- , plotSD
+                ,   dr
+
                 ]
 
-  runAppReactive $ mconcat [view1, view2, fmap (toSvg mempty) $ sd]
+  runAppReactive $ mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
