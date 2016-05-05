@@ -117,9 +117,9 @@ withMouseState2 :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing,
 withMouseState2 d = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
-  -- when debugHandlers $ do
-    -- subscribeEvent (updates state) print
-    -- pure ()
+  when debugHandlers $ do
+    subscribeEvent (updates state) print
+    pure ()
   let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
                            ( id
                           --  . addProperty (mouseover $ const $ mouseS MouseOver)
