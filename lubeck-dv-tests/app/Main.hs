@@ -259,6 +259,14 @@ A rectangle, represented as two points.
 data Rect = Rect (P2 Double) (P2 Double)
   deriving (Eq, Ord, Show)
 
+rectToTransform :: Rect -> Drawing -> Drawing
+rectToTransform (Rect (P (V2 x1 y1)) (P (V2 x2 y2))) d = id
+    $ Lubeck.Drawing.translateX x1
+    $ Lubeck.Drawing.translateY y1
+    $ Lubeck.Drawing.scaleX     (x2-x1)
+    $ Lubeck.Drawing.scaleY     (y2-y1)
+    $ d
+
 {-Finished rects-}
 squares :: Events RectInputEvent -> FRP (Events Rect)
 squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
@@ -287,6 +295,14 @@ mpsToRectInput pos MouseOut         = AbortRect
 mpsToRectInput pos _                = ContinueRect pos
 -- mpsToRectInput pos MouseP
 
+foobar :: Signal MousePositionState -> FRP (Events Rect, Signal (Maybe Rect))
+foobar bigTransparentMPS = do
+  let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
+  mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
+  finishedRects <- squares mouseMove2
+  intermediateRects <- squaresTemp mouseMove2
+  pure (finishedRects, intermediateRects)
+
 {-
 A drag overlay interface.
 
@@ -302,23 +318,20 @@ dragRect activeS dS = do
   (bigTransparent2, bigTransparentMPS :: Signal MousePositionState)
     <- withMousePositionState (\_ -> pure bigTransparent)
 
+  (finishedRects, intermediateRects) <- foobar bigTransparentMPS
+  subscribeEvent (finishedRects) print
+  subscribeEvent (updates intermediateRects) print
 
-  let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
-  mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
-  mouseMove3 <- squares mouseMove2
-  mouseMove4 <- squaresTemp mouseMove2
-  -- subscribeEvent (updates bigTransparentMPS) print
-  -- subscribeEvent (mouseMove2) print
-  subscribeEvent (mouseMove3) print
-  subscribeEvent (updates mouseMove4) print
+  let (dragRectD :: Signal Drawing) = fmap dragRect intermediateRects
 
   -- origina drawing, with the overlay whenever activeS is True
-  let dWithOverlay :: Signal Drawing = liftA3 (\bt s d -> if s then mconcat [bt, d] else d) bigTransparent2 activeS dS
-  pure $ (dWithOverlay, mempty)
+  let overlay :: Signal Drawing = liftA2 (\bt s -> if s then mconcat [bt] else mconcat []) bigTransparent2 activeS
+  pure $ (overlay <> dragRectD <> dS, finishedRects)
   where
 
-    dragRect =
-        fillColorA (Colors.blue `withOpacity` 0.3) $ Lubeck.Drawing.scale 1 square
+    dragRect Nothing = mempty
+    dragRect (Just rect) =
+      fillColorA (Colors.blue `withOpacity` 0.3) $ rectToTransform rect $ square
     bigTransparent =
       -- Test strange alignment
       -- align BR $
@@ -389,10 +402,10 @@ main = do
   let (sd :: SDrawing) = mconcat
                 [ mempty
                 , dr
-                , fmap (translateX 120) dc1
-                , dc2
-                , sqs2
-                , sqs2b
+                -- , fmap (translateX 120) dc1
+                -- , dc2
+                -- , sqs2
+                -- , sqs2b
                 , plotSD
                 ]
 
