@@ -449,6 +449,10 @@ apStyle (Style_ a) (Style_ b) = Style_ $ Data.Map.union a b
 styleToAttrString :: Style -> Str
 styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
 
+{-| Add an event handler to the given drawing.
+
+   Handlers are embedde using 'Web.VirtualDom.on' so the same naming conventions apply.
+-}
 #ifdef __GHCJS__
 addHandler :: Str -> (JSVal -> IO ()) -> Drawing -> Drawing
 addHandler = Prop2
@@ -457,10 +461,11 @@ addHandler :: () -> Drawing -> Drawing
 addHandler _ = id
 #endif
 
--- | Embed an arbitrary SVG property on a drawing.
---
---   Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
---   static backends may ignore these properties.
+{-| Embed an arbitrary SVG property on a drawing.
+
+  Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
+  static backends may ignore these properties.
+-}
 #ifdef __GHCJS__
 addProperty :: E.Property -> Drawing -> Drawing
 addProperty = Prop
