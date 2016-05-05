@@ -16,7 +16,7 @@ import Lubeck.App(runAppReactive)
 import Web.VirtualDom.Html(text)
 
 plusMinus label init = do
-  (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [("-", (/ 1.1)), ("+", (* 1.1))]) mempty
+  (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [] [("-", (/ 1.1)), ("+", (* 1.1))]) mempty
   zoom <- accumS init alter
   return (mconcat [pure $ text label, view], zoom)
 
