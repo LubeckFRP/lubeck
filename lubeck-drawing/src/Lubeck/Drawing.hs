@@ -955,16 +955,17 @@ data TextOptions = TextOptions
   , fontFamily        :: First Str
   , fontSize          :: First FontSize
   , fontWeight        :: FontWeight
+  , textSelectable    :: All
   }
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid TextOptions where
   mempty
-    = TextOptions mempty mempty mempty mempty mempty mempty
+    = TextOptions mempty mempty mempty mempty mempty mempty mempty
   mappend
-    (TextOptions x1 x2 x3 x4 x5 x6)
-    (TextOptions y1 y2 y3 y4 y5 y6)
-    = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4) (x5 <> y5) (x6 <> y6)
+    (TextOptions x1 x2 x3 x4 x5 x6 x7)
+    (TextOptions y1 y2 y3 y4 y5 y6 y7)
+      = TextOptions (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4) (x5 <> y5) (x6 <> y6) (x7 <> y7)
   -- TODO can we derive this?
 
 -- | Text woth options. Idiomatically:
@@ -980,7 +981,7 @@ textWithOptions opts = style allOfThem . Text
   where
     allOfThem = mconcat
       [ _fontWeight, _fontSize, _fontFamily, _fontStyle, _textAnchor
-      , _alignmentBaseline
+      , _alignmentBaseline, _textSelectable
       ]
 
     _fontWeight = case fontWeight opts of
@@ -1025,6 +1026,25 @@ textWithOptions opts = style allOfThem . Text
       AlignmentBaselineAlphabetic     -> styleNamed "dominant-baseline" "alphabetic"
       AlignmentBaselineHanging        -> styleNamed "dominant-baseline" "hanging"
       AlignmentBaselineMathematical   -> styleNamed "dominant-baseline" "mathematical"
+
+    {-
+    *.unselectable {
+       -moz-user-select: -moz-none;
+       -khtml-user-select: none;
+       -webkit-user-select: none;
+       -ms-user-select: none;
+       user-select: none;
+    }
+    -}
+    _textSelectable = case textSelectable opts of
+      All True  -> mempty
+      All False -> mconcat
+                    [ styleNamed "-moz-user-select"     "-moz-none"
+                    , styleNamed "-khtml-user-select"   "none"
+                    , styleNamed "-webkit-user-select"  "none"
+                    , styleNamed "-ms-user-select"      "none"
+                    , styleNamed "user-select"          "none"
+                    ]
 
 {-| Apply a [Transformation](#Transformation) to an image.
 
