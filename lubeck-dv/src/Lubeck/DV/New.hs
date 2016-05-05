@@ -1151,12 +1151,13 @@ labelG = Geometry g [""]
 
     text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
       {
-      Lubeck.Drawing.textAnchor = style^.Lubeck.DV.Styling.labelTextAnchor
+      Lubeck.Drawing.textAnchor       = style^.Lubeck.DV.Styling.labelTextAnchor
       -- TODO read family from style
-      , Lubeck.Drawing.fontFamily = style^.Lubeck.DV.Styling.labelTextFontFamily
-      , Lubeck.Drawing.fontStyle  = style^.Lubeck.DV.Styling.labelTextFontStyle
-      , Lubeck.Drawing.fontSize   = First $ Just $ (toStr $ style^.Lubeck.DV.Styling.labelTextFontSizePx) <> "px"
-      , Lubeck.Drawing.fontWeight = style^.Lubeck.DV.Styling.labelTextFontWeight
+      , Lubeck.Drawing.fontFamily     = style^.Lubeck.DV.Styling.labelTextFontFamily
+      , Lubeck.Drawing.fontStyle      = style^.Lubeck.DV.Styling.labelTextFontStyle
+      , Lubeck.Drawing.fontSize       = First $ Just $ (toStr $ style^.Lubeck.DV.Styling.labelTextFontSizePx) <> "px"
+      , Lubeck.Drawing.fontWeight     = style^.Lubeck.DV.Styling.labelTextFontWeight
+      , Lubeck.Drawing.textSelectable = All False
       }
       where
         absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
