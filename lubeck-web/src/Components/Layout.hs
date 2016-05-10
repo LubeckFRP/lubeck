@@ -61,6 +61,7 @@ data LayoutSpec a = LayoutSpec { _lView :: View
                                , _lName :: Maybe ViewName
                                }
 
+-- Conceptually Layout ~ (Signal Html, Maybe (Signal a), Maybe Name), where a is Int, Bool etc
 data Layout = LayoutFullsize2 (LayoutSpec Int)
             | LayoutFullsize4 (LayoutSpec Int)
             | LayoutVerticalStack (LayoutSpec Int)
@@ -80,7 +81,11 @@ mkLayoutToggle a b c          = LayoutToggle $ LayoutSpec a b c
 mkLayoutOverlay a b c         = LayoutOverlay $ LayoutSpec a b c
 mkLayoutOverlay2 a b c        = LayoutOverlay2 $ LayoutSpec a b c
 mkLayoutOverlay3 a b c        = LayoutOverlay3 $ LayoutSpec a b c
+
+mkLayoutPure :: Signal Html -> Layout
 mkLayoutPure a                = LayoutPure $ LayoutSpec a Nothing Nothing
+
+mkLayoutPure' :: Signal Html -> ViewName -> Layout
 mkLayoutPure' a b             = LayoutPure $ LayoutSpec a Nothing (Just b)
 
 view :: Layout -> View
