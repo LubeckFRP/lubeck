@@ -36,6 +36,7 @@ module Lubeck.Forms
   -- * Components
   , component
   , componentEvent
+  , componentSignal
   , componentSink
   , componentRW
   , componentListen
@@ -216,6 +217,12 @@ componentEvent initState widget inputs = do
   (signal, outputs, inSink) <- componentRW initState widget
   subscribeEvent inputs inSink
   return (signal, outputs)
+
+componentSignal :: a -> WidgetT r a a -> Events a -> IO (Signal r, Signal a)
+componentSignal z w e = do
+  (rS, aE) <- componentEvent z w e
+  aS <- stepperS z aE
+  return (rS, aS)
 
 componentSink :: a -> WidgetT r a a -> Sink a -> IO (Signal r, Sink a)
 componentSink initState widget outputSink = do
