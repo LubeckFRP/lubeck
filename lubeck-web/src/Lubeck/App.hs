@@ -33,7 +33,7 @@ import Data.Monoid
 import Data.Maybe(fromMaybe)
 import Data.Default (def)
 
-import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import qualified Web.VirtualDom as VD
 import GHCJS.Concurrent(isThreadSynchronous, isThreadContinueAsync)
 import GHCJS.Foreign.Callback
@@ -101,9 +101,12 @@ runAppReactiveX (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $
     Just kbdSink -> kbdListener $ \e -> kbdSink $ Key (which . makeDamnEvent $ e)
     Nothing      -> pure ()
 
+  (updateCount) <- newIORef (0::Int)
   subscribeEvent (updates s) $ \newVD -> do
     -- print "Updating VD"
     -- showThreadInfo
+    modifyIORef updateCount succ
+    readIORef updateCount >>= (\c -> print $ "Updates: " <> show c)
 
     prevVD <- readIORef varVD
     prevRD <- readIORef varRD

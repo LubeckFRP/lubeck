@@ -257,6 +257,8 @@ import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
 #endif
 
+import System.IO.Unsafe(unsafePerformIO)
+
 -- Ideomatically: (V2 Double), (P2 Double) and so on
 
 type P1 a = Point V1 a
@@ -733,6 +735,49 @@ data Drawing
 
   | Em
   | Ap Drawing Drawing
+
+optimizeDrawing :: Drawing -> Drawing
+-- optimizeDrawing = error "No optimizeDrawing"
+optimizeDrawing = go
+  where
+    -- Rewrite cases
+    go (Style s1 (Style s2 x))   = Style (s1 <> s2) (go x)
+    go (Transf t1 (Transf t2 x)) = Transf (t1 <> t2) (go x)
+    -- Recurse over other cases
+    go (Style s x)               = Style s (go x) -- TODO try at least once more after this step
+    go (Transf t x)              = Transf t (go x)
+#ifdef __GHCJS__
+    go (Prop p x)                = Prop p (go x)
+    go (Prop2 n p x)             = Prop2 n p (go x)
+#endif
+    go (Ap x y)                   = Ap (go x) (go y)
+    go x = x
+
+
+drawingTreeNNodes = drawingTreeF (+)
+drawingTreeDepth = drawingTreeF max
+
+printTreeInfo x = do
+  print $ "Tree N nodes " ++ show (drawingTreeNNodes x)
+  print $ "Tree depth   " ++ show (drawingTreeDepth x)
+
+drawingTreeF f = go
+  where
+    go Circle = 1
+    go Rect = 1
+    go Line = 1
+    go (Lines _ _) = 1
+    go (Text _) = 1
+    go (Embed _) = 1
+    go (Transf _ x) = go x + 1
+    go (Style _ x) = go x + 1
+#ifdef __GHCJS__
+    go (Prop _ x) = go x + 1
+    go (Prop2 _ _ x) = go x + 1
+#endif
+    go Em = 1
+    go (Ap x y) = f (go x) (go y)
+
 
 -- TODO possible optimizations:
 --
@@ -1281,11 +1326,13 @@ instance Monoid RenderingOptions where
   mempty  = RenderingOptions (P $ V2 800 800) Center
   mappend = const
 
+
 #ifdef __GHCJS__
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
-toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
-  svgTopNode
+toSvg (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformIO $ do
+  printTreeInfo drawing
+  return $ svgTopNode
     (toStr $ floor x)
     (toStr $ floor y)
     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
@@ -1331,6 +1378,8 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing =
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     reflY (V2 adx ady) = V2 adx (negate ady)
+
+    drawing = optimizeDrawing drawing1
 
     toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> Svg
     toSvg1 hs ps x = case x of
