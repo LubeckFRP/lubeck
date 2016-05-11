@@ -306,12 +306,16 @@ foobar bigTransparentMPS = do
 {-
 A drag overlay interface.
 
-Whenever the given bool signal is False, this behaves exactly as the original drawing signal.
-Otherwise, this displays an invisible drawing across the original image, that registers event
-handlers.
+Whenever the given bool signal is False, behaves like 'mempty'.
+
+Otherwise, this displays an invisible drawing across the original image, that registers mouse events
+and displays feedback on drag events. Whenever a drag action is completed, the rectangle in which
+it was performed is sent.
 -}
-dragRect :: Signal Bool -> Signal Drawing -> FRP (Signal Drawing, Events Rect)
-dragRect activeS dS = do
+dragRect
+  :: Signal Bool
+  -> FRP (Signal Drawing, Events Rect)
+dragRect activeS = do
   -- TODO
   (dragS, dragE :: Events RectInputEvent) <- newEvent
 
@@ -326,7 +330,7 @@ dragRect activeS dS = do
 
   -- origina drawing, with the overlay whenever activeS is True
   let overlay :: Signal Drawing = liftA2 (\bt s -> if s then mconcat [bt] else mconcat []) bigTransparent2 activeS
-  pure $ (overlay <> dragRectD <> dS, finishedRects)
+  pure $ (overlay <> dragRectD, finishedRects)
   where
 
     dragRect Nothing = mempty
@@ -336,7 +340,7 @@ dragRect activeS dS = do
       -- Test strange alignment
       -- align BR $
       -- TODO no color
-        fillColorA (Colors.green `withOpacity` 0.0) $ Lubeck.Drawing.scale 3000 square
+        fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
 {-
 Displays a pair or plus/minus-labeled buttons.
@@ -393,12 +397,12 @@ main = do
   dc1 <- nudgeable_ $ pure (pinkCircle ||| redSquare)
   dc2 <- nudgeable_ $ pure purpleCircle
 
-  (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
-  sqs2 <- draggable_ sqs
-  (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
-  sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
+  -- (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
+  -- sqs2 <- draggable_ sqs
+  -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
+  -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
-  (dr, _) <- dragRect zoomActive sqs2b
+  (dr, _) <- dragRect zoomActive
   let (sd :: SDrawing) = mconcat
                 [ mempty
                 , dr
