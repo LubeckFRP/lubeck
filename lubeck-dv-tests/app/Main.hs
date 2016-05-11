@@ -381,7 +381,7 @@ main = do
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
 
-  let purpleCircle = Lubeck.Drawing.fillColor Colors.purple $ Lubeck.Drawing.scale 190 circle
+  let purpleCircle = Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
   let pinkCircle   = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
   let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
   let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
@@ -403,7 +403,7 @@ main = do
                 -- , sqs2
                 -- , sqs2b
                 -- , fmap (duplicateN 5 (V2 50 50)) plotSD
-                , pure $ duplicateN 5 (V2 50 50) purpleCircle
+                , pure $ duplicateN 50 (V2 5 5) purpleCircle
                 ]
 
   let allS = mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
