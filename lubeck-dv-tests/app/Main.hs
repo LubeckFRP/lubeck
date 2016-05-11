@@ -295,8 +295,8 @@ mpsToRectInput pos MouseOut         = AbortRect
 mpsToRectInput pos _                = ContinueRect pos
 -- mpsToRectInput pos MouseP
 
-foobar :: Signal MousePositionState -> FRP (Events Rect, Signal (Maybe Rect))
-foobar bigTransparentMPS = do
+emittedAndIntermediateRectangles :: Signal MousePositionState -> FRP (Events Rect, Signal (Maybe Rect))
+emittedAndIntermediateRectangles bigTransparentMPS = do
   let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
   mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
   finishedRects <- squares mouseMove2
@@ -316,26 +316,18 @@ dragRect
   :: Signal Bool
   -> FRP (Signal Drawing, Events Rect)
 dragRect activeS = do
-  -- TODO
-  (dragS, dragE :: Events RectInputEvent) <- newEvent
-
-  (bigTransparent2, bigTransparentMPS :: Signal MousePositionState)
+  -- TODO could use a more efficient version
+  (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState)
     <- withMousePositionState (\_ -> pure bigTransparent)
-
-  (finishedRects, intermediateRects) <- foobar bigTransparentMPS
-  subscribeEvent (finishedRects) print
-  subscribeEvent (updates intermediateRects) print
-
+  let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) bigTransparentWithHandlers activeS
+  (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
   let (dragRectD :: Signal Drawing) = fmap dragRect intermediateRects
-
-  -- origina drawing, with the overlay whenever activeS is True
-  let overlay :: Signal Drawing = liftA2 (\bt s -> if s then mconcat [bt] else mconcat []) bigTransparent2 activeS
   pure $ (overlay <> dragRectD, finishedRects)
   where
-
     dragRect Nothing = mempty
     dragRect (Just rect) =
       fillColorA (Colors.blue `withOpacity` 0.3) $ rectToTransform rect $ align BL $ square
+
     bigTransparent =
       -- Test strange alignment
       -- align BR $
@@ -410,7 +402,23 @@ main = do
                 -- , dc2
                 -- , sqs2
                 -- , sqs2b
-                , plotSD
+                -- , fmap (duplicateN 5 (V2 50 50)) plotSD
+                , pure purpleCircle
                 ]
 
-  runAppReactive $ mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
+  let allS = mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
+  subscribeEvent (updates allS) (\_ -> print "Updated!")
+  runAppReactive $ allS
+
+
+-- MISC test
+
+duplicateN :: Int -> V2 Double -> Drawing -> Drawing
+duplicateN n v d = mconcat $ take n $ iterate (translate v) d
+
+-- The classic Photosphop "duplicate" function
+duplicate :: Drawing -> Drawing
+duplicate = duplicateAt (V2 50 50)
+
+duplicateAt :: V2 Double -> Drawing -> Drawing
+duplicateAt v d = d <> translate v d
