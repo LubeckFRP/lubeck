@@ -106,7 +106,7 @@ runAppReactiveX (s, mbKbdSink) = flip catch (\e -> print (e :: SomeException)) $
     -- print "Updating VD"
     -- showThreadInfo
     modifyIORef updateCount succ
-    readIORef updateCount >>= (\c -> print $ "Updates: " <> show c)
+    -- readIORef updateCount >>= (\c -> print $ "Updates: " <> show c)
 
     prevVD <- readIORef varVD
     prevRD <- readIORef varRD

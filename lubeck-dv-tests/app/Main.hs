@@ -22,8 +22,10 @@ import Web.VirtualDom.Html(Html, h1, text)
 import qualified Web.VirtualDom as VirtualDom
 -- TODO separate/consolidate Html/Svg events
 -- Currently they can be used more or less interchangebly
+
 import Web.VirtualDom.Html.Events(Event(..), mousemove)
 
+import           GHCJS.Foreign.Callback(syncCallback,Callback,OnBlocked(..))
 
 ----------
 
@@ -394,19 +396,39 @@ main = do
   (dr, _) <- dragRect zoomActive
   let (sd :: SDrawing) = mconcat
                 [ mempty
-                -- , dr
+                , dr
                 -- , fmap (translateX 120) dc1
                 , dc1
                 , sqs2
                 -- , sqs2b
-                -- , fmap (duplicateN 2 (V2 50 50)) plotSD
+                , fmap (duplicateN 2 (V2 50 50)) plotSD
                 , pure $ duplicateN 20 (V2 1 1) purpleCircle
                 ]
 
   let allS = mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
   subscribeEvent (updates allS) (\_ -> print "Updated!")
-  runAppReactive $ allS
+  -- runAppReactive $ allS
+  runWithAnimation $ current allS
 
+
+--
+
+runWithAnimation b = do
+  (s, start) <- animated b
+  runAppReactive s
+  print "Starting animation"
+  start
+
+
+animated :: Behavior a -> FRP (Signal a, IO ())
+animated b = do
+  z <- pollBehavior b
+  (sink, ev) <- newEvent
+  s <- stepperS z ev
+  let start = animate $ do
+            x <- pollBehavior b
+            sink x
+  return (s, start)
 
 -- MISC test
 
@@ -419,3 +441,16 @@ duplicate = duplicateAt (V2 50 50)
 
 duplicateAt :: V2 Double -> Drawing -> Drawing
 duplicateAt v d = d <> translate v d
+
+
+animate :: IO () -> IO ()
+animate k = do
+  cb <- syncCallback ThrowWouldBlock k
+  animate' cb
+
+
+-- animate' :: JSFun (IO ()) -> IO ()
+
+foreign import javascript unsafe
+  "var req = window.requestAnimationFrame;   var f = function() { $1(); req(f); };   req(f);"
+  animate' :: Callback (IO ()) -> IO ()

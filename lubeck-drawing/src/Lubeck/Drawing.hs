@@ -1161,9 +1161,9 @@ type FontSize = Str
 data TextOptions = TextOptions
   { textAnchor        :: !TextAnchor
   , alignmentBaseline :: !AlignmentBaseline
-  , fontStyle         :: FontStyle
-  , fontFamily        :: !First Str
-  , fontSize          :: !First FontSize
+  , fontStyle         :: !FontStyle
+  , fontFamily        :: !(First Str)
+  , fontSize          :: !(First FontSize)
   , fontWeight        :: !FontWeight
   , textSelectable    :: !All
   }
