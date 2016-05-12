@@ -1,6 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
-  NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving #-}
+  NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving
+  , ScopedTypeVariables #-}
 
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
@@ -436,10 +437,20 @@ transformPoint t (P (V2 x y)) =
 {-| -}
 newtype Style = Style_ { getStyle_ :: Map Str Str }
   deriving (Show, Monoid)
+{-
+Note: Uses Map in place of MonoidMap
+
+Map is left-biased, so
+  Map k v ~ MonoidMap k (First v)
+
+This is what we want, consider
+  @style (styleNamed k1 s1) (style (styleNamed k2 s2) x)@
+  where we want s1 to take precedence whenever k1 == k2
+-}
 
 {-| -}
 emptyStyle :: Style
-emptyStyle = Style_ $ Data.Map.empty
+emptyStyle = mempty
 
 {-| -}
 styleNamed :: Str -> Str -> Style
@@ -447,7 +458,7 @@ styleNamed k v = Style_ $ Data.Map.singleton k v
 
 {-| -}
 apStyle :: Style -> Style -> Style
-apStyle (Style_ a) (Style_ b) = Style_ $ Data.Map.union a b
+apStyle = mappend
 
 {-| -}
 styleToAttrString :: Style -> Str
@@ -759,6 +770,7 @@ optimizeDrawing = go
     go x = x
 
 
+printTreeInfo :: Drawing -> IO ()
 printTreeInfo x = do
   print $ "Tree N nodes " ++ show (drawingTreeNNodes x)
   print $ "Tree depth   " ++ show (drawingTreeDepth x)
@@ -803,9 +815,28 @@ instance Monoid Drawing where
 
 
 -- TODO strict
-newtype Handlers = Handlers (Map Str Handler)
+newtype Handlers = Handlers (MonoidMap Str Handler)
   deriving Monoid
-singleTonHandlers attrName sink = Handlers $ Data.Map.singleton attrName (Handler sink)
+singleTonHandlers attrName sink = Handlers $ singletonMonoidMap attrName (Handler sink)
+
+handlersToProperties :: Handlers -> [E.Property]
+handlersToProperties (Handlers (MonoidMap m))
+  = fmap (\(n, Handler v) -> VD.on (toJSString n) v) $ Data.Map.toList m
+
+styleToProperty :: Style -> E.Property
+styleToProperty s = A.style $ toJSString $ styleToAttrString s
+
+transformationToProperty :: Transformation Double -> E.Property
+transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
+  where
+    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+
+nodeInfoToProperties :: RNodeInfo -> [E.Property]
+nodeInfoToProperties (RNodeInfo style transf handlers) = mconcat
+  [ [transformationToProperty transf]
+  , [styleToProperty style]
+  , handlersToProperties handlers
+  ]
 
 -- TODO would be derivable if IO lifted the Monoid...
 newtype Handler = Handler (JSVal -> IO ())
@@ -819,8 +850,21 @@ instance Monoid Handler where
  -- = Handler { hName :: Str, hSink :: JSVal -> IO () }
 
 
-drawingToRDrawing :: RNodeInfo -> Drawing -> Maybe RDrawing
-drawingToRDrawing nodeInfo = go
+
+-- Inner list never empty!
+-- drawingToRDrawing :: RNodeInfo -> Drawing -> Maybe RDrawing
+
+pure2 = pure . pure
+
+
+drawingToRDrawing :: Drawing -> Maybe RDrawing
+drawingToRDrawing d = case drawingToRDrawing' mempty d of
+  []  -> empty
+  [x] -> pure x
+  xs  -> pure $ RMany mempty xs
+
+drawingToRDrawing' :: RNodeInfo -> Drawing -> [RDrawing]
+drawingToRDrawing' nodeInfo = go
   where
     go Circle                 = pure $ RPrim nodeInfo RCircle
     go Rect                   = pure $ RPrim nodeInfo RRect
@@ -828,15 +872,21 @@ drawingToRDrawing nodeInfo = go
     go (Lines closed vs)      = pure $ RPrim nodeInfo (RLines closed vs)
     go (Text t)               = pure $ RPrim nodeInfo (RText t)
     go (Embed e)              = pure $ RPrim nodeInfo (REmbed e)
-    go (Transf t x)           = drawingToRDrawing (toNodeInfoT t) x
-    go (Style s x)            = drawingToRDrawing (toNodeInfoS s) x
+    go (Transf t x)           = drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
+    go (Style s x)            = drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
 #ifdef __GHCJS__
-    go (Prop2 attrName sink x) = drawingToRDrawing (toNodeInfoH $ singleTonHandlers attrName sink) x
+    go (Prop2 attrName sink x) = drawingToRDrawing'
+                                  -- TODO arguably wrong composition order
+                                  (nodeInfo <> toNodeInfoH (singleTonHandlers attrName sink)) x
 #endif
-    go Em             = empty
-    go (Ap x y)       = undefined
-
-
+    go Em        = empty
+    go (Ap x y)  = recur x <> recur y
+      -- do some kind of "deep" render on x, y
+      -- remove all Nothing results
+      -- current NodeInfo render on this node alone, so further invocations uses (go mempty)
+      where
+        -- recur :: Drawing -> Maybe [RDrawing]
+        recur = drawingToRDrawing' mempty
 
 data RPrim
    = RCircle
@@ -845,12 +895,20 @@ data RPrim
    | RLines !Bool ![V2 Double]
    | RText !Str
    | REmbed !Embed
+
 data RNodeInfo
   = RNodeInfo
     { rStyle   :: !Style
     , rTransf  :: !(Transformation Double)
     , rHandler :: !Handlers
     }
+
+data RDrawing
+  = RPrim !RNodeInfo RPrim
+  | RMany !RNodeInfo ![RDrawing]
+    -- Always non-empty
+    -- Order is [farthest..closest], same as SVG but opposite high-level API
+
 
 toNodeInfoT :: Transformation Double -> RNodeInfo
 toNodeInfoT t = mempty { rTransf = t }
@@ -869,21 +927,17 @@ instance Monoid RNodeInfo where
   mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
     RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
 
-data RDrawing
-  = RPrim !RNodeInfo RPrim
-  | RMany !RNodeInfo ![RDrawing]
-    -- Always non-empty
-    -- Order is [farthest..closest], same as SVG but opposite high-level API
-
+printRTreeInfo :: RDrawing -> IO ()
 printRTreeInfo x = do
   print $ "RTree N nodes " ++ show (drawingTreeRNNodes x)
   print $ "RTree depth   " ++ show (drawingTreeRDepth x)
-drawingTreeRNNodes = drawingTreeF (+)
-drawingTreeRDepth = drawingTreeF max
+drawingTreeRNNodes = drawingRTreeFold (+)
+drawingTreeRDepth = drawingRTreeFold max
+drawingRTreeFold :: (Int -> Int -> Int) -> RDrawing -> Int
 drawingRTreeFold f = go
   where
-    go (RPrim _ _) = 1
-    go (RMany _ xs) = foldr f (error "RMany should not have []") xs
+    go (RPrim _ _)  = 1
+    go (RMany _ xs) = foldr f (error "RMany should not have []") (fmap go xs)
 
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
@@ -1415,6 +1469,83 @@ instance Monoid RenderingOptions where
 
 #ifdef __GHCJS__
 {-| Generate an SVG from a drawing. -}
+toSvg' :: RenderingOptions -> Drawing -> Svg
+toSvg' (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerformIO $ do
+  printTreeInfo drawing1
+  case mDrawing of
+    -- TODO nicer
+    Nothing -> pure (VD.node "div" [] [] :: Svg)
+
+    Just (drawing :: RDrawing) -> do
+      printRTreeInfo drawing
+      pure $ svgTopNode
+        (toStr $ floor x)
+        (toStr $ floor y)
+        ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+        (single $ toSvg1 drawing)
+  where
+    (drawing1 :: Drawing) = placeOrigo drawing2
+    (mDrawing  :: Maybe RDrawing)  = drawingToRDrawing drawing1
+
+    placeOrigo :: Drawing -> Drawing
+    placeOrigo = case originPlacement of
+      TopLeft     -> id
+      Center      -> translateX (x/2) . translateY (y/(-2))
+      BottomLeft  -> translateY (y*(-1))
+
+    svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+    svgTopNode w h vb = E.svg
+      [ A.width (toJSString w)
+      , A.height (toJSString h)
+      , A.viewBox (toJSString vb) ]
+
+    pointsToSvgString :: [P2 Double] -> Str
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = packStr
+        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+
+    embedToSvg :: Embed -> Svg
+    embedToSvg (EmbedContent str) = E.text (toJSString str)
+    embedToSvg (EmbedNode name attrs children) =
+      VD.node (toJSString name)
+        (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
+        (fmap embedToSvg children)
+
+    single x = [x]
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    reflY (V2 adx ady) = V2 adx (negate ady)
+    P (V2 x y) = dimensions
+
+
+
+    toSvg1 :: RDrawing -> Svg
+    toSvg1 drawing = case drawing of
+      RPrim nodeInfo@(RNodeInfo style transf handlers) prim -> case prim of
+        RCircle -> E.circle
+          ([A.r "0.5", noScale] <> nodeInfoToProperties nodeInfo)
+          []
+        RRect -> E.rect
+          ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale] <> nodeInfoToProperties nodeInfo)
+          []
+        RLine -> E.line
+          ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] <> nodeInfoToProperties nodeInfo)
+          []
+        (RLines closed vs) -> (if closed then E.polygon else E.polyline)
+          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale] <> nodeInfoToProperties nodeInfo)
+          []
+        (RText s) -> E.text'
+          ([A.x "0", A.y "0"] <> nodeInfoToProperties nodeInfo)
+          [E.text $ toJSString s]
+        -- TODO need extra group for nodeInfo etc
+        (REmbed e) -> embedToSvg e
+      RMany nodeInfo rdrawings -> case fmap toSvg1 rdrawings of
+        nodes -> E.g (nodeInfoToProperties nodeInfo) nodes
+
+
+{-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
 toSvg (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformIO $ do
   printTreeInfo drawing
@@ -1609,3 +1740,18 @@ toSvgStr st dr = toSvgAny st dr id $
           <> mconcat (Data.List.intersperse " " $ fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
           <> ">"
           <> mconcat nodes <> "</" <> name <> ">"
+
+
+{-|
+Map with a better Monoid instance.
+See https://mail.haskell.org/pipermail/libraries/2012-April/017747.html
+
+-}
+newtype MonoidMap k a = MonoidMap { getMonoidMap :: Map k a }
+
+instance (Ord k, Monoid v) =>  Monoid (MonoidMap k v) where
+    mempty  = MonoidMap $ Data.Map.empty
+    mappend (MonoidMap a) (MonoidMap b) = MonoidMap $ Data.Map.unionWith mappend a b
+    -- mconcat (MonoidMap xs) = MonoidMap $ Data.Map.unionsWith (mconcat xs)
+
+singletonMonoidMap k v = MonoidMap $ Data.Map.singleton k v
