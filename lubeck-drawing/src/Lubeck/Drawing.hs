@@ -301,13 +301,13 @@ instance Show a => Show (Angle a) where
 
 instance Applicative Angle where
   pure = Radians
-  {-# INLINE pure #-}
+  {-# INLINABLE pure #-}
   Radians f <*> Radians x = Radians (f x)
-  {-# INLINE (<*>) #-}
+  {-# INLINABLE (<*>) #-}
 
 instance Additive Angle where
   zero = pure 0
-  {-# INLINE zero #-}
+  {-# INLINABLE zero #-}
 
 instance Num n => Monoid (Angle n) where
   mappend = (^+^)
@@ -423,16 +423,19 @@ matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
 {-| -}
 transformationToMatrix :: Num a => Transformation a -> (a, a, a, a, a, a)
 transformationToMatrix (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = (a,b,c,d,e,f)
+{-# INLINABLE transformationToMatrix #-}
 
 transformVector :: Num a => Transformation a -> V2 a -> V2 a
 transformVector t (V2 x y) =
   let (a,b,c,d,e,f) = transformationToMatrix t
   in V2 (a*x+c*y) (b*x+d*y)
+{-# INLINABLE transformVector #-}
 
 transformPoint :: Num a => Transformation a -> P2 a -> P2 a
 transformPoint t (P (V2 x y)) =
   let (a,b,c,d,e,f) = transformationToMatrix t
   in P $ V2 (a*x+c*y+e) (b*x+d*y+f)
+{-# INLINABLE transformEnvelope #-}
 
 {-| -}
 newtype Style = Style_ { getStyle_ :: Map Str Str }
@@ -743,7 +746,7 @@ data Drawing
 #ifdef __GHCJS__
   -- Embed arbitrary SVG property (typically used for event handlers)
   -- | Prop !E.Property !Drawing
-  | Prop2 Str (JSVal -> IO ()) Drawing
+  | Prop2 !Str (JSVal -> IO ()) !Drawing
 #endif
 
   | Em
@@ -830,17 +833,17 @@ singleTonHandlers attrName sink = Handlers $ singletonMonoidMap attrName (Handle
 handlersToProperties :: Handlers -> [E.Property]
 handlersToProperties (Handlers (MonoidMap m))
   = fmap (\(n, Handler v) -> VD.on (toJSString n) v) $ Map.toList m
-{-# INLINE handlersToProperties #-}
+{-# INLINABLE handlersToProperties #-}
 
 styleToProperty :: Style -> E.Property
 styleToProperty s = A.style $ toJSString $ styleToAttrString s
-{-# INLINE styleToProperty #-}
+{-# INLINABLE styleToProperty #-}
 
 transformationToProperty :: Transformation Double -> E.Property
 transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
   where
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-{-# INLINE transformationToProperty #-}
+{-# INLINABLE transformationToProperty #-}
 
 nodeInfoToProperties :: RNodeInfo -> [E.Property]
 nodeInfoToProperties (RNodeInfo style transf handlers) = mconcat
@@ -848,7 +851,7 @@ nodeInfoToProperties (RNodeInfo style transf handlers) = mconcat
   , [styleToProperty style]
   , handlersToProperties handlers
   ]
-{-# INLINE nodeInfoToProperties #-}
+{-# INLINABLE nodeInfoToProperties #-}
 
 
 -- TODO would be derivable if IO lifted the Monoid...
@@ -875,6 +878,7 @@ drawingToRDrawing d = case drawingToRDrawing' mempty d of
   []  -> empty
   [x] -> pure x
   xs  -> pure $ RMany mempty xs
+{-# INLINABLE drawingToRDrawing #-}
 
 drawingToRDrawing' :: RNodeInfo -> Drawing -> [RDrawing]
 drawingToRDrawing' nodeInfo = go
@@ -901,6 +905,7 @@ drawingToRDrawing' nodeInfo = go
       where
         -- recur :: Drawing -> Maybe [RDrawing]
         recur = drawingToRDrawing' mempty
+{-# INLINABLE drawingToRDrawing' #-}
 
 data RPrim
    = RCircle
@@ -926,15 +931,15 @@ data RDrawing
 
 toNodeInfoT :: Transformation Double -> RNodeInfo
 toNodeInfoT t = mempty { rTransf = t }
-{-# INLINE toNodeInfoT #-}
+{-# INLINABLE toNodeInfoT #-}
 
 toNodeInfoS :: Style -> RNodeInfo
 toNodeInfoS t = mempty { rStyle = t }
-{-# INLINE toNodeInfoS #-}
+{-# INLINABLE toNodeInfoS #-}
 
 toNodeInfoH :: Handlers -> RNodeInfo
 toNodeInfoH t = mempty { rHandler = t }
-{-# INLINE toNodeInfoH #-}
+{-# INLINABLE toNodeInfoH #-}
 
 instance Monoid RNodeInfo where
   mempty = RNodeInfo mempty mempty mempty
@@ -961,10 +966,13 @@ transparent      = Em
 {-| A centered circle with radius one. -}
 circle :: Drawing
 circle    = Circle
+{-# INLINABLE circle #-}
 
 {-| A centered square with a width and height of one. -}
 square :: Drawing
 square = Rect
+{-# INLINABLE square #-}
+
 
 {-| An equilateral triangle. -}
 triangle :: Drawing
@@ -1153,13 +1161,13 @@ type FontSize = Str
 
 -- | Text options. See 'textWithOptions'.
 data TextOptions = TextOptions
-  { textAnchor        :: TextAnchor
-  , alignmentBaseline :: AlignmentBaseline
+  { textAnchor        :: !TextAnchor
+  , alignmentBaseline :: !AlignmentBaseline
   , fontStyle         :: FontStyle
-  , fontFamily        :: First Str
-  , fontSize          :: First FontSize
-  , fontWeight        :: FontWeight
-  , textSelectable    :: All
+  , fontFamily        :: !First Str
+  , fontSize          :: !First FontSize
+  , fontWeight        :: !FontWeight
+  , textSelectable    :: !All
   }
 
 -- | Left-biased. Mainly here for the 'mempty'.
