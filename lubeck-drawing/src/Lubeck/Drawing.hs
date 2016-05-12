@@ -2,6 +2,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
   NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving #-}
 
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+
 {-|
 
 High-level vector graphics library. Renders to as SVG using "Web.VirtualDom.Svg".
@@ -608,7 +610,7 @@ envelope x = case x of
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
 #ifdef __GHCJS__
-  Prop  _ x     -> envelope x
+  -- Prop  _ x     -> envelope x
   Prop2 _ _ x   -> envelope x
 #endif
   Em            -> mempty
@@ -719,7 +721,7 @@ data Drawing
   | Line
   -- A sequence of straight lines, closed or not. For closed lines, there is no need
   -- to return the original point (i.e. the sum of the vectors does not have to be zeroV).
-  | Lines !Bool [V2 Double]
+  | Lines !Bool ![V2 Double]
   | Text !Str
 
   | Embed Embed
@@ -729,7 +731,7 @@ data Drawing
 
 #ifdef __GHCJS__
   -- Embed arbitrary SVG property (typically used for event handlers)
-  | Prop !E.Property !Drawing
+  -- | Prop !E.Property !Drawing
   | Prop2 Str (JSVal -> IO ()) Drawing
 #endif
 
@@ -738,6 +740,7 @@ data Drawing
   -- Left-most is a top,
   | Ap Drawing Drawing
 
+-- TODO remove this, replace qwith RDrawing
 optimizeDrawing :: Drawing -> Drawing
 -- optimizeDrawing = error "No optimizeDrawing"
 optimizeDrawing = go
@@ -749,19 +752,18 @@ optimizeDrawing = go
     go (Style s x)               = Style s (go x) -- TODO try at least once more after this step
     go (Transf t x)              = Transf t (go x)
 #ifdef __GHCJS__
-    go (Prop p x)                = Prop p (go x)
+    -- go (Prop p x)                = Prop p (go x)
     go (Prop2 n p x)             = Prop2 n p (go x)
 #endif
     go (Ap x y)                   = Ap (go x) (go y)
     go x = x
 
 
-drawingTreeNNodes = drawingTreeF (+)
-drawingTreeDepth = drawingTreeF max
-
 printTreeInfo x = do
   print $ "Tree N nodes " ++ show (drawingTreeNNodes x)
   print $ "Tree depth   " ++ show (drawingTreeDepth x)
+drawingTreeNNodes = drawingTreeF (+)
+drawingTreeDepth = drawingTreeF max
 
 drawingTreeF f = go
   where
@@ -774,7 +776,7 @@ drawingTreeF f = go
     go (Transf _ x) = go x + 1
     go (Style _ x) = go x + 1
 #ifdef __GHCJS__
-    go (Prop _ x) = go x + 1
+    -- go (Prop _ x) = go x + 1
     go (Prop2 _ _ x) = go x + 1
 #endif
     go Em = 1
@@ -799,19 +801,90 @@ instance Monoid Drawing where
   mempty  = transparent
   mappend = Ap
 
-{-
 
+-- TODO strict
+newtype Handlers = Handlers (Map Str Handler)
+  deriving Monoid
+singleTonHandlers attrName sink = Handlers $ Data.Map.singleton attrName (Handler sink)
+
+-- TODO would be derivable if IO lifted the Monoid...
+newtype Handler = Handler (JSVal -> IO ())
+instance Monoid Handler where
+  mempty = Handler (\_ -> pure ())
+  mappend (Handler a) (Handler b) = Handler (apSink a b)
+    where
+      apSink a b x = do
+        a x
+        b x
+ -- = Handler { hName :: Str, hSink :: JSVal -> IO () }
+
+
+drawingToRDrawing :: RNodeInfo -> Drawing -> Maybe RDrawing
+drawingToRDrawing nodeInfo = go
+  where
+    go Circle                 = pure $ RPrim nodeInfo RCircle
+    go Rect                   = pure $ RPrim nodeInfo RRect
+    go Line                   = pure $ RPrim nodeInfo RLine
+    go (Lines closed vs)      = pure $ RPrim nodeInfo (RLines closed vs)
+    go (Text t)               = pure $ RPrim nodeInfo (RText t)
+    go (Embed e)              = pure $ RPrim nodeInfo (REmbed e)
+    go (Transf t x)           = drawingToRDrawing (toNodeInfoT t) x
+    go (Style s x)            = drawingToRDrawing (toNodeInfoS s) x
+#ifdef __GHCJS__
+    go (Prop2 attrName sink x) = drawingToRDrawing (toNodeInfoH $ singleTonHandlers attrName sink) x
+#endif
+    go Em             = empty
+    go (Ap x y)       = undefined
+
+
+
+data RPrim
+   = RCircle
+   | RRect
+   | RLine
+   | RLines !Bool ![V2 Double]
+   | RText !Str
+   | REmbed !Embed
 data RNodeInfo
   = RNodeInfo
-    { rStyle :: Style
-    , rTransf :: Transformation
-    , rHand
+    { rStyle   :: !Style
+    , rTransf  :: !(Transformation Double)
+    , rHandler :: !Handlers
     }
-data RDrawing =
-  | Prim RNodeInfo
-  | Many RNodeInfo [RDrawing] -- always non-empty
 
--}
+toNodeInfoT :: Transformation Double -> RNodeInfo
+toNodeInfoT t = mempty { rTransf = t }
+{-# INLINE toNodeInfoT #-}
+
+toNodeInfoS :: Style -> RNodeInfo
+toNodeInfoS t = mempty { rStyle = t }
+{-# INLINE toNodeInfoS #-}
+
+toNodeInfoH :: Handlers -> RNodeInfo
+toNodeInfoH t = mempty { rHandler = t }
+{-# INLINE toNodeInfoH #-}
+
+instance Monoid RNodeInfo where
+  mempty = RNodeInfo mempty mempty mempty
+  mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
+    RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
+
+data RDrawing
+  = RPrim !RNodeInfo RPrim
+  | RMany !RNodeInfo ![RDrawing]
+    -- Always non-empty
+    -- Order is [farthest..closest], same as SVG but opposite high-level API
+
+printRTreeInfo x = do
+  print $ "RTree N nodes " ++ show (drawingTreeRNNodes x)
+  print $ "RTree depth   " ++ show (drawingTreeRDepth x)
+drawingTreeRNNodes = drawingTreeF (+)
+drawingTreeRDepth = drawingTreeF max
+drawingRTreeFold f = go
+  where
+    go (RPrim _ _) = 1
+    go (RMany _ xs) = foldr f (error "RMany should not have []") xs
+
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
@@ -1422,7 +1495,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformI
             [A.style $ toJSString $ styleToAttrString s]
             (single $ toSvg1 hs ps x)
 
-          Prop p x             -> toSvg1 hs (p:ps) x
+          -- Prop p x             -> toSvg1 hs (p:ps) x
           Prop2 name handler x -> toSvg1 (Data.Map.unionWith apSink (Data.Map.singleton name handler) hs) ps x
 
           -- No point in embedding handlers to empty groups, but render anyway
@@ -1519,7 +1592,7 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
 
 #ifdef __GHCJS__
           -- Ignore event handlers
-          Prop  _ x   -> toSvg1 ps x
+          -- Prop  _ x   -> toSvg1 ps x
           Prop2 _ _ x -> toSvg1 ps x
 #endif
 
