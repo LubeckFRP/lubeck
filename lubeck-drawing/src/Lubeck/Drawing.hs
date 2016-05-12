@@ -734,6 +734,8 @@ data Drawing
 #endif
 
   | Em
+  -- Compose drawings
+  -- Left-most is a top,
   | Ap Drawing Drawing
 
 optimizeDrawing :: Drawing -> Drawing
@@ -795,10 +797,7 @@ drawingTreeF f = go
 
 instance Monoid Drawing where
   mempty  = transparent
-
-  mappend x Em = x
-  mappend Em y = y
-  mappend x y = Ap y x -- TODO why backwards?
+  mappend = Ap
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
@@ -1416,7 +1415,7 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformI
           Em         -> E.g (ps <> handlersToProperties hs) []
           -- Event handlers applied to a group go on the g node
           -- Note that if handlers and propeties conflict, handlers take precedence
-          Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty x, toSvg1 mempty mempty y]
+          Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty y, toSvg1 mempty mempty x]
 
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
@@ -1513,7 +1512,7 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> single $ mkN "g" ps []
           -- Event handlers applied to a group go on the g node
-          Ap x y     -> single $ mkN "g" ps (toSvg1 [] x ++ toSvg1 [] y)
+          Ap x y     -> single $ mkN "g" ps (toSvg1 [] y ++ toSvg1 [] x)
 
 
 
