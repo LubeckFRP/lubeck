@@ -399,8 +399,8 @@ main = do
                 , dc1
                 -- , sqs2
                 -- , sqs2b
-                -- , fmap (duplicateN 5 (V2 50 50)) plotSD
-                , pure $ duplicateN 50 (V2 5 5) purpleCircle
+                , fmap (duplicateN 2 (V2 50 50)) plotSD
+                -- , pure $ duplicateN 200 (V2 1 1) purpleCircle
                 ]
 
   let allS = mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
