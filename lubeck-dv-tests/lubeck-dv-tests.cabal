@@ -28,13 +28,13 @@ executable lubeck-minimal-app
   build-depends:       base
                      , base-prelude
                      , lens
+                     , linear
+                     , colour
                      , lubeck-core
                      , lubeck-web
                      , lubeck-dv
                      , lubeck-frp
                      , lubeck-drawing
-                     , linear
-                     , colour
                      , virtual-dom
   default-language:    Haskell2010
 

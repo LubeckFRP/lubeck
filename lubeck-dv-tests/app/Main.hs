@@ -7,25 +7,23 @@ module Main where
 import BasePrelude hiding ((|||))
 import Control.Lens(to, _1, _2, (.~))
 import Linear.Affine ((.+^))
+import Data.Colour (withOpacity)
+import Data.Colour.Names as Colors
 
 import Lubeck.DV
 import Lubeck.FRP
 import Lubeck.Str
 import Lubeck.Drawing hiding (text)
--- import Lubeck.Drawing(Drawing, toSvg, V2(..))
 import Lubeck.Forms(componentEvent)
 import Lubeck.Forms.Button(multiButtonWidget)
 import Lubeck.Forms.Select(selectEnumBoundedWidget)
 import Lubeck.App(runAppReactive)
 import Web.VirtualDom.Html(Html, h1, text)
 import qualified Web.VirtualDom as VirtualDom
-
 -- TODO separate/consolidate Html/Svg events
 -- Currently they can be used more or less interchangebly
 import Web.VirtualDom.Html.Events(Event(..), mousemove)
 
-import Data.Colour (withOpacity)
-import Data.Colour.Names as Colors
 
 ----------
 
