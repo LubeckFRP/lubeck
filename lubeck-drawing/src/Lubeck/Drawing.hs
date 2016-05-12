@@ -214,7 +214,7 @@ module Lubeck.Drawing
 
 import Control.Applicative
 import Data.Colour (Colour, AlphaColour, withOpacity)
-import Data.Map(Map)
+import Data.Map.Strict(Map)
 import Data.Monoid
 import Data.Semigroup(Max(..))
 import qualified Data.Colour
@@ -222,7 +222,7 @@ import qualified Data.Colour.Names as Colors
 import qualified Data.Colour.SRGB
 import qualified Data.List
 import qualified Data.Ord
-import qualified Data.Map
+import qualified Data.Map.Strict as Map
 import qualified Data.String
 
 import Linear.Vector
@@ -454,7 +454,7 @@ emptyStyle = mempty
 
 {-| -}
 styleNamed :: Str -> Str -> Style
-styleNamed k v = Style_ $ Data.Map.singleton k v
+styleNamed k v = Style_ $ Map.singleton k v
 
 {-| -}
 apStyle :: Style -> Style -> Style
@@ -462,7 +462,7 @@ apStyle = mappend
 
 {-| -}
 styleToAttrString :: Style -> Str
-styleToAttrString = Data.Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
+styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
 
 {-| Add an event handler to the given drawing.
 
@@ -829,15 +829,18 @@ singleTonHandlers attrName sink = Handlers $ singletonMonoidMap attrName (Handle
 
 handlersToProperties :: Handlers -> [E.Property]
 handlersToProperties (Handlers (MonoidMap m))
-  = fmap (\(n, Handler v) -> VD.on (toJSString n) v) $ Data.Map.toList m
+  = fmap (\(n, Handler v) -> VD.on (toJSString n) v) $ Map.toList m
+{-# INLINE handlersToProperties #-}
 
 styleToProperty :: Style -> E.Property
 styleToProperty s = A.style $ toJSString $ styleToAttrString s
+{-# INLINE styleToProperty #-}
 
 transformationToProperty :: Transformation Double -> E.Property
 transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
   where
     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+{-# INLINE transformationToProperty #-}
 
 nodeInfoToProperties :: RNodeInfo -> [E.Property]
 nodeInfoToProperties (RNodeInfo style transf handlers) = mconcat
@@ -845,6 +848,8 @@ nodeInfoToProperties (RNodeInfo style transf handlers) = mconcat
   , [styleToProperty style]
   , handlersToProperties handlers
   ]
+{-# INLINE nodeInfoToProperties #-}
+
 
 -- TODO would be derivable if IO lifted the Monoid...
 newtype Handler = Handler (JSVal -> IO ())
@@ -1594,7 +1599,7 @@ toSvgOld (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerfo
         (fmap embedToSvg children)
 
     handlersToProperties :: Map Str (JSVal -> IO ()) -> [E.Property]
-    handlersToProperties = fmap (\(n,v) -> VD.on (toJSString n) v) . Data.Map.toList
+    handlersToProperties = fmap (\(n,v) -> VD.on (toJSString n) v) . Map.toList
 
     -- Because (IO ()) is not a monoid
     apSink a b x = do
@@ -1639,7 +1644,7 @@ toSvgOld (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerfo
             (single $ toSvg1 hs ps x)
 
           -- Prop p x             -> toSvg1 hs (p:ps) x
-          Prop2 name handler x -> toSvg1 (Data.Map.unionWith apSink (Data.Map.singleton name handler) hs) ps x
+          Prop2 name handler x -> toSvg1 (Map.unionWith apSink (Map.singleton name handler) hs) ps x
 
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> E.g (ps <> handlersToProperties hs) []
@@ -1764,8 +1769,8 @@ See https://mail.haskell.org/pipermail/libraries/2012-April/017747.html
 newtype MonoidMap k a = MonoidMap { getMonoidMap :: Map k a }
 
 instance (Ord k, Monoid v) =>  Monoid (MonoidMap k v) where
-    mempty  = MonoidMap $ Data.Map.empty
-    mappend (MonoidMap a) (MonoidMap b) = MonoidMap $ Data.Map.unionWith mappend a b
-    -- mconcat (MonoidMap xs) = MonoidMap $ Data.Map.unionsWith (mconcat xs)
+    mempty  = MonoidMap $ Map.empty
+    mappend (MonoidMap a) (MonoidMap b) = MonoidMap $ Map.unionWith mappend a b
+    -- mconcat (MonoidMap xs) = MonoidMap $ Map.unionsWith (mconcat xs)
 
-singletonMonoidMap k v = MonoidMap $ Data.Map.singleton k v
+singletonMonoidMap k v = MonoidMap $ Map.singleton k v

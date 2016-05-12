@@ -386,20 +386,20 @@ main = do
   dc1 <- draggable_ $ pure (pinkCircle ||| redSquare)
   -- dc2 <- draggable_ $ pure purpleCircle
 
-  -- (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
-  -- sqs2 <- draggable_ sqs
+  (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
+  sqs2 <- draggable_ sqs
   -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
   (dr, _) <- dragRect zoomActive
   let (sd :: SDrawing) = mconcat
                 [ mempty
-                , dr
+                -- , dr
                 -- , fmap (translateX 120) dc1
                 , dc1
-                -- , sqs2
+                , sqs2
                 -- , sqs2b
-                , fmap (duplicateN 2 (V2 50 50)) plotSD
+                -- , fmap (duplicateN 2 (V2 50 50)) plotSD
                 -- , pure $ duplicateN 200 (V2 1 1) purpleCircle
                 ]
 
