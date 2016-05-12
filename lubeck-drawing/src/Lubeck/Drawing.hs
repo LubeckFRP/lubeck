@@ -898,13 +898,11 @@ drawingToRDrawing' nodeInfo = go
 #endif
     go Em        = empty
     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+    -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
     go (Ap xs)   = pure $ RMany nodeInfo (concatMap recur $ reverse xs)
-      -- do some kind of "deep" render on x, y
-      -- remove all Nothing results
-      -- current NodeInfo render on this node alone, so further invocations uses (go mempty)
       where
-        -- recur :: Drawing -> Maybe [RDrawing]
         recur = drawingToRDrawing' mempty
+
 {-# INLINABLE drawingToRDrawing' #-}
 
 data RPrim
