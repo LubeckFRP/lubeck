@@ -152,7 +152,7 @@ module Lubeck.Drawing
 
   -- ** Events
   , addHandler
-  , addProperty
+  -- , addProperty
 
   -- ** Embedded SVG
   , Embed(..)
@@ -463,18 +463,18 @@ addHandler :: () -> Drawing -> Drawing
 addHandler _ = id
 #endif
 
-{-| Embed an arbitrary SVG property on a drawing.
-
-  Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
-  static backends may ignore these properties.
--}
-#ifdef __GHCJS__
-addProperty :: E.Property -> Drawing -> Drawing
-addProperty = Prop
-#else
-addProperty :: () -> Drawing -> Drawing
-addProperty _ = id
-#endif
+-- {-| Embed an arbitrary SVG property on a drawing.
+--
+--   Mainly intended to be used with the event handlers in "Web.VirtualDom.Svg.Events",
+--   static backends may ignore these properties.
+-- -}
+-- #ifdef __GHCJS__
+-- addProperty :: E.Property -> Drawing -> Drawing
+-- addProperty = Prop
+-- #else
+-- addProperty :: () -> Drawing -> Drawing
+-- addProperty _ = id
+-- #endif
 
 newtype Envelope v n = Envelope (Maybe (v n -> n))
 
@@ -798,6 +798,20 @@ drawingTreeF f = go
 instance Monoid Drawing where
   mempty  = transparent
   mappend = Ap
+
+{-
+
+data RNodeInfo
+  = RNodeInfo
+    { rStyle :: Style
+    , rTransf :: Transformation
+    , rHand
+    }
+data RDrawing =
+  | Prim RNodeInfo
+  | Many RNodeInfo [RDrawing] -- always non-empty
+
+-}
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
