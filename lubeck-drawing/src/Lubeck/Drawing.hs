@@ -1482,14 +1482,14 @@ toSvg = toSvgNew
 {-| Generate an SVG from a drawing. -}
 toSvgNew :: RenderingOptions -> Drawing -> Svg
 toSvgNew (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerformIO $ do
-  printTreeInfo drawing1
+  -- printTreeInfo drawing1
   let !(mDrawing  :: Maybe RDrawing) = drawingToRDrawing drawing1
   case mDrawing of
     -- TODO nicer
     Nothing -> pure (VD.node "div" [] [] :: Svg)
 
     Just (drawing :: RDrawing) -> do
-      printRTreeInfo drawing
+      -- printRTreeInfo drawing
       pure $ svgTopNode
         (toStr $ floor x)
         (toStr $ floor y)
@@ -1534,11 +1534,11 @@ toSvgNew (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerfo
     toSvg1 :: RDrawing -> Svg
     toSvg1 drawing = case drawing of
       RPrim nodeInfo prim -> case prim of
-        RCircle -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.circle
-          ([A.r "0.5", noScale])
+        RCircle -> E.circle
+          (nodeInfoToProperties nodeInfo <> [A.r "0.5", noScale])
           []
-        RRect -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.rect
-          ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
+        RRect -> E.rect
+          (nodeInfoToProperties nodeInfo <> [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
           []
 
         RLine -> E.line
