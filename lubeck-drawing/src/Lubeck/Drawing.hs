@@ -625,7 +625,7 @@ envelope x = case x of
   Prop2 _ _ x   -> envelope x
 #endif
   Em            -> mempty
-  Ap x y        -> mappend (envelope x) (envelope y)
+  Ap xs         -> mconcat (fmap envelope xs)
 
 pointsEnvelope :: [P2 Double] -> Envelope V2 Double
 pointsEnvelope [] = Envelope $ Nothing
@@ -749,25 +749,25 @@ data Drawing
   | Em
   -- Compose drawings
   -- Left-most is a top,
-  | Ap Drawing Drawing
+  | Ap ![Drawing]
 
--- TODO remove this, replace qwith RDrawing
-optimizeDrawing :: Drawing -> Drawing
--- optimizeDrawing = error "No optimizeDrawing"
-optimizeDrawing = go
-  where
-    -- Rewrite cases
-    go (Style s1 (Style s2 x))   = Style (s1 <> s2) (go x)
-    go (Transf t1 (Transf t2 x)) = Transf (t1 <> t2) (go x)
-    -- Recurse over other cases
-    go (Style s x)               = Style s (go x) -- TODO try at least once more after this step
-    go (Transf t x)              = Transf t (go x)
-#ifdef __GHCJS__
-    -- go (Prop p x)                = Prop p (go x)
-    go (Prop2 n p x)             = Prop2 n p (go x)
-#endif
-    go (Ap x y)                   = Ap (go x) (go y)
-    go x = x
+-- -- TODO remove this, replace qwith RDrawing
+-- optimizeDrawing :: Drawing -> Drawing
+-- -- optimizeDrawing = error "No optimizeDrawing"
+-- optimizeDrawing = go
+--   where
+--     -- Rewrite cases
+--     go (Style s1 (Style s2 x))   = Style (s1 <> s2) (go x)
+--     go (Transf t1 (Transf t2 x)) = Transf (t1 <> t2) (go x)
+--     -- Recurse over other cases
+--     go (Style s x)               = Style s (go x) -- TODO try at least once more after this step
+--     go (Transf t x)              = Transf t (go x)
+-- #ifdef __GHCJS__
+--     -- go (Prop p x)                = Prop p (go x)
+--     go (Prop2 n p x)             = Prop2 n p (go x)
+-- #endif
+--     go (Ap xs)                   = Ap (go x) (go y)
+--     go x = x
 
 
 printTreeInfo :: Drawing -> IO ()
@@ -792,7 +792,7 @@ drawingTreeF f = go
     go (Prop2 _ _ x) = go x + 1
 #endif
     go Em = 1
-    go (Ap x y) = f (go x) (go y)
+    go (Ap xs) = foldr f 0 (fmap go xs)
 
 
 -- TODO possible optimizations:
@@ -810,8 +810,16 @@ drawingTreeF f = go
 --       Ap [Ap xs, y, ...] = Ap (xs++[y] ...)
 
 instance Monoid Drawing where
-  mempty  = transparent
-  mappend = Ap
+  mempty  = Em
+
+  mappend Em x = x
+  mappend x Em = x
+  mappend (Ap xs) (Ap ys) = Ap (xs <> ys)
+  mappend x (Ap ys) = Ap (x : ys)
+  mappend (Ap xs) y = Ap (xs <> pure y)
+  mappend x y = Ap [x, y]
+
+  -- mconcat = Ap
 
 
 -- TODO strict
@@ -880,7 +888,8 @@ drawingToRDrawing' nodeInfo = go
                                   (nodeInfo <> toNodeInfoH (singleTonHandlers attrName sink)) x
 #endif
     go Em        = empty
-    go (Ap x y)  = recur x <> recur y
+    -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+    go (Ap xs)   = pure $ RMany nodeInfo (concatMap recur $ reverse xs)
       -- do some kind of "deep" render on x, y
       -- remove all Nothing results
       -- current NodeInfo render on this node alone, so further invocations uses (go mempty)
@@ -937,7 +946,7 @@ drawingRTreeFold :: (Int -> Int -> Int) -> RDrawing -> Int
 drawingRTreeFold f = go
   where
     go (RPrim _ _)  = 1
-    go (RMany _ xs) = foldr f (error "RMany should not have []") (fmap go xs)
+    go (RMany _ xs) = foldr f 0 (fmap go xs)
 
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
@@ -1468,10 +1477,13 @@ instance Monoid RenderingOptions where
 
 
 #ifdef __GHCJS__
+toSvg = toSvgNew
+
 {-| Generate an SVG from a drawing. -}
-toSvg' :: RenderingOptions -> Drawing -> Svg
-toSvg' (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerformIO $ do
+toSvgNew :: RenderingOptions -> Drawing -> Svg
+toSvgNew (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerformIO $ do
   printTreeInfo drawing1
+  let !(mDrawing  :: Maybe RDrawing) = drawingToRDrawing drawing1
   case mDrawing of
     -- TODO nicer
     Nothing -> pure (VD.node "div" [] [] :: Svg)
@@ -1485,9 +1497,9 @@ toSvg' (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerform
         (single $ toSvg1 drawing)
   where
     (drawing1 :: Drawing) = placeOrigo drawing2
-    (mDrawing  :: Maybe RDrawing)  = drawingToRDrawing drawing1
 
     placeOrigo :: Drawing -> Drawing
+    -- placeOrigo = id
     placeOrigo = case originPlacement of
       TopLeft     -> id
       Center      -> translateX (x/2) . translateY (y/(-2))
@@ -1519,17 +1531,16 @@ toSvg' (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerform
     reflY (V2 adx ady) = V2 adx (negate ady)
     P (V2 x y) = dimensions
 
-
-
     toSvg1 :: RDrawing -> Svg
     toSvg1 drawing = case drawing of
-      RPrim nodeInfo@(RNodeInfo style transf handlers) prim -> case prim of
-        RCircle -> E.circle
-          ([A.r "0.5", noScale] <> nodeInfoToProperties nodeInfo)
+      RPrim nodeInfo prim -> case prim of
+        RCircle -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.circle
+          ([A.r "0.5", noScale])
           []
-        RRect -> E.rect
-          ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale] <> nodeInfoToProperties nodeInfo)
+        RRect -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.rect
+          ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
           []
+
         RLine -> E.line
           ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] <> nodeInfoToProperties nodeInfo)
           []
@@ -1546,8 +1557,8 @@ toSvg' (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerform
 
 
 {-| Generate an SVG from a drawing. -}
-toSvg :: RenderingOptions -> Drawing -> Svg
-toSvg (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformIO $ do
+toSvgOld :: RenderingOptions -> Drawing -> Svg
+toSvgOld (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformIO $ do
   printTreeInfo drawing
   return $ svgTopNode
     (toStr $ floor x)
@@ -1596,7 +1607,8 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformI
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     reflY (V2 adx ady) = V2 adx (negate ady)
 
-    drawing = optimizeDrawing drawing1
+    -- No optimization
+    drawing = drawing1
 
     toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> Svg
     toSvg1 hs ps x = case x of
@@ -1633,8 +1645,10 @@ toSvg (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformI
           Em         -> E.g (ps <> handlersToProperties hs) []
           -- Event handlers applied to a group go on the g node
           -- Note that if handlers and propeties conflict, handlers take precedence
-          Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty y, toSvg1 mempty mempty x]
-
+          -- Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty y, toSvg1 mempty mempty x]
+          Ap xs1 ->
+            let xs = reverse xs1 in
+              E.g (ps <> handlersToProperties hs) (fmap (toSvg1 mempty mempty) xs)
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
@@ -1730,8 +1744,8 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> single $ mkN "g" ps []
           -- Event handlers applied to a group go on the g node
-          Ap x y     -> single $ mkN "g" ps (toSvg1 [] y ++ toSvg1 [] x)
-
+          -- Ap x y     -> single $ mkN "g" ps (toSvg1 [] y ++ toSvg1 [] x)
+          Ap xs      -> single $ mkN "g" ps (mconcat $ fmap (toSvg1 []) $ reverse xs)
 
 
 toSvgStr :: RenderingOptions -> Drawing -> Str

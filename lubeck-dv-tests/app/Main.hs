@@ -13,7 +13,7 @@ import Data.Colour.Names as Colors
 import Lubeck.DV
 import Lubeck.FRP
 import Lubeck.Str
-import Lubeck.Drawing hiding (text)
+import Lubeck.Drawing hiding (text, addProperty)
 import Lubeck.Forms(componentEvent)
 import Lubeck.Forms.Button(multiButtonWidget)
 import Lubeck.Forms.Select(selectEnumBoundedWidget)
@@ -194,7 +194,6 @@ nudgeableDraggable allowMove d =  do
   let moved = filterJust $ snapshotWith (\allow m -> if allow then Just m else Nothing) allowMove moved1
   (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
 
-  -- TODO use addHandler
   let (dWithHandlers :: Signal Drawing) = fmap (addHandler "mousemove" $ handleMouseMove move) d
 
   pure $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
@@ -384,8 +383,8 @@ main = do
   let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
   let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
 
-  dc1 <- nudgeable_ $ pure (pinkCircle ||| redSquare)
-  dc2 <- nudgeable_ $ pure purpleCircle
+  dc1 <- draggable_ $ pure (pinkCircle ||| redSquare)
+  -- dc2 <- draggable_ $ pure purpleCircle
 
   -- (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   -- sqs2 <- draggable_ sqs
@@ -397,7 +396,7 @@ main = do
                 [ mempty
                 , dr
                 -- , fmap (translateX 120) dc1
-                -- , dc2
+                , dc1
                 -- , sqs2
                 -- , sqs2b
                 -- , fmap (duplicateN 5 (V2 50 50)) plotSD
