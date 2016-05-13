@@ -400,7 +400,10 @@ main = do
   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
   (dr, _) <- dragRect zoomActive
-  (srds :: [SRDrawing]) <- mapM strictifyS $ fmap (fmap $ renderDrawing mempty)
+
+  (srds :: [SRDrawing]) <- mapM strictifyS $
+  -- let (srds :: [SRDrawing]) =
+              fmap (fmap $ renderDrawing mempty)
                 [ mempty
                 , dr
                 -- , fmap (translateX 120) dc1
@@ -408,23 +411,16 @@ main = do
                 , sqs2
                 -- , sqs2b
                 -- , fmap (duplicateN 2 (V2 50 50)) plotSD
-                , pure $ duplicateN 100 (V2 1 1) purpleCircle
+                , pure $ duplicateN 20 (V2 1 1) purpleCircle
                 ]
   let (sd :: SRDrawing) = mconcat srds
 
   let allS = mconcat [view0, view1, view2, fmap (emitDrawing mempty) $ sd]
-  -- subscribeEvent (updates allS) (\_ -> print "Updated!")
-  -- runAppReactive $ allS
 
+  -- runAppReactive $ allS
   allS2 <- strictifyS allS
-  -- TODO assure toSvg is strict
-  -- If so DOM updates will handle the complete generation of VDOM nodes
-  -- All requestAnimationFrame has to do is polling out a complete DOM node and rendering it
   runWithAnimation $ (current allS2 :: Behavior Html)
   print "Done!"
-
--- TODO replace all signals above runWithAnimation with behaviors
--- Compare Signal/Behavior performance
 
 
 strictify :: Events a -> FRP (Events a)
