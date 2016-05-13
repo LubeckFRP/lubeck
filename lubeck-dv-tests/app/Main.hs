@@ -391,6 +391,9 @@ main = do
   let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
+  (plotSD2 :: SDrawing) <- draggable_ $ plotVD
+  (plotSD3 :: SDrawing) <- draggable_ $ plotVD
+  (plotSD4 :: SDrawing) <- draggable_ $ plotVD
 
   let !purpleCircle = Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
   let pinkCircle   = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
@@ -412,9 +415,12 @@ main = do
               -- fmap (fmap $ renderDrawing mempty)
                 [ fmap (renderDrawingTrace "Zoom") dr
                 , fmap (renderDrawingTrace "Circle and square") dc1
-                , fmap (renderDrawingTrace "Hoverable square") sqs2
-                -- , fmap (duplicateN 2 (V2 50 50)) plotSD
-                , fmap (renderDrawingTrace "Circles") $ pure $ duplicateN 50 (V2 1 1) purpleCircle
+                -- , fmap (renderDrawingTrace "Hoverable square") sqs2
+                , fmap (renderDrawingTrace "Plot") plotSD
+                -- , fmap (renderDrawingTrace "Plot2") plotSD2
+                -- , fmap (renderDrawingTrace "Plot3") plotSD3
+                -- , fmap (renderDrawingTrace "Plot4") plotSD4
+                , fmap (renderDrawingTrace "Circles") $ pure $ duplicateN 4 (V2 1 1) purpleCircle
                 ]
   let (sd :: SRDrawing) = mconcat srds
 

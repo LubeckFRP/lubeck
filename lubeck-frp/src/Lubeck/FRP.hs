@@ -1,4 +1,6 @@
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 {-|
 
 A library for Functional Behavior Programming (FRP).
@@ -219,7 +221,8 @@ newtype Events a = E (Sink a -> FRP UnsubscribeAction)
 -- | A time-varying value.
 --   Can be polled for the current value.
 --   There is no way of being notified when a behavior is updated, use 'Events' or 'Signal' if this is desired.
-newtype Behavior a = R (Sink a -> FRP ())
+newtype Behavior a = R (FRP a)
+  deriving (Functor, Applicative, Monad)
 -- | A time-varying value that allow users to be notified when it is updated.
 --   The same as Elm's signal.
 newtype Signal a = S (Events (), Behavior a)
@@ -236,18 +239,25 @@ instance Functor Events where
   fmap = mapE
 
 instance Monoid (Events a) where
-  mempty = never
-  mappend = merge
+  mempty              = never
+  mappend             = merge
+  mconcat []          = never
+  mconcat [x]         = x
+  mconcat [a,b]       = merge a b
+  mconcat [a,b,c]     = merge3 a b c
+  mconcat [a,b,c,d]   = merge4 a b c d
+  mconcat [a,b,c,d,e] = merge5 a b c d e
+  mconcat xs = foldr mappend mempty xs
 
-instance Functor Behavior where
-  fmap = mapB
-
-instance Applicative Behavior where
-  pure = pureB
-  (<*>) = zipB
-
-instance Monad Behavior where
-  k >>= f = joinB $ fmap f k
+-- instance Functor Behavior where
+--   fmap = mapB
+--
+-- instance Applicative Behavior where
+--   pure = pureB
+--   (<*>) = zipB
+--
+-- instance Monad Behavior where
+--   k >>= f = joinB $ fmap f k
 
 instance Functor Signal where
   fmap = mapS
@@ -289,13 +299,46 @@ never = E (\_ -> return (return ()))
 --     | x >  y = y : merge (x:xs) ys
 -- @
 merge :: Events a -> Events a -> Events a
-merge (E f) (E g) = E $ \aSink -> do
+merge (E f1) (E f2) = E $ \aSink -> do
   frpInternalLog "Setting up merge"
-  unsubF <- f aSink
-  unsubG <- g aSink
+  unsub1 <- f1 aSink
+  unsub2 <- f2 aSink
   return $ do
-    unsubF
-    unsubG
+    unsub1
+    unsub2
+merge3 (E f1) (E f2) (E f3)= E $ \aSink -> do
+  frpInternalLog "Setting up merge"
+  unsub1 <- f1 aSink
+  unsub2 <- f2 aSink
+  unsub3 <- f3 aSink
+  return $ do
+    unsub1
+    unsub2
+    unsub3
+merge4 (E f1) (E f2) (E f3) (E f4) = E $ \aSink -> do
+  frpInternalLog "Setting up merge"
+  unsub1 <- f1 aSink
+  unsub2 <- f2 aSink
+  unsub3 <- f3 aSink
+  unsub4 <- f4 aSink
+  return $ do
+    unsub1
+    unsub2
+    unsub3
+    unsub4
+merge5 (E f1) (E f2) (E f3) (E f4) (E f5) = E $ \aSink -> do
+  frpInternalLog "Setting up merge"
+  unsub1 <- f1 aSink
+  unsub2 <- f2 aSink
+  unsub3 <- f3 aSink
+  unsub4 <- f4 aSink
+  unsub5 <- f5 aSink
+  return $ do
+    unsub1
+    unsub2
+    unsub3
+    unsub4
+    unsub5
 
 -- Subscriber safety: sink is usubscribed from both upstream events
 
@@ -324,7 +367,8 @@ scatter (E taProvider) = E $ \aSink -> do
 -- this is unsubscribed by the returned UnsubscribeAction.
 
 pureB :: a -> Behavior a
-pureB z = R ($ z)
+pureB = pure
+-- pureB z = R ($ z)
 
 -- | Create a behavior from an initial value and an series of updates.
 --   Whenever the event occurs, the value is updated by applying the function
@@ -334,21 +378,18 @@ accumB z (E aaProvider) = do
   frpInternalLog "Setting up accum"
   var <- newVar z
   unregAA_ <- aaProvider $ modifyVar var
-  return $ R $ \aSink -> do
-    value <- readVar var
-    aSink value
-    return ()
+  return $ R $ readVar var
 
 -- There should arguably be a version of accumB that returns an
 -- UnsubscribeAction as well calling it would freeze the behavior for ever.
 
 -- | Sample the current value of a behavior whenever an event occurs.
 snapshot :: Behavior a -> Events b -> Events (a, b)
-snapshot (R aProvider) (E bProvider) = E $ \abSink -> do
+snapshot (R aIO) (E bProvider) = E $ \abSink -> do
   frpInternalLog "Setting up snapshot"
-  bProvider $ \b ->
-    aProvider $ \a ->
-      abSink (a,b)
+  bProvider $ \b -> do
+    a <- aIO
+    abSink (a,b)
 -- Subscriber safety: a sink callning abSink is submitted upstream
 -- this is unsubscribed by the returned UnsubscribeAction.
 
@@ -357,12 +398,14 @@ mapE f (E aProvider) = E $ \bSink ->
   aProvider $ contramapSink f bSink
 
 mapB :: (a -> b) -> Behavior a -> Behavior b
-mapB f (R aProvider) = R $ \bSink ->
-  aProvider $ contramapSink f bSink
+mapB = fmap
+-- mapB f (R aProvider) = R $ \bSink ->
+  -- aProvider $ contramapSink f bSink
 
 joinB :: Behavior (Behavior a) -> Behavior a
-joinB (R behAProvider) = R $ \aSink ->
-  behAProvider $ \(R aProvider) -> aProvider aSink
+joinB = join
+-- joinB (R behAProvider) = R $ \aSink ->
+  -- behAProvider $ \(R aProvider) -> aProvider aSink
 
 --
 -- Derived version:
@@ -445,10 +488,10 @@ subscribeEvent (E x) = x
 
 -- | Return the current state of a behavior in the 'FRP' monad.
 pollBehavior :: Behavior a -> FRP a
-pollBehavior (R aProvider) = do
-  v <- newVar undefined
-  aProvider $ writeVar v
-  readVar v
+pollBehavior (R x) = x
+  -- v <- newVar undefined
+  -- aProvider $ writeVar v
+  -- readVar v
 
 
 
@@ -458,10 +501,11 @@ pollBehavior (R aProvider) = do
 -- need not actually be primitive.
 
 zipB :: Behavior (a -> b) -> Behavior a -> Behavior b
-zipB (R abProvider) (R aProvider) = R $ \bSink ->
-  abProvider $
-    \ab -> aProvider $
-      \a -> bSink $ ab a
+zipB = (<*>)
+-- zipB (R abProvider) (R aProvider) = R $ \bSink ->
+--   abProvider $
+--     \ab -> aProvider $
+--       \a -> bSink $ ab a
 
 -- TODO Show how zipB can be derived from mapB and joinB.
 -- If the Monad instance is removed, this SHOULD be a primitive.
@@ -507,32 +551,39 @@ traverseFRP_ f e = sequenceFRP (fmap f e) >> return ()
 -- | Drop occurances that does not match a given predicate.
 filter :: (a -> Bool) -> Events a -> Events a
 filter p = filterJust . fmap (\x -> if p x then Just x else Nothing)
+{-# INLINABLE filter #-}
 
 -- | Drop 'Nothing' events.
 -- Specialization of 'scatter'.
 filterJust :: Events (Maybe a) -> Events a
 filterJust = scatter
+{-# INLINABLE filterJust #-}
 
 -- | Create a behavior that starts out as a given behavior, and switches to
 --   a different behavior whenever and event occurs.
 switcher :: Behavior a -> Events (Behavior a) -> FRP (Behavior a)
 switcher z e = fmap joinB (stepper z e)
+{-# INLINABLE switcher #-}
 
 -- | Similar to 'snapshot', but uses the given function go combine the values.
 snapshotWith :: (a -> b -> c) -> Behavior a -> Events b -> Events c
 snapshotWith f r e = fmap (uncurry f) $ snapshot r e
+{-# INLINABLE snapshotWith #-}
 
 -- | Create a past-dependent behavior.
 foldpR :: (a -> b -> b) -> b -> Events a -> FRP (Behavior b)
 foldpR f z e = accumB z (fmap f e)
+{-# INLINABLE foldpR #-}
 
 -- | Create a past-dependent event stream.
 foldpE :: (a -> b -> b) -> b -> Events a -> FRP (Events b)
 foldpE f a e = a `accumE` (f <$> e)
+{-# INLINABLE foldpE #-}
 
 -- | Create a past-dependent signal.
 foldpS :: (a -> b -> b) -> b -> Signal a -> FRP (Signal b)
 foldpS f z s = accumS z (fmap f $ updates s)
+{-# INLINABLE foldpS #-}
 
 -- snapshot :: Behavior a -> Events b -> Events (a, b)
 -- snapshot = snapshotWith (,)
@@ -550,6 +601,7 @@ accumE x a = do
 -- whenever an update occurs.
 stepper :: a -> Events a -> FRP (Behavior a)
 stepper z x = accumB z (mapE const x)
+{-# INLINABLE stepper #-}
 
 -- | Count number of occurences, starting from zero.
 counter :: Events b -> FRP (Behavior Int)
@@ -587,45 +639,54 @@ withPrevious = withPreviousWith (,)
 -- | A constant signal.
 pureS :: a -> Signal a
 pureS x = S (mempty, pure x)
+{-# INLINABLE pureS #-}
 
 -- | Map over the contents of a signal.
 mapS :: (a -> b) -> Signal a -> Signal b
 mapS f (S (e,r)) = S (e,fmap f r)
+{-# INLINABLE mapS #-}
 
 -- | Create an event that signal when either of the given signals updates.
 -- Its value is always the current value of the first argument applied to the second value.
 zipS :: Signal (a -> b) -> Signal a -> Signal b
 zipS (S (fe,fr)) (S (xe,xr)) = let r = fr <*> xr in S (fmap (const ()) fe <> xe, r)
+{-# INLINABLE zipS #-}
 
 -- | Create a signal from an initial value and an series of updates.
 stepperS :: a -> Events a -> FRP (Signal a)
 stepperS z e = do
   r <- stepper z e
   return $ S (fmap (const ()) e, r)
+{-# INLINABLE stepperS #-}
 
 -- | Create a signal from an initial value and an series of updates.
 accumS :: a -> Events (a -> a) -> FRP (Signal a)
 accumS z e = do
   r <- accumB z e
   return $ S (fmap (const ()) e, r)
+{-# INLINABLE accumS #-}
 
 -- | Sample the current value of a behavior whenever a signal is updated.
 snapshotS :: Behavior a -> Signal b -> Signal (a, b)
 snapshotS b1 (S (e,b2)) = S (e, liftA2 (,) b1 b2)
+{-# INLINABLE snapshotS #-}
 
 -- | Similar to 'snapshotS', but uses the given function go combine the values.
 snapshotWithS :: (a -> b -> c) -> Behavior a -> Signal b -> Signal c
 snapshotWithS f b1 (S (e,b2)) = S (e, liftA2 f b1 b2)
+{-# INLINABLE snapshotWithS #-}
 
 -- | Get an events stream that emits an event whenever the signal is updated.
 updates :: Signal a -> Events a
 updates (S (e,r)) = sample r e
   where
     sample = snapshotWith const
+{-# INLINABLE updates #-}
 
 -- | Convert a signal to a behavior that always has the same as the signal.
 current :: Signal a -> Behavior a
 current (S (e,r)) = r
+{-# INLINABLE current #-}
 
 reactimateIOS :: Signal (FRP a) -> FRP (Signal a)
 reactimateIOS s = do
