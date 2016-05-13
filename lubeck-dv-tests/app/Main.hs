@@ -408,12 +408,12 @@ main = do
                 , sqs2
                 -- , sqs2b
                 -- , fmap (duplicateN 2 (V2 50 50)) plotSD
-                , pure $ duplicateN 20 (V2 1 1) purpleCircle
+                , pure $ duplicateN 100 (V2 1 1) purpleCircle
                 ]
   let (sd :: SRDrawing) = mconcat srds
 
   let allS = mconcat [view0, view1, view2, fmap (emitDrawing mempty) $ sd]
-  subscribeEvent (updates allS) (\_ -> print "Updated!")
+  -- subscribeEvent (updates allS) (\_ -> print "Updated!")
   -- runAppReactive $ allS
 
   allS2 <- strictifyS allS

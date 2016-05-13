@@ -424,21 +424,28 @@ negTransformation (TF x) = TF (inv33_ x)
 {-| Create a transformation from a matrix. -}
 matrix :: Num a => (a, a, a, a, a, a) -> Transformation a
 matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
+{-# NOINLINE matrix #-}
+{-# RULES
+"matrix/matrix" forall a b c d e f.  matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
+ #-}
 
 {-| -}
 transformationToMatrix :: Num a => Transformation a -> (a, a, a, a, a, a)
 transformationToMatrix (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = (a,b,c,d,e,f)
 {-# INLINABLE transformationToMatrix #-}
 
+
 transformVector :: Num a => Transformation a -> V2 a -> V2 a
 transformVector t (V2 x y) =
-  let (a,b,c,d,e,f) = transformationToMatrix t
+  -- let (a,b,c,d,e,f) = transformationToMatrix t
+  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
   in V2 (a*x+c*y) (b*x+d*y)
 {-# INLINABLE transformVector #-}
 
 transformPoint :: Num a => Transformation a -> P2 a -> P2 a
 transformPoint t (P (V2 x y)) =
-  let (a,b,c,d,e,f) = transformationToMatrix t
+  -- let (a,b,c,d,e,f) = transformationToMatrix t
+  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
   in P $ V2 (a*x+c*y+e) (b*x+d*y+f)
 {-# INLINABLE transformEnvelope #-}
 
@@ -514,17 +521,24 @@ instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) wh
 
 -- | Linear component of a transformation.
 lin :: Num a => Transformation a -> Transformation a
-lin t = let (a,b,c,d,e,f) = transformationToMatrix t
+lin t =
+  -- let (a,b,c,d,e,f) = transformationToMatrix t
+  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
   in matrix (a,b,c,d,0,0)
+
 
 -- | Linear component of a transformation (transposed).
 transp :: Num a => Transformation a -> Transformation a
-transp t = let (a,b,c,d,e,f) = transformationToMatrix t
-  in matrix    (a,c,b,d,0,0)
+transp t =
+  -- let (a,b,c,d,e,f) = transformationToMatrix t
+  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
+  in matrix (a,c,b,d,0,0)
 
 -- | Translation component of a transformation.
 transl :: Num a => Transformation a -> V2 a
-transl t = let (a,b,c,d,e,f) = transformationToMatrix t
+transl t =
+  -- let (a,b,c,d,e,f) = transformationToMatrix t
+  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
   in V2 e f
 
 -- TODO cleanup definitions/names here
@@ -928,7 +942,10 @@ data RDrawing
 
 instance Monoid RDrawing where
   mempty = RMany mempty []
+
+  -- TODO this could emit extra nodes
   mappend x y = RMany mempty [y, x]
+
   mconcat     = RMany mempty . reverse
 
 
@@ -1504,8 +1521,8 @@ data OriginPlacement
 
 {-| Specifies how to generate an SVG from a Drawing. -}
 data RenderingOptions = RenderingOptions
-  { dimensions      :: P2 Double                -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
-  , originPlacement :: OriginPlacement          -- ^ Where to place origo in the generated image.
+  { dimensions      :: !(P2 Double)                -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
+  , originPlacement :: !OriginPlacement          -- ^ Where to place origo in the generated image.
   }
   deriving (Eq, Ord, Show)
 
