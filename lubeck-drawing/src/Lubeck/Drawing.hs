@@ -210,6 +210,11 @@ module Lubeck.Drawing
   , toSvg
   , toSvgStr
   , toSvgAny
+
+  -- ** High-performance
+  , RDrawing
+  , renderDrawing
+  , emitDrawing
   ) where
 
 import Control.Applicative
@@ -895,6 +900,7 @@ drawingToRDrawing' nodeInfo = go
     go Em        = empty
     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
     -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
+    -- TODO return empty if concatMap returns empty list
     go (Ap xs)   = pure $ RMany nodeInfo (concatMap recur $ reverse xs)
       where
         recur = drawingToRDrawing' mempty
@@ -1319,6 +1325,16 @@ shearingX a = matrix (1, 1, a, 1, 0, 0)
 shearingY :: Num a => a -> Transformation a
 shearingY b = matrix (1, b, 1, 1, 0, 0)
 
+{-# INLINABLE transform #-}
+{-# INLINABLE translation #-}
+{-# INLINABLE translationX #-}
+{-# INLINABLE translationY #-}
+{-# INLINABLE scaling #-}
+{-# INLINABLE scalingX #-}
+{-# INLINABLE scalingY #-}
+{-# INLINABLE rotation #-}
+{-# INLINABLE shearingX #-}
+{-# INLINABLE shearingY #-}
 
 
 {-| Translate (move) an image. -}
@@ -1368,6 +1384,19 @@ rotate a = transform $ rotation a
 -- shear a b = transform $ matrix (1, b, a, 1, 0, 0)
 shearX a = transform $ shearingX a
 shearY a = transform $ shearingY a
+
+{-# INLINABLE translate #-}
+{-# INLINABLE translateX #-}
+{-# INLINABLE translateY #-}
+{-# INLINABLE scale #-}
+{-# INLINABLE scaleX #-}
+{-# INLINABLE scaleY #-}
+{-# INLINABLE rotate #-}
+{-# INLINABLE shearX #-}
+{-# INLINABLE shearY #-}
+
+
+
 
 {-| A "big" smoke-colored background.
 
@@ -1488,23 +1517,11 @@ toSvg = toSvgNew
 
 {-| Generate an SVG from a drawing. -}
 toSvgNew :: RenderingOptions -> Drawing -> Svg
-toSvgNew (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerformIO $ do
-  -- printTreeInfo drawing1
-  let !(mDrawing  :: Maybe RDrawing) = drawingToRDrawing drawing1
-  case mDrawing of
-    -- TODO nicer
-    Nothing -> pure (VD.node "div" [] [] :: Svg)
+toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
 
-    Just (drawing :: RDrawing) -> do
-      -- printRTreeInfo drawing
-      pure $ svgTopNode
-        (toStr $ floor x)
-        (toStr $ floor y)
-        ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-        (single $ toSvg1 drawing)
+renderDrawing :: RenderingOptions -> Drawing -> Maybe RDrawing
+renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing (placeOrigo drawing)
   where
-    (drawing1 :: Drawing) = placeOrigo drawing2
-
     placeOrigo :: Drawing -> Drawing
     -- placeOrigo = id
     placeOrigo = case originPlacement of
@@ -1512,6 +1529,23 @@ toSvgNew (RenderingOptions {dimensions, originPlacement}) drawing2 = unsafePerfo
       Center      -> translateX (x/2) . translateY (y/(-2))
       BottomLeft  -> translateY (y*(-1))
 
+    P (V2 x y) = dimensions
+
+{-| Generate an SVG from a drawing. -}
+emitDrawing :: RenderingOptions -> Maybe RDrawing -> Svg
+emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
+  -- printTreeInfo drawing1
+  case mDrawing of
+    -- TODO nicer
+    Nothing -> (VD.node "div" [] [] :: Svg)
+    Just (drawing :: RDrawing) -> do
+      -- printRTreeInfo drawing
+      svgTopNode
+        (toStr $ floor x)
+        (toStr $ floor y)
+        ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+        (single $ toSvg1 drawing)
+  where
     svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
     svgTopNode w h vb = E.svg
       [ A.width (toJSString w)
