@@ -1,6 +1,8 @@
 
 {-# LANGUAGE OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables, TypeFamilies
-  , FlexibleContexts #-}
+  , FlexibleContexts, BangPatterns #-}
+
+-- {-# GHC_OPTIONS -ddump-simpl #-}
 
 module Main where
 
@@ -28,6 +30,7 @@ import Web.VirtualDom.Html.Events(Event(..), mousemove)
 import           GHCJS.Foreign.Callback(syncCallback,Callback,OnBlocked(..))
 
 ----------
+
 
 debugHandlers = False
 
@@ -88,6 +91,7 @@ I.e. the vectors/patches can not be inverted.
   (.+^) ~ patch
 
 -}
+
 class Monoid (Diff p) => Diffable p where
   type Diff p :: *
   diff :: p -> p -> Diff p
@@ -401,18 +405,42 @@ main = do
                 , dc1
                 , sqs2
                 -- , sqs2b
-                , fmap (duplicateN 2 (V2 50 50)) plotSD
+                -- , fmap (duplicateN 2 (V2 50 50)) plotSD
                 , pure $ duplicateN 20 (V2 1 1) purpleCircle
                 ]
 
   let allS = mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
   subscribeEvent (updates allS) (\_ -> print "Updated!")
   -- runAppReactive $ allS
-  runWithAnimation $ current allS
+
+  allS2 <- strictifyS allS
+  -- TODO assure toSvg is strict
+  -- If so DOM updates will handle the complete generation of VDOM nodes
+  -- All requestAnimationFrame has to do is polling out a complete DOM node and rendering it
+  runWithAnimation $ (current allS2 :: Behavior Html)
+  print "Done!"
+
+-- TODO replace all signals above runWithAnimation with behaviors
+-- Compare Signal/Behavior performance
 
 
+strictify :: Events a -> Events a
+strictify e = do
+  (s,e2) <- newEvent
+  subscribeEvent e $ \x -> seq x (s x)
+  return e2
+
+strictifyS :: Signal a -> FRP (Signal a)
+strictifyS s = do
+  z <- pollBehavior (current s)
+  u2 <- strictify (updates s)
+  stepperS z u2
 --
 
+{-|
+Sample and render using requestAnimationFrame (forever).
+-}
+-- runWithAnimation :: Behavior Html -> IO ()
 runWithAnimation b = do
   (s, start) <- animated b
   runAppReactive s
