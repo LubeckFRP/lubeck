@@ -860,17 +860,16 @@ styleToProperty s = A.style $ toJSString $ styleToAttrString s
 {-# INLINABLE styleToProperty #-}
 
 transformationToProperty :: Transformation Double -> E.Property
-transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
-  where
-    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+-- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
+--   where
+--     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
+
 {-# INLINABLE transformationToProperty #-}
 
 nodeInfoToProperties :: RNodeInfo -> [E.Property]
-nodeInfoToProperties (RNodeInfo style transf handlers) = mconcat
-  [ [transformationToProperty transf]
-  , [styleToProperty style]
-  , handlersToProperties handlers
-  ]
+nodeInfoToProperties (RNodeInfo style transf handlers) =
+  transformationToProperty transf : styleToProperty style : handlersToProperties handlers
 {-# INLINABLE nodeInfoToProperties #-}
 
 -- TODO would be derivable if IO lifted the Monoid...
@@ -1594,24 +1593,24 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
     toSvg1 drawing = case drawing of
       RPrim nodeInfo prim -> case prim of
         RCircle -> E.circle
-          (nodeInfoToProperties nodeInfo <> [A.r "0.5", noScale])
+          (nodeInfoToProperties nodeInfo ++ [A.r "0.5", noScale])
           []
         RRect -> E.rect
-          (nodeInfoToProperties nodeInfo <> [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
+          (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
           []
 
         RLine -> E.line
-          ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] <> nodeInfoToProperties nodeInfo)
+          ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
           []
         (RLines closed vs) -> (if closed then E.polygon else E.polyline)
-          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale] <> nodeInfoToProperties nodeInfo)
+          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (map reflY vs)), noScale] ++ nodeInfoToProperties nodeInfo)
           []
         (RText s) -> E.text'
-          ([A.x "0", A.y "0"] <> nodeInfoToProperties nodeInfo)
+          ([A.x "0", A.y "0"] ++ nodeInfoToProperties nodeInfo)
           [E.text $ toJSString s]
         -- TODO need extra group for nodeInfo etc
         (REmbed e) -> embedToSvg e
-      RMany nodeInfo rdrawings -> case fmap toSvg1 rdrawings of
+      RMany nodeInfo rdrawings -> case map toSvg1 rdrawings of
         nodes -> E.g (nodeInfoToProperties nodeInfo) nodes
 
 

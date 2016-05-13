@@ -360,6 +360,12 @@ onOff label init = do
 type SDrawing  = Signal Drawing
 type SRDrawing = Signal RDrawing
 
+renderDrawingTrace msg d = renderDrawing mempty d
+-- renderDrawingTrace msg d = unsafePerformIO $ do
+  -- print msg
+  -- return $ renderDrawing mempty d
+
+
 main :: IO ()
 main = do
   (view0, zoomActive) <- onOff "Zoom active" True
@@ -386,7 +392,7 @@ main = do
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
 
-  let purpleCircle = Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
+  let !purpleCircle = Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
   let pinkCircle   = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
   let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
   let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
@@ -403,35 +409,35 @@ main = do
 
   (srds :: [SRDrawing]) <- mapM strictifyS $
   -- let (srds :: [SRDrawing]) =
-              fmap (fmap $ renderDrawing mempty)
-                [ mempty
-                , dr
-                -- , fmap (translateX 120) dc1
-                , dc1
-                , sqs2
-                -- , sqs2b
+              -- fmap (fmap $ renderDrawing mempty)
+                [ fmap (renderDrawingTrace "Zoom") dr
+                , fmap (renderDrawingTrace "Circle and square") dc1
+                , fmap (renderDrawingTrace "Hoverable square") sqs2
                 -- , fmap (duplicateN 2 (V2 50 50)) plotSD
-                , pure $ duplicateN 20 (V2 1 1) purpleCircle
+                , fmap (renderDrawingTrace "Circles") $ pure $ duplicateN 50 (V2 1 1) purpleCircle
                 ]
   let (sd :: SRDrawing) = mconcat srds
 
   let allS = mconcat [view0, view1, view2, fmap (emitDrawing mempty) $ sd]
 
   -- runAppReactive $ allS
-  allS2 <- strictifyS allS
+  allS2 <- return allS
+  -- let allS2 = allS
   runWithAnimation $ (current allS2 :: Behavior Html)
   print "Done!"
 
 
+-- | Evaluates events passing through to WHNF before propagating
 strictify :: Events a -> FRP (Events a)
 strictify e = do
   (s,e2) <- newEvent
   subscribeEvent e $ \x -> seq x (s x)
   return e2
 
+-- | Evaluates events passing through to WHNF before propagating
 strictifyS :: Signal a -> FRP (Signal a)
 strictifyS s = do
-  z <- pollBehavior (current s)
+  !z <- pollBehavior (current s)
   u2 <- strictify (updates s)
   stepperS z u2
 --
