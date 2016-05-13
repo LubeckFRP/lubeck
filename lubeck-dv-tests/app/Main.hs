@@ -424,7 +424,7 @@ main = do
 -- Compare Signal/Behavior performance
 
 
-strictify :: Events a -> Events a
+strictify :: Events a -> FRP (Events a)
 strictify e = do
   (s,e2) <- newEvent
   subscribeEvent e $ \x -> seq x (s x)
