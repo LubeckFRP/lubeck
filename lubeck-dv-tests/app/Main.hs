@@ -357,7 +357,8 @@ onOff label init = do
 
 ----------
 
-type SDrawing = Signal Drawing
+type SDrawing  = Signal Drawing
+type SRDrawing = Signal RDrawing
 
 main :: IO ()
 main = do
@@ -380,6 +381,7 @@ main = do
               [x <~ _1, y <~ _2]
           ]
 
+
   let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
@@ -393,12 +395,12 @@ main = do
   -- dc2 <- draggable_ $ pure purpleCircle
 
   (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
-  sqs2 <- draggable_ sqs
+  (sqs2 :: SDrawing) <- draggable_ sqs
   -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
   (dr, _) <- dragRect zoomActive
-  let (sd :: SDrawing) = mconcat
+  (srds :: [SRDrawing]) <- mapM strictifyS $ fmap (fmap $ renderDrawing mempty)
                 [ mempty
                 , dr
                 -- , fmap (translateX 120) dc1
@@ -408,8 +410,9 @@ main = do
                 -- , fmap (duplicateN 2 (V2 50 50)) plotSD
                 , pure $ duplicateN 20 (V2 1 1) purpleCircle
                 ]
+  let (sd :: SRDrawing) = mconcat srds
 
-  let allS = mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
+  let allS = mconcat [view0, view1, view2, fmap (emitDrawing mempty) $ sd]
   subscribeEvent (updates allS) (\_ -> print "Updated!")
   -- runAppReactive $ allS
 
@@ -440,7 +443,7 @@ strictifyS s = do
 {-|
 Sample and render using requestAnimationFrame (forever).
 -}
--- runWithAnimation :: Behavior Html -> IO ()
+runWithAnimation :: Behavior Html -> IO ()
 runWithAnimation b = do
   (s, start) <- animated b
   runAppReactive s

@@ -874,11 +874,11 @@ type Handler = ()
 type Handlers = ()
 #endif
 
-drawingToRDrawing :: Drawing -> Maybe RDrawing
+drawingToRDrawing :: Drawing -> RDrawing
 drawingToRDrawing d = case drawingToRDrawing' mempty d of
-  []  -> empty
-  [x] -> pure x
-  xs  -> pure $ RMany mempty xs
+  []  -> mempty
+  [x] -> x
+  xs  -> mconcat xs
 {-# INLINABLE drawingToRDrawing #-}
 
 drawingToRDrawing' :: RNodeInfo -> Drawing -> [RDrawing]
@@ -925,8 +925,11 @@ data RNodeInfo
 data RDrawing
   = RPrim !RNodeInfo RPrim
   | RMany !RNodeInfo ![RDrawing]
-    -- Always non-empty
-    -- Order is [farthest..closest], same as SVG but opposite high-level API
+
+instance Monoid RDrawing where
+  mempty = RMany mempty []
+  mappend x y = RMany mempty [y, x]
+  mconcat     = RMany mempty . reverse
 
 
 toNodeInfoT :: Transformation Double -> RNodeInfo
@@ -1519,7 +1522,7 @@ toSvg = toSvgNew
 toSvgNew :: RenderingOptions -> Drawing -> Svg
 toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
 
-renderDrawing :: RenderingOptions -> Drawing -> Maybe RDrawing
+renderDrawing :: RenderingOptions -> Drawing -> RDrawing
 renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing (placeOrigo drawing)
   where
     placeOrigo :: Drawing -> Drawing
@@ -1532,13 +1535,11 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
     P (V2 x y) = dimensions
 
 {-| Generate an SVG from a drawing. -}
-emitDrawing :: RenderingOptions -> Maybe RDrawing -> Svg
+emitDrawing :: RenderingOptions -> RDrawing -> Svg
 emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
   -- printTreeInfo drawing1
   case mDrawing of
-    -- TODO nicer
-    Nothing -> (VD.node "div" [] [] :: Svg)
-    Just (drawing :: RDrawing) -> do
+    (drawing :: RDrawing) -> do
       -- printRTreeInfo drawing
       svgTopNode
         (toStr $ floor x)
