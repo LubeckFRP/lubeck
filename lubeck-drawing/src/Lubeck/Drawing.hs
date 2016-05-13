@@ -824,6 +824,7 @@ instance Monoid Drawing where
 
   -- mconcat = Ap
 
+#ifdef __GHCJS__
 
 -- TODO strict
 newtype Handlers = Handlers (MonoidMap Str Handler)
@@ -853,7 +854,6 @@ nodeInfoToProperties (RNodeInfo style transf handlers) = mconcat
   ]
 {-# INLINABLE nodeInfoToProperties #-}
 
-
 -- TODO would be derivable if IO lifted the Monoid...
 newtype Handler = Handler (JSVal -> IO ())
 instance Monoid Handler where
@@ -864,14 +864,10 @@ instance Monoid Handler where
         a x
         b x
  -- = Handler { hName :: Str, hSink :: JSVal -> IO () }
-
-
-
--- Inner list never empty!
--- drawingToRDrawing :: RNodeInfo -> Drawing -> Maybe RDrawing
-
-pure2 = pure . pure
-
+#else
+type Handler = ()
+type Handlers = ()
+#endif
 
 drawingToRDrawing :: Drawing -> Maybe RDrawing
 drawingToRDrawing d = case drawingToRDrawing' mempty d of
