@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
 
 {-|
 
@@ -119,6 +119,9 @@ module Lubeck.FRP
   , Dispatcher(..)
   , newDispatcher
   , UnsubscribeAction
+
+  -- * Performance
+  , fastMconcatS3
   ) where
 
 import Prelude hiding (filter)
@@ -147,6 +150,12 @@ import Data.Sequence (Seq)
 import Data.Traversable(Traversable(..))
 import qualified Data.Traversable
 
+-- DEBUG
+import Debug.Trace
+import Control.Concurrent(threadDelay)
+import System.IO.Unsafe(unsafePerformIO)
+import qualified Data.List
+import qualified System.IO
 
 -- UNDERLYING
 
@@ -718,3 +727,138 @@ withEventSubscribed e s k = do
   r <- k
   us
   pure r
+
+
+fastMconcat :: Monoid a => [Signal a] -> Signal a
+fastMconcat = mconcat
+
+
+-- -- | Evaluates events passing through to WHNF before propagating
+-- strictify :: Events a -> FRP (Events a)
+-- strictify e = do
+--   (s,e2) <- newEvent
+--   subscribeEvent e $ \x -> seq x (s x)
+--   return e2
+--
+-- -- | Evaluates events passing through to WHNF before propagating
+-- strictifyS :: Signal a -> FRP (Signal a)
+-- strictifyS s = do
+--   !z <- pollBehavior (current s)
+--   u2 <- strictify (updates s)
+--   stepperS z u2
+--
+
+
+{-
+Proof of concept.
+
+Consider inputs (a b c)
+If a updates, there is no need to re-calculate (b<>c).
+If c updates, there is no need to re-calculate (a<>b).
+
+-}
+fastMconcatS3 :: Monoid a => Signal a -> Signal a -> Signal a -> FRP (Signal a)
+fastMconcatS3 a b c = do
+  -- TODO needed?
+  -- a' <- strictifyS a
+  -- b' <- strictifyS b
+  -- c' <- strictifyS c
+  --
+  -- let ab = current a <> current b
+  -- let bc = current b <> current c
+  -- let ac = liftA2 (,) (current a) (current c)
+  --
+  -- let e1 = snapshotWith (\bc a -> a <> bc)            bc (updates a)
+  -- let e2 = snapshotWith (\(a,c) b -> mconcat [a,b,c]) ac (updates b)
+  -- let e3 = snapshotWith (\ab c -> ab <> c)            ab (updates c)
+  -- let u = merge3 e1 e2 e3
+
+  -- z <- pollBehavior $ liftA3 (\a b c -> mconcat [a,b,c]) (current a) (current b) (current c)
+  -- stepperS u z
+
+  az <- pollBehavior (current a)
+  bz <- pollBehavior (current b)
+  cz <- pollBehavior (current c)
+
+  -- Last value of a, b, c, a<>b, and b<>c (no need to cache a<>c!)
+  av <- newIORef az
+  bv <- newIORef bz
+  cv <- newIORef cz
+  abv <- newIORef (az<>bz)
+  bcv <- newIORef (bz<>cz)
+
+  (sendOut, outRes) <- newEvent
+
+  -- Most send correct
+  -- Must update duplicates
+  -- Must update itself if needed for the above
+  subscribeEvent (updates a) $ \an -> do
+    writeIORef av an
+    bn <- readIORef bv
+    case an <> bn of
+      abn -> writeIORef abv abn
+    bcn <- readIORef bcv
+    sendOut (an<>bcn) -- no (b <> c) evaluated!
+    return ()
+
+  subscribeEvent (updates b) $ \bn -> do
+    writeIORef bv bn
+    an <- readIORef av
+    cn <- readIORef cv
+    case an <> bn of
+      abn -> writeIORef abv abn
+    case bn <> cn of
+      bcn -> writeIORef bcv bcn
+    sendOut (an<>bn<>cn)
+
+
+  subscribeEvent (updates c) $ \cn -> do
+    writeIORef cv cn
+    bn <- readIORef bv
+    case bn <> cn of
+      bcn -> writeIORef bcv bcn
+    abn <- readIORef abv
+    sendOut (abn<>cn) -- no (a <> b) evaluated!
+    return ()
+  stepperS (mconcat [az,bz,cz]) outRes
+
+data ABC = X | A Int | B Int | C Int | Res [ABC] deriving (Show)
+-- data Mon a = None | One a | Two (Mon a) (Mon a)  deriving (Show)
+instance Monoid ABC where
+  mempty = X
+  mappend a b = trace ("        "++show a++"<> "++show b) (Res [a,b])
+
+counterE :: Events (Int -> a) -> IO (Events a)
+counterE e = do
+  nB <- counter e
+  pure $ snapshotWith (flip ($)) nB e
+counterS :: Signal (Int -> a) -> IO (Signal a)
+counterS e = do
+  nB <- counter (updates e)
+  pure $ snapshotWithS (flip ($)) nB e
+
+test = do
+  (aU,aE) <- newEvent
+  (bU,bE) <- newEvent
+  (cU,cE) <- newEvent
+  aS <- counterE aE >>= (X `stepperS`)
+  bS <- counterE bE >>= (X `stepperS`)
+  cS <- counterE cE >>= (X `stepperS`)
+
+  -- abc <- fastMconcatS3 aS bS cS
+  let abc = mconcat [aS, bS, cS]
+
+  subscribeEvent (updates $ abc) print
+  runCmds
+    [ ("a", aU $ A)
+    , ("b", bU $ B)
+    , ("c", cU $ C)
+    ]
+
+-- test =
+runCmds :: [(String, IO ())] -> IO ()
+runCmds cmds = do
+  forever $ do
+    inp <- System.IO.getLine
+    forM_ cmds $ \(name,action) ->
+      when ((inp::String) `Data.List.isPrefixOf` name) action
