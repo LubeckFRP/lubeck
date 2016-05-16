@@ -11,11 +11,14 @@ import Control.Lens(to, _1, _2, (.~))
 import Linear.Affine ((.+^))
 import Data.Colour (withOpacity)
 import Data.Colour.Names as Colors
+import Debug.Trace
 
 import Lubeck.DV
 import Lubeck.FRP
 import Lubeck.Str
 import Lubeck.Drawing hiding (text, addProperty)
+
+#ifdef __GHCJS__
 import Lubeck.Forms(componentEvent)
 import Lubeck.Forms.Button(multiButtonWidget)
 import Lubeck.Forms.Select(selectEnumBoundedWidget)
@@ -28,9 +31,11 @@ import qualified Web.VirtualDom as VirtualDom
 import Web.VirtualDom.Html.Events(Event(..), mousemove)
 
 import           GHCJS.Foreign.Callback(syncCallback,Callback,OnBlocked(..))
+#endif
+
+#ifdef __GHCJS__
 
 ----------
-
 
 debugHandlers = False
 
@@ -110,7 +115,7 @@ instance Monoid MouseEv where
   mempty = MouseNone
   mappend x y = x -- last event to happen as
 
-data MouseState = MouseState { mouseInside :: Bool, mouseDown :: Bool } deriving (Eq, Ord, Show, Read)
+data MouseState = MouseState { mouseInside :: !Bool, mouseDown :: !Bool } deriving (Eq, Ord, Show, Read)
 
 instance Monoid MouseState where
   mempty = MouseState False False -- how do we know this?
@@ -174,8 +179,8 @@ withMouseState d = fmap (second $ fmap mouseState) $ withMousePositionState (d .
 Like MouseState, but include position.
 -}
 data MousePositionState = MousePositionState
-  { mousePosition :: P2 Double
-  , mouseState    :: MouseState
+  { mousePosition :: !(P2 Double)
+  , mouseState    :: !MouseState
   }
   deriving (Eq, Ord, Show)
 
@@ -360,10 +365,9 @@ onOff label init = do
 type SDrawing  = Signal Drawing
 type SRDrawing = Signal RDrawing
 
+-- renderDrawingTrace msg d = trace msg $ renderDrawing mempty d
 renderDrawingTrace msg d = renderDrawing mempty d
--- renderDrawingTrace msg d = unsafePerformIO $ do
-  -- print msg
-  -- return $ renderDrawing mempty d
+
 
 
 main :: IO ()
@@ -377,7 +381,7 @@ main = do
   when debugHandlers $ void $
     subscribeEvent (updates zoomXY) print
 
-  let (plotSD :: Styled Drawing) = drawPlot $ mconcat
+  let (plotSD :: Styled Drawing) = trace "> plotSD" $ drawPlot $ mconcat
           [ plot (zip [1..10::Double] [31,35,78,23,9,92,53,71,53,42::Double])
               [x <~ _1, y <~ _2]
               (mconcat [line, fill])
@@ -391,14 +395,14 @@ main = do
   let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
-  (plotSD2 :: SDrawing) <- draggable_ $ plotVD
-  (plotSD3 :: SDrawing) <- draggable_ $ plotVD
-  (plotSD4 :: SDrawing) <- draggable_ $ plotVD
+  -- (plotSD2 :: SDrawing) <- draggable_ $ plotVD
+  -- (plotSD3 :: SDrawing) <- draggable_ $ plotVD
+  -- (plotSD4 :: SDrawing) <- draggable_ $ plotVD
 
-  let !purpleCircle = Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
-  let pinkCircle   = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
-  let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
-  let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
+  let purpleCircle = trace "> purpleCircle" $ Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
+  let pinkCircle   = trace "> pinkCircle" $ Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
+  let redSquare    = trace "> redSquare" $ Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
+  let blueSquare   = trace "> blueSquare" $ Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
 
   dc1 <- draggable_ $ pure (pinkCircle ||| redSquare)
   -- dc2 <- draggable_ $ pure purpleCircle
@@ -413,21 +417,21 @@ main = do
   (srds :: [SRDrawing]) <- mapM strictifyS $
   -- let (srds :: [SRDrawing]) =
               -- fmap (fmap $ renderDrawing mempty)
-                [ fmap (renderDrawingTrace "Zoom") dr
-                , fmap (renderDrawingTrace "Circle and square") dc1
+                [ fmap (renderDrawingTrace "R Zoom") dr
+                , fmap (renderDrawingTrace "R Circle and square") dc1
                 -- , fmap (renderDrawingTrace "Hoverable square") sqs2
-                , fmap (renderDrawingTrace "Plot") plotSD
+                , fmap (renderDrawingTrace "R Plot") plotSD
                 -- , fmap (renderDrawingTrace "Plot2") plotSD2
                 -- , fmap (renderDrawingTrace "Plot3") plotSD3
                 -- , fmap (renderDrawingTrace "Plot4") plotSD4
-                , fmap (renderDrawingTrace "Circles") $ pure $ duplicateN 4 (V2 1 1) purpleCircle
+                , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 4 (V2 1 1) purpleCircle
                 ]
   let (sd :: SRDrawing) = mconcat srds
 
-  let allS = mconcat [view0, view1, view2, fmap (emitDrawing mempty) $ sd]
+  let allS = mconcat [view0, view1, view2, fmap (\x -> {-trace "E" $-} emitDrawing mempty x) $ sd]
 
   -- runAppReactive $ allS
-  allS2 <- return allS
+  allS2 <- pure allS
   -- let allS2 = allS
   runWithAnimation $ (current allS2 :: Behavior Html)
   print "Done!"
@@ -493,3 +497,7 @@ animate k = do
 foreign import javascript unsafe
   "var req = window.requestAnimationFrame;   var f = function() { $1(); req(f); };   req(f);"
   animate' :: Callback (IO ()) -> IO ()
+
+#else
+main = print "Dummy"
+#endif
