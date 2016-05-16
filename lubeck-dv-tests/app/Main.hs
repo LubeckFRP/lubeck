@@ -1,6 +1,6 @@
 
 {-# LANGUAGE OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables, TypeFamilies
-  , FlexibleContexts, BangPatterns #-}
+  , FlexibleContexts, BangPatterns, CPP #-}
 
 -- {-# GHC_OPTIONS -ddump-simpl #-}
 

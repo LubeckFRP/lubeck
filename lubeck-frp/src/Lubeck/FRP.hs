@@ -480,15 +480,18 @@ newEvent = do
   Dispatcher aProvider aSink <- newDispatcher
   return $ (aSink, E aProvider)
 -- Subscriber safety: provided by the underlying dispatcher.
+{-# INLINABLE newEvent #-}
 
 -- | Subscribe to an event stream in the 'FRP' monad.
 -- The given sink will be called into whenever an event occurs.
 subscribeEvent :: Events a -> Sink a -> FRP UnsubscribeAction
 subscribeEvent (E x) = x
+{-# INLINABLE subscribeEvent #-}
 
 -- | Return the current state of a behavior in the 'FRP' monad.
 pollBehavior :: Behavior a -> FRP a
 pollBehavior (R x) = x
+{-# INLINABLE pollBehavior #-}
   -- v <- newVar undefined
   -- aProvider $ writeVar v
   -- readVar v

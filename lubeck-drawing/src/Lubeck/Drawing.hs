@@ -1711,6 +1711,8 @@ toSvgOld (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerfo
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
+renderDrawing _ _ = ()
+emitDrawing _ _ = ()
 #endif
 
 
