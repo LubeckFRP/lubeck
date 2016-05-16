@@ -11,7 +11,10 @@ import Control.Lens(to, _1, _2, (.~))
 import Linear.Affine ((.+^))
 import Data.Colour (withOpacity)
 import Data.Colour.Names as Colors
+
+-- Debug
 import Debug.Trace
+import Control.Concurrent(threadDelay)
 
 import Lubeck.DV
 import Lubeck.FRP
@@ -166,7 +169,7 @@ Mouse position is relative to the entire drawing area (TODO currently assumes or
 Only event handlers sent to the given drawing a are processed (i.e. transparent areas are ignored).
 -}
 withMousePositionState :: (Signal MousePositionState -> Signal Drawing) -> FRP (Signal Drawing, Signal MousePositionState)
-withMousePositionState d = do
+withMousePositionState drawingF = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
 
@@ -174,10 +177,6 @@ withMousePositionState d = do
   (pos :: Signal (P2 Double)) <- stepperS (P $ V2 0 0) (mousePosE)
 
   let (posState :: Signal MousePositionState) = liftA2 MousePositionState pos state
-  when debugHandlers $ void $
-    subscribeEvent (updates posState) print
-  -- TODO clean up this mess
-
   let (dWithHandlers :: Signal MousePositionState -> Signal Drawing) = (fmap . fmap)
                            ( id
                            . addHandler "mouseover" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOver)
@@ -185,8 +184,31 @@ withMousePositionState d = do
                            . addHandler "mouseup"   (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseUp)
                            . addHandler "mousedown" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseDown)
                            . addHandler "mousemove" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseMovedInside)
-                           ) d
+                           ) drawingF
   pure $ (dWithHandlers posState, posState)
+
+
+{-
+Like withMousePositionState, optimized for non-recursive case.
+-}
+withMousePositionStateNR :: Signal Drawing -> FRP (Signal Drawing, Signal MousePositionState)
+withMousePositionStateNR drawingF = do
+  (mouseS, mouseE :: Events MouseEv) <- newEvent
+  (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
+
+  (mousePosS, mousePosE :: Events (P2 Double)) <- newEvent
+  (pos :: Signal (P2 Double)) <- stepperS (P $ V2 0 0) (mousePosE)
+
+  let (posState :: Signal MousePositionState) = liftA2 MousePositionState pos state
+  let (dWithHandlers :: Signal Drawing) = fmap
+                           ( id
+                           . addHandler "mouseover" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOver)
+                           . addHandler "mouseout"  (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOut)
+                           . addHandler "mouseup"   (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseUp)
+                           . addHandler "mousedown" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseDown)
+                           . addHandler "mousemove" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseMovedInside)
+                           ) drawingF
+  pure $ (dWithHandlers, posState)
 
 withMouseState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
 withMouseState d = fmap (second $ fmap mouseState) $ withMousePositionState (d . fmap mouseState)
@@ -215,6 +237,7 @@ hoverable d = fmap (second $ fmap mouseInside) $ withMouseState (d . fmap mouseI
 hoverable_ :: (Signal Bool -> Signal Drawing) -> FRP (Signal Drawing)
 hoverable_ = fmap fst . hoverable
 
+-- TODO implement in terms of (poss. opt version of withMouseState)
 nudgeableDraggable :: Behavior Bool -> Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
 nudgeableDraggable allowMove d =  do
   (move, moved1 :: Events (V2 Double)) <- newEvent
@@ -342,7 +365,7 @@ dragRect
 dragRect activeS = do
   -- TODO could use a more efficient version
   (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState)
-    <- withMousePositionState (\_ -> pure bigTransparent)
+    <- withMousePositionStateNR (pure bigTransparent)
   let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) bigTransparentWithHandlers activeS
   (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
   let (dragRectD :: Signal Drawing) = fmap dragRect intermediateRects
@@ -390,6 +413,7 @@ renderDrawingTrace msg d = renderDrawing mempty d
 main :: IO ()
 main = do
 #ifdef __GHCJS__
+  -- retainMain
   (view0, zoomActive) <- onOff "Zoom active" True
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
@@ -411,7 +435,6 @@ main = do
           , plotLabel "(7,65)" [(7::Double, 65::Double)]
               [x <~ _1, y <~ _2]
           ]
-
 
   let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
   -- let plotD = getStyled plotSD mempty :: Drawing
@@ -455,7 +478,7 @@ main = do
   -- runAppReactive $ allS
   allS2 <- pure allS
   -- let allS2 = allS
-  runWithAnimation $ (current allS2 :: Behavior Html)
+  runWithAnimation $ (allS2 :: Signal Html)
   print "Done!"
 #else
   let allS = fmap (\x -> {-trace "E" $-} emitDrawing mempty x) sd
@@ -492,6 +515,7 @@ duplicateAt v d = d <> translate v d
 
 
 
+
 -- animate' :: JSFun (IO ()) -> IO ()
 
 #ifdef __GHCJS__
@@ -499,22 +523,61 @@ foreign import javascript unsafe
   "var req = window.requestAnimationFrame;   var f = function() { $1(); req(f); };   req(f);"
   animate' :: Callback (IO ()) -> IO ()
 
+-- foreign import javascript unsafe "h$mainZCZCMainzimain();"
+  -- retainMain :: IO ()
+
 animate :: IO () -> IO ()
 animate k = do
   cb <- syncCallback ThrowWouldBlock k
   animate' cb
 
+data WithCount a = WithCount !Int a
+
 {-|
 Sample and render using requestAnimationFrame (forever).
 -}
-runWithAnimation :: Behavior Html -> IO ()
+runWithAnimation :: Signal Html -> IO ()
 runWithAnimation b = do
-  (s, start) <- animated b
+  (s, start) <- animated2 b
   runAppReactive s
   print "Starting animation"
   start
 
 
+{-|
+Similar to animated, but eliminate double rendering.
+Only actually propagates when input has propagated.
+-}
+animated2 :: Signal a -> FRP (Signal a, IO ())
+animated2 b = do
+  let hB = current b
+  z <- pollBehavior hB
+  countB <- counter (updates b)
+
+  let (cAndCountB) = liftA2 WithCount countB hB
+    -- cAndCountB :: Behavior (WithCount a)
+
+  (sink, ev) <- newEvent
+  s <- stepperS z ev
+  last <- newIORef (-1)
+  -- forkIO $ forever $ do
+  --   lastV <- readIORef last
+  --   threadDelay 500000
+  --   print lastV
+  let start = animate $ do
+            lastV <- readIORef last
+            (WithCount n x) <- pollBehavior cAndCountB
+            -- TODO prevent re-render
+            when (n /= lastV) $
+              sink (seq x x)
+            writeIORef last n
+            -- print (n, lastV)
+  return (s, start)
+
+{-|
+Browser only: Poll the given behavior from the animation callback.
+Returns a signal that will be pushed to when invoked from the ACB and an action to start animation.
+-}
 animated :: Behavior a -> FRP (Signal a, IO ())
 animated b = do
   z <- pollBehavior b
