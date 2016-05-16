@@ -888,35 +888,37 @@ type Handlers = ()
 #endif
 
 drawingToRDrawing :: Drawing -> RDrawing
-drawingToRDrawing d = case drawingToRDrawing' mempty d of
-  []  -> mempty
-  [x] -> x
-  xs  -> mconcat xs
-{-# INLINABLE drawingToRDrawing #-}
+drawingToRDrawing = drawingToRDrawing' mempty
+{-# INLINE drawingToRDrawing #-}
 
-drawingToRDrawing' :: RNodeInfo -> Drawing -> [RDrawing]
-drawingToRDrawing' nodeInfo = go
-  where
-    go Circle                 = pure $ RPrim nodeInfo RCircle
-    go Rect                   = pure $ RPrim nodeInfo RRect
-    go Line                   = pure $ RPrim nodeInfo RLine
-    go (Lines closed vs)      = pure $ RPrim nodeInfo (RLines closed vs)
-    go (Text t)               = pure $ RPrim nodeInfo (RText t)
-    go (Embed e)              = pure $ RPrim nodeInfo (REmbed e)
-    go (Transf t x)           = drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
-    go (Style s x)            = drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
+drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
+drawingToRDrawing' nodeInfo x = case x of
+    Circle                 -> RPrim nodeInfo RCircle
+    Rect                   -> RPrim nodeInfo RRect
+    Line                   -> RPrim nodeInfo RLine
+    (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
+    (Text t)               -> RPrim nodeInfo (RText t)
+    (Embed e)              -> RPrim nodeInfo (REmbed e)
+    (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
+    (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
 #ifdef __GHCJS__
-    go (Prop2 attrName sink x) = drawingToRDrawing'
+    (Prop2 attrName sink x) -> drawingToRDrawing'
                                   -- TODO arguably wrong composition order
                                   (nodeInfo <> toNodeInfoH (singleTonHandlers attrName sink)) x
 #endif
-    go Em        = empty
+    Em        -> mempty
     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
     -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
     -- TODO return empty if concatMap returns empty list
-    go (Ap xs)   = pure $ RMany nodeInfo (concatMap recur $ reverse xs)
+    (Ap xs)   -> RMany nodeInfo (mapReverse recur xs)
       where
         recur = drawingToRDrawing' mempty
+
+mapReverse :: (a -> b) -> [a] -> [b]
+mapReverse f l =  rev l []
+  where
+    rev []     a = a
+    rev (x:xs) a = rev xs (f x:a)
 
 {-# INLINABLE drawingToRDrawing' #-}
 
@@ -1584,7 +1586,7 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
 
     single x = [x]
     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+    -- negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     reflY (V2 adx ady) = V2 adx (negate ady)
     P (V2 x y) = dimensions
@@ -1598,7 +1600,6 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
         RRect -> E.rect
           (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
           []
-
         RLine -> E.line
           ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
           []
