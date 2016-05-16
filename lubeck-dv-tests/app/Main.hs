@@ -6,7 +6,7 @@
 
 module Main where
 
-import BasePrelude hiding ((|||))
+import BasePrelude hiding ((|||), Signal)
 import Control.Lens(to, _1, _2, (.~))
 import Linear.Affine ((.+^))
 import Data.Colour (withOpacity)
@@ -33,7 +33,6 @@ import Web.VirtualDom.Html.Events(Event(..), mousemove)
 import           GHCJS.Foreign.Callback(syncCallback,Callback,OnBlocked(..))
 #endif
 
-#ifdef __GHCJS__
 
 ----------
 
@@ -46,6 +45,7 @@ debugHandlers = False
 -- https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/movementX
 -- Easiest would be to just use movementX!
 
+#ifdef __GHCJS__
 onE e n = VirtualDom.on n . contramapS e
   where
     contramapS f k x = k (f x)
@@ -73,6 +73,22 @@ foreign import javascript unsafe "$1.offsetX"
 foreign import javascript unsafe "$1.offsetY"
   offsetY :: Event -> Double
 -- TODO right property to read?
+#else
+type Html = ()
+data Event = Event
+movementX :: Event -> Double
+movementY :: Event -> Double
+screenX :: Event -> Double
+screenY :: Event -> Double
+offsetX :: Event -> Double
+offsetY :: Event -> Double
+movementX = const 0
+movementY = const 0
+screenX = const 0
+screenY = const 0
+offsetX = const 0
+offsetY = const 0
+#endif
 
 {-
 TODO all initial arguments *could* be in S/B moinad
@@ -342,6 +358,7 @@ dragRect activeS = do
       -- TODO no color
         fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
+#ifdef __GHCJS__
 {-
 Displays a pair or plus/minus-labeled buttons.
 -}
@@ -358,7 +375,7 @@ onOff label init = do
   state <- stepperS init alter
   pure (mconcat [pure $ text (toJSString label), view], state)
 -- selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
-
+#endif
 
 ----------
 
@@ -372,11 +389,15 @@ renderDrawingTrace msg d = renderDrawing mempty d
 
 main :: IO ()
 main = do
+#ifdef __GHCJS__
   (view0, zoomActive) <- onOff "Zoom active" True
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
   let zoomXY = liftA2 V2 zoomX zoomY
-
+#else
+  let zoomActive = pure True
+  let zoomXY = pure $ V2 1 1
+#endif
   -- Debug
   when debugHandlers $ void $
     subscribeEvent (updates zoomXY) print
@@ -428,14 +449,19 @@ main = do
                 ]
   let (sd :: SRDrawing) = mconcat srds
 
-  let allS = mconcat [view0, view1, view2, fmap (\x -> {-trace "E" $-} emitDrawing mempty x) $ sd]
+#ifdef __GHCJS__
+  let allS = mconcat [view0, view1, view2, fmap (\x -> {-trace "E" $-} emitDrawing mempty x) sd]
 
   -- runAppReactive $ allS
   allS2 <- pure allS
   -- let allS2 = allS
   runWithAnimation $ (current allS2 :: Behavior Html)
   print "Done!"
-
+#else
+  let allS = fmap (\x -> {-trace "E" $-} emitDrawing mempty x) sd
+  subscribeEvent (updates allS) $ \_ -> print "New image"
+  return ()
+#endif
 
 -- | Evaluates events passing through to WHNF before propagating
 strictify :: Events a -> FRP (Events a)
@@ -451,6 +477,32 @@ strictifyS s = do
   u2 <- strictify (updates s)
   stepperS z u2
 --
+
+-- MISC test
+
+duplicateN :: Int -> V2 Double -> Drawing -> Drawing
+duplicateN n v d = mconcat $ take n $ iterate (translate v) d
+
+-- The classic Photosphop "duplicate" function
+duplicate :: Drawing -> Drawing
+duplicate = duplicateAt (V2 50 50)
+
+duplicateAt :: V2 Double -> Drawing -> Drawing
+duplicateAt v d = d <> translate v d
+
+
+
+-- animate' :: JSFun (IO ()) -> IO ()
+
+#ifdef __GHCJS__
+foreign import javascript unsafe
+  "var req = window.requestAnimationFrame;   var f = function() { $1(); req(f); };   req(f);"
+  animate' :: Callback (IO ()) -> IO ()
+
+animate :: IO () -> IO ()
+animate k = do
+  cb <- syncCallback ThrowWouldBlock k
+  animate' cb
 
 {-|
 Sample and render using requestAnimationFrame (forever).
@@ -472,32 +524,8 @@ animated b = do
             x <- pollBehavior b
             sink x
   return (s, start)
-
--- MISC test
-
-duplicateN :: Int -> V2 Double -> Drawing -> Drawing
-duplicateN n v d = mconcat $ take n $ iterate (translate v) d
-
--- The classic Photosphop "duplicate" function
-duplicate :: Drawing -> Drawing
-duplicate = duplicateAt (V2 50 50)
-
-duplicateAt :: V2 Double -> Drawing -> Drawing
-duplicateAt v d = d <> translate v d
-
-
-animate :: IO () -> IO ()
-animate k = do
-  cb <- syncCallback ThrowWouldBlock k
-  animate' cb
-
-
--- animate' :: JSFun (IO ()) -> IO ()
-
-foreign import javascript unsafe
-  "var req = window.requestAnimationFrame;   var f = function() { $1(); req(f); };   req(f);"
-  animate' :: Callback (IO ()) -> IO ()
-
-#else
-main = print "Dummy"
 #endif
+
+-- #else
+-- main = print "Dummy"
+-- #endif

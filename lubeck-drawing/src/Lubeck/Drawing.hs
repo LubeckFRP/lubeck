@@ -487,8 +487,8 @@ styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest
 addHandler :: Str -> (JSVal -> IO ()) -> Drawing -> Drawing
 addHandler = Prop2
 #else
-addHandler :: () -> Drawing -> Drawing
-addHandler _ = id
+addHandler :: Str -> a -> Drawing -> Drawing
+addHandler _ _ = id
 #endif
 
 -- {-| Embed an arbitrary SVG property on a drawing.
