@@ -485,7 +485,7 @@ styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest
 -}
 #ifdef __GHCJS__
 addHandler :: Str -> (JSVal -> IO ()) -> Drawing -> Drawing
-addHandler = prop2
+addHandler = Prop2
 #else
 addHandler :: Str -> a -> Drawing -> Drawing
 addHandler _ _ = id
@@ -629,26 +629,25 @@ moveOriginTo p = moveOriginBy (origin .-. p)
 -- FIXME should be the other way around!
 
 envelope :: Drawing -> Envelope V2 Double
-envelope = envelope2
--- envelope x = case x of
---   Circle        -> Envelope $ Just $ \v -> (0.5/norm v)
---   Rect          -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
---   Line          -> pointsEnvelope $ fmap P [V2 0 0, V2 1 0]
---   Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
---   -- No proper text envelopes, fake by using a single rectangles
---   -- https://github.com/BeautifulDestinations/lubeck/issues/73
---   Text _        -> envelope Rect
---
---   Embed _       -> mempty
---
---   Transf t x    -> transformEnvelope t (envelope x)
---   Style _ x     -> envelope x
--- #ifdef __GHCJS__
---   -- Prop  _ x     -> envelope x
---   Prop2 _ _ x   -> envelope x
--- #endif
---   Em            -> mempty
---   Ap xs         -> mconcat (fmap envelope xs)
+envelope x = case x of
+  Circle        -> Envelope $ Just $ \v -> (0.5/norm v)
+  Rect          -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
+  Line          -> pointsEnvelope $ fmap P [V2 0 0, V2 1 0]
+  Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
+  -- No proper text envelopes, fake by using a single rectangles
+  -- https://github.com/BeautifulDestinations/lubeck/issues/73
+  Text _        -> envelope Rect
+
+  Embed _       -> mempty
+
+  Transf t x    -> transformEnvelope t (envelope x)
+  Style _ x     -> envelope x
+#ifdef __GHCJS__
+  -- Prop  _ x     -> envelope x
+  Prop2 _ _ x   -> envelope x
+#endif
+  Em            -> mempty
+  Ap xs         -> mconcat (fmap envelope xs)
 
 pointsEnvelope :: [P2 Double] -> Envelope V2 Double
 pointsEnvelope [] = Envelope $ Nothing
@@ -705,7 +704,7 @@ data Embed
 Embed arbitrary SVG markup in a drawing.
 -}
 addEmbeddedSVG :: Embed -> Drawing
-addEmbeddedSVG = embed2
+addEmbeddedSVG = Embed
 
 {-|
 Embed arbitrary SVG markup in a drawing.
@@ -748,145 +747,31 @@ textXmlLightElementToEmbed = unE
 
   Images can be composed using the 'Monoid' instance, which overlays the two images so that their origins match exactly.
 -}
--- data Drawing
---   = Circle
---   | Rect
---   -- A line along the unit vector
---   | Line
---   -- A sequence of straight lines, closed or not. For closed lines, there is no need
---   -- to return the original point (i.e. the sum of the vectors does not have to be zeroV).
---   | Lines !Bool ![V2 Double]
---   | Text !Str
---
---   | Embed Embed
---
---   | Transf !(Transformation Double) !Drawing
---   | Style !Style !Drawing
---
--- #ifdef __GHCJS__
---   -- Embed arbitrary SVG property (typically used for event handlers)
---   -- | Prop !E.Property !Drawing
---   | Prop2 !Str (JSVal -> IO ()) !Drawing
--- #endif
---
---   | Em
---   -- Compose drawings
---   -- Left-most is a top,
---   | Ap ![Drawing]
+data Drawing
+  = Circle
+  | Rect
+  -- A line along the unit vector
+  | Line
+  -- A sequence of straight lines, closed or not. For closed lines, there is no need
+  -- to return the original point (i.e. the sum of the vectors does not have to be zeroV).
+  | Lines !Bool ![V2 Double]
+  | Text !Str
 
-type Drawing = Drawing2
+  | Embed Embed
 
--- typpe
-data Drawing2
-   = D2 (RNodeInfo -> RDrawing) (Envelope V2 Double)
--- TODO implement envelope, renderDrawing and combinators above
-instance Monoid Drawing2 where
-  mempty = em2
-
-  -- mappend Em x = x
-  -- mappend x Em = x
-  -- mappend (Ap xs) (Ap ys) = Ap (xs <> ys)
-  -- mappend x (Ap ys) = Ap (x : ys)
-  -- mappend (Ap xs) y = Ap (xs <> pure y)
-  -- mappend x y = Ap [x, y]
-  mappend x y  = ap2 [x, y]
-  mconcat = ap2
-
--- drawingToRDrawing :: Drawing2 -> RDrawing
-renderDrawing2 :: Drawing2 -> RDrawing
-renderDrawing2 (D2 f _) = f mempty
-{-# INLINABLE renderDrawing2 #-}
-
-drawing2ToRDrawing :: RNodeInfo -> Drawing2 -> RDrawing
-drawing2ToRDrawing info (D2 f _) = f info
-{-# INLINABLE drawing2ToRDrawing #-}
-
-envelope2 :: Drawing2 -> Envelope V2 Double
-envelope2 (D2 _ e) = e
-{-# INLINABLE envelope2 #-}
-
-circle2 :: Drawing2
-circle2 =
-  D2
-    (\nodeInfo -> RPrim nodeInfo RCircle)
-    (Envelope $ Just $ \v -> (0.5/norm v))
-
-rect2 :: Drawing2
-rect2 =
-  D2
-    (\nodeInfo -> RPrim nodeInfo RRect)
-    (pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)])
-
-line2 :: Drawing2
-line2 =
-  D2
-    (\nodeInfo -> RPrim nodeInfo RLine)
-    (pointsEnvelope $ fmap P [V2 0 0, V2 1 0])
-
-lines2 :: Bool -> [V2 Double] -> Drawing2
-lines2 closed vs =
-  D2
-    (\nodeInfo -> RPrim nodeInfo (RLines closed vs))
-    (pointsEnvelope $ offsetVectors origin vs)
-
-text2 :: Str -> Drawing2
-text2 t =
-  D2
-    (\nodeInfo -> RPrim nodeInfo (RText t))
-    (mempty)
-
-embed2 :: Embed -> Drawing2
-embed2 e =
-  D2
-    (\nodeInfo -> RPrim nodeInfo (REmbed e))
-    (mempty)
-
-transf2 :: (Transformation Double) -> Drawing2 -> Drawing2
-transf2 t x =
-  D2
-    (\nodeInfo -> drawing2ToRDrawing (nodeInfo <> toNodeInfoT t) x)
-    (transformEnvelope t (envelope2 x))
-
-style2 :: Style -> Drawing2 -> Drawing2
-style2 s x =
-  D2
-    (\nodeInfo -> drawing2ToRDrawing (nodeInfo <> toNodeInfoS s) x)
-    (envelope2 x)
-{-# INLINABLE circle2 #-}
-{-# INLINABLE rect2 #-}
-{-# INLINABLE line2 #-}
-{-# INLINABLE lines2 #-}
-{-# INLINABLE text2 #-}
-{-# INLINABLE embed2 #-}
-{-# INLINABLE transf2 #-}
-{-# INLINABLE style2 #-}
+  | Transf !(Transformation Double) !Drawing
+  | Style !Style !Drawing
 
 #ifdef __GHCJS__
-prop2 :: Str -> (JSVal -> IO ()) -> Drawing2 -> Drawing2
-prop2 attrName sink x =
-  D2
-    (\nodeInfo -> drawing2ToRDrawing
-      -- TODO arguably wrong composition order
-      (nodeInfo <> toNodeInfoH (singleTonHandlers attrName sink)) x)
-    (envelope2 x)
-{-# INLINABLE prop2 #-}
+  -- Embed arbitrary SVG property (typically used for event handlers)
+  -- | Prop !E.Property !Drawing
+  | Prop2 !Str (JSVal -> IO ()) !Drawing
 #endif
 
-em2 :: Drawing2
-em2 =
-  D2
-    (\nodeInfo -> mempty)
-    (mempty)
-{-# INLINABLE em2 #-}
-
-ap2 :: [Drawing2] -> Drawing2
-ap2 xs =
-  D2
-    (\nodeInfo ->  RMany nodeInfo (mapReverse recur xs))
-    (mconcat (fmap envelope2 xs))
-      where
-        recur = renderDrawing2
-{-# INLINABLE ap2 #-}
+  | Em
+  -- Compose drawings
+  -- Left-most is a top,
+  | Ap ![Drawing]
 
 -- -- TODO remove this, replace qwith RDrawing
 -- optimizeDrawing :: Drawing -> Drawing
@@ -907,30 +792,30 @@ ap2 xs =
 --     go x = x
 
 
--- printTreeInfo :: Drawing -> IO ()
--- printTreeInfo x = do
---   print $ "Tree N nodes " ++ show (drawingTreeNNodes x)
---   print $ "Tree depth   " ++ show (drawingTreeDepth x)
--- drawingTreeNNodes = drawingTreeF (+)
--- drawingTreeDepth = drawingTreeF max
---
--- drawingTreeF f = go
---   where
---     go Circle = 1
---     go Rect = 1
---     go Line = 1
---     go (Lines _ _) = 1
---     go (Text _) = 1
---     go (Embed _) = 1
---     go (Transf _ x) = go x + 1
---     go (Style _ x) = go x + 1
--- #ifdef __GHCJS__
---     -- go (Prop _ x) = go x + 1
---     go (Prop2 _ _ x) = go x + 1
--- #endif
---     go Em = 1
---     go (Ap xs) = foldr f 0 (fmap go xs)
---
+printTreeInfo :: Drawing -> IO ()
+printTreeInfo x = do
+  print $ "Tree N nodes " ++ show (drawingTreeNNodes x)
+  print $ "Tree depth   " ++ show (drawingTreeDepth x)
+drawingTreeNNodes = drawingTreeF (+)
+drawingTreeDepth = drawingTreeF max
+
+drawingTreeF f = go
+  where
+    go Circle = 1
+    go Rect = 1
+    go Line = 1
+    go (Lines _ _) = 1
+    go (Text _) = 1
+    go (Embed _) = 1
+    go (Transf _ x) = go x + 1
+    go (Style _ x) = go x + 1
+#ifdef __GHCJS__
+    -- go (Prop _ x) = go x + 1
+    go (Prop2 _ _ x) = go x + 1
+#endif
+    go Em = 1
+    go (Ap xs) = foldr f 0 (fmap go xs)
+
 
 -- TODO possible optimizations:
 --
@@ -946,15 +831,15 @@ ap2 xs =
 --       Transf Em = Em
 --       Ap [Ap xs, y, ...] = Ap (xs++[y] ...)
 
--- instance Monoid Drawing where
---   mempty  = Em
---
---   mappend Em x = x
---   mappend x Em = x
---   mappend (Ap xs) (Ap ys) = Ap (xs <> ys)
---   mappend x (Ap ys) = Ap (x : ys)
---   mappend (Ap xs) y = Ap (xs <> pure y)
---   mappend x y = Ap [x, y]
+instance Monoid Drawing where
+  mempty  = Em
+
+  mappend Em x = x
+  mappend x Em = x
+  mappend (Ap xs) (Ap ys) = Ap (xs <> ys)
+  mappend x (Ap ys) = Ap (x : ys)
+  mappend (Ap xs) y = Ap (xs <> pure y)
+  mappend x y = Ap [x, y]
 
   -- mconcat = Ap
 
@@ -1002,32 +887,32 @@ type Handler = ()
 type Handlers = ()
 #endif
 
--- drawingToRDrawing :: Drawing -> RDrawing
--- drawingToRDrawing = drawingToRDrawing' mempty
--- {-# INLINE drawingToRDrawing #-}
---
--- drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
--- drawingToRDrawing' nodeInfo x = case x of
---     Circle                 -> RPrim nodeInfo RCircle
---     Rect                   -> RPrim nodeInfo RRect
---     Line                   -> RPrim nodeInfo RLine
---     (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
---     (Text t)               -> RPrim nodeInfo (RText t)
---     (Embed e)              -> RPrim nodeInfo (REmbed e)
---     (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
---     (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
--- #ifdef __GHCJS__
---     (Prop2 attrName sink x) -> drawingToRDrawing'
---                                   -- TODO arguably wrong composition order
---                                   (nodeInfo <> toNodeInfoH (singleTonHandlers attrName sink)) x
--- #endif
---     Em        -> mempty
---     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
---     -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
---     -- TODO return empty if concatMap returns empty list
---     (Ap xs)   -> RMany nodeInfo (mapReverse recur xs)
---       where
---         recur = drawingToRDrawing' mempty
+drawingToRDrawing :: Drawing -> RDrawing
+drawingToRDrawing = drawingToRDrawing' mempty
+{-# INLINE drawingToRDrawing #-}
+
+drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
+drawingToRDrawing' nodeInfo x = case x of
+    Circle                 -> RPrim nodeInfo RCircle
+    Rect                   -> RPrim nodeInfo RRect
+    Line                   -> RPrim nodeInfo RLine
+    (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
+    (Text t)               -> RPrim nodeInfo (RText t)
+    (Embed e)              -> RPrim nodeInfo (REmbed e)
+    (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
+    (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
+#ifdef __GHCJS__
+    (Prop2 attrName sink x) -> drawingToRDrawing'
+                                  -- TODO arguably wrong composition order
+                                  (nodeInfo <> toNodeInfoH (singleTonHandlers attrName sink)) x
+#endif
+    Em        -> mempty
+    -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+    -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
+    -- TODO return empty if concatMap returns empty list
+    (Ap xs)   -> RMany nodeInfo (mapReverse recur xs)
+      where
+        recur = drawingToRDrawing' mempty
 
 mapReverse :: (a -> b) -> [a] -> [b]
 mapReverse f l =  rev l []
@@ -1035,7 +920,7 @@ mapReverse f l =  rev l []
     rev []     a = a
     rev (x:xs) a = rev xs (f x:a)
 
--- {-# INLINABLE drawingToRDrawing' #-}
+{-# INLINABLE drawingToRDrawing' #-}
 
 data RPrim
    = RCircle
@@ -1097,16 +982,16 @@ drawingRTreeFold f = go
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
-transparent      = em2
+transparent      = Em
 
 {-| A centered circle with radius one. -}
 circle :: Drawing
-circle    = circle2
+circle    = Circle
 {-# INLINABLE circle #-}
 
 {-| A centered square with a width and height of one. -}
 square :: Drawing
-square = rect2
+square = Rect
 {-# INLINABLE square #-}
 
 
@@ -1120,7 +1005,7 @@ triangle =
 
 {-| A centered horizontal line of length one. -}
 horizontalLine :: Drawing
-horizontalLine = translateX (-0.5) line2
+horizontalLine = translateX (-0.5) Line
 
 {-| A centered vertical line of length one. -}
 verticalLine :: Drawing
@@ -1131,7 +1016,7 @@ verticalLine = rotate (turn/4) horizontalLine
 Similar to 'polygon' except endpoints are not joined.
 -}
 segments :: [V2 Double] -> Drawing
-segments = lines2 False
+segments = Lines False
 
 {-| Draw a polygon.
 
@@ -1141,7 +1026,7 @@ Argument vectors need not have a zero sum (if they do not an implicit extra
 endpoint is assumed.
 -}
 polygon :: [V2 Double] -> Drawing
-polygon = lines2 True
+polygon = Lines True
 
 
 {-|
@@ -1171,7 +1056,7 @@ dash = style . dashing
 
 {-| Draw text. See also 'textWithOptions'. -}
 text :: Str -> Drawing
-text = text2
+text = Text
 
 textStart, textMiddle, textEnd :: Str -> Drawing
 
@@ -1325,7 +1210,7 @@ instance Monoid TextOptions where
 -- @
 --
 textWithOptions :: TextOptions -> Str -> Drawing
-textWithOptions opts = style allOfThem . text2
+textWithOptions opts = style allOfThem . Text
   where
     allOfThem = mconcat
       [ _fontWeight, _fontSize, _fontFamily, _fontStyle, _textAnchor
@@ -1415,8 +1300,8 @@ transform s (transform t image) = transform (s <> t) image
 @
  -}
 transform :: Transformation Double -> Drawing -> Drawing
--- transform _ Em = em2
-transform t dr = transf2 t dr
+transform _ Em = Em
+transform t dr = Transf t dr
 
 {-| Translates (move) an object. -}
 translation :: Num a => V2 a -> Transformation a
@@ -1592,8 +1477,8 @@ showEnvelope v drawing = case envelopeVMay v drawing of
 
 {-| Apply a style to a drawing. -}
 style :: Style -> Drawing -> Drawing
--- style _ Em = Em
-style s dr = style2 s dr
+style _ Em = Em
+style s dr = Style s dr
 
 {-| -}
 fillColor :: Colour Double -> Drawing -> Drawing
@@ -1649,7 +1534,7 @@ instance Monoid RenderingOptions where
 
 
 renderDrawing :: RenderingOptions -> Drawing -> RDrawing
-renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = renderDrawing2 (placeOrigo drawing)
+renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing (placeOrigo drawing)
   where
     placeOrigo :: Drawing -> Drawing
     -- placeOrigo = id
@@ -1730,100 +1615,100 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
       RMany nodeInfo rdrawings -> case map toSvg1 rdrawings of
         nodes -> E.g (nodeInfoToProperties nodeInfo) nodes
 
---
--- {-| Generate an SVG from a drawing. -}
--- toSvgOld :: RenderingOptions -> Drawing -> Svg
--- toSvgOld (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformIO $ do
---   -- printTreeInfo drawing
---   return $ svgTopNode
---     (toStr $ floor x)
---     (toStr $ floor y)
---     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
---     (single $ toSvg1 mempty mempty $ placeOrigo $ drawing)
---   where
---     P (V2 x y) = dimensions
---
---     svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
---     svgTopNode w h vb = E.svg
---       [ A.width (toJSString w)
---       , A.height (toJSString h)
---       , A.viewBox (toJSString vb) ]
---
---     placeOrigo :: Drawing -> Drawing
---     placeOrigo = case originPlacement of
---       TopLeft     -> id
---       Center      -> translateX (x/2) . translateY (y/(-2))
---       BottomLeft  -> translateY (y*(-1))
---
---     pointsToSvgString :: [P2 Double] -> Str
---     pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
---       where
---         toJSString = packStr
---         pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
---
---     embedToSvg :: Embed -> Svg
---     embedToSvg (EmbedContent str) = E.text (toJSString str)
---     embedToSvg (EmbedNode name attrs children) =
---       VD.node (toJSString name)
---         (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
---         (fmap embedToSvg children)
---
---     handlersToProperties :: Map Str (JSVal -> IO ()) -> [E.Property]
---     handlersToProperties = fmap (\(n,v) -> VD.on (toJSString n) v) . Map.toList
---
---     -- Because (IO ()) is not a monoid
---     apSink a b x = do
---       a x
---       b x
---
---     single x = [x]
---     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
---     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
---     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
---     reflY (V2 adx ady) = V2 adx (negate ady)
---
---     -- No optimization
---     drawing = drawing1
---
---     toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> Svg
---     toSvg1 hs ps x = case x of
---           Circle     -> E.circle
---             ([A.r "0.5", noScale]++(ps <> handlersToProperties hs))
---             []
---           Rect       -> E.rect
---             ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++(ps <> handlersToProperties hs))
---             []
---           Line -> E.line
---             ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++(ps <> handlersToProperties hs))
---             []
---           (Lines closed vs) -> (if closed then E.polygon else E.polyline)
---             ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++(ps <> handlersToProperties hs))
---             []
---           Text s -> E.text'
---             ([A.x "0", A.y "0"]++(ps <> handlersToProperties hs))
---             [E.text $ toJSString s]
---           Embed e -> embedToSvg e
---
---           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
---           -- As long as it is just event handlers, it doesn't matter
---           Transf t x -> E.g
---             [A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""]
---             (single $ toSvg1 hs ps x)
---           Style s x  -> E.g
---             [A.style $ toJSString $ styleToAttrString s]
---             (single $ toSvg1 hs ps x)
---
---           -- Prop p x             -> toSvg1 hs (p:ps) x
---           Prop2 name handler x -> toSvg1 (Map.unionWith apSink (Map.singleton name handler) hs) ps x
---
---           -- No point in embedding handlers to empty groups, but render anyway
---           Em         -> E.g (ps <> handlersToProperties hs) []
---           -- Event handlers applied to a group go on the g node
---           -- Note that if handlers and propeties conflict, handlers take precedence
---           -- Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty y, toSvg1 mempty mempty x]
---           Ap xs1 ->
---             let xs = reverse xs1 in
---               E.g (ps <> handlersToProperties hs) (fmap (toSvg1 mempty mempty) xs)
+
+{-| Generate an SVG from a drawing. -}
+toSvgOld :: RenderingOptions -> Drawing -> Svg
+toSvgOld (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerformIO $ do
+  printTreeInfo drawing
+  return $ svgTopNode
+    (toStr $ floor x)
+    (toStr $ floor y)
+    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+    (single $ toSvg1 mempty mempty $ placeOrigo $ drawing)
+  where
+    P (V2 x y) = dimensions
+
+    svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+    svgTopNode w h vb = E.svg
+      [ A.width (toJSString w)
+      , A.height (toJSString h)
+      , A.viewBox (toJSString vb) ]
+
+    placeOrigo :: Drawing -> Drawing
+    placeOrigo = case originPlacement of
+      TopLeft     -> id
+      Center      -> translateX (x/2) . translateY (y/(-2))
+      BottomLeft  -> translateY (y*(-1))
+
+    pointsToSvgString :: [P2 Double] -> Str
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = packStr
+        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+
+    embedToSvg :: Embed -> Svg
+    embedToSvg (EmbedContent str) = E.text (toJSString str)
+    embedToSvg (EmbedNode name attrs children) =
+      VD.node (toJSString name)
+        (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
+        (fmap embedToSvg children)
+
+    handlersToProperties :: Map Str (JSVal -> IO ()) -> [E.Property]
+    handlersToProperties = fmap (\(n,v) -> VD.on (toJSString n) v) . Map.toList
+
+    -- Because (IO ()) is not a monoid
+    apSink a b x = do
+      a x
+      b x
+
+    single x = [x]
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+    negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    reflY (V2 adx ady) = V2 adx (negate ady)
+
+    -- No optimization
+    drawing = drawing1
+
+    toSvg1 :: (Map Str (JSVal -> IO ())) -> [E.Property] -> Drawing -> Svg
+    toSvg1 hs ps x = case x of
+          Circle     -> E.circle
+            ([A.r "0.5", noScale]++(ps <> handlersToProperties hs))
+            []
+          Rect       -> E.rect
+            ([A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale]++(ps <> handlersToProperties hs))
+            []
+          Line -> E.line
+            ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale]++(ps <> handlersToProperties hs))
+            []
+          (Lines closed vs) -> (if closed then E.polygon else E.polyline)
+            ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++(ps <> handlersToProperties hs))
+            []
+          Text s -> E.text'
+            ([A.x "0", A.y "0"]++(ps <> handlersToProperties hs))
+            [E.text $ toJSString s]
+          Embed e -> embedToSvg e
+
+          -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
+          -- As long as it is just event handlers, it doesn't matter
+          Transf t x -> E.g
+            [A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""]
+            (single $ toSvg1 hs ps x)
+          Style s x  -> E.g
+            [A.style $ toJSString $ styleToAttrString s]
+            (single $ toSvg1 hs ps x)
+
+          -- Prop p x             -> toSvg1 hs (p:ps) x
+          Prop2 name handler x -> toSvg1 (Map.unionWith apSink (Map.singleton name handler) hs) ps x
+
+          -- No point in embedding handlers to empty groups, but render anyway
+          Em         -> E.g (ps <> handlersToProperties hs) []
+          -- Event handlers applied to a group go on the g node
+          -- Note that if handlers and propeties conflict, handlers take precedence
+          -- Ap x y     -> E.g (ps <> handlersToProperties hs) [toSvg1 mempty mempty y, toSvg1 mempty mempty x]
+          Ap xs1 ->
+            let xs = reverse xs1 in
+              E.g (ps <> handlersToProperties hs) (fmap (toSvg1 mempty mempty) xs)
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
@@ -1842,89 +1727,88 @@ toSvgAny
   -> (Str -> n)
   -> (Str -> [(Str,Str)] -> [n] -> n)
   -> n
-toSvgAny = undefined
--- toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
---   svgTopNode
---     (toStr $ floor x)
---     (toStr $ floor y)
---     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
---     (toSvg1 [] $ placeOrigo $ drawing)
---   where
---     mkA k v = (k, v)
---
---     P (V2 x y) = dimensions
---
---     -- svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
---     svgTopNode w h vb = mkN "svg"
---       [ mkA "width" w
---       , mkA "height" h
---       , mkA "viewBox" vb
---       -- Needed for static SVG and doesn't do any harm in the DOM
---       , mkA "xmlns:svg" "http://www.w3.org/2000/svg"
---       , mkA "xmlns" "http://www.w3.org/2000/svg"
---       ]
---
---     placeOrigo :: Drawing -> Drawing
---     placeOrigo = case originPlacement of
---       TopLeft     -> id
---       Center      -> translateX (x/2) . translateY (y/(-2))
---       BottomLeft  -> translateY (y*(-1))
---
---     pointsToSvgString :: [P2 Double] -> Str
---     pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
---       where
---         toJSString = packStr
---         pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
---
---     -- embedToSvg :: Embed -> n
---     embedToSvg (EmbedContent x)    = mkT x
---     embedToSvg (EmbedNode n as ns) = mkN n as (fmap embedToSvg ns)
---
---     -- toSvg1 :: [(Str, Str)] -> Drawing -> [Svg]
---     toSvg1 ps x = let
---         single x = [x]
---         noScale = mkA "vector-effect" "non-scaling-stroke"
---         negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
---         offsetVectorsWithOrigin p vs = p : offsetVectors p vs
---         reflY (V2 adx ady) = V2 adx (negate ady)
---       in case x of
---           Circle     -> single $ mkN "circle"
---             ([mkA "r" "0.5", noScale]++ps)
---             []
---           Rect       -> single $ mkN "rect"
---             ([mkA "x" "-0.5", mkA "y" "-0.5", mkA "width" "1", mkA "height" "1", noScale]++ps)
---             []
---           Line -> single $ mkN "line"
---             ([mkA "x1" "0", mkA "y1" "0", mkA "x2" "1", mkA "y2" "0", noScale]++ps)
---             []
---           (Lines closed vs) -> single $ (if closed then mkN "polygon" else mkN "polyline")
---             ([mkA "points" (pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
---             []
---           Text s -> single $ mkN "text"
---             ([mkA "x" "0", mkA "y" "0"]++ps)
---             [mkT s]
---           Embed e -> single $ embedToSvg e
---
---           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
---           -- As long as it is just event handlers, it doesn't matter
---           Transf t x -> single $ mkN "g"
---             [mkA "transform" $ "matrix" <> toStr (negY $ transformationToMatrix t) <> ""]
---             (toSvg1 ps x)
---           Style s x  -> single $ mkN "g"
---             [mkA "style" $ styleToAttrString s]
---             (toSvg1 ps x)
---
--- #ifdef __GHCJS__
---           -- Ignore event handlers
---           -- Prop  _ x   -> toSvg1 ps x
---           Prop2 _ _ x -> toSvg1 ps x
--- #endif
---
---           -- No point in embedding handlers to empty groups, but render anyway
---           Em         -> single $ mkN "g" ps []
---           -- Event handlers applied to a group go on the g node
---           -- Ap x y     -> single $ mkN "g" ps (toSvg1 [] y ++ toSvg1 [] x)
---           Ap xs      -> single $ mkN "g" ps (mconcat $ fmap (toSvg1 []) $ reverse xs)
+toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
+  svgTopNode
+    (toStr $ floor x)
+    (toStr $ floor y)
+    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+    (toSvg1 [] $ placeOrigo $ drawing)
+  where
+    mkA k v = (k, v)
+
+    P (V2 x y) = dimensions
+
+    -- svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+    svgTopNode w h vb = mkN "svg"
+      [ mkA "width" w
+      , mkA "height" h
+      , mkA "viewBox" vb
+      -- Needed for static SVG and doesn't do any harm in the DOM
+      , mkA "xmlns:svg" "http://www.w3.org/2000/svg"
+      , mkA "xmlns" "http://www.w3.org/2000/svg"
+      ]
+
+    placeOrigo :: Drawing -> Drawing
+    placeOrigo = case originPlacement of
+      TopLeft     -> id
+      Center      -> translateX (x/2) . translateY (y/(-2))
+      BottomLeft  -> translateY (y*(-1))
+
+    pointsToSvgString :: [P2 Double] -> Str
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = packStr
+        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+
+    -- embedToSvg :: Embed -> n
+    embedToSvg (EmbedContent x)    = mkT x
+    embedToSvg (EmbedNode n as ns) = mkN n as (fmap embedToSvg ns)
+
+    -- toSvg1 :: [(Str, Str)] -> Drawing -> [Svg]
+    toSvg1 ps x = let
+        single x = [x]
+        noScale = mkA "vector-effect" "non-scaling-stroke"
+        negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+        offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+        reflY (V2 adx ady) = V2 adx (negate ady)
+      in case x of
+          Circle     -> single $ mkN "circle"
+            ([mkA "r" "0.5", noScale]++ps)
+            []
+          Rect       -> single $ mkN "rect"
+            ([mkA "x" "-0.5", mkA "y" "-0.5", mkA "width" "1", mkA "height" "1", noScale]++ps)
+            []
+          Line -> single $ mkN "line"
+            ([mkA "x1" "0", mkA "y1" "0", mkA "x2" "1", mkA "y2" "0", noScale]++ps)
+            []
+          (Lines closed vs) -> single $ (if closed then mkN "polygon" else mkN "polyline")
+            ([mkA "points" (pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
+            []
+          Text s -> single $ mkN "text"
+            ([mkA "x" "0", mkA "y" "0"]++ps)
+            [mkT s]
+          Embed e -> single $ embedToSvg e
+
+          -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
+          -- As long as it is just event handlers, it doesn't matter
+          Transf t x -> single $ mkN "g"
+            [mkA "transform" $ "matrix" <> toStr (negY $ transformationToMatrix t) <> ""]
+            (toSvg1 ps x)
+          Style s x  -> single $ mkN "g"
+            [mkA "style" $ styleToAttrString s]
+            (toSvg1 ps x)
+
+#ifdef __GHCJS__
+          -- Ignore event handlers
+          -- Prop  _ x   -> toSvg1 ps x
+          Prop2 _ _ x -> toSvg1 ps x
+#endif
+
+          -- No point in embedding handlers to empty groups, but render anyway
+          Em         -> single $ mkN "g" ps []
+          -- Event handlers applied to a group go on the g node
+          -- Ap x y     -> single $ mkN "g" ps (toSvg1 [] y ++ toSvg1 [] x)
+          Ap xs      -> single $ mkN "g" ps (mconcat $ fmap (toSvg1 []) $ reverse xs)
 
 
 toSvgStr :: RenderingOptions -> Drawing -> Str
