@@ -75,7 +75,7 @@ foreign import javascript unsafe "$1.offsetY"
 -- TODO right property to read?
 #else
 type Html = ()
-data Event = Event
+data Event = Event ()
 movementX :: Event -> Double
 movementY :: Event -> Double
 screenX :: Event -> Double
