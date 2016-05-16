@@ -134,6 +134,7 @@ import Control.Monad (forever, forM_, join)
 import Control.Monad.STM (atomically)
 import qualified Control.Concurrent.STM.TVar as TVar
 import Control.Concurrent.STM.TVar(TVar)
+import Data.IORef
 
 import qualified Data.IntMap as Map
 import Data.IntMap (IntMap)
@@ -150,15 +151,25 @@ import qualified Data.Traversable
 -- UNDERLYING
 
 type FRP = IO
-type Var = TVar
+-- type Var = TVar
+type Var = IORef
 newVar     :: a -> FRP (Var a)
 modifyVar  :: Var a -> (a -> a) -> FRP ()
 readVar    :: Var a -> FRP a
 writeVar   :: Var a -> a -> FRP ()
-newVar         = TVar.newTVarIO
-modifyVar v f  = atomically $ TVar.modifyTVar v f
-writeVar v b   = atomically $ TVar.writeTVar v b
-readVar v      = TVar.readTVarIO v
+-- newVar         = TVar.newTVarIO
+-- modifyVar v f  = atomically $ TVar.modifyTVar v f
+-- writeVar v b   = atomically $ TVar.writeTVar v b
+-- readVar v      = TVar.readTVarIO v
+
+newVar    = newIORef
+modifyVar = modifyIORef
+writeVar  = writeIORef
+readVar   = readIORef
+{-# INLINE newVar #-}
+{-# INLINE modifyVar #-}
+{-# INLINE writeVar #-}
+{-# INLINE readVar #-}
 
 frpInternalLog :: Sink String
 frpInternalLog _ = return ()

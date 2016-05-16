@@ -1533,13 +1533,6 @@ instance Monoid RenderingOptions where
   mappend = const
 
 
-#ifdef __GHCJS__
-toSvg = toSvgNew
-
-{-| Generate an SVG from a drawing. -}
-toSvgNew :: RenderingOptions -> Drawing -> Svg
-toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
-
 renderDrawing :: RenderingOptions -> Drawing -> RDrawing
 renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing (placeOrigo drawing)
   where
@@ -1551,6 +1544,14 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
       BottomLeft  -> translateY (y*(-1))
 
     P (V2 x y) = dimensions
+
+
+#ifdef __GHCJS__
+toSvg = toSvgNew
+
+{-| Generate an SVG from a drawing. -}
+toSvgNew :: RenderingOptions -> Drawing -> Svg
+toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
 
 {-| Generate an SVG from a drawing. -}
 emitDrawing :: RenderingOptions -> RDrawing -> Svg
@@ -1711,9 +1712,6 @@ toSvgOld (RenderingOptions {dimensions, originPlacement}) drawing1 = unsafePerfo
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
-
-renderDrawing :: RenderingOptions -> Drawing -> RDrawing
-renderDrawing _ _ = mempty
 
 emitDrawing :: RenderingOptions -> RDrawing -> ()
 emitDrawing _ _ = mempty
