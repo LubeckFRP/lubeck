@@ -30,7 +30,7 @@ packages:
     commit: 0d2fa728822e232c7f0b5040ac0783313385d686
 - location:
     git: git@github.com:BeautifulDestinations/benchmark-hs.git
-    commit: dad5e4cd83481d21be8e1c12f904d94bc1c537f6
+    commit: dab13ed9e822dedf7ef80e16252be2be167e188b
 - location:
     git: git@github.com:msakai/data-interval.git
     commit: f57e950e53e5499f1cbc2609382521bf52105b5e

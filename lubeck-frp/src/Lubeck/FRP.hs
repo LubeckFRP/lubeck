@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables, BangPatterns #-}
 
 {-|
 
@@ -122,6 +122,8 @@ module Lubeck.FRP
 
   -- * Performance
   , fastMconcatS3
+  , strictifyS
+  , strictify
   ) where
 
 import Prelude hiding (filter)
@@ -733,20 +735,20 @@ fastMconcat :: Monoid a => [Signal a] -> Signal a
 fastMconcat = mconcat
 
 
--- -- | Evaluates events passing through to WHNF before propagating
--- strictify :: Events a -> FRP (Events a)
--- strictify e = do
---   (s,e2) <- newEvent
---   subscribeEvent e $ \x -> seq x (s x)
---   return e2
---
--- -- | Evaluates events passing through to WHNF before propagating
--- strictifyS :: Signal a -> FRP (Signal a)
--- strictifyS s = do
---   !z <- pollBehavior (current s)
---   u2 <- strictify (updates s)
---   stepperS z u2
---
+-- | Evaluates events passing through to WHNF before propagating
+strictify :: Events a -> FRP (Events a)
+strictify e = do
+  (s,e2) <- newEvent
+  subscribeEvent e $ \x -> seq x (s x)
+  return e2
+
+-- | Evaluates events passing through to WHNF before propagating
+strictifyS :: Signal a -> FRP (Signal a)
+strictifyS s = do
+  !z <- pollBehavior (current s)
+  u2 <- strictify (updates s)
+  stepperS z u2
+
 
 
 {-
