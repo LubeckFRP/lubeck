@@ -1,13 +1,14 @@
 
-{-# LANGUAGE BangPatterns, OverloadedStrings, NoImplicitPrelude #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables #-}
 
 import BasePrelude
 import Lubeck.FRP
-import Web.Benchmark (add, addWithPrepare, run, onCycle, onComplete, liftIO, name, hz, benchmarks)
+import GHCJS.Types(JSString)
+import Web.Benchmark (SuiteM, add, addWithPrepare, run, onCycle, onComplete, liftIO, name, hz, benchmarks)
 
 main = run $ do
   add "newEvent" $ do
-    -- (_,_) <- newEvent ::/ FRP (Sink Int, Events Int)
+    (u,e :: Events Int) <- newEvent
     return ()
 
   addWithPrepare "pollBehavior (simple)" $ do
@@ -220,11 +221,19 @@ main = run $ do
       return ()
 
   onCycle $ \b -> do
-    print $ " Completed: " <> name b <> ": " <> fromString (show $ hz b)
+    print $ " Completed: " <> name b <> ": " <> fromString (show $ hz b) <> " Hz"
   onComplete $ \s -> do
     print "Done"
-    bs <- benchmarks s
-    forM_ bs $ \b -> do
-      print $ " " <> name b <> ": " <> fromString (show $ hz b)
+    -- bs <- benchmarks s
+    -- forM_ bs $ \b -> do
+    --   print $ " " <> name b <> ": " <> fromString (show $ hz b) <> " Hz"
 
   liftIO $ print "Starting benchmarks..."
+
+
+{-|
+Run a bunch of benchmarks for a given FRP network.
+-}
+benchFRPNetwork :: JSString -> (Events Int -> Events (FRP ())) -> SuiteM ()
+benchFRPNetwork name network = do
+  -- TODO

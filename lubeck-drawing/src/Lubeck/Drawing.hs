@@ -215,6 +215,7 @@ module Lubeck.Drawing
   , RDrawing
   , renderDrawing
   , emitDrawing
+  , emitDrawingSTRIPPED
   ) where
 
 import Control.Applicative
@@ -938,7 +939,7 @@ data RNodeInfo
     }
 
 data RDrawing
-  = RPrim !RNodeInfo RPrim
+  = RPrim !RNodeInfo !RPrim
   | RMany !RNodeInfo ![RDrawing]
 
 instance Monoid RDrawing where
@@ -1552,6 +1553,63 @@ toSvg = toSvgNew
 {-| Generate an SVG from a drawing. -}
 toSvgNew :: RenderingOptions -> Drawing -> Svg
 toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
+
+{-| Generate an SVG from a drawing. -}
+emitDrawingSTRIPPED :: RenderingOptions -> RDrawing -> Svg
+emitDrawingSTRIPPED (RenderingOptions {dimensions, originPlacement}) !mDrawing = E.svg [] []
+  -- case mDrawing of
+  --   (drawing :: RDrawing) ->
+  --     (toSvg1 drawing)
+  -- where
+  --   svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+  --   svgTopNode w h vb = E.svg
+  --     [ A.width (toJSString w)
+  --     , A.height (toJSString h)
+  --     , A.viewBox (toJSString vb) ]
+  --
+  --   pointsToSvgString :: [P2 Double] -> Str
+  --   pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+  --     where
+  --       toJSString = packStr
+  --       pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+  --
+  --   embedToSvg :: Embed -> Svg
+  --   embedToSvg (EmbedContent str) = E.text (toJSString str)
+  --   embedToSvg (EmbedNode name attrs children) =
+  --     VD.node (toJSString name)
+  --       (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
+  --       (fmap embedToSvg children)
+  --
+  --   single x = [x]
+  --   noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+  --   -- negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+  --   offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+  --   reflY (V2 adx ady) = V2 adx (negate ady)
+  --   P (V2 x y) = dimensions
+  --
+  --   toSvg1 :: RDrawing -> Svg
+  --   toSvg1 drawing = case drawing of
+  --     RPrim nodeInfo prim -> case prim of
+  --       RCircle -> E.circle
+  --         (nodeInfoToProperties nodeInfo ++ [A.r "0.5", noScale])
+  --         []
+  --       RRect -> E.rect
+  --         (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
+  --         []
+  --       RLine -> E.line
+  --         ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
+  --         []
+  --       (RLines closed vs) -> (if closed then E.polygon else E.polyline)
+  --         ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (map reflY vs)), noScale] ++ nodeInfoToProperties nodeInfo)
+  --         []
+  --       (RText s) -> E.text'
+  --         ([A.x "0", A.y "0"] ++ nodeInfoToProperties nodeInfo)
+  --         [E.text $ toJSString s]
+  --       -- TODO need extra group for nodeInfo etc
+  --       (REmbed e) -> embedToSvg e
+  --     RMany nodeInfo rdrawings -> case map toSvg1 rdrawings of
+  --       nodes -> E.g (nodeInfoToProperties nodeInfo) nodes
+
 
 {-| Generate an SVG from a drawing. -}
 emitDrawing :: RenderingOptions -> RDrawing -> Svg

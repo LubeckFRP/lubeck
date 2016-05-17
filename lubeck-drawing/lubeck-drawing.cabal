@@ -40,10 +40,11 @@ executable lubeck-drawing-bench
   build-depends:       base
                      , base-prelude
                     --  , lens
-                    --  , linear
-                    --  , colour
+                     , linear
+                     , colour
                      , lubeck-core
                      , lubeck-drawing
+                     , MonadRandom
   if impl(ghcjs)
     build-depends:     ghcjs-base
                     --  , lubeck-web
