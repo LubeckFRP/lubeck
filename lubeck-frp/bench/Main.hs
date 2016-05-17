@@ -53,7 +53,7 @@ main = do
     s3 <- stepperS mempty e3
 
     let allS = mconcat [s1,s2,s3]
-    subscribeEvent (updates allS) $ \x -> seq x (return ())
+    subscribeEvent (updates allS) $ \x -> seq (getSum x) (return ())
 
     pure $ do
       u1 (Sum 2)
@@ -83,6 +83,25 @@ main = do
       u3 ([1..10000])
       u3 ([1..10000])
       return ()
+  suite <- prepareAndAdd suite "mconcat (signals, very slow monoid)" $ do
+    (u1,e1) <- newEvent
+    (u2,e2) <- newEvent
+    (u3,e3) <- newEvent
+    s1 <- stepperS mempty e1
+    s2 <- stepperS mempty e2
+    s3 <- stepperS mempty e3
+
+    let allS = mconcat [s1,s2,s3]
+    subscribeEvent (updates allS) $ \x -> seq (length x) (return ())
+
+    pure $ do
+      u1 ([1..10000])
+      u1 ([1..10000])
+      u2 ([1..10000])
+      -- u2 ([1..10000])
+      u3 ([1..10000])
+      u3 ([1..10000])
+      return ()
 
   suite <- prepareAndAdd suite "fastMconcatS3 (signals, fast monoid)" $ do
     (u1,e1) <- newEvent
@@ -93,7 +112,7 @@ main = do
     s3 <- stepperS mempty e3
 
     allS <- fastMconcatS3 s1 s2 s3
-    subscribeEvent (updates allS) $ \x -> seq x (return ())
+    subscribeEvent (updates allS) $ \x -> seq (getSum x) (return ())
 
     pure $ do
       u1 (Sum 2)
@@ -120,6 +139,25 @@ main = do
       u1 ([1..10000])
       u2 ([1..10000])
       u2 ([1..10000])
+      u3 ([1..10000])
+      u3 ([1..10000])
+      return ()
+  suite <- prepareAndAdd suite "fastMconcatS3 (signals, very slow monoid)" $ do
+    (u1,e1) <- newEvent
+    (u2,e2) <- newEvent
+    (u3,e3) <- newEvent
+    s1 <- stepperS mempty e1
+    s2 <- stepperS mempty e2
+    s3 <- stepperS mempty e3
+
+    allS <- fastMconcatS3 s1 s2 s3
+    subscribeEvent (updates allS) $ \x -> seq (length x) (return ())
+
+    pure $ do
+      u1 ([1..10000])
+      u1 ([1..10000])
+      u2 ([1..10000])
+      -- u2 ([1..10000])
       u3 ([1..10000])
       u3 ([1..10000])
       return ()
