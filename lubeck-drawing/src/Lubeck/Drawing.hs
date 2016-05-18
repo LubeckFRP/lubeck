@@ -230,6 +230,9 @@ import qualified Data.List
 import qualified Data.Ord
 import qualified Data.Map.Strict as Map
 import qualified Data.String
+import qualified Data.Sequence as Seq
+import Data.Sequence(Seq)
+import Data.Foldable(toList)
 
 import Linear.Vector
 import Linear.Affine
@@ -915,11 +918,11 @@ drawingToRDrawing' nodeInfo x = case x of
       where
         recur = drawingToRDrawing' mempty
 
-mapReverse :: (a -> b) -> [a] -> [b]
-mapReverse f l =  rev l []
+mapReverse :: (a -> b) -> [a] -> Seq b
+mapReverse f l =  rev l mempty
   where
     rev []     a = a
-    rev (x:xs) a = rev xs (f x:a)
+    rev (x:xs) a = rev xs (f x Seq.<| a)
 
 {-# INLINABLE drawingToRDrawing' #-}
 
@@ -927,6 +930,7 @@ data RPrim
    = RCircle
    | RRect
    | RLine
+   -- TODO use Seq not []
    | RLines !Bool ![V2 Double]
    | RText !Str
    | REmbed !Embed
@@ -940,15 +944,15 @@ data RNodeInfo
 
 data RDrawing
   = RPrim !RNodeInfo !RPrim
-  | RMany !RNodeInfo ![RDrawing]
+  | RMany !RNodeInfo !(Seq RDrawing)
 
 instance Monoid RDrawing where
-  mempty = RMany mempty []
+  mempty = RMany mempty mempty
 
   -- TODO this could emit extra nodes
-  mappend x y = RMany mempty [y, x]
+  mappend x y = RMany mempty (y Seq.<| pure x)
 
-  mconcat     = RMany mempty . reverse
+  mconcat     = RMany mempty . mapReverse id
 
 
 toNodeInfoT :: Transformation Double -> RNodeInfo
@@ -1556,7 +1560,7 @@ toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
 
 {-| Generate an SVG from a drawing. -}
 emitDrawingSTRIPPED :: RenderingOptions -> RDrawing -> Svg
-emitDrawingSTRIPPED (RenderingOptions {dimensions, originPlacement}) !mDrawing = E.svg [] []
+emitDrawingSTRIPPED !(RenderingOptions {dimensions, originPlacement}) !mDrawing = E.svg [] []
   -- case mDrawing of
   --   (drawing :: RDrawing) ->
   --     (toSvg1 drawing)
@@ -1670,8 +1674,9 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
           [E.text $ toJSString s]
         -- TODO need extra group for nodeInfo etc
         (REmbed e) -> embedToSvg e
-      RMany nodeInfo rdrawings -> case map toSvg1 rdrawings of
-        nodes -> E.g (nodeInfoToProperties nodeInfo) nodes
+      RMany nodeInfo rdrawings -> case fmap toSvg1 rdrawings of
+        -- TODO use seq in virtual-dom too!
+        nodes -> E.g (nodeInfoToProperties nodeInfo) (toList nodes)
 
 
 {-| Generate an SVG from a drawing. -}

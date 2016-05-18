@@ -237,3 +237,4 @@ Run a bunch of benchmarks for a given FRP network.
 benchFRPNetwork :: JSString -> (Events Int -> Events (FRP ())) -> SuiteM ()
 benchFRPNetwork name network = do
   -- TODO
+  return ()
