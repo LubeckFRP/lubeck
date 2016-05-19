@@ -419,7 +419,7 @@ main = do
   setupRender2
 
   -- retainMain
-  (view0, zoomActive) <- onOff "Zoom active" True
+  (view0, zoomActive) <- onOff "Zoom active" False
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
   let zoomXY = liftA2 V2 zoomX zoomY
@@ -468,36 +468,37 @@ main = do
   -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
-  -- (dr, _) <- dragRect zoomActive
+  (dr, _) <- dragRect zoomActive
 
-  -- (srds :: [SRDrawing]) <- mapM strictifyS $
-  -- -- let (srds :: [SRDrawing]) =
-  --             -- fmap (fmap $ renderDrawing opts)
-  --               [ fmap (renderDrawingTrace "R Zoom") dr
-  --               , fmap (renderDrawingTrace "R Circle and square") dc1
-  --               -- , fmap (renderDrawingTrace "Hoverable square") sqs2
-  --               , fmap (renderDrawingTrace "R Plot") plotSD
-  --               -- , fmap (renderDrawingTrace "Plot2") plotSD2
-  --               -- , fmap (renderDrawingTrace "Plot3") plotSD3
-  --               -- , fmap (renderDrawingTrace "Plot4") plotSD4
-  --               -- , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
-  --               ]
-  -- -- let (sd :: SRDrawing) = mconcat srds
-  -- (sd :: SRDrawing) <- let [a,b,c] = srds in fastMconcatS3 a b c
+  (srds :: [SRDrawing]) <- mapM strictifyS $
+  -- let (srds :: [SRDrawing]) =
+              -- fmap (fmap $ renderDrawing opts)
+                [ fmap (renderDrawingTrace "R Circle and square") dc1
+                -- , fmap (renderDrawingTrace "R Zoom") dr
+                -- , fmap (renderDrawingTrace "Hoverable square") sqs2
+                , sqs2
+                , fmap (renderDrawingTrace "R Plot") plotSD
+                -- , fmap (renderDrawingTrace "Plot2") plotSD2
+                -- , fmap (renderDrawingTrace "Plot3") plotSD3
+                -- , fmap (renderDrawingTrace "Plot4") plotSD4
+                -- , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
+                ]
+  -- let (sd :: SRDrawing) = mconcat srds
+  (sd :: SRDrawing) <- let [a,b,c] = srds in fastMconcatS3 a b c
 
-  foo <- fastMconcatS3
-                    sqs2
-                    sqs3
-                    sqs4
-  bar <- fastMconcatS3
-                    sqs5
-                    sqs6
-                    sqs7
-  sd <- fastMconcatS3 foo bar sqs8
+  -- foo <- fastMconcatS3
+  --                   sqs2
+  --                   sqs3
+  --                   sqs4
+  -- bar <- fastMconcatS3
+  --                   sqs5
+  --                   sqs6
+  --                   sqs7
+  -- sd <- fastMconcatS3 foo bar sqs8
 #ifdef __GHCJS__
   let allS =
-            fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
             -- mconcat [view0, view1, view2,
+            fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
             -- ]
 
   -- runAppReactive $ allS
@@ -513,30 +514,30 @@ main = do
   where
     !opts = mempty { dimensions = P (V2 1600 800) }
 
--- | Evaluates events passing through to WHNF before propagating
-strictify :: Events a -> FRP (Events a)
-strictify e = do
-  (s,e2) <- newEvent
-  subscribeEvent e $ \x -> seq x (s x)
-  return e2
-
--- | Evaluates events passing through to WHNF before propagating
-strictifyS :: Signal a -> FRP (Signal a)
-strictifyS s = do
-  !z <- pollBehavior (current s)
-  u2 <- strictify (updates s)
-  stepperS z u2
+-- -- | Evaluates events passing through to WHNF before propagating
+-- strictify :: Events a -> FRP (Events a)
+-- strictify e = do
+--   (s,e2) <- newEvent
+--   subscribeEvent e $ \x -> seq x (s x)
+--   return e2
+--
+-- -- | Evaluates events passing through to WHNF before propagating
+-- strictifyS :: Signal a -> FRP (Signal a)
+-- strictifyS s = do
+--   !z <- pollBehavior (current s)
+--   u2 <- strictify (updates s)
+--   stepperS z u2
 --
 
 emitDrawing2 opts x = unsafePerformIO $ do
-  beginEmit
-  let !r = emitDrawing opts x
-  endEmit
+  -- beginEmit
+  let !r = emitDrawing' opts x
+  -- endEmit
   pure r
 renderDrawing2 opts x = unsafePerformIO $ do
-  beginRender
+  -- beginRender
   let !r = renderDrawing opts x
-  endRender
+  -- endRender
   pure r
 
 foreign import javascript safe "window.beginEmit = function(){ for (i = 0; i < 100000; i++){ i = i } }" setupEmit :: IO ()

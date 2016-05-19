@@ -21,21 +21,27 @@ main = run $ do
   -- Run twice so JIT optimizations have time to kick in
   twice $ do
     benchRenderEmitForDrawing "square" $ square
-    benchRenderEmitForDrawing "10 squares" $ mconcat $ replicate 10 square
+    -- benchRenderEmitForDrawing "10 squares" $ mconcat $ replicate 10 square
     benchRenderEmitForDrawing "100 squares" $ mconcat $ replicate 100 square
     benchRenderEmitForDrawing "1,000 squares" $ mconcat $ replicate 1000 square
-    benchRenderEmitForDrawing "10,000 squares" $ mconcat $ replicate 10000 square
+    -- benchRenderEmitForDrawing "10,000 squares" $ mconcat $ replicate 10000 square
     -- benchRenderEmitForDrawing "100,000 squares" $ mconcat $ replicate 100000 square
 
-    benchRenderEmitForDrawing "10,000 squares (styled, inner)" $ mconcat $ replicate 10000 (fillColor C.red square)
-    benchRenderEmitForDrawing "10,000 squares (styled, outer)" $ fillColor C.red $ mconcat $ replicate 10000 square
+    benchRenderEmitForDrawing "1,000 squares (styled, inner)" $ mconcat $ replicate 1000 (fillColor C.red square)
+    benchRenderEmitForDrawing "1,000 squares (styled, outer)" $ fillColor C.red $ mconcat $ replicate 1000 square
+
+    benchRenderEmitForDrawing "1,000 squares (transformed, inner)" $ mconcat $ replicate 1000 (scaleX 2 square)
+    benchRenderEmitForDrawing "1,000 squares (transformed, outer)" $ scaleX 2 $ mconcat $ replicate 1000 square
+
+    -- benchRenderEmitForDrawing "10,000 squares (styled, inner)" $ mconcat $ replicate 10000 (fillColor C.red square)
+    -- benchRenderEmitForDrawing "10,000 squares (styled, outer)" $ fillColor C.red $ mconcat $ replicate 10000 square
 
     -- benchRenderEmitForDrawing "10,000 squares (styled, transformed)" $ mconcat $ replicate 10000 (translateX 100 square)
 
     benchRenderEmitForDrawing "Kandinsky" $ mconcat
             [ mconcat [fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, strokeColor C.blue $ strokeWidth 2 $ fillColor C.red $ scale 10 square]
-            , mconcat [fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, strokeColor C.blue $ strokeWidth 2 $ fillColor C.red $ scale 10 square]
-            , mconcat [fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, strokeColor C.blue $ strokeWidth 2 $ fillColor C.red $ scale 10 square]
+            , mconcat [fillColor C.red $ scale 10 square, fillColor C.green $ scale 10 square, fillColor C.red $ scale 10 square, strokeColor C.blue $ strokeWidth 2 $ fillColor C.red $ scale 10 square]
+            , mconcat [fillColor C.red $ scale 10 square, fillColor C.blue $ scale 10 square, fillColor C.red $ scale 10 square, strokeColor C.blue $ strokeWidth 2 $ fillColor C.red $ scale 10 square]
             , mconcat $ zipWith (\x y -> translateX x $ translateY y $ scale 10 $ fillColor C.red circle) [1..10] [6,1,2,5,7,3,5,1,2,3]
             ]
 
@@ -114,4 +120,9 @@ benchRenderEmitForDrawing name drawing = do
     let !rd = renderDrawing mempty drawing
     return $ do
       let !x = emitDrawingSTRIPPED mempty rd
+      return ()
+  addWithPrepare ("emit (stripped, fast NITP) " <> name) $ do
+    let !rd = renderDrawing mempty drawing
+    return $ do
+      let !x = emitDrawingSTRIPPED_FAST_NITP mempty rd
       return ()
