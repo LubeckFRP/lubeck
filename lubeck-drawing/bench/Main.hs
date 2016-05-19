@@ -105,24 +105,13 @@ benchRenderEmitForDrawing name drawing = do
     add ("render " <> name) $ do
       let !x = renderDrawing mempty drawing
       return ()
-
   addWithPrepare ("emit " <> name) $ do
     let !rd = renderDrawing mempty drawing
     return $ do
       let !x = emitDrawing mempty rd
       return ()
-  addWithPrepare ("emit (strict)" <> name) $ do
+  addWithPrepare ("emit (optimized)" <> name) $ do
     let !rd = renderDrawing mempty drawing
     return $ do
       let !x = emitDrawing' mempty rd
-      return ()
-  addWithPrepare ("emit (stripped) " <> name) $ do
-    let !rd = renderDrawing mempty drawing
-    return $ do
-      let !x = emitDrawingSTRIPPED mempty rd
-      return ()
-  addWithPrepare ("emit (stripped, fast NITP) " <> name) $ do
-    let !rd = renderDrawing mempty drawing
-    return $ do
-      let !x = emitDrawingSTRIPPED_FAST_NITP mempty rd
       return ()
