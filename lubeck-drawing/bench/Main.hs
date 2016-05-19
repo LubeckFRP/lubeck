@@ -6,12 +6,18 @@ import Control.Monad.Random.Class
 import Lubeck.Drawing
 import Data.Colour.Names as C
 import GHCJS.Types(JSString)
+import Web.VirtualDom(nodeWithOptionsSVG, attribute)
 import Web.Benchmark (SuiteM, add, addWithPrepare, run, onCycle, onComplete, liftIO, name, hz, benchmarks)
-
 
 twice k = k >> k
 
+enableBuild = False
+enableRender = True
+
+
 main = run $ do
+  benchVD
+
   -- Run twice so JIT optimizations have time to kick in
   twice $ do
     benchRenderEmitForDrawing "square" $ square
@@ -19,6 +25,12 @@ main = run $ do
     benchRenderEmitForDrawing "100 squares" $ mconcat $ replicate 100 square
     benchRenderEmitForDrawing "1,000 squares" $ mconcat $ replicate 1000 square
     benchRenderEmitForDrawing "10,000 squares" $ mconcat $ replicate 10000 square
+    -- benchRenderEmitForDrawing "100,000 squares" $ mconcat $ replicate 100000 square
+
+    benchRenderEmitForDrawing "10,000 squares (styled, inner)" $ mconcat $ replicate 10000 (fillColor C.red square)
+    benchRenderEmitForDrawing "10,000 squares (styled, outer)" $ fillColor C.red $ mconcat $ replicate 10000 square
+
+    -- benchRenderEmitForDrawing "10,000 squares (styled, transformed)" $ mconcat $ replicate 10000 (translateX 100 square)
 
     benchRenderEmitForDrawing "Kandinsky" $ mconcat
             [ mconcat [fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, fillColor C.red $ scale 10 square, strokeColor C.blue $ strokeWidth 2 $ fillColor C.red $ scale 10 square]
@@ -40,6 +52,34 @@ main = run $ do
   liftIO $ print "Starting benchmarks..."
 
 
+
+benchVD = do
+  add "nodeWithOptionsSVG single SVG node" $ do
+    let !x = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] []
+    return ()
+
+  add "nodeWithOptionsSVG 10 SVG nodes" $ do
+    let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] []
+    let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10 n1)
+    return ()
+
+  add "nodeWithOptionsSVG single SVG node, 1 attr" $ do
+    let !a = attribute "foo" "bar"
+    let !x = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [a] []
+    return ()
+
+  add "nodeWithOptionsSVG 10 SVG nodes, 1 attr" $ do
+    let !a = attribute "foo" "bar"
+    let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [a] []
+    let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10 n1)
+    return ()
+
+  add "nodeWithOptionsSVG 10,000 SVG nodes, 5 attr" $ do
+    let !a = attribute "foo" "bar"
+    let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" (replicate 5 a) []
+    let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10000 n1)
+    return ()
+
 {-|
 Run a bunch of benchmarks for a given drawing.
 
@@ -50,19 +90,28 @@ benchRenderEmitForDrawing :: JSString -> Drawing -> SuiteM ()
 benchRenderEmitForDrawing name drawing = do
   add ("----------------------------------------") $ do
     return ()
-  add ("build " <> name) $ do
-    let !x = square
-    return ()
-  add ("render " <> name) $ do
-    let !x = renderDrawing mempty square
-    return ()
+
+  when enableBuild $
+    add ("build " <> name) $ do
+      let !x = drawing
+      return ()
+  when enableRender $
+    add ("render " <> name) $ do
+      let !x = renderDrawing mempty drawing
+      return ()
+
   addWithPrepare ("emit " <> name) $ do
-    let !rd = renderDrawing mempty square
+    let !rd = renderDrawing mempty drawing
     return $ do
       let !x = emitDrawing mempty rd
       return ()
+  addWithPrepare ("emit (strict)" <> name) $ do
+    let !rd = renderDrawing mempty drawing
+    return $ do
+      let !x = emitDrawing' mempty rd
+      return ()
   addWithPrepare ("emit (stripped) " <> name) $ do
-    let !rd = renderDrawing mempty square
+    let !rd = renderDrawing mempty drawing
     return $ do
       let !x = emitDrawingSTRIPPED mempty rd
       return ()

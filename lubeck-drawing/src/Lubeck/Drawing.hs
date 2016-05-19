@@ -215,6 +215,7 @@ module Lubeck.Drawing
   , RDrawing
   , renderDrawing
   , emitDrawing
+  , emitDrawing'
   , emitDrawingSTRIPPED
   ) where
 
@@ -876,6 +877,25 @@ nodeInfoToProperties (RNodeInfo style transf handlers) =
   transformationToProperty transf : styleToProperty style : handlersToProperties handlers
 {-# INLINABLE nodeInfoToProperties #-}
 
+
+
+-- handlersToStr :: Handlers -> Str
+-- handlersToStr (Handlers (MonoidMap m))
+--   = mconcat $ fmap (\(n, Handler v) -> "n") $ Map.toList m
+-- {-# INLINABLE handlersToProperties #-}
+--
+-- styleToProperty :: Style -> Str
+-- styleToProperty s = styleToAttrString s
+-- {-# INLINABLE styleToProperty #-}
+--
+-- transformationToProperty :: Transformation Double -> E.Property
+-- -- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
+-- --   where
+-- --     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+-- transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
+
+
+
 -- TODO would be derivable if IO lifted the Monoid...
 newtype Handler = Handler (JSVal -> IO ())
 instance Monoid Handler where
@@ -914,15 +934,15 @@ drawingToRDrawing' nodeInfo x = case x of
     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
     -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
     -- TODO return empty if concatMap returns empty list
-    (Ap xs)   -> RMany nodeInfo (mapReverse recur xs)
+    (Ap xs)   -> RMany nodeInfo (seqListE $ mapReverse recur xs)
       where
         recur = drawingToRDrawing' mempty
 
-mapReverse :: (a -> b) -> [a] -> Seq b
+mapReverse :: (a -> b) -> [a] -> [b]
 mapReverse f l =  rev l mempty
   where
     rev []     a = a
-    rev (x:xs) a = rev xs (f x Seq.<| a)
+    rev (x:xs) a = rev xs (f x : a)
 
 {-# INLINABLE drawingToRDrawing' #-}
 
@@ -944,7 +964,7 @@ data RNodeInfo
 
 data RDrawing
   = RPrim !RNodeInfo !RPrim
-  | RMany !RNodeInfo !(Seq RDrawing)
+  | RMany !RNodeInfo ![RDrawing]
 
 instance Monoid RDrawing where
   mempty = RMany mempty mempty
@@ -1559,61 +1579,58 @@ toSvgNew :: RenderingOptions -> Drawing -> Svg
 toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
 
 {-| Generate an SVG from a drawing. -}
-emitDrawingSTRIPPED :: RenderingOptions -> RDrawing -> Svg
-emitDrawingSTRIPPED !(RenderingOptions {dimensions, originPlacement}) !mDrawing = E.svg [] []
-  -- case mDrawing of
-  --   (drawing :: RDrawing) ->
-  --     (toSvg1 drawing)
-  -- where
-  --   svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
-  --   svgTopNode w h vb = E.svg
-  --     [ A.width (toJSString w)
-  --     , A.height (toJSString h)
-  --     , A.viewBox (toJSString vb) ]
-  --
-  --   pointsToSvgString :: [P2 Double] -> Str
-  --   pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
-  --     where
-  --       toJSString = packStr
-  --       pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
-  --
-  --   embedToSvg :: Embed -> Svg
-  --   embedToSvg (EmbedContent str) = E.text (toJSString str)
-  --   embedToSvg (EmbedNode name attrs children) =
-  --     VD.node (toJSString name)
-  --       (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
-  --       (fmap embedToSvg children)
-  --
-  --   single x = [x]
-  --   noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-  --   -- negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-  --   offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-  --   reflY (V2 adx ady) = V2 adx (negate ady)
-  --   P (V2 x y) = dimensions
-  --
-  --   toSvg1 :: RDrawing -> Svg
-  --   toSvg1 drawing = case drawing of
-  --     RPrim nodeInfo prim -> case prim of
-  --       RCircle -> E.circle
-  --         (nodeInfoToProperties nodeInfo ++ [A.r "0.5", noScale])
-  --         []
-  --       RRect -> E.rect
-  --         (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
-  --         []
-  --       RLine -> E.line
-  --         ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
-  --         []
-  --       (RLines closed vs) -> (if closed then E.polygon else E.polyline)
-  --         ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (map reflY vs)), noScale] ++ nodeInfoToProperties nodeInfo)
-  --         []
-  --       (RText s) -> E.text'
-  --         ([A.x "0", A.y "0"] ++ nodeInfoToProperties nodeInfo)
-  --         [E.text $ toJSString s]
-  --       -- TODO need extra group for nodeInfo etc
-  --       (REmbed e) -> embedToSvg e
-  --     RMany nodeInfo rdrawings -> case map toSvg1 rdrawings of
-  --       nodes -> E.g (nodeInfoToProperties nodeInfo) nodes
+emitDrawingSTRIPPED :: RenderingOptions -> RDrawing -> Str
+emitDrawingSTRIPPED !(RenderingOptions {dimensions, originPlacement}) !mDrawing =
+  -- printTreeInfo drawing1
+  case mDrawing of
+    (drawing :: RDrawing) -> do
+      -- printRTreeInfo drawing
+      toSvg1 drawing
+  where
+    -- svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+    -- svgTopNode w h vb = E.svg
+    --   [ A.width (toJSString w)
+    --   , A.height (toJSString h)
+    --   , A.viewBox (toJSString vb) ]
 
+    -- pointsToSvgString :: [P2 Double] -> Str
+    -- pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+    --   where
+    --     toJSString = packStr
+    --     pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+    --
+    -- embedToSvg :: Embed -> Svg
+    -- embedToSvg (EmbedContent str) = E.text (toJSString str)
+    -- embedToSvg (EmbedNode name attrs children) =
+    --   VD.node (toJSString name)
+    --     (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
+    --     (fmap embedToSvg children)
+
+    single x = [x]
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+    -- negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    reflY (V2 adx ady) = V2 adx (negate ady)
+    P (V2 x y) = dimensions
+
+    toSvg1 :: RDrawing -> Str
+    toSvg1 drawing = case drawing of
+      RPrim nodeInfo prim -> case prim of
+        RCircle -> seqListE (nodeInfoToProperties nodeInfo) "c"
+        RRect -> seqListE (nodeInfoToProperties nodeInfo) "r"
+        RLine -> seqListE (nodeInfoToProperties nodeInfo) "l"
+        (RLines closed vs) -> seqListE (nodeInfoToProperties nodeInfo) $ (if closed then "cl" else "ul") <> toStr (length vs)
+        (RText s) -> seqListE (nodeInfoToProperties nodeInfo) s
+        -- TODO need extra group for nodeInfo etc
+        (REmbed e) -> seqListE (nodeInfoToProperties nodeInfo) ""
+      RMany nodeInfo rdrawings -> case fmap toSvg1 rdrawings of
+        -- TODO use seq in virtual-dom too!
+        nodes -> seqListE (nodeInfoToProperties nodeInfo) $ mconcat (toList nodes)
+
+-- Evaluate a list (but not its elements) before returning second argument
+seqList !xs b = case xs of { [] -> b ; (x:xs) -> seqList xs b }
+-- Evaluate a list (and its elements to WHNF) before returning second argument
+seqListE !xs b = case xs of { [] -> b ; (x:xs) -> seq x (seqListE xs b) }
 
 {-| Generate an SVG from a drawing. -}
 emitDrawing :: RenderingOptions -> RDrawing -> Svg
@@ -1678,6 +1695,68 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) mDrawing =
         -- TODO use seq in virtual-dom too!
         nodes -> E.g (nodeInfoToProperties nodeInfo) (toList nodes)
 
+
+emitDrawing' :: RenderingOptions -> RDrawing -> Svg
+emitDrawing' !(RenderingOptions {dimensions, originPlacement}) !mDrawing =
+  -- printTreeInfo drawing1
+  case mDrawing of
+    (drawing :: RDrawing) -> do
+      -- printRTreeInfo drawing
+      svgTopNode
+        (toStr $ floor x)
+        (toStr $ floor y)
+        ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+        (single $ toSvg1 drawing)
+  where
+    svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
+    svgTopNode w h vb = E.svg
+      [ A.width (toJSString w)
+      , A.height (toJSString h)
+      , A.viewBox (toJSString vb) ]
+
+    pointsToSvgString :: [P2 Double] -> Str
+    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
+      where
+        toJSString = packStr
+        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
+
+    embedToSvg :: Embed -> Svg
+    embedToSvg (EmbedContent str) = E.text (toJSString str)
+    embedToSvg (EmbedNode name attrs children) =
+      VD.node (toJSString name)
+        (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
+        (fmap embedToSvg children)
+
+    single x = [x]
+    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
+    -- negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    reflY (V2 adx ady) = V2 adx (negate ady)
+    P (V2 x y) = dimensions
+
+    toSvg1 :: RDrawing -> Svg
+    toSvg1 drawing = case drawing of
+      RPrim nodeInfo prim -> case prim of
+        RCircle -> E.circle
+          (nodeInfoToProperties nodeInfo ++ [A.r "0.5", noScale])
+          []
+        RRect -> E.rect
+          (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
+          []
+        RLine -> E.line
+          ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
+          []
+        (RLines closed vs) -> (if closed then E.polygon else E.polyline)
+          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (map reflY vs)), noScale] ++ nodeInfoToProperties nodeInfo)
+          []
+        (RText s) -> E.text'
+          ([A.x "0", A.y "0"] ++ nodeInfoToProperties nodeInfo)
+          [E.text $ toJSString s]
+        -- TODO need extra group for nodeInfo etc
+        (REmbed e) -> embedToSvg e
+      RMany nodeInfo rdrawings -> case fmap toSvg1 rdrawings of
+        -- TODO use seq in virtual-dom too!
+        nodes -> E.g (nodeInfoToProperties nodeInfo) (toList nodes)
 
 {-| Generate an SVG from a drawing. -}
 toSvgOld :: RenderingOptions -> Drawing -> Svg
