@@ -891,12 +891,8 @@ handlersToProperties (Handlers (MonoidMap m))
   = fmap (\(n, Handler v) -> VD.on (toJSString n) v) $ Map.toList m
 {-# INLINABLE handlersToProperties #-}
 
--- styleToProperty :: Style -> E.Property
--- styleToProperty s = A.style $ toJSString $ styleToAttrString s
--- {-# INLINABLE styleToProperty #-}
-
 styleToProperty_FAST :: Style -> E.Property
-styleToProperty_FAST s = A.style "fill:#7c0000; fill-opacity:0.2;"
+styleToProperty_FAST s = A.style $ toJSString $ styleToAttrString s
 {-# INLINABLE styleToProperty_FAST #-}
 
 -- transformationToProperty :: Transformation Double -> E.Property

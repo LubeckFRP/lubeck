@@ -444,9 +444,9 @@ main = do
   let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
-  -- (plotSD2 :: SDrawing) <- draggable_ $ plotVD
-  -- (plotSD3 :: SDrawing) <- draggable_ $ plotVD
-  -- (plotSD4 :: SDrawing) <- draggable_ $ plotVD
+  (plotSD2 :: SDrawing) <- draggable_ $ plotVD
+  (plotSD3 :: SDrawing) <- draggable_ $ plotVD
+  (plotSD4 :: SDrawing) <- draggable_ $ plotVD
 
   let purpleCircle = trace "> purpleCircle" $ Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
   let pinkCircle   = trace "> pinkCircle" $ Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
@@ -478,13 +478,17 @@ main = do
                 -- , fmap (renderDrawingTrace "Hoverable square") sqs2
                 , sqs2
                 , fmap (renderDrawingTrace "R Plot") plotSD
-                -- , fmap (renderDrawingTrace "Plot2") plotSD2
-                -- , fmap (renderDrawingTrace "Plot3") plotSD3
-                -- , fmap (renderDrawingTrace "Plot4") plotSD4
-                -- , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
+                , fmap (renderDrawingTrace "Plot2") plotSD2
+                , fmap (renderDrawingTrace "Plot3") plotSD3
+                , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
+                , fmap (renderDrawingTrace "Plot4") plotSD4
                 ]
   -- let (sd :: SRDrawing) = mconcat srds
-  (sd :: SRDrawing) <- let [a,b,c] = srds in fastMconcatS3 a b c
+  (sd :: SRDrawing) <- let [a,b,c,d,e,f,g] = srds in do
+    x <- fastMconcatS3 a b c
+    y <- fastMconcatS3 d e f
+    fastMconcatS3 x y f
+
 
   -- foo <- fastMconcatS3
   --                   sqs2
@@ -531,7 +535,7 @@ main = do
 
 emitDrawing2 opts x = unsafePerformIO $ do
   -- beginEmit
-  let !r = emitDrawing opts x
+  let !r = emitDrawing' opts x
   -- endEmit
   pure r
 renderDrawing2 opts x = unsafePerformIO $ do
