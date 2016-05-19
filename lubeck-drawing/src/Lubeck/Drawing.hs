@@ -484,9 +484,6 @@ styleNamed :: Str -> Str -> Style
 styleNamed = js_styleNamed
 {-# INLINE styleNamed #-}
 
-foreign import javascript unsafe "$1 + ':' + $2 + ';'"
-  js_styleNamed :: Str -> Str -> Style
-
 -- styleNamed k v = Style_ $ Map.singleton k v
 -- styleNamed k v = k ++ ":" v <> ";"
 
@@ -494,11 +491,6 @@ foreign import javascript unsafe "$1 + ':' + $2 + ';'"
 apStyle :: Style -> Style -> Style
 apStyle = js_appendStyle
 {-# INLINE apStyle #-}
-
--- Last element wins
--- http://www.sitepoint.com/forums/showthread.php?102926-css-duplicate-property-values
-foreign import javascript unsafe "$2 + $1"
-  js_appendStyle :: Style -> Style -> Style
 
 {-| -}
 styleToAttrString :: Style -> Str
@@ -915,8 +907,6 @@ styleToProperty_FAST s = A.style "fill:#7c0000; fill-opacity:0.2;"
 -- transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
 -- {-# INLINABLE transformationToProperty #-}
 
-foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+(-($6))+')'"
-  js_transformationToProperty_opt :: Double -> Double -> Double -> Double -> Double -> Double -> JSString
 
 transformationToProperty_FAST :: Transformation Double -> E.Property
 transformationToProperty_FAST !(TF (V3 (V3 a c e) (V3 b d f) _)) =
@@ -2068,3 +2058,15 @@ instance (Ord k, Monoid v) =>  Monoid (MonoidMap k v) where
     -- mconcat (MonoidMap xs) = MonoidMap $ Map.unionsWith (mconcat xs)
 
 singletonMonoidMap k v = MonoidMap $ Map.singleton k v
+
+
+foreign import javascript unsafe "$1 + ':' + $2 + ';'"
+  js_styleNamed :: Str -> Str -> Style
+
+-- Last element wins
+-- http://www.sitepoint.com/forums/showthread.php?102926-css-duplicate-property-values
+foreign import javascript unsafe "$2 + $1"
+  js_appendStyle :: Style -> Style -> Style
+
+foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+(-($6))+')'"
+  js_transformationToProperty_opt :: Double -> Double -> Double -> Double -> Double -> Double -> JSString
