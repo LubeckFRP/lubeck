@@ -824,10 +824,11 @@ fastMconcatS3 a b c = do
     return ()
   stepperS (mconcat [az,bz,cz]) outRes
 
-data ABC = X | A Int | B Int | C Int | Res [ABC] deriving (Show)
+data ABC = A Int | B Int | C Int | Res [ABC] deriving (Show)
 -- data Mon a = None | One a | Two (Mon a) (Mon a)  deriving (Show)
 instance Monoid ABC where
-  mempty = X
+  -- mempty = error "No mempty for ABC"
+  mempty = Res []
   mappend a b = trace ("        "++show a++"<> "++show b) (Res [a,b])
 
 counterE :: Events (Int -> a) -> IO (Events a)
@@ -843,12 +844,12 @@ test = do
   (aU,aE) <- newEvent
   (bU,bE) <- newEvent
   (cU,cE) <- newEvent
-  aS <- counterE aE >>= (X `stepperS`)
-  bS <- counterE bE >>= (X `stepperS`)
-  cS <- counterE cE >>= (X `stepperS`)
+  aS <- counterE aE >>= (A 0 `stepperS`)
+  bS <- counterE bE >>= (B 0 `stepperS`)
+  cS <- counterE cE >>= (C 0 `stepperS`)
 
-  -- abc <- fastMconcatS3 aS bS cS
-  let abc = mconcat [aS, bS, cS]
+  abc <- fastMconcatS3 aS bS cS
+  -- let abc = mconcat [aS, bS, cS]
 
   subscribeEvent (updates $ abc) print
   runCmds
