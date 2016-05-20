@@ -7,6 +7,8 @@ import GHCJS.Types(JSString)
 import Web.Benchmark (SuiteM, add, addWithPrepare, run, onCycle, onComplete, liftIO, name, hz, benchmarks)
 
 main = run $ do
+  spaceLeaks
+
   add "newEvent" $ do
     (u,e :: Events Int) <- newEvent
     return ()
@@ -231,6 +233,19 @@ main = run $ do
   liftIO $ print "Starting benchmarks..."
 
 
+spaceLeaks = do
+  addWithPrepare "Space leak (no)" $ do
+    (u,e) <- newEvent
+    pure $ do
+      foldpR (\a b -> seq a $ seq b $ a + b) 0 e
+      forM_ [1..100000] u
+      pure ()
+  addWithPrepare "Space leak (yes)" $ do
+    (u,e) <- newEvent
+    pure $ do
+      foldpR (+) 0 e
+      forM_ [1..100000] u
+      pure ()
 
 
 {-|
