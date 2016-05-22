@@ -124,6 +124,14 @@ runColumnFinite = fmap fromJust . takeWhile isJust . runColumn
     isJust _        = False
     fromJust (Just x) = x
 
+{-
+Table type used to represent data internally in Lubeck DV.
+
+You can think of it as a spreadsheet where columns have names, rows have
+numbers indexed from 0, and cells might be empty.
+
+See tableToMap, tableToList. 
+-}
 newtype Table k a = Table [Map k a]
   deriving (Functor, Monoid, Show)
 
