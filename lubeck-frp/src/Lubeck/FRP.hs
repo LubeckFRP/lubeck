@@ -761,67 +761,45 @@ If c updates, there is no need to re-calculate (a<>b).
 -}
 fastMconcatS3 :: Monoid a => Signal a -> Signal a -> Signal a -> FRP (Signal a)
 fastMconcatS3 a b c = do
-  -- TODO needed?
-  -- a' <- strictifyS a
-  -- b' <- strictifyS b
-  -- c' <- strictifyS c
-  --
-  -- let ab = current a <> current b
-  -- let bc = current b <> current c
-  -- let ac = liftA2 (,) (current a) (current c)
-  --
-  -- let e1 = snapshotWith (\bc a -> a <> bc)            bc (updates a)
-  -- let e2 = snapshotWith (\(a,c) b -> mconcat [a,b,c]) ac (updates b)
-  -- let e3 = snapshotWith (\ab c -> ab <> c)            ab (updates c)
-  -- let u = merge3 e1 e2 e3
-
-  -- z <- pollBehavior $ liftA3 (\a b c -> mconcat [a,b,c]) (current a) (current b) (current c)
-  -- stepperS u z
-
   az <- pollBehavior (current a)
   bz <- pollBehavior (current b)
   cz <- pollBehavior (current c)
 
-  -- Last value of a, b, c, a<>b, and b<>c (no need to cache a<>c!)
+  -- Always updated, evaluated when needed
   av <- newIORef az
   bv <- newIORef bz
   cv <- newIORef cz
+
+  -- Always updated, evaluated once if needed
   abv <- newIORef (az<>bz)
   bcv <- newIORef (bz<>cz)
 
   (sendOut, outRes) <- newEvent
 
-  -- Most send correct
-  -- Must update duplicates
-  -- Must update itself if needed for the above
   subscribeEvent (updates a) $ \an -> do
     writeIORef av an
     bn <- readIORef bv
-    case an <> bn of
-      abn -> writeIORef abv abn
+    let abn = an <> bn in writeIORef abv abn
     bcn <- readIORef bcv
-    sendOut (an<>bcn) -- no (b <> c) evaluated!
+    sendOut (an <> bcn)
     return ()
 
   subscribeEvent (updates b) $ \bn -> do
     writeIORef bv bn
     an <- readIORef av
     cn <- readIORef cv
-    case an <> bn of
-      abn -> writeIORef abv abn
-    case bn <> cn of
-      bcn -> writeIORef bcv bcn
-    sendOut (an<>bn<>cn)
-
+    let abn = an <> bn in writeIORef abv abn
+    let bcn = bn <> cn in writeIORef bcv bcn
+    sendOut (an <> bn <> cn)
 
   subscribeEvent (updates c) $ \cn -> do
     writeIORef cv cn
     bn <- readIORef bv
-    case bn <> cn of
-      bcn -> writeIORef bcv bcn
+    let bcn = bn <> cn in writeIORef bcv bcn
     abn <- readIORef abv
-    sendOut (abn<>cn) -- no (a <> b) evaluated!
+    sendOut (abn <> cn)
     return ()
+
   stepperS (mconcat [az,bz,cz]) outRes
 
 data ABC = A Int | B Int | C Int | Res [ABC] deriving (Show)
@@ -848,8 +826,8 @@ test = do
   bS <- counterE bE >>= (B 0 `stepperS`)
   cS <- counterE cE >>= (C 0 `stepperS`)
 
-  abc <- fastMconcatS3 aS bS cS
-  -- let abc = mconcat [aS, bS, cS]
+  -- abc <- fastMconcatS3 aS bS cS
+  let abc = mconcat [aS, bS, cS]
 
   subscribeEvent (updates $ abc) print
   runCmds
