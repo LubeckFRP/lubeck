@@ -1,6 +1,7 @@
 
-{-# LANGUAGE BangPatterns, OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables, CPP #-}
 
+#ifdef __GHCJS__
 import BasePrelude
 import Lubeck.FRP
 import GHCJS.Types(JSString)
@@ -248,6 +249,7 @@ spaceLeaks = do
       pure ()
 
 
+
 {-|
 Run a bunch of benchmarks for a given FRP network.
 -}
@@ -255,3 +257,8 @@ benchFRPNetwork :: JSString -> (Events Int -> Events (FRP ())) -> SuiteM ()
 benchFRPNetwork name network = do
   -- TODO
   return ()
+
+#else
+import BasePrelude
+main = print "Only available in GHCJS"
+#endif

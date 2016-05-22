@@ -1,6 +1,7 @@
 
-{-# LANGUAGE BangPatterns, OverloadedStrings, NoImplicitPrelude #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings, NoImplicitPrelude, CPP #-}
 
+#ifdef __GHCJS__
 import BasePrelude
 import Control.Monad.Random.Class
 import Lubeck.Drawing
@@ -115,3 +116,7 @@ benchRenderEmitForDrawing name drawing = do
     return $ do
       let !x = emitDrawing' mempty rd
       return ()
+#else
+import BasePrelude
+main = print "Only available in GHCJS"
+#endif

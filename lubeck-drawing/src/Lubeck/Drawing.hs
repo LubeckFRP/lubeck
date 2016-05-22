@@ -215,7 +215,9 @@ module Lubeck.Drawing
   , RDrawing
   , renderDrawing
   , emitDrawing
+#ifdef __GHCJS__
   , emitDrawing'
+#endif
   -- , emitDrawingSTRIPPED
   -- , emitDrawingSTRIPPED_FAST_NITP
   ) where
@@ -456,13 +458,38 @@ transformPoint t (P (V2 x y)) =
 {-# INLINABLE transformEnvelope #-}
 
 {-| -}
--- newtype Style = Style_ { getStyle_ :: Map Str Str }
-  -- deriving (Monoid)
+#ifdef __GHCJS__
 newtype Style = Style_ { getStyle_ :: Str }
 
 instance Monoid Style where
-  mempty = emptyStyle
-  mappend = apStyle
+  mempty =  Style_ ""
+  mappend = js_appendStyle
+
+{-| -}
+styleNamed :: Str -> Str -> Style
+styleNamed = js_styleNamed
+{-# INLINE styleNamed #-}
+
+{-| -}
+styleToAttrString :: Style -> Str
+styleToAttrString (Style_ x) = x
+-- styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
+{-# INLINE styleToAttrString #-}
+#else
+newtype Style = Style_ { getStyle_ :: Map Str Str }
+  deriving (Monoid)
+
+{-| -}
+styleNamed :: Str -> Str -> Style
+styleNamed k v = Style_ $ Map.singleton k v
+{-# INLINE styleNamed #-}
+
+{-| -}
+styleToAttrString :: Style -> Str
+styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
+{-# INLINE styleToAttrString #-}
+#endif
+
 {-
 Note: Uses Map in place of MonoidMap
 
@@ -476,27 +503,18 @@ This is what we want, consider
 
 {-| -}
 emptyStyle :: Style
-emptyStyle = Style_ ""
+emptyStyle = mempty
 {-# INLINE emptyStyle #-}
 
-{-| -}
-styleNamed :: Str -> Str -> Style
-styleNamed = js_styleNamed
-{-# INLINE styleNamed #-}
 
 -- styleNamed k v = Style_ $ Map.singleton k v
 -- styleNamed k v = k ++ ":" v <> ";"
 
 {-| -}
 apStyle :: Style -> Style -> Style
-apStyle = js_appendStyle
+apStyle = mappend
 {-# INLINE apStyle #-}
 
-{-| -}
-styleToAttrString :: Style -> Str
-styleToAttrString (Style_ x) = x
--- styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
-{-# INLINE styleToAttrString #-}
 
 
 {-| Add an event handler to the given drawing.
@@ -874,11 +892,6 @@ instance Monoid Handler where
       apSink a b x = do
         a x
         b x
- -- = Handler { hName :: Str, hSink :: JSVal -> IO () }
-#else
-type Handler = ()
-type Handlers = ()
-#endif
 
 newtype Handlers = Handlers (MonoidMap Str Handler)
   deriving Monoid
@@ -922,22 +935,10 @@ nodeInfoToProperties_FAST (RNodeInfo style transf handlers) =
   transformationToProperty_FAST transf : styleToProperty_FAST style : handlersToProperties handlers
 {-# INLINABLE nodeInfoToProperties_FAST #-}
 
-
-
--- handlersToStr :: Handlers -> Str
--- handlersToStr (Handlers (MonoidMap m))
---   = mconcat $ fmap (\(n, Handler v) -> "n") $ Map.toList m
--- {-# INLINABLE handlersToProperties #-}
---
--- styleToProperty :: Style -> Str
--- styleToProperty s = styleToAttrString s
--- {-# INLINABLE styleToProperty #-}
---
--- transformationToProperty :: Transformation Double -> E.Property
--- -- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
--- --   where
--- --     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
--- transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
+#else
+type Handler = ()
+type Handlers = ()
+#endif
 
 
 
@@ -1707,10 +1708,6 @@ toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
 --         -- TODO use seq in virtual-dom too!
 --         nodes -> seqListE (nodeInfoToProperties_FAST nodeInfo) $ mconcat (toList nodes)
 --
--- Evaluate a list (but not its elements) before returning second argument
-seqList !xs b = case xs of { [] -> b ; (x:xs) -> seqList xs b }
--- Evaluate a list (and its elements to WHNF) before returning second argument
-seqListE !xs b = case xs of { [] -> b ; (x:xs) -> seq x (seqListE xs b) }
 
 {-| Generate an SVG from a drawing. -}
 emitDrawing :: RenderingOptions -> RDrawing -> Svg
@@ -2056,6 +2053,8 @@ instance (Ord k, Monoid v) =>  Monoid (MonoidMap k v) where
 singletonMonoidMap k v = MonoidMap $ Map.singleton k v
 
 
+#ifdef __GHCJS__
+
 foreign import javascript unsafe "$1 + ':' + $2 + ';'"
   js_styleNamed :: Str -> Str -> Style
 
@@ -2066,3 +2065,10 @@ foreign import javascript unsafe "$2 + $1"
 
 foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+(-($6))+')'"
   js_transformationToProperty_opt :: Double -> Double -> Double -> Double -> Double -> Double -> JSString
+
+#endif
+
+-- Evaluate a list (but not its elements) before returning second argument
+seqList !xs b = case xs of { [] -> b ; (x:xs) -> seqList xs b }
+-- Evaluate a list (and its elements to WHNF) before returning second argument
+seqListE !xs b = case xs of { [] -> b ; (x:xs) -> seq x (seqListE xs b) }
