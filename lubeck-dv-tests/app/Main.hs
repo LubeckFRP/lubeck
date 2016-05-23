@@ -1,31 +1,41 @@
 
 {-# LANGUAGE OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables, TypeFamilies
-  , FlexibleContexts #-}
+  , FlexibleContexts, BangPatterns, CPP #-}
+
+-- {-# GHC_OPTIONS -ddump-simpl #-}
 
 module Main where
 
-import BasePrelude hiding ((|||))
+import BasePrelude hiding ((|||), Signal)
 import Control.Lens(to, _1, _2, (.~))
 import Linear.Affine ((.+^))
+import Data.Colour (withOpacity)
+import Data.Colour.Names as Colors
+
+-- Debug
+import Debug.Trace
+import Control.Concurrent(threadDelay)
 
 import Lubeck.DV
 import Lubeck.FRP
 import Lubeck.Str
-import Lubeck.Drawing hiding (text)
--- import Lubeck.Drawing(Drawing, toSvg, V2(..))
+import Lubeck.Drawing hiding (text, addProperty)
+
+#ifdef __GHCJS__
 import Lubeck.Forms(componentEvent)
 import Lubeck.Forms.Button(multiButtonWidget)
 import Lubeck.Forms.Select(selectEnumBoundedWidget)
 import Lubeck.App(runAppReactive)
 import Web.VirtualDom.Html(Html, h1, text)
 import qualified Web.VirtualDom as VirtualDom
-
 -- TODO separate/consolidate Html/Svg events
 -- Currently they can be used more or less interchangebly
+
 import Web.VirtualDom.Html.Events(Event(..), mousemove)
 
-import Data.Colour (withOpacity)
-import Data.Colour.Names as Colors
+import           GHCJS.Foreign.Callback(syncCallback,Callback,OnBlocked(..))
+#endif
+
 
 ----------
 
@@ -38,6 +48,7 @@ debugHandlers = False
 -- https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/movementX
 -- Easiest would be to just use movementX!
 
+#ifdef __GHCJS__
 onE e n = VirtualDom.on n . contramapS e
   where
     contramapS f k x = k (f x)
@@ -65,6 +76,22 @@ foreign import javascript unsafe "$1.offsetX"
 foreign import javascript unsafe "$1.offsetY"
   offsetY :: Event -> Double
 -- TODO right property to read?
+#else
+type Html = ()
+data Event = Event ()
+movementX :: Event -> Double
+movementY :: Event -> Double
+screenX :: Event -> Double
+screenY :: Event -> Double
+offsetX :: Event -> Double
+offsetY :: Event -> Double
+movementX = const 0
+movementY = const 0
+screenX = const 0
+screenY = const 0
+offsetX = const 0
+offsetY = const 0
+#endif
 
 {-
 TODO all initial arguments *could* be in S/B moinad
@@ -88,6 +115,7 @@ I.e. the vectors/patches can not be inverted.
   (.+^) ~ patch
 
 -}
+
 class Monoid (Diff p) => Diffable p where
   type Diff p :: *
   diff :: p -> p -> Diff p
@@ -106,7 +134,7 @@ instance Monoid MouseEv where
   mempty = MouseNone
   mappend x y = x -- last event to happen as
 
-data MouseState = MouseState { mouseInside :: Bool, mouseDown :: Bool } deriving (Eq, Ord, Show, Read)
+data MouseState = MouseState { mouseInside :: !Bool, mouseDown :: !Bool } deriving (Eq, Ord, Show, Read)
 
 instance Monoid MouseState where
   mempty = MouseState False False -- how do we know this?
@@ -141,7 +169,7 @@ Mouse position is relative to the entire drawing area (TODO currently assumes or
 Only event handlers sent to the given drawing a are processed (i.e. transparent areas are ignored).
 -}
 withMousePositionState :: (Signal MousePositionState -> Signal Drawing) -> FRP (Signal Drawing, Signal MousePositionState)
-withMousePositionState d = do
+withMousePositionState drawingF = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
 
@@ -149,10 +177,6 @@ withMousePositionState d = do
   (pos :: Signal (P2 Double)) <- stepperS (P $ V2 0 0) (mousePosE)
 
   let (posState :: Signal MousePositionState) = liftA2 MousePositionState pos state
-  when debugHandlers $ void $
-    subscribeEvent (updates posState) print
-  -- TODO clean up this mess
-
   let (dWithHandlers :: Signal MousePositionState -> Signal Drawing) = (fmap . fmap)
                            ( id
                            . addHandler "mouseover" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOver)
@@ -160,8 +184,31 @@ withMousePositionState d = do
                            . addHandler "mouseup"   (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseUp)
                            . addHandler "mousedown" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseDown)
                            . addHandler "mousemove" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseMovedInside)
-                           ) d
+                           ) drawingF
   pure $ (dWithHandlers posState, posState)
+
+
+{-
+Like withMousePositionState, optimized for non-recursive case.
+-}
+withMousePositionStateNR :: Signal Drawing -> FRP (Signal Drawing, Signal MousePositionState)
+withMousePositionStateNR drawingF = do
+  (mouseS, mouseE :: Events MouseEv) <- newEvent
+  (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
+
+  (mousePosS, mousePosE :: Events (P2 Double)) <- newEvent
+  (pos :: Signal (P2 Double)) <- stepperS (P $ V2 0 0) (mousePosE)
+
+  let (posState :: Signal MousePositionState) = liftA2 MousePositionState pos state
+  let (dWithHandlers :: Signal Drawing) = fmap
+                           ( id
+                           . addHandler "mouseover" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOver)
+                           . addHandler "mouseout"  (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOut)
+                           . addHandler "mouseup"   (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseUp)
+                           . addHandler "mousedown" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseDown)
+                           . addHandler "mousemove" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseMovedInside)
+                           ) drawingF
+  pure $ (dWithHandlers, posState)
 
 withMouseState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
 withMouseState d = fmap (second $ fmap mouseState) $ withMousePositionState (d . fmap mouseState)
@@ -170,8 +217,8 @@ withMouseState d = fmap (second $ fmap mouseState) $ withMousePositionState (d .
 Like MouseState, but include position.
 -}
 data MousePositionState = MousePositionState
-  { mousePosition :: P2 Double
-  , mouseState    :: MouseState
+  { mousePosition :: !(P2 Double)
+  , mouseState    :: !MouseState
   }
   deriving (Eq, Ord, Show)
 
@@ -190,13 +237,13 @@ hoverable d = fmap (second $ fmap mouseInside) $ withMouseState (d . fmap mouseI
 hoverable_ :: (Signal Bool -> Signal Drawing) -> FRP (Signal Drawing)
 hoverable_ = fmap fst . hoverable
 
+-- TODO implement in terms of (poss. opt version of withMouseState)
 nudgeableDraggable :: Behavior Bool -> Signal Drawing -> FRP (Signal Drawing, Signal (P2 Double))
 nudgeableDraggable allowMove d =  do
   (move, moved1 :: Events (V2 Double)) <- newEvent
   let moved = filterJust $ snapshotWith (\allow m -> if allow then Just m else Nothing) allowMove moved1
   (pos :: Signal (P2 Double)) <- accumS (P $ V2 0 0) (fmap (^+.) moved)
 
-  -- TODO use addHandler
   let (dWithHandlers :: Signal Drawing) = fmap (addHandler "mousemove" $ handleMouseMove move) d
 
   pure $ ( liftA2 (\(P v) dWithHandlers' -> translate v dWithHandlers') pos dWithHandlers, pos )
@@ -295,8 +342,8 @@ mpsToRectInput pos MouseOut         = AbortRect
 mpsToRectInput pos _                = ContinueRect pos
 -- mpsToRectInput pos MouseP
 
-foobar :: Signal MousePositionState -> FRP (Events Rect, Signal (Maybe Rect))
-foobar bigTransparentMPS = do
+emittedAndIntermediateRectangles :: Signal MousePositionState -> FRP (Events Rect, Signal (Maybe Rect))
+emittedAndIntermediateRectangles bigTransparentMPS = do
   let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
   mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
   finishedRects <- squares mouseMove2
@@ -306,38 +353,35 @@ foobar bigTransparentMPS = do
 {-
 A drag overlay interface.
 
-Whenever the given bool signal is False, this behaves exactly as the original drawing signal.
-Otherwise, this displays an invisible drawing across the original image, that registers event
-handlers.
+Whenever the given bool signal is False, behaves like 'opts'.
+
+Otherwise, this displays an invisible drawing across the original image, that registers mouse events
+and displays feedback on drag events. Whenever a drag action is completed, the rectangle in which
+it was performed is sent.
 -}
-dragRect :: Signal Bool -> Signal Drawing -> FRP (Signal Drawing, Events Rect)
-dragRect activeS dS = do
-  -- TODO
-  (dragS, dragE :: Events RectInputEvent) <- newEvent
-
-  (bigTransparent2, bigTransparentMPS :: Signal MousePositionState)
-    <- withMousePositionState (\_ -> pure bigTransparent)
-
-  (finishedRects, intermediateRects) <- foobar bigTransparentMPS
-  subscribeEvent (finishedRects) print
-  subscribeEvent (updates intermediateRects) print
-
+dragRect
+  :: Signal Bool
+  -> FRP (Signal Drawing, Events Rect)
+dragRect activeS = do
+  -- TODO could use a more efficient version
+  (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState)
+    <- withMousePositionStateNR (pure bigTransparent)
+  let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) bigTransparentWithHandlers activeS
+  (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
   let (dragRectD :: Signal Drawing) = fmap dragRect intermediateRects
-
-  -- origina drawing, with the overlay whenever activeS is True
-  let overlay :: Signal Drawing = liftA2 (\bt s -> if s then mconcat [bt] else mconcat []) bigTransparent2 activeS
-  pure $ (overlay <> dragRectD <> dS, finishedRects)
+  pure $ (overlay <> dragRectD, finishedRects)
   where
-
     dragRect Nothing = mempty
     dragRect (Just rect) =
       fillColorA (Colors.blue `withOpacity` 0.3) $ rectToTransform rect $ align BL $ square
+
     bigTransparent =
       -- Test strange alignment
       -- align BR $
       -- TODO no color
-        fillColorA (Colors.green `withOpacity` 0.0) $ Lubeck.Drawing.scale 3000 square
+        fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
 
+#ifdef __GHCJS__
 {-
 Displays a pair or plus/minus-labeled buttons.
 -}
@@ -354,27 +398,43 @@ onOff label init = do
   state <- stepperS init alter
   pure (mconcat [pure $ text (toJSString label), view], state)
 -- selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
-
+#endif
 
 ----------
 
-type SDrawing = Signal Drawing
+type SDrawing  = Signal Drawing
+type SRDrawing = Signal RDrawing
+
+-- renderDrawingTrace msg d = trace msg $ renderDrawing mempty d
+renderDrawingTrace msg d = renderDrawing mempty d
+
+
 
 main :: IO ()
 main = do
-  (view0, zoomActive) <- onOff "Zoom active" True
+#ifdef __GHCJS__
+  setupEmit
+  setupEmit2
+  setupRender
+  setupRender2
+
+  -- retainMain
+  (view0, zoomActive) <- onOff "Zoom active" False
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
   let zoomXY = liftA2 V2 zoomX zoomY
-
+#else
+  let zoomActive = pure True :: Signal Bool
+  let zoomXY = pure $ V2 1 1
+#endif
   -- Debug
   when debugHandlers $ void $
     subscribeEvent (updates zoomXY) print
 
-  let (plotSD :: Styled Drawing) = drawPlot $ mconcat
+  let !(plotSD :: Styled Drawing) = trace "> plotSD" $ drawPlot $ mconcat
           [ plot (zip [1..10::Double] [31,35,78,23,9,92,53,71,53,42::Double])
               [x <~ _1, y <~ _2]
-              (mconcat [line, fill])
+              (mconcat [line, fill, pointG])
           , plotLabel "(4,50)" [(4::Double, 50::Double)]
               [x <~ _1, y <~ _2]
           , plotLabel "(7,65)" [(7::Double, 65::Double)]
@@ -384,29 +444,204 @@ main = do
   let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
+  (plotSD2 :: SDrawing) <- draggable_ $ plotVD
+  (plotSD3 :: SDrawing) <- draggable_ $ plotVD
+  (plotSD4 :: SDrawing) <- draggable_ $ plotVD
 
-  let purpleCircle = Lubeck.Drawing.fillColor Colors.purple $ Lubeck.Drawing.scale 190 circle
-  let pinkCircle   = Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
-  let redSquare    = Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
-  let blueSquare   = Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
+  let purpleCircle = trace "> purpleCircle" $ Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
+  let pinkCircle   = trace "> pinkCircle" $ Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
+  let !redSquare    = trace "> redSquare" $ Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
+  let !blueSquare   = trace "> blueSquare" $ Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
 
-  dc1 <- nudgeable_ $ pure (pinkCircle ||| redSquare)
-  dc2 <- nudgeable_ $ pure purpleCircle
+  dc1 <- draggable_ $ pure (pinkCircle ||| redSquare)
+  -- dc2 <- draggable_ $ pure purpleCircle
 
-  (sqs  :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
-  sqs2 <- draggable_ sqs
-  (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
-  sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
+  let (sqs  :: Signal Bool -> SDrawing) = (fmap $ \t -> if t then blueSquare else redSquare)
 
-  (dr, _) <- dragRect zoomActive sqs2b
-  let (sd :: SDrawing) = mconcat
-                [ mempty
-                , dr
-                -- , fmap (translateX 120) dc1
-                -- , dc2
-                -- , sqs2
-                -- , sqs2b
-                , plotSD
+  (sqs2 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+  (sqs3 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+  (sqs4 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+  (sqs5 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+  (sqs6 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+  (sqs7 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+  (sqs8 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+  -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
+  -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
+
+  (dr, _) <- dragRect zoomActive
+
+  (srds :: [SRDrawing]) <- mapM strictifyS $
+  -- let (srds :: [SRDrawing]) =
+              -- fmap (fmap $ renderDrawing opts)
+                [ fmap (renderDrawingTrace "R Circle and square") dc1
+                -- , fmap (renderDrawingTrace "R Zoom") dr
+                -- , fmap (renderDrawingTrace "Hoverable square") sqs2
+                , sqs2
+                , fmap (renderDrawingTrace "R Plot") plotSD
+                , fmap (renderDrawingTrace "Plot2") plotSD2
+                , fmap (renderDrawingTrace "Plot3") plotSD3
+                , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
+                , fmap (renderDrawingTrace "Plot4") plotSD4
                 ]
+  -- let (sd :: SRDrawing) = mconcat srds
+  (sd :: SRDrawing) <- let [a,b,c,d,e,f,g] = srds in do
+    x <- fastMconcatS3 a b c
+    y <- fastMconcatS3 d e f
+    fastMconcatS3 x y f
 
-  runAppReactive $ mconcat [view0, view1, view2, fmap (toSvg mempty) $ sd]
+
+  -- foo <- fastMconcatS3
+  --                   sqs2
+  --                   sqs3
+  --                   sqs4
+  -- bar <- fastMconcatS3
+  --                   sqs5
+  --                   sqs6
+  --                   sqs7
+  -- sd <- fastMconcatS3 foo bar sqs8
+#ifdef __GHCJS__
+  let allS =
+            -- mconcat [view0, view1, view2,
+            fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
+            -- ]
+
+  -- runAppReactive $ allS
+  -- allS2 <- strictifyS allS
+  let allS2 = allS
+  runWithAnimation $ (allS2 :: Signal Html)
+  print "Done!"
+#else
+  let allS = fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
+  subscribeEvent (updates allS) $ \_ -> print "New image"
+  return ()
+#endif
+  where
+    !opts = mempty { dimensions = P (V2 1600 800) }
+
+-- -- | Evaluates events passing through to WHNF before propagating
+-- strictify :: Events a -> FRP (Events a)
+-- strictify e = do
+--   (s,e2) <- newEvent
+--   subscribeEvent e $ \x -> seq x (s x)
+--   return e2
+--
+-- -- | Evaluates events passing through to WHNF before propagating
+-- strictifyS :: Signal a -> FRP (Signal a)
+-- strictifyS s = do
+--   !z <- pollBehavior (current s)
+--   u2 <- strictify (updates s)
+--   stepperS z u2
+--
+
+emitDrawing2 opts x = unsafePerformIO $ do
+  -- beginEmit
+  let !r = emitDrawing opts x
+  -- endEmit
+  pure r
+renderDrawing2 opts x = unsafePerformIO $ do
+  -- beginRender
+  let !r = renderDrawing opts x
+  -- endRender
+  pure r
+
+foreign import javascript safe "window.beginEmit = function(){ for (i = 0; i < 100000; i++){ i = i } }" setupEmit :: IO ()
+foreign import javascript safe "window.endEmit = function(){ for (i = 0; i < 100000; i++){ i = i } }" setupEmit2 :: IO ()
+foreign import javascript unsafe "window.beginEmit()" beginEmit :: IO ()
+foreign import javascript unsafe "window.endEmit()" endEmit :: IO ()
+
+foreign import javascript safe "window.beginRender = function(){ for (i = 0; i < 100000; i++){ i = i } }" setupRender :: IO ()
+foreign import javascript safe "window.endRender = function(){ for (i = 0; i < 100000; i++){ i = i } }" setupRender2 :: IO ()
+foreign import javascript unsafe "window.beginRender()" beginRender :: IO ()
+foreign import javascript unsafe "window.endRender()" endRender :: IO ()
+
+-- MISC test
+
+duplicateN :: Int -> V2 Double -> Drawing -> Drawing
+duplicateN n v d = mconcat $ take n $ iterate (translate v) d
+
+-- The classic Photosphop "duplicate" function
+duplicate :: Drawing -> Drawing
+duplicate = duplicateAt (V2 50 50)
+
+duplicateAt :: V2 Double -> Drawing -> Drawing
+duplicateAt v d = d <> translate v d
+
+
+
+
+-- animate' :: JSFun (IO ()) -> IO ()
+
+#ifdef __GHCJS__
+foreign import javascript unsafe
+  "var req = window.requestAnimationFrame;   var f = function() { $1(); req(f); };   req(f);"
+  animate' :: Callback (IO ()) -> IO ()
+
+-- foreign import javascript unsafe "h$mainZCZCMainzimain();"
+  -- retainMain :: IO ()
+
+animate :: IO () -> IO ()
+animate k = do
+  cb <- syncCallback ThrowWouldBlock k
+  animate' cb
+
+data WithCount a = WithCount !Int a
+
+{-|
+Sample and render using requestAnimationFrame (forever).
+-}
+runWithAnimation :: Signal Html -> IO ()
+runWithAnimation b = do
+  (s, start) <- animated2 b
+  runAppReactive s
+  print "Starting animation"
+  start
+
+
+{-|
+Similar to animated, but eliminate double rendering.
+Only actually propagates when input has propagated.
+-}
+animated2 :: Signal a -> FRP (Signal a, IO ())
+animated2 b = do
+  let hB = current b
+  z <- pollBehavior hB
+  countB <- counter (updates b)
+
+  let (cAndCountB) = liftA2 WithCount countB hB
+    -- cAndCountB :: Behavior (WithCount a)
+
+  (sink, ev) <- newEvent
+  s <- stepperS z ev
+  last <- newIORef (-1)
+  -- forkIO $ forever $ do
+  --   lastV <- readIORef last
+  --   threadDelay 500000
+  --   print lastV
+  let start = animate $ do
+            lastV <- readIORef last
+            (WithCount n x) <- pollBehavior cAndCountB
+            -- TODO prevent re-render
+            when (n /= lastV) $
+              sink (seq x x)
+            writeIORef last n
+            -- print (n, lastV)
+  return (s, start)
+
+{-|
+Browser only: Poll the given behavior from the animation callback.
+Returns a signal that will be pushed to when invoked from the ACB and an action to start animation.
+-}
+animated :: Behavior a -> FRP (Signal a, IO ())
+animated b = do
+  z <- pollBehavior b
+  (sink, ev) <- newEvent
+  s <- stepperS z ev
+  let start = animate $ do
+            x <- pollBehavior b
+            sink x
+  return (s, start)
+#endif
+
+-- #else
+-- main = print "Dummy"
+-- #endif
