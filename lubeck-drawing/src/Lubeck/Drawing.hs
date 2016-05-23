@@ -140,8 +140,8 @@ module Lubeck.Drawing
 
   -- *** Text
   , text
-  , textMiddle          -- TODO depracate
-  , textEnd             -- TODO depracate
+  , textMiddle
+  , textEnd
   , textLeftMiddle
   , textMiddleMiddle
   , textRightMiddle
