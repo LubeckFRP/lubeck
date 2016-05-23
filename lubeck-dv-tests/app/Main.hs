@@ -535,7 +535,7 @@ main = do
 
 emitDrawing2 opts x = unsafePerformIO $ do
   -- beginEmit
-  let !r = emitDrawing' opts x
+  let !r = emitDrawing opts x
   -- endEmit
   pure r
 renderDrawing2 opts x = unsafePerformIO $ do

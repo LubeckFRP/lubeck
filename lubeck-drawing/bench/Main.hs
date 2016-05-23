@@ -111,11 +111,11 @@ benchRenderEmitForDrawing name drawing = do
     return $ do
       let !x = emitDrawing mempty rd
       return ()
-  addWithPrepare ("emit (optimized)" <> name) $ do
-    let !rd = renderDrawing mempty drawing
-    return $ do
-      let !x = emitDrawing' mempty rd
-      return ()
+  -- addWithPrepare ("emit (optimized)" <> name) $ do
+  --   let !rd = renderDrawing mempty drawing
+  --   return $ do
+  --     let !x = emitDrawing mempty rd
+  --     return ()
 #else
 import BasePrelude
 main = print "Only available in GHCJS"
