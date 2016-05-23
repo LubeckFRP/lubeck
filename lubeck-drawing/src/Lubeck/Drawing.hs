@@ -179,8 +179,6 @@ module Lubeck.Drawing
   , align
   , OctagonSide(..)
 
-
-
   -- ** Drawings
   , Drawing
   -- ** Basic drawings
@@ -514,14 +512,14 @@ apStyle = mappend
 
 {-| Add an event handler to the given drawing.
 
-   Handlers are embedde using 'Web.VirtualDom.on' so the same naming conventions apply.
+   Handlers_ are embedde using 'Web.VirtualDom.on' so the same naming conventions apply.
 -}
 #ifdef __GHCJS__
 addHandler :: Str -> (JSVal -> IO ()) -> Drawing -> Drawing
-addHandler = EventHandler
+addHandler k v = Handlers (singleTonHandlers k v)
 #else
 addHandler :: Str -> a -> Drawing -> Drawing
-addHandler _ _ = id
+addHandler k v = Handlers ()
 #endif
 
 
@@ -663,9 +661,7 @@ envelope x = case x of
 
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
-#ifdef __GHCJS__
-  EventHandler _ _ x   -> envelope x
-#endif
+  Handlers _ x  -> envelope x
   Em            -> mempty
   Ap xs         -> mconcat (fmap envelope xs)
 
@@ -781,12 +777,7 @@ data Drawing
 
   | Transf !(Transformation Double) !Drawing
   | Style !Style !Drawing
-
-#ifdef __GHCJS__
-  -- Embed arbitrary SVG property (typically used for event handlers)
-  -- | Prop !E.Property !Drawing
-  | EventHandler !Str (JSVal -> IO ()) !Drawing
-#endif
+  | Handlers !Handlers !Drawing
 
   | Em
   -- Compose drawings
@@ -811,10 +802,7 @@ drawingTreeF f = go
     go (Embed _) = 1
     go (Transf _ x) = go x + 1
     go (Style _ x) = go x + 1
-#ifdef __GHCJS__
-    -- go (Prop _ x) = go x + 1
-    go (EventHandler _ _ x) = go x + 1
-#endif
+    go (Handlers _ x) = go x + 1
     go Em = 1
     go (Ap xs) = foldr f 0 (fmap go xs)
 
@@ -841,55 +829,44 @@ instance Monoid Handler where
         a x
         b x
 
-newtype Handlers = Handlers (MonoidMap Str Handler)
+newtype Handlers = Handlers_ (MonoidMap Str Handler)
   deriving Monoid
 
 singleTonHandlers :: Str -> (JSVal -> IO ()) -> Handlers
-singleTonHandlers attrName sink = Handlers $ singletonMonoidMap attrName (Handler sink)
+singleTonHandlers attrName sink = Handlers_ $ singletonMonoidMap attrName (Handler sink)
 
 handlersToProperties :: Handlers -> [E.Property]
-handlersToProperties (Handlers (MonoidMap m))
+handlersToProperties (Handlers_ (MonoidMap m))
   = fmap (\(n, Handler v) -> VD.on (toJSString n) v) $ Map.toList m
 {-# INLINABLE handlersToProperties #-}
 
-styleToProperty_FAST :: Style -> E.Property
-styleToProperty_FAST s = A.style $ toJSString $ styleToAttrString s
-{-# INLINABLE styleToProperty_FAST #-}
+styleToProperty :: Style -> E.Property
+styleToProperty s = A.style $ toJSString $ styleToAttrString s
+{-# INLINABLE styleToProperty #-}
 
--- transformationToProperty :: Transformation Double -> E.Property
--- -- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
--- --   where
--- --     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
---
--- transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
--- {-# INLINABLE transformationToProperty #-}
+{-
+transformationToProperty :: Transformation Double -> E.Property
+-- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
+--   where
+--     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
 
+transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
+{-# INLINABLE transformationToProperty #-}
+-}
 
-transformationToProperty_FAST :: Transformation Double -> E.Property
-transformationToProperty_FAST !(TF (V3 (V3 a c e) (V3 b d f) _)) =
+transformationToProperty :: Transformation Double -> E.Property
+transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
   VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
-{-# INLINABLE transformationToProperty_FAST #-}
+{-# INLINABLE transformationToProperty #-}
 
 nodeInfoToProperties :: RNodeInfo -> [E.Property]
 nodeInfoToProperties (RNodeInfo style transf handlers) =
-  transformationToProperty_FAST transf : styleToProperty_FAST style : handlersToProperties handlers
+  transformationToProperty transf : styleToProperty style : handlersToProperties handlers
 {-# INLINABLE nodeInfoToProperties #-}
-
-{-
-TODO make this much faster
--}
-nodeInfoToProperties_FAST :: RNodeInfo -> [E.Property]
-nodeInfoToProperties_FAST (RNodeInfo style transf handlers) =
-  transformationToProperty_FAST transf : styleToProperty_FAST style : handlersToProperties handlers
-{-# INLINABLE nodeInfoToProperties_FAST #-}
-
 #else
 type Handler = ()
 type Handlers = ()
 #endif
-
-
-
 
 drawingToRDrawing :: Drawing -> RDrawing
 drawingToRDrawing = drawingToRDrawing' mempty
@@ -905,11 +882,7 @@ drawingToRDrawing' nodeInfo x = case x of
     (Embed e)              -> RPrim nodeInfo (REmbed e)
     (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
     (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
-#ifdef __GHCJS__
-    (EventHandler attrName sink x) -> drawingToRDrawing'
-                                  -- TODO arguably wrong composition order
-                                  (nodeInfo <> toNodeInfoH (singleTonHandlers attrName sink)) x
-#endif
+    (Handlers h x) -> drawingToRDrawing' (nodeInfo <> toNodeInfoH h) x
     Em        -> mempty
     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
     -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
@@ -1552,24 +1525,18 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
 
 
 #ifdef __GHCJS__
-toSvg = toSvgNew
-
 {-| Generate an SVG from a drawing. -}
-toSvgNew :: RenderingOptions -> Drawing -> Svg
-toSvgNew opts d = emitDrawing opts $ renderDrawing opts d
+toSvg :: RenderingOptions -> Drawing -> Svg
+toSvg opts d = emitDrawing opts $ renderDrawing opts d
 
-{-| Generate an SVG from a drawing. -}
+{-| Generate an SVG from a drawing. TODO rename emitDrawingSvg or similar -}
 emitDrawing :: RenderingOptions -> RDrawing -> Svg
-emitDrawing (RenderingOptions {dimensions, originPlacement}) !mDrawing =
-  -- printTreeInfo drawing1
-  case mDrawing of
-    (drawing :: RDrawing) -> do
-      -- printRTreeInfo drawing
-      svgTopNode
-        (toStr $ floor x)
-        (toStr $ floor y)
-        ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-        (single $ toSvg1 drawing)
+emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
+  svgTopNode
+    (toStr $ floor x)
+    (toStr $ floor y)
+    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
+    (single $ toSvg1 drawing)
   where
     svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
     svgTopNode w h vb = E.svg
@@ -1707,12 +1674,8 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Style s x  -> single $ mkN "g"
             [mkA "style" $ styleToAttrString s]
             (toSvg1 ps x)
-
-#ifdef __GHCJS__
           -- Ignore event handlers
-          -- Prop  _ x   -> toSvg1 ps x
-          EventHandler _ _ x -> toSvg1 ps x
-#endif
+          Handlers _ x -> toSvg1 ps x
 
           -- No point in embedding handlers to empty groups, but render anyway
           Em         -> single $ mkN "g" ps []
