@@ -6,7 +6,7 @@
 
 module Main where
 
-import BasePrelude hiding ((|||), Signal)
+import BasePrelude hiding ((|||), Signal, rotate)
 import Control.Lens(to, _1, _2, (.~))
 import Linear.Affine ((.+^))
 import Data.Colour (withOpacity)
@@ -528,7 +528,7 @@ main = do
                 -- , fmap (renderDrawingTrace "Hoverable square") sqs2
                 -- , sqs2
                 , fmap (renderDrawingTrace "R Plot") plotSD
-                -- , fmap (renderDrawingTrace "Plot2") plotSD2
+                , fmap (renderDrawingTrace "Plot2") (fmap (rotate (turn/3)) plotSD2)
                 -- , fmap (renderDrawingTrace "Plot3") plotSD3
                 -- , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
                 -- , fmap (renderDrawingTrace "Plot4") plotSD4

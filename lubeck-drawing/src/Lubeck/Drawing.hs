@@ -3,7 +3,7 @@
   NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving
   , ScopedTypeVariables #-}
 
-{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+-- {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
 {-|
 
@@ -907,6 +907,7 @@ data RPrim
    | RLines !Bool ![V2 Double]
    | RText !Str
    | REmbed !Embed
+   deriving (Show)
 
 data RNodeInfo
   = RNodeInfo
@@ -914,10 +915,23 @@ data RNodeInfo
     , rTransf  :: !(Transformation Double)
     , rHandler :: !Handlers
     }
+   deriving (Show)
+
+-- TODO remove
+
+#ifdef __GHCJS__
+instance Show Handlers where
+  show x = "handlers"
+#endif
+instance Show Style where
+  show x = "style"
+instance (Show a, Num a) => Show (Transformation a) where
+  show x = "transformation" ++ show (transformationToMatrix x)
 
 data RDrawing
   = RPrim !RNodeInfo !RPrim
   | RMany !RNodeInfo ![RDrawing]
+   deriving (Show)
 
 instance Monoid RDrawing where
   mempty = RMany mempty mempty
@@ -1512,16 +1526,16 @@ instance Monoid RenderingOptions where
 
 
 renderDrawing :: RenderingOptions -> Drawing -> RDrawing
-renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing (placeOrigo drawing)
+renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing $ placeOrigo $ scaleY (-1) $ drawing
   where
     placeOrigo :: Drawing -> Drawing
     -- placeOrigo = id
     placeOrigo = case originPlacement of
       TopLeft     -> id
-      Center      -> translateX (x/2) . translateY (y/(-2))
-      BottomLeft  -> translateY (y*(-1))
+      Center      -> translateX (dx/2) . translateY (dy/2)
+      BottomLeft  -> translateY (dy)
 
-    P (V2 x y) = dimensions
+    P (V2 dx dy) = dimensions
 
 
 #ifdef __GHCJS__
@@ -1536,7 +1550,7 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
     (toStr $ floor x)
     (toStr $ floor y)
     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-    (single $ toSvg1 drawing)
+    (single $ toSvg1 $ drawing)
   where
     svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
     svgTopNode w h vb = E.svg
@@ -1560,10 +1574,24 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
     single x = [x]
     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
     -- negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-    reflY (V2 adx ady) = V2 adx (negate ady)
     P (V2 x y) = dimensions
 
+    -- TODO scaling all points
+    -- reflY_ (V2 adx ady) = V2 adx (negate ady)
+    reflY_ = id
+    {-
+      How to alter coordinates from Math to SVG?
+
+      Alt 1: change all transformations
+        (scalingY (-1) <>)
+      and all images
+        (scaleY (-1))
+      (or simply emit according to SVG conventions)
+
+      Alt 2: emit AS IS and add an extra outer transformation node that affects the WHOLE image
+    -}
     toSvg1 :: RDrawing -> Svg
     toSvg1 drawing = case drawing of
       RPrim nodeInfo prim -> case prim of
@@ -1577,10 +1605,10 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
           ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
           []
         (RLines closed vs) -> (if closed then E.polygon else E.polyline)
-          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (map reflY vs)), noScale] ++ nodeInfoToProperties nodeInfo)
+          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (map reflY_ vs)), noScale] ++ nodeInfoToProperties nodeInfo)
           []
-        (RText s) -> E.text'
-          ([A.x "0", A.y "0"] ++ nodeInfoToProperties nodeInfo)
+        (RText s) -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.text'
+          ([A.x "0", A.y "0", A.transform "matrix(1,0,0,-1,0,0)"])
           [E.text $ toJSString s]
         -- TODO need extra group for nodeInfo etc
         (REmbed e) -> embedToSvg e
@@ -1717,7 +1745,7 @@ foreign import javascript unsafe "$1 + ':' + $2 + ';'"
 foreign import javascript unsafe "$2 + $1"
   js_appendStyle :: Style -> Style -> Style
 
-foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+(-($6))+')'"
+foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+(($6))+')'"
   js_transformationToProperty_opt :: Double -> Double -> Double -> Double -> Double -> Double -> JSString
 
 #endif
