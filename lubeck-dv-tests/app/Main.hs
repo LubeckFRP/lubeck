@@ -184,6 +184,9 @@ instance Diffable MouseState where
 
 {-
 TODO write down equations relating SVG-style positions to Lubeck.Drawing style positions properly!
+
+Note: Properly, in (transform t (addHandler h x)), the handler should apply (-t) to all positions it recieves.
+Thus when scaling/translating an image, interaction till works "as expected" (i.e. mouse drag rectangles still appear where the mouse is).
 -}
 compensatePosition :: RenderingOptions -> P2 Double -> P2 Double
 compensatePosition (RenderingOptions {dimensions, originPlacement}) (P (V2 x y)) = case originPlacement of
@@ -350,6 +353,9 @@ rectToTransform (Rect (P (V2 x1 y1)) (P (V2 x2 y2))) d = id
     $ Lubeck.Drawing.translateY y1
     $ Lubeck.Drawing.scaleX     (x2-x1)
     $ Lubeck.Drawing.scaleY     (y2-y1)
+    -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
+    -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
+    $ align BL
     $ d
 
 {-Finished rects-}
@@ -401,18 +407,21 @@ dragRect :: Signal Bool -> FRP (Signal Drawing, Events Rect)
 dragRect activeS = do
   (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState) <- withMousePositionStateNR (pure bigTransparent)
 
-  let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) bigTransparentWithHandlers activeS
+    -- TODO test bad translation
+  let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) (bigTransparentWithHandlers) activeS
 
   (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
 
+  subscribeEvent (updates intermediateRects) print
+
   let (dragRectD :: Signal Drawing) = fmap dragRect intermediateRects
 
-  pure $ (overlay <> dragRectD, finishedRects)
+  pure $ (fmap (scaleX 1) $ overlay <> dragRectD, finishedRects)
 
   where
     dragRect Nothing = mempty
     dragRect (Just rect) =
-      strokeColor Colors.green $ fillColorA (Colors.black `withOpacity` 0) $ rectToTransform rect $ align BL $ square
+      strokeColor Colors.green $ fillColorA (Colors.black `withOpacity` 0) $ rectToTransform rect $ square
 
     bigTransparent =
       -- Test strange alignment
@@ -513,21 +522,22 @@ main = do
   (srds :: [SRDrawing]) <- mapM strictifyS $
   -- let (srds :: [SRDrawing]) =
               -- fmap (fmap $ renderDrawing opts)
-                [ fmap (renderDrawingTrace "R Circle and square") dc1
+                [ mempty
+                -- fmap (renderDrawingTrace "R Circle and square") dc1
                 , fmap (renderDrawingTrace "R Zoom") dr
                 -- , fmap (renderDrawingTrace "Hoverable square") sqs2
-                , sqs2
+                -- , sqs2
                 , fmap (renderDrawingTrace "R Plot") plotSD
                 -- , fmap (renderDrawingTrace "Plot2") plotSD2
-                , fmap (renderDrawingTrace "Plot3") plotSD3
-                , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
-                , fmap (renderDrawingTrace "Plot4") plotSD4
+                -- , fmap (renderDrawingTrace "Plot3") plotSD3
+                -- , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
+                -- , fmap (renderDrawingTrace "Plot4") plotSD4
                 ]
-  -- let (sd :: SRDrawing) = mconcat srds
-  (sd :: SRDrawing) <- let [a,b,c,d,e,f,g] = srds in do
-    x <- fastMconcatS3 a b c
-    y <- fastMconcatS3 d e f
-    fastMconcatS3 x y f
+  let (sd :: SRDrawing) = mconcat srds
+  -- (sd :: SRDrawing) <- let [a,b,c,d,e,f,g] = srds in do
+  --   x <- fastMconcatS3 a b c
+  --   y <- fastMconcatS3 d e f
+  --   fastMconcatS3 x y f
 
 
   -- foo <- fastMconcatS3
