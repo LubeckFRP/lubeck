@@ -66,6 +66,7 @@ import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
 import qualified Data.Colour.Names as Colors
 
+import Data.Functor.Classes(Eq1, Ord1)
 
 {-
 Assuming (Ord k) =>
@@ -86,13 +87,21 @@ INTERESTINGLY
     ~  ([k], Int, k -> Int -> Maybe v)
 
 -}
+
+-- TODO orphans
 deriving instance Foldable ZipList
 deriving instance Traversable ZipList
+deriving instance Eq1 ZipList
+deriving instance Ord1 ZipList
 
+
+{-|
+Single column of a 'Table'. Isomorphic to [Maybe a].
+-}
 newtype Column a = Column { getColumn_ :: MaybeT ZipList a }
   deriving (Functor, Applicative, Monad,
    Foldable, Traversable,
-   Alternative
+   Alternative, Eq, Ord
    )
 
 -- instance Alternative Column where
@@ -117,6 +126,9 @@ columnFromList xs = Column $ MaybeT $ ZipList xs
 runColumn :: Column a -> [Maybe a]
 runColumn = getZipList . runMaybeT . getColumn_
 
+{-|
+The top-most non-Nothing values of a column.
+-}
 runColumnFinite :: Column a -> [a]
 runColumnFinite = fmap fromJust . takeWhile isJust . runColumn
   where
@@ -130,7 +142,7 @@ Table type used to represent data internally in Lubeck DV.
 You can think of it as a spreadsheet where columns have names, rows have
 numbers indexed from 0, and cells might be empty.
 
-See tableToMap, tableToList. 
+See tableToMap, tableToList.
 -}
 newtype Table k a = Table [Map k a]
   deriving (Functor, Monoid, Show)
@@ -217,6 +229,8 @@ crossTablesLong f (Table a) (Table b) = Table $ crossWith (Data.Map.unionWith f)
     crossWith f a  [] = []
     crossWith f a  b  = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
+-- Note: This would form an applicative with a suitable pure
+
 overlayTablesShort :: Ord k => (a -> b -> c) -> Table k a -> Table k b -> Table k c
 overlayTablesShort f (Table a) (Table b) = Table $ zipWith (combine2With f) a b
 
@@ -253,7 +267,7 @@ combine2 a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUp
     (ksA, ksB) = (Data.Map.keys a, Data.Map.keys b)
     sortNub = Data.List.nub . Data.List.sort
 
-combine2With :: Ord k => (a -> b1 -> b) -> Map k a -> Map k b1 -> Map k b
+combine2With :: Ord k => (a -> b -> c) -> Map k a -> Map k b -> Map k c
 combine2With f a b = fmap (uncurry f) $ combine2 a b
 
 {-|
