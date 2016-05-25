@@ -341,29 +341,31 @@ data RectInputEvent
   | AbortRect
   deriving (Eq, Ord, Show)
 
-{-
-A rectangle, represented as two points.
--}
-data Rect = Rect (P2 Double) (P2 Double)
-  deriving (Eq, Ord, Show)
-
-rectToTransform :: Rect -> Drawing -> Drawing
-rectToTransform (Rect (P (V2 x1 y1)) (P (V2 x2 y2))) d = id
-    $ Lubeck.Drawing.translateX x1
-    $ Lubeck.Drawing.translateY y1
-    $ Lubeck.Drawing.scaleX     (x2-x1)
-    $ Lubeck.Drawing.scaleY     (y2-y1)
-    -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
-    -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
-    $ align BL
-    $ d
+-- {-|
+-- A rectangle, represented as two points.
+-- -}
+-- data Rect = Rect (P2 Double) (P2 Double)
+--   deriving (Eq, Ord, Show)
+--
+-- {-
+-- Fit a drawing inside a rectangle. Accomplished by aligning the drawing
+-- at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
+-- -}
+-- fitInside :: Rect -> Drawing -> Drawing
+-- fitInside (Rect (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
+--     $ Lubeck.Drawing.translate (p1 .-. origin)
+--     $ Lubeck.Drawing.scale    (p1 .- . p1)
+--     -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
+--     -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
+--     $ align BL
+--     $ d
 
 {-Finished rects-}
 squares :: Events RectInputEvent -> FRP (Events Rect)
 squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
   where
     f (BeginRect p1)   _            = (Just p1, Nothing)
-    f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect p1 p2))
+    f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect_ p1 p2))
     f AbortRect        _            = (Nothing, Nothing)
     f (ContinueRect _) (x, _)       = (x,       Nothing)
 
@@ -375,8 +377,8 @@ squaresTemp ri = do
 squaresTemp2 :: Events RectInputEvent -> FRP (Events (Maybe Rect))
 squaresTemp2 = fmap (fmap snd) . foldpE f (Nothing, Nothing)
   where
-    f (BeginRect p1)   _             = (Just p1, Just (Rect p1 p1))
-    f (ContinueRect p2) (Just p1, _) = (Just p1, Just (Rect p1 p2))
+    f (BeginRect p1)   _             = (Just p1, Just (Rect_ p1 p1))
+    f (ContinueRect p2) (Just p1, _) = (Just p1, Just (Rect_ p1 p2))
     f _ _ = (Nothing, Nothing)
 
 mpsToRectInput :: P2 Double -> MouseEv -> RectInputEvent
@@ -421,7 +423,7 @@ dragRect activeS = do
   where
     dragRect Nothing = mempty
     dragRect (Just rect) =
-      strokeColor Colors.green $ fillColorA (Colors.black `withOpacity` 0) $ rectToTransform rect $ square
+      strokeColor Colors.green $ fillColorA (Colors.black `withOpacity` 0) $ fitInsideRect rect $ square
 
     bigTransparent =
       -- Test strange alignment

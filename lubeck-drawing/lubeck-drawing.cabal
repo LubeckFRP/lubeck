@@ -11,7 +11,14 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Lubeck.Drawing
+                     , Lubeck.Drawing.Types
+                     , Lubeck.Drawing.Style
+                     , Lubeck.Drawing.Text
+                     , Lubeck.Drawing.Transformation
+                     , Lubeck.Drawing.Handlers
+
   build-depends:       base
+                     , base-prelude
                      , lubeck-core
                      , text
                      , mtl

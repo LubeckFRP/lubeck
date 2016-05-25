@@ -84,6 +84,9 @@ module Lubeck.Drawing
   , angleBetween
   , angleBetweenDirections
 
+  , Rect(..)
+  , fitInsideRect
+
   -- ** Transformations
   , Transformation
   , negTransformation
@@ -114,6 +117,7 @@ module Lubeck.Drawing
   , scale
   , scaleX
   , scaleY
+  , scaleXY
   , translate
   , translateX
   , translateY
@@ -354,6 +358,26 @@ transformDirection t (Direction v) = Direction (transformVector t v)
 angleBetweenDirections :: (Metric v, Floating n) => Direction v n -> Direction v n -> Angle n
 angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
 
+
+
+{-|
+A rectangle, represented as two points.
+-}
+data Rect = Rect_ (P2 Double) (P2 Double)
+  deriving (Eq, Ord, Show)
+
+{-
+Fit a drawing inside a rectangle. Accomplished by aligning the drawing
+at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
+-}
+fitInsideRect :: Rect -> Drawing -> Drawing
+fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
+    $ translate (p1 .-. origin)
+    $ scaleXY   (p2 .-. p1)
+    -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
+    -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
+    $ align BL
+    $ d
 
 {-| -}
 newtype Transformation a = TF { getTF :: M33 a }
@@ -1368,8 +1392,8 @@ translateY :: Double -> Drawing -> Drawing
 translateY y = transform $ translationY y
 
 {-| Scale (stretch) an image. -}
--- scaleXY :: Double -> Double -> Drawing -> Drawing
--- scaleXY x y = transform $ matrix (x,0,0,y,0,0)
+scaleXY :: V2 Double -> Drawing -> Drawing
+scaleXY (V2 x y) = transform $ matrix (x,0,0,y,0,0)
 
 {-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
 scale :: Double -> Drawing -> Drawing
@@ -1404,6 +1428,7 @@ shearY a = transform $ shearingY a
 {-# INLINABLE scale #-}
 {-# INLINABLE scaleX #-}
 {-# INLINABLE scaleY #-}
+{-# INLINABLE scaleXY #-}
 {-# INLINABLE rotate #-}
 {-# INLINABLE shearX #-}
 {-# INLINABLE shearY #-}
