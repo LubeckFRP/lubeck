@@ -144,7 +144,7 @@ data Styling = Styling
   -- data has been mapped and normalized and thus is already in the UHQ).
   --
   --
-  , _zoom                             :: V2 Double
+  , _zoom                             :: Rect Double
 
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight
@@ -246,7 +246,7 @@ instance Monoid Styling where
     { _dummy                        = mempty
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
-    , _zoom                         = V2 1 1
+    , _zoom                         = Rect_ (P (V2 0 0) (V2 1 1))
 
     , _axisTextFontFamily           = mempty
     , _axisTextFontWeight           = mempty

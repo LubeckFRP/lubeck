@@ -232,6 +232,8 @@ import qualified Data.String
 import qualified Data.Sequence as Seq
 -- import Data.Sequence(Seq)
 -- import Data.Foldable(toList)
+import Control.Lens (Lens, Lens')
+-- import Control.Lens.TH (makeLenses)
 
 import Linear.Vector
 import Linear.Affine
@@ -360,15 +362,39 @@ angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
 
 {-|
 A rectangle, represented as two points.
+
+Access the corners as
+@
+let r = Rect_ (P (V2 1 2) (3 4))
+
+r^.p1.x -- left
+r^.p2.x -- right
+r^.p1.y -- bottom
+r^.p2.y -- top
+@
 -}
-data Rect = Rect_ (P2 Double) (P2 Double)
+data Rect a = Rect_ { _p1 :: P2 a, _p2 :: P2 a }
   deriving (Eq, Ord, Show)
+
+-- makeLenses ''Rect
+p1 :: Lens' (Rect a) (P2 a)
+p1 f (Rect_ p1 p2) = fmap (\p1' -> Rect_ p1' p2) $ f p1
+
+p2 :: Lens' (Rect a) (P2 a)
+p2 f (Rect_ p1 p2) = fmap (\p2' -> Rect_ p1 p2') $ f p2
+
+_left, _right, _bottom, _top :: Lens' (Rect a) a
+_left    = p1._x
+_right   = p2._x
+_bottom  = p1._y
+_top     = p2._y
+
 
 {-
 Fit a drawing inside a rectangle. Accomplished by aligning the drawing
 at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
 -}
-fitInsideRect :: Rect -> Drawing -> Drawing
+fitInsideRect :: Rect Double -> Drawing -> Drawing
 fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
     $ translate (p1 .-. origin)
     $ scaleXY   (p2 .-. p1)
