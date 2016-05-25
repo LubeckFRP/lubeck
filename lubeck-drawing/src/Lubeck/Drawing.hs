@@ -85,6 +85,13 @@ module Lubeck.Drawing
   , angleBetweenDirections
 
   , Rect(..)
+  , _left
+  , _right
+  , _bottom
+  , _top
+  , p1
+  , p2
+  , rectToTransf
   , fitInsideRect
 
   -- ** Transformations
