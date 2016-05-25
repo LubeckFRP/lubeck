@@ -341,27 +341,8 @@ data RectInputEvent
   | AbortRect
   deriving (Eq, Ord, Show)
 
--- {-|
--- A rectangle, represented as two points.
--- -}
--- data Rect = Rect (P2 Double) (P2 Double)
---   deriving (Eq, Ord, Show)
---
--- {-
--- Fit a drawing inside a rectangle. Accomplished by aligning the drawing
--- at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
--- -}
--- fitInside :: Rect -> Drawing -> Drawing
--- fitInside (Rect (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
---     $ Lubeck.Drawing.translate (p1 .-. origin)
---     $ Lubeck.Drawing.scale    (p1 .- . p1)
---     -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
---     -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
---     $ align BL
---     $ d
-
 {-Finished rects-}
-squares :: Events RectInputEvent -> FRP (Events Rect)
+squares :: Events RectInputEvent -> FRP (Events (Rect Double))
 squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
   where
     f (BeginRect p1)   _            = (Just p1, Nothing)
@@ -370,11 +351,11 @@ squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
     f (ContinueRect _) (x, _)       = (x,       Nothing)
 
 {-Rects in the making. TODO-}
-squaresTemp :: Events RectInputEvent -> FRP (Signal (Maybe Rect))
+squaresTemp :: Events RectInputEvent -> FRP (Signal (Maybe (Rect Double)))
 squaresTemp ri = do
   rs <- squaresTemp2 ri
   stepperS Nothing rs
-squaresTemp2 :: Events RectInputEvent -> FRP (Events (Maybe Rect))
+squaresTemp2 :: Events RectInputEvent -> FRP (Events (Maybe (Rect Double)))
 squaresTemp2 = fmap (fmap snd) . foldpE f (Nothing, Nothing)
   where
     f (BeginRect p1)   _             = (Just p1, Just (Rect_ p1 p1))
@@ -388,7 +369,7 @@ mpsToRectInput pos MouseOut         = AbortRect
 mpsToRectInput pos _                = ContinueRect pos
 -- mpsToRectInput pos MouseP
 
-emittedAndIntermediateRectangles :: Signal MousePositionState -> FRP (Events Rect, Signal (Maybe Rect))
+emittedAndIntermediateRectangles :: Signal MousePositionState -> FRP (Events (Rect Double), Signal (Maybe (Rect Double)))
 emittedAndIntermediateRectangles bigTransparentMPS = do
   let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
   mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
@@ -405,7 +386,7 @@ Otherwise, this displays an invisible drawing across the original image, that re
 and displays feedback on drag events. Whenever a drag action is completed, the rectangle in which
 it was performed is sent.
 -}
-dragRect :: Signal Bool -> FRP (Signal Drawing, Events Rect)
+dragRect :: Signal Bool -> FRP (Signal Drawing, Events (Rect Double))
 dragRect activeS = do
   (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState) <- withMousePositionStateNR (pure bigTransparent)
 
@@ -473,7 +454,10 @@ main = do
   (view0, zoomActive) <- onOff "Zoom active" True
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
-  let zoomXY = liftA2 V2 zoomX zoomY
+  (view1a, zoomXO) <- plusMinus "Zoom X offset" 0
+  (view2a, zoomYO) <- plusMinus "Zoom Y offset" 0
+  let zoomXY = liftA4 (\x y xo yo -> rect xo yo x y) zoomX zoomY zoomXO zoomYO
+  let zoomV = mconcat [view0, view1, view2, view1a, view2a]
 #else
   let zoomActive = pure True :: Signal Bool
   let zoomXY = pure $ V2 1 1
@@ -540,23 +524,11 @@ main = do
   --   x <- fastMconcatS3 a b c
   --   y <- fastMconcatS3 d e f
   --   fastMconcatS3 x y f
-
-
-  -- foo <- fastMconcatS3
-  --                   sqs2
-  --                   sqs3
-  --                   sqs4
-  -- bar <- fastMconcatS3
-  --                   sqs5
-  --                   sqs6
-  --                   sqs7
-  -- sd <- fastMconcatS3 foo bar sqs8
 #ifdef __GHCJS__
   let allS =
-            mconcat [view0, view1, view2,
+            mconcat [zoomV,
             fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
             ]
-
   -- runAppReactive $ allS
   -- allS2 <- strictifyS allS
   let allS2 = allS

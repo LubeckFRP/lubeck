@@ -16,7 +16,7 @@ module Lubeck.DV.Styling
     Styling
   -- TODO exort all lenses here
   , renderingRectangle
-  -- , zoom
+  , zoom
 
   , axisStrokeWidth
   , axisStrokeColor
