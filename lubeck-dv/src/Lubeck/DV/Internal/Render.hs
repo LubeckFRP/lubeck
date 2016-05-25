@@ -9,6 +9,7 @@
   , ConstraintKinds
   , FlexibleContexts
   , ScopedTypeVariables
+  , BangPatterns
   #-}
 
 module Lubeck.DV.Internal.Render
@@ -61,17 +62,7 @@ This is accomplished as follows:
   - Run the linear transformation that defines the rendering rectangle (always a scaling)
 -}
 getRenderingPosition :: Styling -> P2 Double -> Either (P2 Double) (P2 Double)
-getRenderingPosition styling x = fmap (transformPoint (scalingXY $ styling^.renderingRectangle)) $ Right $ transformPoint (styling^.zoom) x
-
-  where
-
-    -- TODO actually use filtering
-    filterTicks :: [(Double, a)] -> [(Double, a)]
-    filterTicks = filter (withinNormRange . fst)
-
-    -- | Is a number within the normalized (UHQ) range?
-    withinNormRange :: Double -> Bool
-    withinNormRange x = 0 <= x && x <= 1
+getRenderingPosition styling x = fmap (transformPoint (scalingXY $ styling^.renderingRectangle)) $ (\p@(P (V2 x y)) -> if withinNormRange x && withinNormRange y then Right p else Left p) $ transformPoint (styling^.zoom) x
 
 {-
 Like getRenderingPosition for drawings.
@@ -259,90 +250,70 @@ ticks
   => [(Double, Maybe Str)] -- ^ X axis ticks.
   -> [(Double, Maybe Str)] -- ^ Y axis ticks.
   -> m Drawing
-ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
+ticks xTickList1 yTickList1 = do
+  style <- ask
+  let !xTickList = xTickList1
+  let !yTickList = yTickList1
+
+  -- TODO zoom: derive from zoom , with filtering
+  -- let (xPos :: Double) = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
+  -- let (yPos :: Double) = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
+
+  -- Flipped!
+  let xInsideLength = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
+  let yInsideLength = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
+
+  let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
+
+  let tl         = style^.basicTickLength
+  let widthFgB   = style^.basicTickStrokeWidth
+  let widthBgX   = style^.backgroundTickStrokeWidthX
+  let widthBgY   = style^.backgroundTickStrokeWidthY
+  let colFgB     = style^.basicTickColor
+  let colBgX     = style^.backgroundTickStrokeColorX
+  let colBgY     = style^.backgroundTickStrokeColorY
+  let drawBgX    = not $ isTransparent colBgX
+  let drawBgY    = not $ isTransparent colBgY
+
+  let xTicks = mconcat $ flip fmap xTickList $
+          \(pos,str) -> let pos2 = getRenderingPositionX style pos in if not (withinNormRange pos2) then mempty else
+            translateX pos2 $ mconcat
+            [ mempty
+            -- Text
+            , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate (turn*xTickTurn) . textX style) $ str
+            -- Outside quadrant (main) tick
+            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
+            -- Inside quadrant (background) grid
+            , if not drawBgX then mempty else
+                strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
+            ]
+  let yTicks = mconcat $ flip fmap yTickList $
+          \(pos,str) -> let pos2 = getRenderingPositionY style pos in if not (withinNormRange pos2) then mempty else
+            translateY pos2 $ mconcat
+            [ mempty
+            -- Text
+            , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate (turn*yTickTurn) . textY style) $ str
+            -- Outside quadrant (main) tick
+            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
+            -- Inside quadrant (background) grid
+            , if not drawBgY then mempty else
+                strokeWidth widthBgY $ strokeColorA colBgY $ scale yInsideLength $ translateX (0.5) horizontalLine
+            ]
+  return $ mconcat [xTicks, yTicks]
   where
-    filterTicks :: [(Double, a)] -> [(Double, a)]
-    filterTicks = filter (withinNormRange . fst)
-
-    -- | Is a number within the normalized (UHQ) range?
-    withinNormRange :: Double -> Bool
-    withinNormRange x = 0 <= x && x <= 1
-
-    -- | Draw ticks.
-    --
-    -- Each argument is a list of tick positions (normalized to [0,1]) and label.
-    -- If the label is @Nothing@ this is rendered as a minor tick, which often
-    -- implies a less pronounced styling compared to major ticks (typically:
-    -- shorter tick lines, lighter colours).
-    --
-    -- To render a major tick without label, use @Just mempty@.
-    --
-    -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
-    ticksNoFilter
-      :: (Monad m, MonadReader Styling m)
-      => [(Double, Maybe Str)] -- ^ X axis ticks.
-      -> [(Double, Maybe Str)] -- ^ Y axis ticks.
-      -> m Drawing
-    ticksNoFilter xTickList yTickList = do
-      style <- ask
-
-      -- TODO zoom: derive from zoom , with filtering
-      -- let (xPos :: Double) = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
-      -- let (yPos :: Double) = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
-
-      -- Flipped!
-      let xInsideLength = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
-      let yInsideLength = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
-
-      let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
-
-      let tl         = style^.basicTickLength
-      let widthFgB   = style^.basicTickStrokeWidth
-      let widthBgX   = style^.backgroundTickStrokeWidthX
-      let widthBgY   = style^.backgroundTickStrokeWidthY
-      let colFgB     = style^.basicTickColor
-      let colBgX     = style^.backgroundTickStrokeColorX
-      let colBgY     = style^.backgroundTickStrokeColorY
-      let drawBgX    = not $ isTransparent colBgX
-      let drawBgY    = not $ isTransparent colBgY
-
-      let xTicks = mconcat $ flip fmap xTickList $
-              \(pos,str) -> translateX (getRenderingPositionX style pos) $ mconcat
-                [ mempty
-                -- Text
-                , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate (turn*xTickTurn) . textX style) $ str
-                -- Outside quadrant (main) tick
-                , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
-                -- Inside quadrant (background) grid
-                , if not drawBgX then mempty else
-                    strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
-                ]
-      let yTicks = mconcat $ flip fmap yTickList $
-              \(pos,str) -> translateY (getRenderingPositionY style pos) $ mconcat
-                [ mempty
-                -- Text
-                , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate (turn*yTickTurn) . textY style) $ str
-                -- Outside quadrant (main) tick
-                , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
-                -- Inside quadrant (background) grid
-                , if not drawBgY then mempty else
-                    strokeWidth widthBgY $ strokeColorA colBgY $ scale yInsideLength $ translateX (0.5) horizontalLine
-                ]
-      return $ mconcat [xTicks, yTicks]
-      where
-        textX = text_ fst fst
-        textY = text_ snd snd
-        text_ which which2 style = textWithOptions $ mempty
-          { textAnchor        = style^.tickTextAnchor.to which
-          , alignmentBaseline = style^.tickTextAlignmentBaseline.to which2
-          -- TODO read family from style
-          , fontFamily        = style^.tickTextFontFamily
-          , fontStyle         = style^.tickTextFontStyle
-          , fontSize          = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
-          , fontWeight        = style^.tickTextFontWeight
-          , textSelectable    = All False
-          }
-        isTransparent color = abs (alphaChannel color) < 0.001
+    textX = text_ fst fst
+    textY = text_ snd snd
+    text_ which which2 style = textWithOptions $ mempty
+      { textAnchor        = style^.tickTextAnchor.to which
+      , alignmentBaseline = style^.tickTextAlignmentBaseline.to which2
+      -- TODO read family from style
+      , fontFamily        = style^.tickTextFontFamily
+      , fontStyle         = style^.tickTextFontStyle
+      , fontSize          = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
+      , fontWeight        = style^.tickTextFontWeight
+      , textSelectable    = All False
+      }
+    isTransparent color = abs (alphaChannel color) < 0.001
 
 -- | Draw X and Y axis.
 labeledAxis
@@ -377,3 +348,10 @@ labeledAxis labelX labelY = do
 relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
 {-# INLINE relOrigin #-}
+
+-- filterTicks :: [(Double, a)] -> [(Double, a)]
+-- filterTicks = filter (withinNormRange . fst)
+
+-- | Is a number within the normalized (UHQ) range?
+withinNormRange :: Double -> Bool
+withinNormRange x = (0-0.001) <= x && x <= (1+0.001)
