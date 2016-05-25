@@ -233,7 +233,7 @@ import qualified Data.String
 import qualified Data.Sequence as Seq
 -- import Data.Sequence(Seq)
 -- import Data.Foldable(toList)
-import Control.Lens (Lens, Lens')
+import Control.Lens (Lens, Lens', (^.))
 -- import Control.Lens.TH (makeLenses)
 
 import Linear.Vector
@@ -377,6 +377,8 @@ r^.p2.y -- top
 data Rect a = Rect_ { _p1 :: P2 a, _p2 :: P2 a }
   deriving (Eq, Ord, Show)
 
+rect x1 y1 x2 y2 = Rect_ (P (V2 x1 y1)) (P (V2 x2 y2))
+
 -- makeLenses ''Rect
 p1 :: Lens' (Rect a) (P2 a)
 p1 f (Rect_ p1 p2) = fmap (\p1' -> Rect_ p1' p2) $ f p1
@@ -390,6 +392,8 @@ _right   = p2._x
 _bottom  = p1._y
 _top     = p2._y
 
+width r = r^._right - r^._left
+height r = r^._top - r^._bottom
 
 {-
 Fit a drawing inside a rectangle. Accomplished by aligning the drawing
@@ -403,6 +407,10 @@ fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
     -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
     $ align BL
     $ d
+
+rectToTransf :: Rect Double -> Transformation Double
+rectToTransf (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) =
+  translation (p1 .-. origin) <> scalingXY   (p2 .-. p1)
 
 
 

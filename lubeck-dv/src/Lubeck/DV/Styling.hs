@@ -16,7 +16,7 @@ module Lubeck.DV.Styling
     Styling
   -- TODO exort all lenses here
   , renderingRectangle
-  , zoom
+  -- , zoom
 
   , axisStrokeWidth
   , axisStrokeColor
@@ -137,14 +137,21 @@ data BarPlotType = Grouped | Stacked | TwoSides
 data Styling = Styling
   { _dummy                            :: ()
 
-  -- ^ Rectangle in which the plot will be rendered (default @300 x 300@)
+  -- ^ Rectangle in which the plot will be rendered (default @300 x 300@).
   , _renderingRectangle               :: V2 Double
 
-  -- ^ Linear transformation to apply to data just before rendering (i.e. after
-  -- data has been mapped and normalized and thus is already in the UHQ).
-  --
-  --
-  , _zoom                             :: Rect Double
+  -- ^ This affine transformation defines a rectangle that is the "current focus"
+  --   of the plot.
+
+  --   Every normalizewed data point (i.e. in the UHQ) is transformed using this
+  --   transformation, then possibly discarded (if it now falls outside the UHQ),
+  --   then transformed into the rendering rectangle.
+
+  --   Some examples:
+  --    Focus on the left half of the data set: @recip $ rectToTransf (rect 0 0 0.5 1))@
+  --    Focus on the right half of the data set: @recip $ rectToTransf (rect 0.5 0 1 1))@
+  --    Focus on bottom-left square of the data set: @recip $ rectToTransf (rect 0 0 0.5 0.5))@
+  , _zoom                             :: Transformation Double
 
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight
@@ -241,12 +248,22 @@ data Styling = Styling
 
 makeLenses ''Styling
 
+focusLeft, focusRight, focusBottomLeft :: Transformation Double
+focusLeft       = recip $ rectToTransf (rect 0   0   0.5 1))
+focusRight      = recip $ rectToTransf (rect 0.5 0   1   1))
+focusBottomLeft = recip $ rectToTransf (rect 0   0   0.5 0.5))
+focusDefault    = 1
+-- | "Zoom out"
+focusHalfSize   =  recip 2 :: Transformation Double
+-- | "Zoom in"
+focusDoubleSize =  2 :: Transformation Double
+
 instance Monoid Styling where
   mempty = Styling
     { _dummy                        = mempty
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
-    , _zoom                         = Rect_ (P (V2 0 0)) (P (V2 1 1))
+    , _zoom                         = 1
 
     , _axisTextFontFamily           = mempty
     , _axisTextFontWeight           = mempty
