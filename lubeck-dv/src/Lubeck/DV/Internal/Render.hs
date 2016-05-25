@@ -150,10 +150,11 @@ fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
                 . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  -- return $ (either id translate $ relOrigin $ getRenderingPosition style pProjX) $ lineStyle $ fmap segments $ fmap betweenPoints $ mapFilterEither (getRenderingPosition style) $ addExtraPoints (p:ps)
-  return mempty
+  return $ (either (const mempty) translate $ fmap relOrigin $ foo style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) $ addExtraPoints (p:ps)
   where
+    foo a b = getRenderingPosition a b
     -- Because of projection (below!), ignore y value for 1st point
+    pProjX :: P2 Double
     pProjX = P (V2 firstPointX 0) where P (V2 firstPointX _) = p
 
     -- Add points from first and last projected on the X axis to make sure space below line is completely filled.
