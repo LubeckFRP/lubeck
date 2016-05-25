@@ -22,7 +22,7 @@ import Lubeck.Str
 import Lubeck.Drawing hiding (text, addProperty)
 
 #ifdef __GHCJS__
-import Lubeck.Forms(componentEvent)
+import Lubeck.Forms(componentEvent, componentSignal)
 import Lubeck.Forms.Button(multiButtonWidget)
 import Lubeck.Forms.Select(selectEnumBoundedWidget)
 import Lubeck.App(runAppReactive)
@@ -429,6 +429,13 @@ onOff label init = do
   state <- stepperS init alter
   pure (mconcat [pure $ text (toJSString label), view], state)
 -- selectEnumBoundedWidget :: (Eq a, Enum a, Bounded a, Show a) => Widget' a
+
+rendRectAlts :: Str -> FRP (Signal Html, Signal (V2 Double))
+rendRectAlts label = do
+  (view, val) <- componentSignal (V2 400 300)
+    (multiButtonWidget [] [("(400x300)", V2 400 300), ("(90x90)", V2 90 90)])
+    mempty
+  pure (mconcat [pure $ text (toJSString label), view], val)
 #endif
 
 ----------
@@ -451,13 +458,14 @@ main = do
   setupRender2
 
   -- retainMain
+  (rrV, rrS) <- rendRectAlts "Rendering rectangle"
   (view0, zoomActive) <- onOff "Zoom active" True
   (view1, zoomX) <- plusMinus "Zoom X" 1
   (view2, zoomY) <- plusMinus "Zoom Y" 1
   (view1a, zoomXO) <- plusMinus "Zoom X offset" 0
   (view2a, zoomYO) <- plusMinus "Zoom Y offset" 0
   let zoomXY = liftA4 (\x y xo yo -> rect xo yo x y) zoomX zoomY zoomXO zoomYO
-  let zoomV = mconcat [view0, view1, view2, view1a, view2a]
+  let zoomV = mconcat [rrV, view0, view1, view2, view1a, view2a]
 #else
   let zoomActive = pure True :: Signal Bool
   let zoomXY = pure $ V2 1 1
@@ -476,6 +484,7 @@ main = do
               [x <~ _1, y <~ _2]
           ]
 
+  -- TODO use rrS here
   let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
@@ -669,3 +678,10 @@ animated b = do
 -- #else
 -- main = print "Dummy"
 -- #endif
+
+liftA4 f a b c d = do
+  a' <- a
+  b' <- b
+  c' <- c
+  d' <- d
+  pure $ f a' b' c' d'
