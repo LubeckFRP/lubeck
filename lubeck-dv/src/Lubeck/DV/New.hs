@@ -11,6 +11,12 @@
   , DeriveFunctor
   #-}
 
+
+{-# OPTIONS_GHC
+  -fno-warn-name-shadowing
+  -fwarn-incomplete-patterns
+  #-}
+
 {-|
 A plotting/data visualization library.
 
@@ -138,41 +144,41 @@ module Lubeck.DV.New
 where
 
 import BasePrelude
-import Control.Lens(Getter, to, toListOf)
+import Control.Lens(Getter, to)
 import Control.Lens.Operators hiding ((<~))
-import Control.Monad.Reader (ask)
+-- import Control.Monad.Reader (ask)
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Map(Map)
-import Data.Set(Set)
-import Data.IntMap(IntMap)
-import Data.IntSet(IntSet)
+-- import Data.Set(Set)
+-- import Data.IntMap(IntMap)
+-- import Data.IntSet(IntSet)
 import Data.Time(UTCTime)
 import Linear.Affine (Point(..))
-import Linear.V1 (V1(..), _x)
-import Linear.V2 (V2(..), _y)
+import Linear.V1 (V1(..))
+import Linear.V2 (V2(..))
 import Linear.V3 (V3(..))
 
-import Control.Monad.Trans.Maybe
-import Control.Monad.Reader
-import Control.Monad.Writer
-import Data.Functor.Compose
-import qualified Data.Char
+-- import Control.Monad.Trans.Maybe
+-- import Control.Monad.Reader
+-- import Control.Monad.Writer
+-- import Data.Functor.Compose
+-- import qualified Data.Char
 import qualified Data.List
 import qualified Data.Map
-import qualified Data.Set
-import qualified Data.IntMap
-import qualified Data.IntSet
-import qualified Data.Maybe
+-- import qualified Data.Set
+-- import qualified Data.IntMap
+-- import qualified Data.IntSet
+-- import qualified Data.Maybe
 import qualified Data.Time
 import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
-import qualified Data.Colour.Names as Colors
-import System.IO.Temp (withSystemTempDirectory)
+-- import qualified Data.Colour.Names as Colors
+-- import System.IO.Temp (withSystemTempDirectory)
 import System.Directory (createDirectoryIfMissing)
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
-import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
-import Lubeck.DV.Styling (StyledT, Styled, Styling)
+import Lubeck.Drawing (Drawing, RenderingOptions(..))
+import Lubeck.DV.Styling (Styled, Styling)
 import Lubeck.DV.Internal.Normalized
 import Lubeck.DV.Internal.Table
 
@@ -238,8 +244,8 @@ blend = (<>)
 This is a variant of 'zipWith'.
 -}
 crossWith :: (a -> b -> c) -> [a] -> [b] -> [c]
-crossWith f [] b  = []
-crossWith f a  [] = []
+crossWith _ [] _  = []
+crossWith _ _  [] = []
 crossWith f a  b  = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
 
@@ -386,6 +392,7 @@ y = customAesthetic "y"
 
 -- | Map values to the Y axis of a plot.
 -- This is used for the lower bound of the 'area' geometry.
+yMin :: forall a. HasScale a => Aesthetic a
 yMin = customAesthetic "yMin"
 
 -- | Map values to the color of a plot element.
@@ -414,6 +421,7 @@ lineType = customAesthetic "lineType"
 -- standard 'Bool' scale.
 --
 -- Used by the 'area2' geometry.
+bound :: forall a. HasScale a => Aesthetic a
 bound = customAesthetic "bound"
 
 -- | If present and non-zero, show X-intercepting cross-lines.
@@ -557,7 +565,7 @@ categoricalWithOptions :: (Ord a, Show a)
 categoricalWithOptions categoricalPlotBounds = Scale
   { scaleMapping  = \vs v -> realToFrac $ succ $ findPlaceIn (sortNub vs) v
   , scalePlotBounds   = bounds
-  , scaleGuides   = \vs -> zipWith (\k v -> (realToFrac k, toStr v)) [1..] (sortNub vs)
+  , scaleGuides   = \vs -> zipWith (\k v -> (realToFrac k, toStr v)) [(1::Int)..] (sortNub vs)
   , scaleBaseName = "categorical"
   }
   where
@@ -574,8 +582,8 @@ categoricalWithOptions categoricalPlotBounds = Scale
 
     bounds' a b = \vs -> (realToFrac (1 - a), realToFrac (length (sortNub vs) + b))
     bounds = case categoricalPlotBounds of
-      Standard      -> bounds' 1 1
-      UseDataPlotBounds -> bounds' 0 0
+      Standard      -> bounds' (1::Int) (1::Int)
+      UseDataPlotBounds -> bounds' (0::Int) (0::Int)
       (PadDataPlotBounds a b) -> bounds' a b
 
 
@@ -589,7 +597,7 @@ data set or not. Use 'categorical' if this is not desired.
 -}
 categoricalEnum :: (Enum a, Bounded a, Show a) => Scale a
 categoricalEnum = Scale
-  { scaleMapping  = \vs v -> realToFrac $ succ $ fromEnum v
+  { scaleMapping  = \_ v -> realToFrac $ succ $ fromEnum v
   , scalePlotBounds   = \vs -> (0, realToFrac $ fromEnum (maxBound `asTypeOf` head vs) + 2)
   , scaleGuides   = \vs -> zipWith (\k v -> (k, toStr v)) [1..]
     [minBound..maxBound `asTypeOf` head vs]
@@ -1109,7 +1117,7 @@ imageG = Geometry g [""]
         -- TODO get scaling in Maybe?
         -- Would require something like (Column a -> Column (Maybe a))
         Just (SpecialDrawing dr) -> return $ Lubeck.DV.Internal.Render.baseImage dr x y (Just 1)
-        Nothing                  -> return mempty
+        _                        -> return mempty
 
 {-|
 Draws custom text specified by the 'label' aesthetic.
@@ -1130,7 +1138,7 @@ labelG = Geometry g [""]
       case sp of
         Just (SpecialStr "")  -> return $ mempty
         Just (SpecialStr str) -> return $ Lubeck.DV.Internal.Render.baseLabel x y str
-        Nothing               -> return mempty
+        _                     -> return mempty
 
 
 
@@ -1210,6 +1218,11 @@ mappedAndScaledDataWithSpecial
   Nothing       (SinglePlot mappedData specialData _ bounds _ _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
 mappedAndScaledDataWithSpecial
   (Just bounds) (SinglePlot mappedData specialData _ _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+
+mappedAndScaledDataWithSpecial2 :: PlotBounds
+                                   -> [Map Key Double]
+                                   -> [Map Key Special]
+                                   -> [Map Key (Coord, Maybe Special)]
 mappedAndScaledDataWithSpecial2 bounds mappedData specialData
   = zipWith mergeMapsL mappedAndScaledData specialData
       :: [Map Key (Coord, Maybe Special)]
@@ -1266,8 +1279,8 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
 
 
         scaledGuides :: Maybe PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
-        scaledGuides (Just bounds) (SinglePlot _ _ guides _ _ _)      = normalizeGuides bounds guides
-        scaledGuides Nothing       (SinglePlot _ _ guides bounds _ _) = normalizeGuides bounds guides
+        scaledGuides (Just bounds2) (SinglePlot _ _ guides _ _ _)      = normalizeGuides bounds2 guides
+        scaledGuides Nothing       (SinglePlot _ _ guides bounds2 _ _) = normalizeGuides bounds2 guides
 
         -- TODO derive names from aesthetic instead
         axesNames = axesTitles plot <> repeat mempty :: [Str]
@@ -1281,8 +1294,8 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
 debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
 debugInfo dat aess = box
   where
-    plot@(SinglePlot mappedData _ boundsM guidesM _ _) = createSinglePlot [] dat aess mempty
-    aKeys       = Data.Map.keys $ mconcat mappedData
+    thePlot@(SinglePlot mappedData2 _ boundsM guidesM _ _) = createSinglePlot [] dat aess mempty
+    aKeys       = Data.Map.keys $ mconcat mappedData2
     scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
 
     {-
@@ -1291,11 +1304,11 @@ debugInfo dat aess = box
     -}
     rawDataTable = B.vcat B.left $ map (toBox) dat
     mappedDataTable = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData)
+      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData2)
     -- tab1a = makeTable (fmap (toBox) $ aKeys)
       -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
     scaledDataTable = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing plot))
+      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing thePlot))
     aestheticTableTable = makeTable ["Aesthetic", "Scale base", "PlotBounds", "Guide"]
       (fmap (\k ->
         [ toBox k
@@ -1316,7 +1329,7 @@ debugInfo dat aess = box
 
     -- | Make a box table (row-major order).
     makeTableNoHeader :: [[B.Box]] -> B.Box
-    makeTableNoHeader x = B.hsep 1 B.center1 $ fmap (B.vsep 0 B.top) $ Data.List.transpose x
+    makeTableNoHeader x' = B.hsep 1 B.center1 $ fmap (B.vsep 0 B.top) $ Data.List.transpose x'
 
     -- | Make a box table (row-major order), first argument is headers.
     makeTable :: [B.Box] -> [[B.Box]] -> B.Box

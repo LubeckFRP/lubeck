@@ -67,6 +67,11 @@ transformIntoRect style = transformPoint $
 relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
 
+
+
+
+
+
 data ScatterData = ScatterData
   { scatterDataColor :: Double
   }
@@ -165,126 +170,6 @@ barData ps = do
     scaleRR = transform . scalingRR
     scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
 
--- | Draw ticks.
---
--- Same as 'ticksNoFilter' with a sanity check to remove ticks outside of quadrant.
-ticks
-  :: (Monad m, MonadReader Styling m)
-  => [(Double, Maybe Str)] -- ^ X axis ticks.
-  -> [(Double, Maybe Str)] -- ^ Y axis ticks.
-  -> m Drawing
-ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
-  where
-    filterTicks = filter (withinNormRange . fst)
-    withinNormRange x = 0 <= x && x <= 1
-
--- | Draw ticks.
---
--- Each argument is a list of tick positions (normalized to [0,1]) and label.
--- If the label is @Nothing@ this is rendered as a minor tick, which often
--- implies a less pronounced styling compared to major ticks (typically:
--- shorter tick lines, lighter colours).
---
--- To render a major tick without label, use @Just mempty@.
---
--- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
-ticksNoFilter
-  :: (Monad m, MonadReader Styling m)
-  => [(Double, Maybe Str)] -- ^ X axis ticks.
-  -> [(Double, Maybe Str)] -- ^ Y axis ticks.
-  -> m Drawing
-ticksNoFilter xt yt = do
-  style <- ask
-
-  let x = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
-  let y = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
-
-  let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
-
-  let tl         = style^.basicTickLength
-  let widthFgB   = style^.basicTickStrokeWidth
-  let widthBgX   = style^.backgroundTickStrokeWidthX
-  let widthBgY   = style^.backgroundTickStrokeWidthY
-  let colFgB     = style^.basicTickColor
-  let colBgX     = style^.backgroundTickStrokeColorX
-  let colBgY     = style^.backgroundTickStrokeColorY
-  let drawBgX    = not $ isTransparent colBgX
-  let drawBgY    = not $ isTransparent colBgY
-
-  let xTicks = mconcat $ flip fmap xt $
-          \(pos,str) -> translateX (pos * x) $ mconcat
-            [ mempty
-            -- Inside quadrant (background) grid
-            , if not drawBgX then mempty else
-                strokeWidth widthBgX $ strokeColorA colBgX $ scale y $ translateY (0.5) verticalLine
-            -- Outside quadrant tick
-            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
-            -- Text
-            , maybe mempty id $ fmap (\str -> translateY (tl * (-1.5)) . rotate (turn*xTickTurn) $ textX style str) $ str
-            ]
-  let yTicks = mconcat $ flip fmap yt $
-          \(pos,str) -> translateY (pos * y) $ mconcat
-            [ mempty
-            -- Inside quadrant (background) grid
-            , if not drawBgY then mempty else
-                strokeWidth widthBgY $ strokeColorA colBgY $ scale x $ translateX (0.5) horizontalLine
-            -- Outside quadrant tick
-            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
-            -- Text
-            , maybe mempty id $ fmap (\str -> translateX (tl * (-1.5)) . rotate (turn*yTickTurn) $ textY style str) $ str
-            ]
-  return $ mconcat [xTicks, yTicks]
-  where
-    -- kBasicTickLength = 10
-
-    -- Note: Add infinitesimal slant to non-slanted text to get same anti-aliasing behavior
-    -- kPositionTickRelAxis = (-0.5) -- (-0.5) for outside axis, 0 for centered around axis, 0.5 for inside
-    -- kPositionLabelRelAxis = (-0.8) -- (kPositionTickRelAxis-0) to make label touch tick, (kPositionTickRelAxis-1) to offset by length of tick
-
-    textX = text_ fst fst
-    textY = text_ snd snd
-    text_ which which2 style = textWithOptions $ mempty
-      { textAnchor        = style^.tickTextAnchor.to which
-      , alignmentBaseline = style^.tickTextAlignmentBaseline.to which2
-      -- TODO read family from style
-      , fontFamily        = style^.tickTextFontFamily
-      , fontStyle         = style^.tickTextFontStyle
-      , fontSize          = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
-      , fontWeight        = style^.tickTextFontWeight
-      , textSelectable    = All False
-      }
-    isTransparent color = abs (alphaChannel color) < 0.001
-
--- | Draw X and Y axis.
-labeledAxis
-  :: (Monad m, MonadReader Styling m)
-  => Str -- ^ X axis label.
-  -> Str -- ^ Y axis label.
-  -> m Drawing
-labeledAxis labelX labelY = do
-  style <- ask
-  let x = style^.renderingRectangle._x
-  let y = style^.renderingRectangle._y
-
-  let axisX = strokeWidth (style^.axisStrokeWidth.to fst) $ strokeColorA (style^.axisStrokeColor.to fst) $ translateX 0.5 horizontalLine
-  let axisY = strokeWidth (style^.axisStrokeWidth.to snd) $ strokeColorA (style^.axisStrokeColor.to snd) $ translateY 0.5 verticalLine
-  let axis = mconcat [axisY, axisX]
-
-  return $ mconcat
-    [ scaleX x $ scaleY y $ axis
-    , translateX (x/2) $ translateY (-50*x/300) $ text_ style labelX
-    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ style labelY
-    ]
-  where
-    text_ style= textWithOptions $ mempty
-      { textAnchor     = TextAnchorMiddle
-      , fontFamily     = style^.axisTextFontFamily
-      , fontWeight     = style^.axisTextFontWeight
-      , fontStyle      = style^.axisTextFontStyle
-      , fontSize       = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
-      , textSelectable = All False
-      }
-
 
 baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
@@ -316,3 +201,126 @@ baseLabel x y str = do
       }
       where
         absOffset = style^.labelTextAbsOffset
+
+
+
+
+-- | Draw ticks.
+--
+-- Same as 'ticksNoFilter' with a sanity check to remove ticks outside of quadrant.
+ticks
+  :: (Monad m, MonadReader Styling m)
+  => [(Double, Maybe Str)] -- ^ X axis ticks.
+  -> [(Double, Maybe Str)] -- ^ Y axis ticks.
+  -> m Drawing
+ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
+  where
+    -- filterTicks :: ()
+    filterTicks = filter (withinNormRange . fst)
+    withinNormRange x = 0 <= x && x <= 1
+
+    -- | Draw ticks.
+    --
+    -- Each argument is a list of tick positions (normalized to [0,1]) and label.
+    -- If the label is @Nothing@ this is rendered as a minor tick, which often
+    -- implies a less pronounced styling compared to major ticks (typically:
+    -- shorter tick lines, lighter colours).
+    --
+    -- To render a major tick without label, use @Just mempty@.
+    --
+    -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
+    ticksNoFilter
+      :: (Monad m, MonadReader Styling m)
+      => [(Double, Maybe Str)] -- ^ X axis ticks.
+      -> [(Double, Maybe Str)] -- ^ Y axis ticks.
+      -> m Drawing
+    ticksNoFilter xTickList yTickList = do
+      style <- ask
+
+      let xPos = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
+      let yPos = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
+
+      -- Flipped!
+      let xInsideLength = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
+      let yInsideLength = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
+
+      let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
+
+      let tl         = style^.basicTickLength
+      let widthFgB   = style^.basicTickStrokeWidth
+      let widthBgX   = style^.backgroundTickStrokeWidthX
+      let widthBgY   = style^.backgroundTickStrokeWidthY
+      let colFgB     = style^.basicTickColor
+      let colBgX     = style^.backgroundTickStrokeColorX
+      let colBgY     = style^.backgroundTickStrokeColorY
+      let drawBgX    = not $ isTransparent colBgX
+      let drawBgY    = not $ isTransparent colBgY
+
+      let xTicks = mconcat $ flip fmap xTickList $
+              \(pos,str) -> translateX (pos * xPos) $ mconcat
+                [ mempty
+                -- Text
+                , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate (turn*xTickTurn) . textX style) $ str
+                -- Outside quadrant (main) tick
+                , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
+                -- Inside quadrant (background) grid
+                , if not drawBgX then mempty else
+                    strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
+                ]
+      let yTicks = mconcat $ flip fmap yTickList $
+              \(pos,str) -> translateY (pos * yPos) $ mconcat
+                [ mempty
+                -- Text
+                , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate (turn*yTickTurn) . textY style) $ str
+                -- Outside quadrant (main) tick
+                , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
+                -- Inside quadrant (background) grid
+                , if not drawBgY then mempty else
+                    strokeWidth widthBgY $ strokeColorA colBgY $ scale yInsideLength $ translateX (0.5) horizontalLine
+                ]
+      return $ mconcat [xTicks, yTicks]
+      where
+        textX = text_ fst fst
+        textY = text_ snd snd
+        text_ which which2 style = textWithOptions $ mempty
+          { textAnchor        = style^.tickTextAnchor.to which
+          , alignmentBaseline = style^.tickTextAlignmentBaseline.to which2
+          -- TODO read family from style
+          , fontFamily        = style^.tickTextFontFamily
+          , fontStyle         = style^.tickTextFontStyle
+          , fontSize          = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
+          , fontWeight        = style^.tickTextFontWeight
+          , textSelectable    = All False
+          }
+        isTransparent color = abs (alphaChannel color) < 0.001
+
+-- TODO zoom/rr: OK, axis not affected by zoom
+-- | Draw X and Y axis.
+labeledAxis
+  :: (Monad m, MonadReader Styling m)
+  => Str -- ^ X axis label.
+  -> Str -- ^ Y axis label.
+  -> m Drawing
+labeledAxis labelX labelY = do
+  style <- ask
+  let x = style^.renderingRectangle._x
+  let y = style^.renderingRectangle._y
+
+  let axisX = strokeWidth (style^.axisStrokeWidth.to fst) $ strokeColorA (style^.axisStrokeColor.to fst) $ translateX 0.5 horizontalLine
+  let axisY = strokeWidth (style^.axisStrokeWidth.to snd) $ strokeColorA (style^.axisStrokeColor.to snd) $ translateY 0.5 verticalLine
+  let axis = mconcat [axisY, axisX]
+
+  return $ mconcat
+    [ scaleX x $ scaleY y $ axis
+    , translateX (x/2) $ translateY (-50*x/300) $ text_ style labelX
+    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ style labelY
+    ]
+  where
+    text_ style= textWithOptions $ mempty
+      { textAnchor     = TextAnchorMiddle
+      , fontFamily     = style^.axisTextFontFamily
+      , fontWeight     = style^.axisTextFontWeight
+      , fontStyle      = style^.axisTextFontStyle
+      , fontSize       = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
+      , textSelectable = All False
+      }

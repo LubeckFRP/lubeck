@@ -438,6 +438,7 @@ rendRectAlts label = do
             , ("(700x500)", V2 700 500)
             , ("(700x700)", V2 700 700)
             , ("(90x90)", V2 90 90)
+            , ("(100x500)", V2 100 500)
             ])
     mempty
   pure (mconcat [pure $ text (toJSString label), view], val)
