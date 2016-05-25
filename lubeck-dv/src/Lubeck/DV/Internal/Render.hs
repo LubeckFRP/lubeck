@@ -83,6 +83,22 @@ getRenderingPosition styling x = fmap (transformPoint (scalingXY $ styling^.rend
     withinNormRange :: Double -> Bool
     withinNormRange x = 0 <= x && x <= 1
 
+{-
+Like getRenderingPosition for drawings.
+Carries out transformation directly without filtering. This is usually not what we want.
+-}
+getRenderingPositionD :: Styling -> Drawing -> Drawing
+getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRectangle) $ transform (styling^.zoom) x
+
+  where
+
+    -- TODO actually use filtering
+    filterTicks :: [(Double, a)] -> [(Double, a)]
+    filterTicks = filter (withinNormRange . fst)
+
+    -- | Is a number within the normalized (UHQ) range?
+    withinNormRange :: Double -> Bool
+    withinNormRange x = 0 <= x && x <= 1
 
 data ScatterData = ScatterData
   { scatterDataColor :: Double
@@ -94,7 +110,13 @@ mapFilterEither f = (=<<) (g . f)
     g (Left _)  = empty
     g (Right x) = pure x
 
--- TODO zoom OK
+
+
+
+
+
+
+
 scatterData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => ScatterData -> [P2 Double] -> m Drawing
 scatterData (ScatterData colorN) ps = do
   style <- ask
@@ -125,7 +147,6 @@ data LineData = LineData
   }
 defLineData = LineData 0 0
 
--- TODO zoom OK
 lineData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => LineData -> [P2 Double] -> m Drawing
 lineData _ []     = mempty
 lineData _ [_]    = mempty
@@ -142,7 +163,6 @@ data AreaData = AreaData
   { areaDataColor :: Double
   }
 
--- TODO zoom OK
 fillData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
 fillData _ []     = mempty
 fillData _ [_]    = mempty
@@ -150,9 +170,8 @@ fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
                 . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (const mempty) translate $ fmap relOrigin $ foo style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) $ addExtraPoints (p:ps)
+  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) $ addExtraPoints (p:ps)
   where
-    foo a b = getRenderingPosition a b
     -- Because of projection (below!), ignore y value for 1st point
     pProjX :: P2 Double
     pProjX = P (V2 firstPointX 0) where P (V2 firstPointX _) = p
@@ -168,16 +187,14 @@ areaData i ps = areaData' i $
     <>
   fmap (\p -> P $ V2 (p^._x) (p^._y)) (reverse ps)
 
--- TODO zoom
 areaData' :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
 areaData' _ []     = mempty
 areaData' _ [_]    = mempty
 areaData' (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
+  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) (p:ps)
 
--- TODO zoom
 -- | Draw a one-dimensional bar graph.
 --
 -- For grouped/stacked charts, see `barData2`, `barData3` etc.
@@ -191,8 +208,8 @@ barData ps = do
     fmap (\(P (V1 v)) -> scaleX barWidth $ scaleY v $ base) ps
   where
     alignB = translate (V2 0 0.5)
-    scaleRR = transform . scalingRR
-    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
+    scaleRR :: Styling -> Drawing -> Drawing
+    scaleRR = getRenderingPositionD
 
 
 -- TODO zoom
