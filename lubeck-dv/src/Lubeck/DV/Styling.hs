@@ -135,9 +135,9 @@ data VerticalHorizontal = Vertical | Horizontal
 data BarPlotType = Grouped | Stacked | TwoSides
 
 focusLeft, focusRight, focusBottomLeft :: Transformation Double
-focusLeft       = recip $ rectToTransf (rect 0   0   0.5 1))
-focusRight      = recip $ rectToTransf (rect 0.5 0   1   1))
-focusBottomLeft = recip $ rectToTransf (rect 0   0   0.5 0.5))
+focusLeft       = recip $ rectToTransf (rect 0   0   0.5 1)
+focusRight      = recip $ rectToTransf (rect 0.5 0   1   1)
+focusBottomLeft = recip $ rectToTransf (rect 0   0   0.5 0.5)
 focusDefault    = 1
 -- | "Zoom out"
 focusHalfSize   =  recip 2 :: Transformation Double
