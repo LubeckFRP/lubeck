@@ -50,17 +50,6 @@ import Lubeck.DV.ColorPalette
 import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
-transformIntoRect :: Styling -> P2 Double -> P2 Double
-transformIntoRect style = transformPoint $
-     scalingXY rect
-  where
-    -- zoo   = style^.zoom
-    rect  = style^.renderingRectangle
-
--- Util
-relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
-relOrigin p = p .-. 0
-
 
 {-
 Take a point in the UHQ and transform it into its rendering position.
@@ -87,6 +76,8 @@ getRenderingPosition styling x = fmap (transformPoint (scalingXY $ styling^.rend
 {-
 Like getRenderingPosition for drawings.
 Carries out transformation directly without filtering. This is usually not what we want.
+
+TODO prove/assure that this is equal to getRenderingPosition/getRenderingPositionT modulo filtering
 -}
 getRenderingPositionD :: Styling -> Drawing -> Drawing
 getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRectangle) $ transform (styling^.zoom) x
@@ -112,14 +103,20 @@ getRenderingPositionY :: Styling -> Double -> Double
 getRenderingPositionX st x = let (P (V2 x' _)) = transformPoint (getRenderingPositionT st) (P $ V2 x 0) in x'
 getRenderingPositionY st y = let (P (V2 _ y')) = transformPoint (getRenderingPositionT st) (P $ V2 0 y) in y'
 
-{-
-Like getRenderingPosition for drawings.
-Carries out transformation directly without filtering. This is usually not what we want.
+{-|
+Like getRenderingPositionD, but don't actually scale the image.
+
+Effectively, the given image is treated as an image which "anchor point" at
+(origin +^ v). The anchor is transformed into the rendering space (taking zoom
+and rendering rectangle into account), and the image is then translated so that
+its origin aligns with the transformed anchor.
 -}
-getRenderingPositionDTransfOnly :: Styling -> Drawing -> Drawing
-getRenderingPositionDTransfOnly styling = translate $ unP $ transformPoint (scalingXY (styling^.renderingRectangle)) (P $ transl (styling^.zoom))
+getRenderingPositionRel :: V2 Double -> Styling -> Drawing -> Drawing
+getRenderingPositionRel v styling dr = case getRenderingPosition styling (origin .+^ v) of
+  Left _ -> mempty
+  Right p -> translate (p .-. origin) dr
   where
-    unP (P x) = x
+    origin = P $ V2 0 0
 
 data ScatterData = ScatterData
   { scatterDataColor :: Double
@@ -228,17 +225,14 @@ baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> 
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
 baseImage dr x y (Just size) = do
   style <- ask
-  return $ getRenderingPositionDTransfOnly style
-    $ translate (V2 x y)
+  return $ getRenderingPositionRel (V2 x y) style
     $ Lubeck.Drawing.scale size
     $ dr
 
 baseLabel :: MonadReader Styling m => Double -> Double -> Str -> m Drawing
 baseLabel x y str = do
     style <- ask
-    return $ getRenderingPositionDTransfOnly style
-      $ translate (V2 x y)
-      -- TODO font
+    return $ getRenderingPositionRel (V2 x y) style
       $ text_ style str
 
   where
@@ -380,3 +374,7 @@ labeledAxis labelX labelY = do
       , fontSize       = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
       , textSelectable = All False
       }
+
+relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
+relOrigin p = p .-. 0
+{-# INLINE relOrigin #-}
