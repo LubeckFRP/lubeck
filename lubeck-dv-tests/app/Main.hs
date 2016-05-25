@@ -418,7 +418,7 @@ Displays a pair or plus/minus-labeled buttons.
 -}
 plusMinus :: Str -> Double -> FRP (Signal Html, Signal Double)
 plusMinus label init = do
-  (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [] [("-", (/ 1.1)), ("+", (* 1.1))]) mempty
+  (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [] [("-", (subtract 0.1)), ("+", (+ 0.1))]) mempty
   zoom <- accumS init alter
   pure (mconcat [pure $ text (toJSString label), view], zoom)
 
@@ -433,10 +433,18 @@ onOff label init = do
 rendRectAlts :: Str -> FRP (Signal Html, Signal (V2 Double))
 rendRectAlts label = do
   (view, val) <- componentSignal (V2 400 300)
-    (multiButtonWidget [] [("(400x300)", V2 400 300), ("(90x90)", V2 90 90)])
+    (multiButtonWidget []
+            [ ("(400x300)", V2 400 300)
+            , ("(700x500)", V2 700 500)
+            , ("(700x700)", V2 700 700)
+            , ("(90x90)", V2 90 90)
+            ])
     mempty
   pure (mconcat [pure $ text (toJSString label), view], val)
 #endif
+
+showCurrentValue :: Show a => (Signal Html, Signal a) -> (Signal Html, Signal a)
+showCurrentValue (vs,xs) = (liftA2 (\x v -> x <> text (toJSString $ toStr v)) vs xs,xs)
 
 ----------
 
@@ -458,17 +466,17 @@ main = do
   setupRender2
 
   -- retainMain
-  (rrV, rrS) <- rendRectAlts "Rendering rectangle"
+  (rrV, rrS)          <- rendRectAlts "Rendering rectangle"
   (view0, zoomActive) <- onOff "Zoom active" True
-  (view1, zoomX) <- plusMinus "Zoom X" 1
-  (view2, zoomY) <- plusMinus "Zoom Y" 1
-  (view1a, zoomXO) <- plusMinus "Zoom X offset" 0
-  (view2a, zoomYO) <- plusMinus "Zoom Y offset" 0
+  (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X" 1
+  (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y" 1
+  (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X offset" 0
+  (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y offset" 0
   let zoomXY = liftA4 (\x y xo yo -> rect xo yo x y) zoomX zoomY zoomXO zoomYO
   let zoomV = mconcat [rrV, view0, view1, view2, view1a, view2a]
 #else
   let zoomActive = pure True :: Signal Bool
-  let zoomXY = pure $ V2 1 1
+  -- let zoomXY = pure $ V2 1 1
 #endif
   -- Debug
   when debugHandlers $ void $
@@ -477,7 +485,7 @@ main = do
   let !(plotSD :: Styled Drawing) = trace "> plotSD" $ drawPlot $ mconcat
           [ plot (zip [1..10::Double] [31,35,78,23,9,92,53,71,53,42::Double])
               [x <~ _1, y <~ _2]
-              (mconcat [line, fill, pointG])
+              (mconcat [line, fill, pointG, bars])
           , plotLabel "(4,50)" [(4::Double, 50::Double)]
               [x <~ _1, y <~ _2]
           , plotLabel "(7,65)" [(7::Double, 65::Double)]
@@ -485,7 +493,14 @@ main = do
           ]
 
   -- TODO use rrS here
-  let (plotVD :: SDrawing) = fmap (\currentZoom -> (getStyled plotSD (zoom .~ currentZoom $ mempty))) zoomXY
+  let (plotVD :: SDrawing) =
+            let g currentZoom currentRenderingRectangle =
+                        getStyled plotSD
+                          $ renderingRectangle .~ currentRenderingRectangle
+                          $ zoom .~ (focusFromRectangle currentZoom)
+                          $ mempty
+            in liftA2 g zoomXY rrS
+
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
   (plotSD2 :: SDrawing) <- draggable_ $ plotVD

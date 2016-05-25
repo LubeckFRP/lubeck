@@ -49,6 +49,14 @@ import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
 -- Util
+
+{-
+Take a point in the UHQ and transform it into its rendering position.
+This is accomplished as follows:
+  - Run the zoom affine transformation (if default zoom, this is the identity)
+  - Optionally filter points that now falls outside the UHQ (i.e. when zooming in)
+  - Run the linear transformation that defines the rendering rectangle (always a scaling)
+-}
 transformIntoRect :: Styling -> P2 Double -> P2 Double
 transformIntoRect style = transformPoint $
      scalingXY rect

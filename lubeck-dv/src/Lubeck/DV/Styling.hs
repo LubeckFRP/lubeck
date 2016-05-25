@@ -71,6 +71,15 @@ module Lubeck.DV.Styling
   , backgroundTickStrokeColorX
   , backgroundTickStrokeColorY
 
+  -- ** Focus/zoom utils
+  , focusDefault
+  , focusHalfSize
+  , focusDoubleSize
+  , focusLeft
+  , focusRight
+  , focusBottomLeft
+  , focusFromRectangle
+
   -- ** Running a style
   -- *** Styled monad
   , Styled
@@ -144,6 +153,8 @@ focusHalfSize   =  recip 2 :: Transformation Double
 -- | "Zoom in"
 focusDoubleSize =  2 :: Transformation Double
 
+focusFromRectangle :: Rect Double -> Transformation Double
+focusFromRectangle x = recip $ rectToTransf x
 
 data Styling = Styling
   { _dummy                            :: ()
