@@ -222,3 +222,9 @@ import qualified Web.VirtualDom.Svg.Attributes as A
 #endif
 
 import System.IO.Unsafe(unsafePerformIO)
+
+
+type P1 a = Point V1 a
+type P2 a = Point V2 a
+type P3 a = Point V3 a
+type P4 a = Point V4 a

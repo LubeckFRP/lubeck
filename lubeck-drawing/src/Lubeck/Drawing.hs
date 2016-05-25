@@ -1,7 +1,7 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
   NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving
-  , ScopedTypeVariables #-}
+  , ScopedTypeVariables, NoImplicitPrelude #-}
 
 -- {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
@@ -219,11 +219,9 @@ module Lubeck.Drawing
   , emitDrawing
   ) where
 
-import Control.Applicative
-import Data.Colour (Colour, AlphaColour, withOpacity)
-import Data.Map.Strict(Map)
-import Data.Monoid
-import Data.Semigroup(Max(..))
+import BasePrelude hiding (Handler, Handlers, rotate, (|||))
+-- import Data.Semigroup(Max(..))
+import Data.Colour(Colour, AlphaColour, withOpacity)
 import qualified Data.Colour
 import qualified Data.Colour.Names as Colors
 import qualified Data.Colour.SRGB
@@ -232,8 +230,8 @@ import qualified Data.Ord
 import qualified Data.Map.Strict as Map
 import qualified Data.String
 import qualified Data.Sequence as Seq
-import Data.Sequence(Seq)
-import Data.Foldable(toList)
+-- import Data.Sequence(Seq)
+-- import Data.Foldable(toList)
 
 import Linear.Vector
 import Linear.Affine
@@ -262,6 +260,12 @@ import Linear.Epsilon
 
 import Lubeck.Str
 
+import Lubeck.Drawing.Types
+import Lubeck.Drawing.Style
+import Lubeck.Drawing.Handlers
+import Lubeck.Drawing.Text
+import Lubeck.Drawing.Transformation
+
 #ifdef __GHCJS__
 import GHCJS.Types(JSVal, JSString)
 import Web.VirtualDom.Svg (Svg)
@@ -273,12 +277,6 @@ import qualified Web.VirtualDom.Svg.Attributes as A
 import System.IO.Unsafe(unsafePerformIO)
 
 -- Ideomatically: (V2 Double), (P2 Double) and so on
-
-type P1 a = Point V1 a
-type P2 a = Point V2 a
-type P3 a = Point V3 a
-type P4 a = Point V4 a
-
 -- |
 -- @
 -- offsetVectors :: Num a => P2 a -> [V2 a] -> [P2 a]
@@ -379,159 +377,6 @@ fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
     $ align BL
     $ d
 
-{-| -}
-newtype Transformation a = TF { getTF :: M33 a }
-
-instance Num a => Monoid (Transformation a) where
-  mempty                = TF identity
-  mappend (TF x) (TF y) = TF (x !*! y)
-
-instance Num a => Num (Transformation a) where
-  TF x + TF y = TF (x !+! y)
-  TF x - TF y = TF (x !-! y)
-  TF x * TF y = TF (x !*! y)
-  abs    = error "Missing in Num (Transformation a)"
-  signum = error "Missing in Num (Transformation a)"
-  fromInteger n = TF $ identity !!* fromInteger n
-
--- linear 1.19 vs linear 1.20
-instance (Floating a
-#if MIN_VERSION_linear(1,20,0)
-#else
-  , Epsilon a
-#endif
-  )
-  => Fractional (Transformation a) where
-  recip (TF x) = TF (inv33_ x)
-  fromRational = error "Missing in Fractional (Transformation a)"
-
-#if MIN_VERSION_linear(1,20,0)
-inv33_ = inv33
-#else
-inv33_ m = case inv33 m of
-  Nothing -> m
-  Just mi -> mi
-#endif
-
--- | a.k.a. @1@
-emptyTransformation :: Num a => Transformation a
-emptyTransformation = TF identity
-
--- | a.k.a '*', 'mappend', '<>'
-apTransformation :: Num a => Transformation a -> Transformation a -> Transformation a
-apTransformation (TF x) (TF y) = TF (x !*! y)
-
--- | a.k.a 'recip'
-negTransformation :: (Num a, Floating a
-#if MIN_VERSION_linear(1,20,0)
-#else
-  , Epsilon a
-#endif
-  ) => Transformation a -> Transformation a
-negTransformation (TF x) = TF (inv33_ x)
-
--- $matrixContructorLayout
---
--- Both of these use same layout as SVG, see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
---
--- That is
---
--- @
--- a c e
--- b d f
--- 0 0 1
--- @
---
--- I.e. the identity is @(1,0,0,1,0,0)@ and the translation component is @(0,0,0,0,x,y)@.
---
--- This is column-major order with an implied extra row (0 0 1)
-
-{-| Create a transformation from a matrix. -}
-matrix :: Num a => (a, a, a, a, a, a) -> Transformation a
-matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
-{-# NOINLINE matrix #-}
-{-# RULES
-"matrix/matrix" forall a b c d e f.  matrix (a,b,c,d,e,f) = TF $ V3 (V3 a c e) (V3 b d f) (V3 0 0 1)
- #-}
-
-{-| -}
-transformationToMatrix :: Num a => Transformation a -> (a, a, a, a, a, a)
-transformationToMatrix (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = (a,b,c,d,e,f)
-{-# INLINABLE transformationToMatrix #-}
-
-
-transformVector :: Num a => Transformation a -> V2 a -> V2 a
-transformVector t (V2 x y) =
-  -- let (a,b,c,d,e,f) = transformationToMatrix t
-  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
-  in V2 (a*x+c*y) (b*x+d*y)
-{-# INLINABLE transformVector #-}
-
-transformPoint :: Num a => Transformation a -> P2 a -> P2 a
-transformPoint t (P (V2 x y)) =
-  -- let (a,b,c,d,e,f) = transformationToMatrix t
-  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
-  in P $ V2 (a*x+c*y+e) (b*x+d*y+f)
-{-# INLINABLE transformEnvelope #-}
-
-{-| -}
-#ifdef __GHCJS__
-newtype Style = Style_ { getStyle_ :: Str }
-
-instance Monoid Style where
-  mempty =  Style_ ""
-  mappend = js_appendStyle
-
-{-| -}
-styleNamed :: Str -> Str -> Style
-styleNamed = js_styleNamed
-{-# INLINE styleNamed #-}
-
-{-| -}
-styleToAttrString :: Style -> Str
-styleToAttrString (Style_ x) = x
--- styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
-{-# INLINE styleToAttrString #-}
-#else
-newtype Style = Style_ { getStyle_ :: Map Str Str }
-  deriving (Monoid)
-
-{-| -}
-styleNamed :: Str -> Str -> Style
-styleNamed k v = Style_ $ Map.singleton k v
-{-# INLINE styleNamed #-}
-
-{-| -}
-styleToAttrString :: Style -> Str
-styleToAttrString = Map.foldrWithKey (\n v rest -> n <> ":" <> v <> "; " <> rest) "" . getStyle_
-{-# INLINE styleToAttrString #-}
-#endif
-
-{-
-Note: Uses Map in place of MonoidMap
-
-Map is left-biased, so
-  Map k v ~ MonoidMap k (First v)
-
-This is what we want, consider
-  @style (styleNamed k1 s1) (style (styleNamed k2 s2) x)@
-  where we want s1 to take precedence whenever k1 == k2
--}
-
-{-| -}
-emptyStyle :: Style
-emptyStyle = mempty
-{-# INLINE emptyStyle #-}
-
-
--- styleNamed k v = Style_ $ Map.singleton k v
--- styleNamed k v = k ++ ":" v <> ";"
-
-{-| -}
-apStyle :: Style -> Style -> Style
-apStyle = mappend
-{-# INLINE apStyle #-}
-
 
 
 {-| Add an event handler to the given drawing.
@@ -562,29 +407,6 @@ instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) wh
       -- maxEnv :: Floating n => (v n -> n) -> (v n -> n) -> v n -> n
       maxEnv f g v = max (f v) (g v)
 
--- | Linear component of a transformation.
-lin :: Num a => Transformation a -> Transformation a
-lin t =
-  -- let (a,b,c,d,e,f) = transformationToMatrix t
-  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
-  in matrix (a,b,c,d,0,0)
-
-
--- | Linear component of a transformation (transposed).
-transp :: Num a => Transformation a -> Transformation a
-transp t =
-  -- let (a,b,c,d,e,f) = transformationToMatrix t
-  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
-  in matrix (a,c,b,d,0,0)
-
--- | Translation component of a transformation.
-transl :: Num a => Transformation a -> V2 a
-transl t =
-  -- let (a,b,c,d,e,f) = transformationToMatrix t
-  let (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) = t
-  in V2 e f
-
--- TODO cleanup definitions/names here
 
 transformEnvelope :: (Floating n
 #if MIN_VERSION_linear(1,20,0)
@@ -608,6 +430,7 @@ transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
           apply  = transformVector
           lapp   = transformVector
           inv    = negTransformation
+{-# INLINABLE transformEnvelope #-}
 
 juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
 juxtapose v a1 a2 =   case (mv1, mv2) of
@@ -841,56 +664,6 @@ instance Monoid Drawing where
   mappend x y = Ap [x, y]
 
   -- mconcat = Ap
-
-#ifdef __GHCJS__
--- TODO would be derivable if IO lifted the Monoid...
-newtype Handler = Handler (JSVal -> IO ())
-instance Monoid Handler where
-  mempty = Handler (\_ -> pure ())
-  mappend (Handler a) (Handler b) = Handler (apSink a b)
-    where
-      apSink a b x = do
-        a x
-        b x
-
-newtype Handlers = Handlers_ (MonoidMap Str Handler)
-  deriving Monoid
-
-singleTonHandlers :: Str -> (JSVal -> IO ()) -> Handlers
-singleTonHandlers attrName sink = Handlers_ $ singletonMonoidMap attrName (Handler sink)
-
-handlersToProperties :: Handlers -> [E.Property]
-handlersToProperties (Handlers_ (MonoidMap m))
-  = fmap (\(n, Handler v) -> VD.on (toJSString n) v) $ Map.toList m
-{-# INLINABLE handlersToProperties #-}
-
-styleToProperty :: Style -> E.Property
-styleToProperty s = A.style $ toJSString $ styleToAttrString s
-{-# INLINABLE styleToProperty #-}
-
-{-
-transformationToProperty :: Transformation Double -> E.Property
--- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
---   where
---     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-
-transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
-{-# INLINABLE transformationToProperty #-}
--}
-
-transformationToProperty :: Transformation Double -> E.Property
-transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
-  VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
-{-# INLINABLE transformationToProperty #-}
-
-nodeInfoToProperties :: RNodeInfo -> [E.Property]
-nodeInfoToProperties (RNodeInfo style transf handlers) =
-  transformationToProperty transf : styleToProperty style : handlersToProperties handlers
-{-# INLINABLE nodeInfoToProperties #-}
-#else
-type Handler = ()
-type Handlers = ()
-#endif
 
 drawingToRDrawing :: Drawing -> RDrawing
 drawingToRDrawing = drawingToRDrawing' mempty
@@ -1641,6 +1414,31 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
         -- TODO use seq in virtual-dom too!
         nodes -> E.g (nodeInfoToProperties nodeInfo) (toList nodes)
 
+styleToProperty :: Style -> E.Property
+styleToProperty s = A.style $ toJSString $ styleToAttrString s
+{-# INLINABLE styleToProperty #-}
+
+{-
+transformationToProperty :: Transformation Double -> E.Property
+-- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
+--   where
+--     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
+
+transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
+{-# INLINABLE transformationToProperty #-}
+-}
+
+transformationToProperty :: Transformation Double -> E.Property
+transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
+  VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
+{-# INLINABLE transformationToProperty #-}
+
+nodeInfoToProperties :: RNodeInfo -> [E.Property]
+nodeInfoToProperties (RNodeInfo style transf handlers) =
+  transformationToProperty transf : styleToProperty style : handlersToProperties handlers
+{-# INLINABLE nodeInfoToProperties #-}
+
+
 #else
 toSvg :: RenderingOptions -> Drawing -> ()
 toSvg _ _ = ()
@@ -1745,32 +1543,10 @@ toSvgStr st dr = toSvgAny st dr id $
           <> mconcat nodes <> "</" <> name <> ">"
 
 
-{-|
-Map with a better Monoid instance.
-See https://mail.haskell.org/pipermail/libraries/2012-April/017747.html
-
--}
-newtype MonoidMap k a = MonoidMap { getMonoidMap :: Map k a }
-
-instance (Ord k, Monoid v) =>  Monoid (MonoidMap k v) where
-    mempty  = MonoidMap $ Map.empty
-    mappend (MonoidMap a) (MonoidMap b) = MonoidMap $ Map.unionWith mappend a b
-    -- mconcat (MonoidMap xs) = MonoidMap $ Map.unionsWith (mconcat xs)
-
-singletonMonoidMap k v = MonoidMap $ Map.singleton k v
-
 
 #ifdef __GHCJS__
 
-foreign import javascript unsafe "$1 + ':' + $2 + ';'"
-  js_styleNamed :: Str -> Str -> Style
-
--- Last element wins
--- http://www.sitepoint.com/forums/showthread.php?102926-css-duplicate-property-values
-foreign import javascript unsafe "$2 + $1"
-  js_appendStyle :: Style -> Style -> Style
-
-foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+(($6))+')'"
+foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+$6+')'"
   js_transformationToProperty_opt :: Double -> Double -> Double -> Double -> Double -> Double -> JSString
 
 #endif

@@ -16,6 +16,7 @@ library
                      , Lubeck.Drawing.Text
                      , Lubeck.Drawing.Transformation
                      , Lubeck.Drawing.Handlers
+                     , Lubeck.Drawing.Internal.MMap
 
   build-depends:       base
                      , base-prelude
