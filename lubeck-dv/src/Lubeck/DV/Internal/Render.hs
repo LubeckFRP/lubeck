@@ -131,13 +131,6 @@ mapFilterEither f = (=<<) (g . f)
     g (Left _)  = empty
     g (Right x) = pure x
 
-
-
-
-
-
-
-
 scatterData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => ScatterData -> [P2 Double] -> m Drawing
 scatterData (ScatterData colorN) ps = do
   style <- ask
