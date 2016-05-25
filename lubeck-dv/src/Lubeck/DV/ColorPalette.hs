@@ -66,13 +66,13 @@ instance Show (Palette a) where
   show (Palette f) = "<<color palette>>"
 
 {-|
-Use the same color for everything. Not recommended if your
+Use the same color for everything. Not recommended if color is mapped to a variable.
 -}
 singleColor :: AlphaColour a -> Palette a
 singleColor = Palette . pure
 
 {-|
-Use the same color for everything. Not recommended if your
+Use the same color for everything. Not recommended if color is mapped to a variable.
 -}
 singleColour :: AlphaColour a -> Palette a
 singleColour = Palette . pure
