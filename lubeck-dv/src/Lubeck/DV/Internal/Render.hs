@@ -7,6 +7,7 @@
   , TupleSections
   , TemplateHaskell
   , ConstraintKinds
+  , FlexibleContexts
   #-}
 
 module Lubeck.DV.Internal.Render
@@ -48,8 +49,6 @@ import Lubeck.DV.ColorPalette
 import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
--- Util
-
 {-
 Take a point in the UHQ and transform it into its rendering position.
 This is accomplished as follows:
@@ -67,32 +66,10 @@ transformIntoRect style = transformPoint $
 -- Util
 relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
---
--- -- TODO more general pattern here
--- -- Capture with TFs?
--- addV1_2 :: V1 n -> V2 n -> V3 n
--- addV1_1 (V1 x)   (V1 y)   = V2 x y
--- addV2_1 (V2 x y) (V1 z)   = V3 x y z
--- addV1_2 (V1 x)   (V2 y z) = V3 x y z
--- addV2_2 (V2 a b) (V2 c d) = V4 a b c d
---
--- addP1_2 :: P1 n -> P2 n -> P3 n
--- addP1_2 (P a) (P b) = P $ addV1_2 a b
-
-
-{-
-TODO
-Support fixed colors in point, line, fill, area2
-scatterData, lineData, fillData, areaData'
-
-TODO
-  scatter plot with different colors on elements
--}
 
 data ScatterData = ScatterData
   { scatterDataColor :: Double
   }
-
 
 scatterData :: (Monad m) => ScatterData -> [P2 Double] -> StyledT m Drawing
 scatterData (ScatterData colorN) ps = do
@@ -172,34 +149,6 @@ areaData' (AreaData colorN) (p:ps) = do
   let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
-
-
-
-
-
-
-
--- | Draw a step chart.
---
--- Similar to 'lineData', except it renders a series of changes (vectors) relative a starting point.
---
--- Can be combined with `scatterData`, `scatterDataX` etc.
---
--- See /Visualize this/, p. 124
-stepData :: (Monad m) => P2 Double -> [V2 Double] -> StyledT m Drawing
-stepData z vs = lineData (LineData 1 1) (offsetVectors z vs)
-
--- | Draw a linear function @ax + b@. Renders the function in the [0..1] domain,
---   i.e to get a line intersecting the outer ends of the X and Y axis use @linearData (-1) 1@.
---
---   Can be combined with `scatterData`, `scatterDataX` etc.
-linearData :: (Monad m) => Double -> Double -> StyledT m Drawing
-linearData a b = lineData (LineData 1 1) $ fmap (\x -> P $ x `V2` f x) [0,1]
-  where
-    f x = a*x + b
-
--- TODO bar graphs can be transposed (x/y) (how?)
-
 -- | Draw a one-dimensional bar graph.
 --
 -- For grouped/stacked charts, see `barData2`, `barData3` etc.
@@ -215,246 +164,6 @@ barData ps = do
     alignB = translate (V2 0 0.5)
     scaleRR = transform . scalingRR
     scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
-
--- | Draw a two-dimensional bar graph.
---
---  Every dimension in the given data set maps to a seprate bar.
---
--- Bars can be redered as grouped (default), stacked, or on opposite sides of the axis, depending on styling.
-barData2 :: (Monad m) => [P2 Double] -> StyledT m Drawing
-
--- | Draw a three-dimensional bar graph.
---
---  Every dimension in the given data set maps to a seprate bar.
---
--- Bars can be redered as grouped (default) or stacked depending on styling.
-barData3 :: (Monad m) => [P3 Double] -> StyledT m Drawing
-
--- | Draw a four-dimensional bar graph.
---
---  Every dimension in the given data set maps to a seprate bar.
---
--- Bars can be redered as grouped (default) or stacked depending on styling.
-barData4 :: (Monad m) => [P4 Double] -> StyledT m Drawing
-[barData2, barData3, barData4] = undefined
-
--- rawBarData4 :: [[R]] -> StyledT m Drawing
-
-
--- | Draw a bar graph.
-barDataWithColor  :: (Monad m) => [P2 Double] -> StyledT m Drawing
--- | Draw a bar graph.
-barDataWithColor2 :: (Monad m) => [P3 Double] -> StyledT m Drawing
--- | Draw a bar graph.
-barDataWithColor3 :: (Monad m) => [P4 Double] -> StyledT m Drawing
--- | Draw
--- barDataWithColor4 :: [R5] -> StyledT m Drawing
-[barDataWithColor, barDataWithColor2, barDataWithColor3] = undefined
-
-{-
-  Full insternal spec of a bar graph:
-    - Stylings
-      stack/dodge (behavior when number of dimensions > 1)
-      transpose (transposed or not)
-    - Data
-      height
-      color
--}
-
-barDataWithColorN  :: (Monad m) => [[P2 Double]] -> StyledT m Drawing
-barDataWithColorN pss = do
-  -- TODO draw all dimensions
-  let ps = head pss
-
-  style <- ask
-  let barWidth = 1/fromIntegral (length ps + 1)
-  let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  -- TODO derive color from value below
-  -- The color we recieve is *always* scaled to be in [0..1]
-  -- Do we interpolate this over the palette, or is there a better way?
-  --  Do we need to generalize geoms so that they also have access to *unscaled data*?
-  let base = alignB $ fillColorA (style^.barPlotBarColors.to paletteToColor) $ square
-  return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
-    fmap (\(P (V2 v color)) -> scaleX barWidth $ scaleY v $ base) ps
-  where
-    alignB = translate (V2 0 0.5)
-    scaleRR = transform . scalingRR
-    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
-
--- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-
-
-
--- | Visualizes a discrete count.
---
--- By default, this renders as a set of squares, coloured and grouped by the given element count.
---
--- See /Visualize this/ p XXII (Godfather example)
-discreteData :: (Enum a, Monad m) => [(a, Int)] -> StyledT m Drawing
-discreteData = undefined
-
--- TODO calendar map, see Visualize this p70
-
--- | Discrete 2D heat map
--- See "Visualize this, p 233"
--- heatDiscrete2D :: (Enum a, Enum b) => (a -> b -> Double)
-
--- | Visualizes an integer.
--- intData :: (Monad m) => P1 Int -> StyledT m Drawing
--- intData (P (V1 n)) = discreteDataGroup (replicate n ())
-
--- | Visualizes a ratio. Similar to 'barData', but only shows a single element.
---
--- See http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioData :: (Monad m) => P1 Double -> StyledT m Drawing
-ratioData (P (V1 v)) = do
-  style <- ask
-  let fg = style^.ratioPlotForegroundColor.to paletteToColor
-  let bg = style^.ratioPlotBackgroundColor.to paletteToColor
-  return $ transform (scalingRR style) (fillColorA fg (scaleY v (alignBL square)) <> fillColorA bg (alignBL square))
-  where
-    -- TODO move
-    alignBL = translate (V2 0.5 0.5)
-    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
-
-
--- | Visualizes ratio with colour.
---
--- a la http://webbddatascience.demo.aspnetzero.com/Application#/tenant/dashboard
-ratioDataWithColor :: (Monad m) => P2 Double -> StyledT m Drawing
-ratioDataWithColor (P (V2 v1 v2)) = do
-  style <- ask
-  let bg  = style^.ratioPlotBackgroundColor. to paletteToColor
-  -- let fg1 = style^.heatMapColour1
-  -- let fg2 = style^.heatMapColour2
-  -- TODO new styling here
-  let fg1 = style^.ratioPlotForegroundColor.to paletteToColor
-  let fg2 = style^.ratioPlotBackgroundColor.to paletteToColor
-  let fg  = blend v2 fg1 fg2
-  return $ transform (scalingRR style) (fillColorA fg (scaleY v1 (alignBL square)) <> fillColorA bg (alignBL square))
-  where
-    -- TODO move
-    alignBL = translate (V2 0.5 0.5)
-    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
-
--- TODO consolidate ratioData, ratioDataWithColor
-
-
--- | Draws the plotting rectangle.
---
--- Useful for deugging.
-plotRectangle :: (Monad m) => StyledT m Drawing
-plotRectangle = do
-  style <- ask
-  return $ transform (scalingRR style) (scale 2 xyCoords)
-  where
-    scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
-
--- -- | Draw a circle size plot.
--- circleData :: (Monad m) => [P1 Double] -> StyledT m Drawing
--- circleData = undefined
--- -- TODO use a ratio/percantage type wrapper
--- -- TODO use area not radius
---
--- -- | Draw a pie chart.
--- pieChartData :: (Monad m) => [P1 Double] -> StyledT m Drawing
--- pieChartData = undefined
--- -- See https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
---
--- -- | Draw
--- circleDataWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
--- circleDataWithColor = undefined
-
--- circleDataWithColor = do
---   s <- getStyling
---   sizedData (baseCircleFromStyling c)
---   where
---     baseCircleFromStyling = ...
-
--- Higher order bar graphs.
--- Can render these by
--- color mapping + one of
---   stacking, grouping, alternating (same as grouping with no spacing), above/below (2 dimensions only)
-
---  Draw a bar graph.
--- barData2 :: [P2 Double] -> Styled Drawing
--- barData2 :: [P3 Double] -> Styled Drawing
--- barData2 :: [P4 Double] -> Styled Drawing
-
---  A size graph: scales the given objets and places them side by side.
--- sizedData :: [R] -> Styled Drawing -> Styled Drawing
-
--- | Draw a tree map.
--- treeMapGraph :: (Monad m) => [P1 Double] -> StyledT m Drawing
--- treeMapGraph = undefined
--- TODO use a ratio/percantage type wrapper
-
-
-{-
-Tree map like bottom one here:
-https://infogr.am/link-building-strategies-from-the-experts
-See also "Visualize this, p 157"
-:
-  Split horizontally, put 2 largest values to the left (split vertically), rest of values to the right by
-  Split vertically, put 2 largest values at the top (split horizontally), rest of values at the bottom by
-  etc
-
-  (What to do if given an odd number of elements?)
--}
-
-
--- | Like 'treeMapGraph', mapping the last dimension to colour.
--- treeMapGraphWithColor :: (Monad m) => [P2 Double] -> StyledT m Drawing
--- treeMapGraphWithColor = undefined
-
--- | Draw a discrete heat map.
---
--- Example http://bokeh.pydata.org/en/latest/docs/gallery/les_mis.html
--- discreteHeatMap :: (Monad m) => [a] -> [b] -> (a -> b -> Double) -> StyledT m Drawing
--- discreteHeatMap = undefined
--- TODO use a ratio/percantage type wrapper
-
-
-
-
--- TODO Visualize pairs, lists, ordered sets, maps, trees, directed graphs
--- TODO Pie charts
-
--- | Basic type of legend.
--- Every string is matched to a single color.
---
--- >>> quantLegend ["Male", "Female"]
-quantLegend :: [Str] -> StyledT m Drawing
-quantLegend = undefined
-
--- | Similar to 'quantLegend', except strings indicate endpoint of a region.
--- The number of visualized
---
--- >>> quantLegend ["0", "50", "100"]
-intervalLegend :: [Str] -> StyledT m Drawing
-intervalLegend = undefined
-
---  | A legend where colours are interpolated in a continous space (i.e. for heat maps).
---
--- >>> scaleLegend (packStr . show) (0, 100)
-scaleLegend :: (a -> Str) -> (a, a) -> StyledT m Drawing
-scaleLegend = undefined
-
--- | Draw a title.
-title :: Str -> StyledT m Drawing
-title = undefined
-
-
--- TODO alternating tick size (i.e. every 50 year, 100 year etc)
-
--- TODO we should generalize this not to assume 2 axes
--- As far as we are concerned here there might be up to 4 axes (there may be more by overlaying)
-
--- TODO some creative tick positioning here
--- https://knowledge.infogr.am/featured
 
 -- | Draw ticks.
 --
@@ -501,15 +210,6 @@ ticksNoFilter xt yt = do
   let colBgY     = style^.backgroundTickStrokeColorY
   let drawBgX    = not $ isTransparent colBgX
   let drawBgY    = not $ isTransparent colBgY
-
-  -- TODO derive properly
-  -- let tlMin      = style^.basicTickLength
-  -- let widthFgBMin   = style^.basicTickStrokeWidth
-  -- let widthBgXMin   = style^.backgroundTickStrokeWidthX
-  -- let widthBgYMin   = style^.backgroundTickStrokeWidthY
-  -- let colFgBMin     = style^.basicTickColor
-  -- let colBgXMin     = style^.backgroundTickStrokeColorX
-  -- let colBgYMin     = style^.backgroundTickStrokeColorY
 
   let xTicks = mconcat $ flip fmap xt $
           \(pos,str) -> translateX (pos * x) $ mconcat
@@ -584,3 +284,34 @@ labeledAxis labelX labelY = do
       , fontSize       = First $ Just $ (toStr $ style^.axisTextFontSizePx) <> "px"
       , textSelectable = All False
       }
+
+
+baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
+baseImage dr x y Nothing     = baseImage dr x y (Just 1)
+baseImage dr x y (Just size) = do
+  style <- ask
+  return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
+    $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+    $ Lubeck.Drawing.scale size
+    $ dr
+
+baseLabel x y str = do
+    style <- ask
+    return $ Lubeck.Drawing.translateX (x * {-style^.Lubeck.DV.Styling.zoom._x *-} style^.Lubeck.DV.Styling.renderingRectangle._x)
+      $ Lubeck.Drawing.translateY (y * {-style^.Lubeck.DV.Styling.zoom._y *-} style^.Lubeck.DV.Styling.renderingRectangle._y)
+      -- TODO font
+      $ text_ style str
+
+  where
+    text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
+      {
+      Lubeck.Drawing.textAnchor       = style^.Lubeck.DV.Styling.labelTextAnchor
+      -- TODO read family from style
+      , Lubeck.Drawing.fontFamily     = style^.Lubeck.DV.Styling.labelTextFontFamily
+      , Lubeck.Drawing.fontStyle      = style^.Lubeck.DV.Styling.labelTextFontStyle
+      , Lubeck.Drawing.fontSize       = First $ Just $ (toStr $ style^.Lubeck.DV.Styling.labelTextFontSizePx) <> "px"
+      , Lubeck.Drawing.fontWeight     = style^.Lubeck.DV.Styling.labelTextFontWeight
+      , Lubeck.Drawing.textSelectable = All False
+      }
+      where
+        absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset

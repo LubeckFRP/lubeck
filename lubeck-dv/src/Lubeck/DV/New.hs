@@ -172,7 +172,7 @@ import System.Directory (createDirectoryIfMissing)
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
-import Lubeck.DV.Styling (StyledT, Styled, Styling, renderingRectangle)
+import Lubeck.DV.Styling (StyledT, Styled, Styling)
 import Lubeck.DV.Internal.Normalized
 import Lubeck.DV.Internal.Table
 
@@ -1108,18 +1108,8 @@ imageG = Geometry g [""]
       case sp of
         -- TODO get scaling in Maybe?
         -- Would require something like (Column a -> Column (Maybe a))
-        Just (SpecialDrawing dr) -> return $ baseImage dr x y (Just 1)
+        Just (SpecialDrawing dr) -> return $ Lubeck.DV.Internal.Render.baseImage dr x y (Just 1)
         Nothing                  -> return mempty
-
-
-    baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
-    baseImage dr x y Nothing     = baseImage dr x y (Just 1)
-    baseImage dr x y (Just size) = do
-      style <- ask
-      return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
-        $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
-        $ Lubeck.Drawing.scale size
-        $ dr
 
 {-|
 Draws custom text specified by the 'label' aesthetic.
@@ -1139,28 +1129,8 @@ labelG = Geometry g [""]
       sp <- specialAttr "label" t
       case sp of
         Just (SpecialStr "")  -> return $ mempty
-        Just (SpecialStr str) -> return $ baseImage x y str
+        Just (SpecialStr str) -> return $ Lubeck.DV.Internal.Render.baseLabel x y str
         Nothing               -> return mempty
-
-    baseImage x y str = do
-        style <- ask
-        return $ Lubeck.Drawing.translateX (x * {-style^.Lubeck.DV.Styling.zoom._x *-} style^.Lubeck.DV.Styling.renderingRectangle._x)
-          $ Lubeck.Drawing.translateY (y * {-style^.Lubeck.DV.Styling.zoom._y *-} style^.Lubeck.DV.Styling.renderingRectangle._y)
-          -- TODO font
-          $ text_ style str
-
-    text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
-      {
-      Lubeck.Drawing.textAnchor       = style^.Lubeck.DV.Styling.labelTextAnchor
-      -- TODO read family from style
-      , Lubeck.Drawing.fontFamily     = style^.Lubeck.DV.Styling.labelTextFontFamily
-      , Lubeck.Drawing.fontStyle      = style^.Lubeck.DV.Styling.labelTextFontStyle
-      , Lubeck.Drawing.fontSize       = First $ Just $ (toStr $ style^.Lubeck.DV.Styling.labelTextFontSizePx) <> "px"
-      , Lubeck.Drawing.fontWeight     = style^.Lubeck.DV.Styling.labelTextFontWeight
-      , Lubeck.Drawing.textSelectable = All False
-      }
-      where
-        absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
 
 
 
