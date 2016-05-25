@@ -8,6 +8,7 @@
   , TemplateHaskell
   , ConstraintKinds
   , FlexibleContexts
+  , ScopedTypeVariables
   #-}
 
 module Lubeck.DV.Internal.Render
@@ -100,6 +101,26 @@ getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRecta
     withinNormRange :: Double -> Bool
     withinNormRange x = 0 <= x && x <= 1
 
+{-
+Carries out transformation directly without filtering. This is usually not what we want.
+-}
+getRenderingPositionT :: Styling -> Transformation Double
+getRenderingPositionT styling = (scalingXY $ styling^.renderingRectangle) <> (styling^.zoom)
+
+getRenderingPositionX :: Styling -> Double -> Double
+getRenderingPositionY :: Styling -> Double -> Double
+getRenderingPositionX st x = let (P (V2 x' _)) = transformPoint (getRenderingPositionT st) (P $ V2 x 0) in x'
+getRenderingPositionY st y = let (P (V2 _ y')) = transformPoint (getRenderingPositionT st) (P $ V2 0 y) in y'
+
+{-
+Like getRenderingPosition for drawings.
+Carries out transformation directly without filtering. This is usually not what we want.
+-}
+getRenderingPositionDTransfOnly :: Styling -> Drawing -> Drawing
+getRenderingPositionDTransfOnly styling = translate $ unP $ transformPoint (scalingXY (styling^.renderingRectangle)) (P $ transl (styling^.zoom))
+  where
+    unP (P x) = x
+
 data ScatterData = ScatterData
   { scatterDataColor :: Double
   }
@@ -127,19 +148,17 @@ scatterData (ScatterData colorN) ps = do
             $ scale (style^.scatterPlotSize) circle
   return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ mapFilterEither (getRenderingPosition style) ps
 
--- TODO zoom
 scatterDataX :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] -> m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
-  return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ fmap (transformIntoRect style) ps
+  return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ mapFilterEither (getRenderingPosition style) ps
 
--- TODO zoom
 scatterDataY :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] ->  m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
-  return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) $ fmap (transformIntoRect style) ps
+  return $ mconcat $ fmap (\p -> scaleX (style^.renderingRectangle._x) $ translateY (p^._y) base) $ mapFilterEither (getRenderingPosition style) ps
 
 data LineData = LineData
   { lineDataColor :: Double
@@ -212,22 +231,20 @@ barData ps = do
     scaleRR = getRenderingPositionD
 
 
--- TODO zoom
 baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
 baseImage dr x y (Just size) = do
   style <- ask
-  return $ Lubeck.Drawing.translateX (x * style^.renderingRectangle._x)
-    $ Lubeck.Drawing.translateY (y * style^.renderingRectangle._y)
+  return $ getRenderingPositionDTransfOnly style
+    $ translate (V2 x y)
     $ Lubeck.Drawing.scale size
     $ dr
 
--- TODO zoom
 baseLabel :: MonadReader Styling m => Double -> Double -> Str -> m Drawing
 baseLabel x y str = do
     style <- ask
-    return $ Lubeck.Drawing.translateX (x * {-style^.zoom._x *-} style^.renderingRectangle._x)
-      $ Lubeck.Drawing.translateY (y * {-style^.zoom._y *-} style^.renderingRectangle._y)
+    return $ getRenderingPositionDTransfOnly style
+      $ translate (V2 x y)
       -- TODO font
       $ text_ style str
 
@@ -284,8 +301,8 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
       style <- ask
 
       -- TODO zoom: derive from zoom , with filtering
-      let xPos = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
-      let yPos = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
+      -- let (xPos :: Double) = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
+      -- let (yPos :: Double) = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
 
       -- Flipped!
       let xInsideLength = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
@@ -304,7 +321,7 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
       let drawBgY    = not $ isTransparent colBgY
 
       let xTicks = mconcat $ flip fmap xTickList $
-              \(pos,str) -> translateX (pos * xPos) $ mconcat
+              \(pos,str) -> translateX (getRenderingPositionX style pos) $ mconcat
                 [ mempty
                 -- Text
                 , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate (turn*xTickTurn) . textX style) $ str
@@ -315,7 +332,7 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
                     strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
                 ]
       let yTicks = mconcat $ flip fmap yTickList $
-              \(pos,str) -> translateY (pos * yPos) $ mconcat
+              \(pos,str) -> translateY (getRenderingPositionY style pos) $ mconcat
                 [ mempty
                 -- Text
                 , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate (turn*yTickTurn) . textY style) $ str
@@ -341,7 +358,6 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
           }
         isTransparent color = abs (alphaChannel color) < 0.001
 
--- TODO zoom: OK, axis not affected by zoom
 -- | Draw X and Y axis.
 labeledAxis
   :: (Monad m, MonadReader Styling m)

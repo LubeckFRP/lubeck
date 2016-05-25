@@ -74,6 +74,8 @@ module Lubeck.DV.New
   , bars
   , xIntercept
   , yIntercept
+  , xInterceptAlways
+  , yInterceptAlways
   -- path
   -- schema
   , labelG
@@ -1096,6 +1098,42 @@ yIntercept = Geometry g []
       y <- scaledAttr "y" t
       return $ P $ V2 x y
 
+{-|
+A line intercepting X values. Drawn if @crossLineX@ is present and non-zero.
+
+Aesthetics:
+
+@
+x, y, crossLineX
+@
+-}
+xInterceptAlways :: Geometry
+xInterceptAlways = Geometry g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Internal.Render.scatterDataX $ runColumnFinite $ do
+      -- let t = ifT "crossLineX" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
+{-|
+A line intercepting Y values. Drawn if @crossLineY@ is present and non-zero.
+
+Aesthetics:
+
+@
+x, y, crossLineY
+@
+-}
+yInterceptAlways:: Geometry
+yInterceptAlways = Geometry g []
+  where
+    -- TODO extract color
+    g t = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do
+      -- let t = ifT "crossLineY" t2
+      x <- scaledAttr "x" t
+      y <- scaledAttr "y" t
+      return $ P $ V2 x y
 
 {-|
 Draws a custom image specified by the 'image' aesthetic.
