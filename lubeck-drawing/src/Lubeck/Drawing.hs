@@ -389,7 +389,7 @@ data Rect a = Rect_ { _p1 :: P2 a, _p2 :: P2 a }
 rect :: a -> a -> a -> a -> Rect a
 rect x1 y1 x2 y2 = Rect_ (P (V2 x1 y1)) (P (V2 x2 y2))
 
-transformRect :: Transformation a -> Rect a -> Rect a
+transformRect :: Num a => Transformation a -> Rect a -> Rect a
 transformRect t (Rect_ p1 p2) = Rect_ (transformPoint t p1) (transformPoint t p2)
 
 -- makeLenses ''Rect
