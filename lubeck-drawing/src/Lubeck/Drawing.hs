@@ -103,6 +103,7 @@ module Lubeck.Drawing
   , scaling
   , scalingX
   , scalingY
+  , scalingXY
   , translation
   , translationX
   , translationY
@@ -1135,6 +1136,9 @@ translationY b = translation (V2 0 b)
 {-| Scales (stretches) an object, preserving its horizontal/vertical proportion. -}
 scaling :: Num a => a -> Transformation a
 scaling a = matrix (a,0,0,a,0,0)
+
+scalingXY :: Num a => V2 a -> Transformation a
+scalingXY (V2 a b) = matrix (a,0,0,b,0,0)
 
 {-| Scales (stretches) an object. -}
 scalingX :: Num a => a -> Transformation a

@@ -50,9 +50,10 @@ import Lubeck.DV.LineStyles
 
 -- Util
 transformIntoRect :: Styling -> P2 Double -> P2 Double
-transformIntoRect style = transformPoint (scalingX (zoo^._x * rect^._x) <> scalingY (zoo^._y * rect^._y))
+transformIntoRect style = transformPoint $
+     scalingXY rect
   where
-    zoo   = style^.zoom
+    -- zoo   = style^.zoom
     rect  = style^.renderingRectangle
 
 -- Util
@@ -478,8 +479,8 @@ ticksNoFilter
 ticksNoFilter xt yt = do
   style <- ask
 
-  let x = (style^.zoom._x) * (style^.renderingRectangle._x)
-  let y = (style^.zoom._y) * (style^.renderingRectangle._y)
+  let x = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
+  let y = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
 
   let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
 

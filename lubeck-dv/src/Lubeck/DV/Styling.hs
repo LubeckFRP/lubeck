@@ -246,7 +246,7 @@ instance Monoid Styling where
     { _dummy                        = mempty
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
-    , _zoom                         = Rect_ (P (V2 0 0) (V2 1 1))
+    , _zoom                         = Rect_ (P (V2 0 0)) (P (V2 1 1))
 
     , _axisTextFontFamily           = mempty
     , _axisTextFontWeight           = mempty
