@@ -231,10 +231,9 @@ baseImage dr x y (Just size) = do
 
 baseLabel :: MonadReader Styling m => Double -> Double -> Str -> m Drawing
 baseLabel x y str = do
-    style <- ask
-    return $ getRenderingPositionRel (V2 x y) style
-      $ text_ style str
-
+  style <- ask
+  return $ getRenderingPositionRel (V2 x y) style
+    $ text_ style str
   where
     text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
       {
