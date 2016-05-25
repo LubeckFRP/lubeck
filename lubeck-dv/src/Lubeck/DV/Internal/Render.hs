@@ -49,13 +49,6 @@ import Lubeck.DV.ColorPalette
 import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
-{-
-Take a point in the UHQ and transform it into its rendering position.
-This is accomplished as follows:
-  - Run the zoom affine transformation (if default zoom, this is the identity)
-  - Optionally filter points that now falls outside the UHQ (i.e. when zooming in)
-  - Run the linear transformation that defines the rendering rectangle (always a scaling)
--}
 transformIntoRect :: Styling -> P2 Double -> P2 Double
 transformIntoRect style = transformPoint $
      scalingXY rect
@@ -68,14 +61,40 @@ relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
 
 
+{-
+Take a point in the UHQ and transform it into its rendering position.
+If the resulting position is outside the RR, return (Left p), otherwise return (Right p).
 
+This is accomplished as follows:
+  - Run the zoom affine transformation (if default zoom, this is the identity)
+  - Optionally filter points that now falls outside the UHQ (i.e. when zooming in)
+  - Run the linear transformation that defines the rendering rectangle (always a scaling)
+-}
+getRenderingPosition :: Styling -> P2 Double -> Either (P2 Double) (P2 Double)
+getRenderingPosition styling x = fmap (transformPoint (scalingXY $ styling^.renderingRectangle)) $ Right $ transformPoint (styling^.zoom) x
 
+  where
+
+    -- TODO actually use filtering
+    filterTicks :: [(Double, a)] -> [(Double, a)]
+    filterTicks = filter (withinNormRange . fst)
+
+    -- | Is a number within the normalized (UHQ) range?
+    withinNormRange :: Double -> Bool
+    withinNormRange x = 0 <= x && x <= 1
 
 
 data ScatterData = ScatterData
   { scatterDataColor :: Double
   }
 
+mapFilterEither :: (Monad m, Alternative m) => (a -> Either t b) -> m a -> m b
+mapFilterEither f = (=<<) (g . f)
+  where
+    g (Left _)  = empty
+    g (Right x) = pure x
+
+-- TODO zoom OK
 scatterData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => ScatterData -> [P2 Double] -> m Drawing
 scatterData (ScatterData colorN) ps = do
   style <- ask
@@ -84,14 +103,16 @@ scatterData (ScatterData colorN) ps = do
             $ strokeWidth (style^.scatterPlotStrokeWidth)
             $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
             $ scale (style^.scatterPlotSize) circle
-  return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ fmap (transformIntoRect style) ps
+  return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ mapFilterEither (getRenderingPosition style) ps
 
+-- TODO zoom
 scatterDataX :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] -> m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ fmap (transformIntoRect style) ps
 
+-- TODO zoom
 scatterDataY :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] ->  m Drawing
 scatterDataY ps = do
   style <- ask
@@ -104,6 +125,7 @@ data LineData = LineData
   }
 defLineData = LineData 0 0
 
+-- TODO zoom OK
 lineData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => LineData -> [P2 Double] -> m Drawing
 lineData _ []     = mempty
 lineData _ [_]    = mempty
@@ -114,23 +136,22 @@ lineData (LineData colorN dashN) (p:ps) = do
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
                 . dash          (style^.linePlotStroke. to (`extractLineStyle` dashN))
-  return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
+  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) (p:ps)
 
 data AreaData = AreaData
   { areaDataColor :: Double
   }
 
+-- TODO zoom OK
 fillData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
 fillData _ []     = mempty
 fillData _ [_]    = mempty
 fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
-                -- . strokeColorA  (style^.linePlotStrokeColor)
                 . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-                -- . strokeWidth   (style^.linePlotStrokeWidth)
-  return $ translate (relOrigin (transformIntoRect style pProjX)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) $ addExtraPoints (p:ps)
-
+  -- return $ (either id translate $ relOrigin $ getRenderingPosition style pProjX) $ lineStyle $ fmap segments $ fmap betweenPoints $ mapFilterEither (getRenderingPosition style) $ addExtraPoints (p:ps)
+  return mempty
   where
     -- Because of projection (below!), ignore y value for 1st point
     pProjX = P (V2 firstPointX 0) where P (V2 firstPointX _) = p
@@ -146,6 +167,7 @@ areaData i ps = areaData' i $
     <>
   fmap (\p -> P $ V2 (p^._x) (p^._y)) (reverse ps)
 
+-- TODO zoom
 areaData' :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
 areaData' _ []     = mempty
 areaData' _ [_]    = mempty
@@ -154,6 +176,7 @@ areaData' (AreaData colorN) (p:ps) = do
   let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
   return $ translate (relOrigin (transformIntoRect style p)) $ lineStyle $ segments $ betweenPoints $ fmap (transformIntoRect style) (p:ps)
 
+-- TODO zoom
 -- | Draw a one-dimensional bar graph.
 --
 -- For grouped/stacked charts, see `barData2`, `barData3` etc.
@@ -171,6 +194,7 @@ barData ps = do
     scalingRR style = let r = style^.renderingRectangle in scalingX (r^._x) <> scalingY (r^._y)
 
 
+-- TODO zoom
 baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
 baseImage dr x y (Just size) = do
@@ -180,6 +204,7 @@ baseImage dr x y (Just size) = do
     $ Lubeck.Drawing.scale size
     $ dr
 
+-- TODO zoom
 baseLabel :: MonadReader Styling m => Double -> Double -> Str -> m Drawing
 baseLabel x y str = do
     style <- ask
@@ -215,8 +240,11 @@ ticks
   -> m Drawing
 ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
   where
-    -- filterTicks :: ()
+    filterTicks :: [(Double, a)] -> [(Double, a)]
     filterTicks = filter (withinNormRange . fst)
+
+    -- | Is a number within the normalized (UHQ) range?
+    withinNormRange :: Double -> Bool
     withinNormRange x = 0 <= x && x <= 1
 
     -- | Draw ticks.
@@ -237,6 +265,7 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
     ticksNoFilter xTickList yTickList = do
       style <- ask
 
+      -- TODO zoom: derive from zoom , with filtering
       let xPos = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
       let yPos = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
 
@@ -294,7 +323,7 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
           }
         isTransparent color = abs (alphaChannel color) < 0.001
 
--- TODO zoom/rr: OK, axis not affected by zoom
+-- TODO zoom: OK, axis not affected by zoom
 -- | Draw X and Y axis.
 labeledAxis
   :: (Monad m, MonadReader Styling m)

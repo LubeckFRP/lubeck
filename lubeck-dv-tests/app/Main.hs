@@ -473,7 +473,7 @@ main = do
   (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y" 1
   (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X offset" 0
   (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y offset" 0
-  let zoomXY = liftA4 (\x y xo yo -> rect xo yo x y) zoomX zoomY zoomXO zoomYO
+  let zoomXY = liftA4 (\x y xo yo -> rect xo yo (xo+x) (yo+y)) zoomX zoomY zoomXO zoomYO
   let zoomV = mconcat [rrV, view0, view1, view2, view1a, view2a]
 #else
   let zoomActive = pure True :: Signal Bool
@@ -501,6 +501,9 @@ main = do
                           $ zoom .~ (focusFromRectangle currentZoom)
                           $ mempty
             in liftA2 g zoomXY rrS
+  subscribeEvent (updates $ zoomXY) $ \_ -> print "U: zoomXY"
+  subscribeEvent (updates $ rrS) $ \_ -> print "U: rrS"
+  subscribeEvent (updates $ plotVD) $ \_ -> print "U: plotVD"
 
   -- let plotD = getStyled plotSD mempty :: Drawing
   (plotSD :: SDrawing) <- draggable_ $ plotVD
@@ -695,9 +698,4 @@ animated b = do
 -- main = print "Dummy"
 -- #endif
 
-liftA4 f a b c d = do
-  a' <- a
-  b' <- b
-  c' <- c
-  d' <- d
-  pure $ f a' b' c' d'
+liftA4 f a b c d = f <$> a <*> b <*> c <*> d
