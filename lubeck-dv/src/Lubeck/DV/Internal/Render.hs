@@ -71,7 +71,7 @@ data ScatterData = ScatterData
   { scatterDataColor :: Double
   }
 
-scatterData :: (Monad m) => ScatterData -> [P2 Double] -> StyledT m Drawing
+scatterData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => ScatterData -> [P2 Double] -> m Drawing
 scatterData (ScatterData colorN) ps = do
   style <- ask
   let base  = id
@@ -81,13 +81,13 @@ scatterData (ScatterData colorN) ps = do
             $ scale (style^.scatterPlotSize) circle
   return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ fmap (transformIntoRect style) ps
 
-scatterDataX :: (Monad m) => [P2 Double] -> StyledT m Drawing
+scatterDataX :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] -> m Drawing
 scatterDataX ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ fmap (transformIntoRect style) ps
 
-scatterDataY :: (Monad m) => [P2 Double] ->  StyledT m Drawing
+scatterDataY :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] ->  m Drawing
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
@@ -99,7 +99,7 @@ data LineData = LineData
   }
 defLineData = LineData 0 0
 
-lineData :: (Monad m) => LineData -> [P2 Double] -> StyledT m Drawing
+lineData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => LineData -> [P2 Double] -> m Drawing
 lineData _ []     = mempty
 lineData _ [_]    = mempty
 lineData (LineData colorN dashN) (p:ps) = do
@@ -115,7 +115,7 @@ data AreaData = AreaData
   { areaDataColor :: Double
   }
 
-fillData :: (Monad m) => AreaData -> [P2 Double] -> StyledT m Drawing
+fillData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
 fillData _ []     = mempty
 fillData _ [_]    = mempty
 fillData (AreaData colorN) (p:ps) = do
@@ -135,13 +135,13 @@ fillData (AreaData colorN) (p:ps) = do
       where
         proj (P (V2 x _)) = P (V2 x 0)
 
-areaData :: (Monad m) => AreaData -> [P3 Double] -> StyledT m Drawing
+areaData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P3 Double] -> m Drawing
 areaData i ps = areaData' i $
   fmap (\p -> P $ V2 (p^._x) (p^._z)) ps
     <>
   fmap (\p -> P $ V2 (p^._x) (p^._y)) (reverse ps)
 
-areaData' :: (Monad m) => AreaData -> [P2 Double] -> StyledT m Drawing
+areaData' :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
 areaData' _ []     = mempty
 areaData' _ [_]    = mempty
 areaData' (AreaData colorN) (p:ps) = do
@@ -152,7 +152,7 @@ areaData' (AreaData colorN) (p:ps) = do
 -- | Draw a one-dimensional bar graph.
 --
 -- For grouped/stacked charts, see `barData2`, `barData3` etc.
-barData :: (Monad m) => [P1 Double] -> StyledT m Drawing
+barData :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
 barData ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
@@ -169,10 +169,10 @@ barData ps = do
 --
 -- Same as 'ticksNoFilter' with a sanity check to remove ticks outside of quadrant.
 ticks
-  :: Monad m
+  :: (Monad m, MonadReader Styling m)
   => [(Double, Maybe Str)] -- ^ X axis ticks.
   -> [(Double, Maybe Str)] -- ^ Y axis ticks.
-  -> StyledT m Drawing
+  -> m Drawing
 ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
   where
     filterTicks = filter (withinNormRange . fst)
@@ -189,10 +189,10 @@ ticks xt yt = ticksNoFilter (filterTicks xt) (filterTicks yt)
 --
 -- Contrary to 'ticks', 'ticksNoFilter' accept ticks at arbitrary positions.
 ticksNoFilter
-  :: Monad m
+  :: (Monad m, MonadReader Styling m)
   => [(Double, Maybe Str)] -- ^ X axis ticks.
   -> [(Double, Maybe Str)] -- ^ Y axis ticks.
-  -> StyledT m Drawing
+  -> m Drawing
 ticksNoFilter xt yt = do
   style <- ask
 
@@ -257,10 +257,10 @@ ticksNoFilter xt yt = do
 
 -- | Draw X and Y axis.
 labeledAxis
-  :: Monad m
+  :: (Monad m, MonadReader Styling m)
   => Str -- ^ X axis label.
   -> Str -- ^ Y axis label.
-  -> StyledT m Drawing
+  -> m Drawing
 labeledAxis labelX labelY = do
   style <- ask
   let x = style^.renderingRectangle._x
@@ -290,28 +290,29 @@ baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> 
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
 baseImage dr x y (Just size) = do
   style <- ask
-  return $ Lubeck.Drawing.translateX (x * style^.Lubeck.DV.Styling.renderingRectangle._x)
-    $ Lubeck.Drawing.translateY (y * style^.Lubeck.DV.Styling.renderingRectangle._y)
+  return $ Lubeck.Drawing.translateX (x * style^.renderingRectangle._x)
+    $ Lubeck.Drawing.translateY (y * style^.renderingRectangle._y)
     $ Lubeck.Drawing.scale size
     $ dr
 
+baseLabel :: MonadReader Styling m => Double -> Double -> Str -> m Drawing
 baseLabel x y str = do
     style <- ask
-    return $ Lubeck.Drawing.translateX (x * {-style^.Lubeck.DV.Styling.zoom._x *-} style^.Lubeck.DV.Styling.renderingRectangle._x)
-      $ Lubeck.Drawing.translateY (y * {-style^.Lubeck.DV.Styling.zoom._y *-} style^.Lubeck.DV.Styling.renderingRectangle._y)
+    return $ Lubeck.Drawing.translateX (x * {-style^.zoom._x *-} style^.renderingRectangle._x)
+      $ Lubeck.Drawing.translateY (y * {-style^.zoom._y *-} style^.renderingRectangle._y)
       -- TODO font
       $ text_ style str
 
   where
     text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
       {
-      Lubeck.Drawing.textAnchor       = style^.Lubeck.DV.Styling.labelTextAnchor
+      Lubeck.Drawing.textAnchor       = style^.labelTextAnchor
       -- TODO read family from style
-      , Lubeck.Drawing.fontFamily     = style^.Lubeck.DV.Styling.labelTextFontFamily
-      , Lubeck.Drawing.fontStyle      = style^.Lubeck.DV.Styling.labelTextFontStyle
-      , Lubeck.Drawing.fontSize       = First $ Just $ (toStr $ style^.Lubeck.DV.Styling.labelTextFontSizePx) <> "px"
-      , Lubeck.Drawing.fontWeight     = style^.Lubeck.DV.Styling.labelTextFontWeight
+      , Lubeck.Drawing.fontFamily     = style^.labelTextFontFamily
+      , Lubeck.Drawing.fontStyle      = style^.labelTextFontStyle
+      , Lubeck.Drawing.fontSize       = First $ Just $ (toStr $ style^.labelTextFontSizePx) <> "px"
+      , Lubeck.Drawing.fontWeight     = style^.labelTextFontWeight
       , Lubeck.Drawing.textSelectable = All False
       }
       where
-        absOffset = style^.Lubeck.DV.Styling.labelTextAbsOffset
+        absOffset = style^.labelTextAbsOffset
