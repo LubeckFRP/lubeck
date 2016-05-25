@@ -131,8 +131,19 @@ import Lubeck.DV.LineStyles
   )
 
 data VerticalHorizontal = Vertical | Horizontal
--- How to display a bar plot with more than two dimensions.§
+-- How to display a bar plot with more than two dimensions
 data BarPlotType = Grouped | Stacked | TwoSides
+
+focusLeft, focusRight, focusBottomLeft :: Transformation Double
+focusLeft       = recip $ rectToTransf (rect 0   0   0.5 1))
+focusRight      = recip $ rectToTransf (rect 0.5 0   1   1))
+focusBottomLeft = recip $ rectToTransf (rect 0   0   0.5 0.5))
+focusDefault    = 1
+-- | "Zoom out"
+focusHalfSize   =  recip 2 :: Transformation Double
+-- | "Zoom in"
+focusDoubleSize =  2 :: Transformation Double
+
 
 data Styling = Styling
   { _dummy                            :: ()
@@ -248,15 +259,6 @@ data Styling = Styling
 
 makeLenses ''Styling
 
-focusLeft, focusRight, focusBottomLeft :: Transformation Double
-focusLeft       = recip $ rectToTransf (rect 0   0   0.5 1))
-focusRight      = recip $ rectToTransf (rect 0.5 0   1   1))
-focusBottomLeft = recip $ rectToTransf (rect 0   0   0.5 0.5))
-focusDefault    = 1
--- | "Zoom out"
-focusHalfSize   =  recip 2 :: Transformation Double
--- | "Zoom in"
-focusDoubleSize =  2 :: Transformation Double
 
 instance Monoid Styling where
   mempty = Styling
