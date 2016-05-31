@@ -323,7 +323,9 @@ data Aesthetic a = Aesthetic
   - 'mappend' interleaves bindings (left-biased).
 -}
 deriving instance Generic (Aesthetic a)
-instance Monoid (Aesthetic a)
+instance Monoid (Aesthetic a) where
+   mempty  = memptydefault
+   mappend = mappenddefault
 
 {- |
 Make a custom aesthetic attribute.
@@ -864,12 +866,9 @@ data Geometry = Geometry
   }
 
 deriving instance Generic Geometry
-instance Monoid Geometry
-
-wrapTable :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Table Key Cell
-wrapTable [] _ = mempty
-wrapTable _ [] = mempty
-wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) (tableFromList a) (tableFromList b)
+instance Monoid Geometry where
+   mempty  = memptydefault
+   mappend = mappenddefault
 
 ifT :: Key -> Table Key Cell -> Table Key Cell
 ifT key = filterRows key (\x -> cScaled x >= 0.5)
@@ -1207,16 +1206,21 @@ labelG = Geometry g [""]
 
 
 
+-- Table k a ~ [Map k a] ~ Map k [Maybe a]
 
 -- Data/guides/labels is mapped but not scaled
 data SinglePlot = SinglePlot
-  { mappedData        :: [Map Key Double]
-  , specialData       :: [Map Key Special]
+  -- Generated from running aesthetics over data
+  { mappedData        :: [Map Key Double]         -- Table Key Double
+  , specialData       :: [Map Key Special]        -- Table Key Special
   , guides            :: Map Key [(Double, Str)]
-  , bounds            :: PlotBounds
+  , bounds            :: PlotBounds               -- Map Key (Double, Double)
+
+  -- Provided by user
   , geometry          :: Geometry
   , axesTitles        :: [Str]
   }
+-- Not a Monoid!
 
 newtype Plot = Plot [SinglePlot]
   deriving (Monoid)
@@ -1243,15 +1247,15 @@ drawPlot :: Plot -> Styled Drawing
 createSinglePlot titles dat aess geometry =
   SinglePlot mappedData specialData guides bounds geometry titles
   where
+    -- Only used locallyhere!
     aes                 = mconcat aess
+
     bounds              = aestheticPlotBounds aes dat                   :: PlotBounds
     guides              = aestheticGuides aes dat                       :: Map Key [(Double, Str)]
-    scaledGuides        = normalizeGuides bounds guides                 :: Map Key [(Coord, Str)]
+
     specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
     mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
 
-
--- TODO Identity vs Compose pattern (normalizeGuides' vs normalizeData')
 
 normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
 normalizeGuides b m = normalizeGuides' b m
@@ -1264,30 +1268,32 @@ normalizeData b m = fmap (normalizeData' b) m
     normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
 
 
-mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> [Map Key (Coord, Maybe Special)]
-mappedAndScaledDataWithSpecial
-  Nothing       (SinglePlot mappedData specialData _ bounds _ _) = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-mappedAndScaledDataWithSpecial
-  (Just bounds) (SinglePlot mappedData specialData _ _ _ _)      = mappedAndScaledDataWithSpecial2 bounds mappedData specialData
 
-mappedAndScaledDataWithSpecial2 :: PlotBounds
-                                   -> [Map Key Double]
-                                   -> [Map Key Special]
-                                   -> [Map Key (Coord, Maybe Special)]
-mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-  = zipWith mergeMapsL mappedAndScaledData specialData
-      :: [Map Key (Coord, Maybe Special)]
-      where
-        mappedAndScaledData :: [Map Key Coord]
-        mappedAndScaledData = normalizeData bounds mappedData
 
-        mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-        mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
+
+mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
+mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = tableFromList $ case b of
+    Nothing        -> mappedAndScaledDataWithSpecial2 bounds1 mappedData specialData
+    (Just bounds2) -> mappedAndScaledDataWithSpecial2 bounds2 mappedData specialData
+  where
+    mappedAndScaledDataWithSpecial2 :: PlotBounds
+                                       -> [Map Key Double]
+                                       -> [Map Key Special]
+                                       -> [Map Key (Coord, Maybe Special)]
+    mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+      = zipWith mergeMapsL mappedAndScaledData specialData
+          :: [Map Key (Coord, Maybe Special)]
           where
-            g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
-              (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-              (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
-              (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
+            mappedAndScaledData :: [Map Key Coord]
+            mappedAndScaledData = normalizeData bounds mappedData
+
+            mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
+            mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
+              where
+                g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
+                  (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
+                  (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
+                  (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
 
 
@@ -1338,6 +1344,10 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
           where
             xs = fmap (second Just) xs2
             ys = fmap (second Just) ys2
+
+        wrapTable :: [Map Key Double] -> Table Key (Coord, Maybe Special) -> Table Key Cell
+        wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) (tableFromList a) b
+
 
 
 {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}

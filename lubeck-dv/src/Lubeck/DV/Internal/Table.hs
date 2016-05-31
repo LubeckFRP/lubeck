@@ -18,6 +18,7 @@ module Lubeck.DV.Internal.Table
   (
   -- ** Table type
     Table
+  , tableNull
   , tableSingleton
   , tableFromList
   , tableToMap
@@ -150,12 +151,25 @@ newtype Table k a = Table [Map k a]
 instance (Ord k, Eq a) => Eq (Table k a) where
   a == b  =  tableToMap a == tableToMap b
 
+
+tableNull :: Table k a -> Bool
+tableNull (Table []) = True
+tableNull _          = False
+
 {-
 Create a table with a single row and column.
 -}
 tableSingleton :: k -> a -> Table k a
 tableSingleton k v = Table $ pure $ Data.Map.singleton k v
 
+{-|
+Create a table from a list.
+
+@
+tableToList . tableFromList = id
+tableFromList . tableToList = id
+@
+-}
 tableFromList :: Ord k => [Map k a] -> Table k a
 tableFromList = Table
 
