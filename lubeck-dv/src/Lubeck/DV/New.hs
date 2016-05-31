@@ -8,7 +8,9 @@
   , FlexibleContexts
   , NoImplicitPrelude
   , MultiParamTypeClasses
+  , DeriveGeneric
   , DeriveFunctor
+  , StandaloneDeriving
   , ScopedTypeVariables
   #-}
 
@@ -152,10 +154,6 @@ import Control.Lens.Operators hiding ((<~))
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Map(Map)
 import Data.Time(UTCTime)
-import Linear.Affine (Point(..))
-import Linear.V1 (V1(..))
-import Linear.V2 (V2(..))
-import Linear.V3 (V3(..))
 
 import Control.Monad.Identity
 import Control.Monad.Reader
@@ -166,6 +164,14 @@ import qualified Data.Time
 import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
 import System.Directory (createDirectoryIfMissing)
+
+import Generics.Deriving.Base (Generic)
+import Generics.Deriving.Monoid
+
+import Linear.Affine (Point(..))
+import Linear.V1 (V1(..))
+import Linear.V2 (V2(..))
+import Linear.V3 (V3(..))
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..))
@@ -312,15 +318,12 @@ data Aesthetic a = Aesthetic
   }
 
 
-
 {-|
   - 'mempty' does not map anything.
   - 'mappend' interleaves bindings (left-biased).
 -}
-instance Monoid (Aesthetic a) where
-  mempty = Aesthetic mempty mempty mempty mempty mempty
-  mappend (Aesthetic a1 a2 a3 a4 a5) (Aesthetic b1 b2 b3 b4 b5)
-    = Aesthetic (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4) (a5 <> b5)
+deriving instance Generic (Aesthetic a)
+instance Monoid (Aesthetic a)
 
 {- |
 Make a custom aesthetic attribute.
@@ -860,9 +863,8 @@ data Geometry = Geometry
   , geomBaseName       :: [String]
   }
 
-instance Monoid Geometry where
-  mempty = Geometry mempty mempty
-  mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
+deriving instance Generic Geometry
+instance Monoid Geometry
 
 wrapTable :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Table Key Cell
 wrapTable [] _ = mempty
