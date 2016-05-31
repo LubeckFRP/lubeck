@@ -276,7 +276,7 @@ ticks xTickList1 yTickList1 = do
   let drawBgY    = not $ isTransparent colBgY
 
   let xTicks = mconcat $ flip fmap xTickList $
-          \(pos,str) -> let pos2 = getRenderingPositionX style pos in if not (withinNormRange pos2) then mempty else
+          \(pos,str) -> let pos2 = getRenderingPositionX style pos in if False then mempty else
             translateX pos2 $ mconcat
             [ mempty
             -- Text
@@ -288,7 +288,7 @@ ticks xTickList1 yTickList1 = do
                 strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
             ]
   let yTicks = mconcat $ flip fmap yTickList $
-          \(pos,str) -> let pos2 = getRenderingPositionY style pos in if not (withinNormRange pos2) then mempty else
+          \(pos,str) -> let pos2 = getRenderingPositionY style pos in if False then mempty else
             translateY pos2 $ mconcat
             [ mempty
             -- Text
