@@ -1218,7 +1218,28 @@ data SinglePlot = SinglePlot
   , axesTitles        :: [Str]
   }
 
+newtype Plot = Plot [SinglePlot]
+  deriving (Monoid)
+
+{-|
+Create a plot from a given data set, aesthetic mappings and geometry.
+
+-}
 createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> SinglePlot
+
+{-|
+Convert the given visualization to a 'Drawing'.
+
+The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.
+-}
+drawPlot :: Plot -> Styled Drawing
+
+
+-- createSinglePlot = undefined
+-- drawPlot = undefined
+
+
+
 createSinglePlot titles dat aess geometry =
   SinglePlot mappedData specialData guides bounds geometry titles
   where
@@ -1269,16 +1290,8 @@ mappedAndScaledDataWithSpecial2 bounds mappedData specialData
               (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
 
 
-newtype Plot = Plot [SinglePlot]
-  deriving (Monoid)
 
 
-{-|
-Convert the given visualization to a 'Drawing'.
-
-The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.
--}
-drawPlot :: Plot -> Styled Drawing
 drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
   where
     plotPlotBounds :: Plot -> PlotBounds
@@ -1331,50 +1344,56 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
 debugInfo :: Show a => [a] -> [Aesthetic a] -> B.Box
 debugInfo dat aess = box
   where
-    thePlot@(SinglePlot mappedData2 _ boundsM guidesM _ _) = createSinglePlot [] dat aess mempty
-    aKeys       = Data.Map.keys $ mconcat mappedData2
-    scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
+    box = B.text "N/A"
 
-    {-
-      Create some basic text-based table views for he
-      Based on the 'boxes' package.
-    -}
-    rawDataTable = B.vcat B.left $ map (toBox) dat
-    mappedDataTable = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData2)
-    -- tab1a = makeTable (fmap (toBox) $ aKeys)
-      -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
-    scaledDataTable = makeTable (fmap (toBox) $ aKeys)
-      (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing thePlot))
-    aestheticTableTable = makeTable ["Aesthetic", "Scale base", "PlotBounds", "Guide"]
-      (fmap (\k ->
-        [ toBox k
-        , B.text $ maybe "" show $ Data.Map.lookup k scaleBaseNM
-        , B.text $ maybe "" show $ Data.Map.lookup k boundsM
-        , B.text $ maybe "" show $ Data.Map.lookup k guidesM
-        ]) $ Data.Map.keys guidesM)
+  --   thePlot@(SinglePlot mappedData2 _ boundsM guidesM _ _) = createSinglePlot [] dat aess mempty
+  --   aKeys       = Data.Map.keys $ mconcat mappedData2
+  --   scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
+  --
+  --   {-
+  --     Create some basic text-based table views for he
+  --     Based on the 'boxes' package.
+  --   -}
+  --   rawDataTable = B.vcat B.left $ map (toBox) dat
+  --   mappedDataTable = makeTable (fmap (toBox) $ aKeys)
+  --     (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData2)
+  --   -- tab1a = makeTable (fmap (toBox) $ aKeys)
+  --     -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
+  --   scaledDataTable = makeTable (fmap (toBox) $ aKeys)
+  --     (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing thePlot))
+  --   aestheticTableTable = makeTable ["Aesthetic", "Scale base", "PlotBounds", "Guide"]
+  --     (fmap (\k ->
+  --       [ toBox k
+  --       , B.text $ maybe "" show $ Data.Map.lookup k scaleBaseNM
+  --       , B.text $ maybe "" show $ Data.Map.lookup k boundsM
+  --       , B.text $ maybe "" show $ Data.Map.lookup k guidesM
+  --       ]) $ Data.Map.keys guidesM)
+  --
+  --   box = B.vsep 1 B.left
+  --     [ "Raw data    " B.<+> rawDataTable
+  --     , "Mapped data " B.<+> mappedDataTable -- TODO show "special" data here too!
+  --     , "Scaled data " B.<+> scaledDataTable
+  --     , "Aesthetics  " B.<+> aestheticTableTable
+  --     ]
+  --
+  --   toBox :: Show a => a -> B.Box
+  --   toBox = B.text . show
+  --
+  --   -- | Make a box table (row-major order).
+  --   makeTableNoHeader :: [[B.Box]] -> B.Box
+  --   makeTableNoHeader x' = B.hsep 1 B.center1 $ fmap (B.vsep 0 B.top) $ Data.List.transpose x'
+  --
+  --   -- | Make a box table (row-major order), first argument is headers.
+  --   makeTable :: [B.Box] -> [[B.Box]] -> B.Box
+  --   makeTable headers rows = makeTableNoHeader $ headers : belowHeaderLines : rows
+  --     where
+  --       longestHeader = maximum $ fmap (length . B.render) headers
+  --       belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
 
-    box = B.vsep 1 B.left
-      [ "Raw data    " B.<+> rawDataTable
-      , "Mapped data " B.<+> mappedDataTable -- TODO show "special" data here too!
-      , "Scaled data " B.<+> scaledDataTable
-      , "Aesthetics  " B.<+> aestheticTableTable
-      ]
 
-    toBox :: Show a => a -> B.Box
-    toBox = B.text . show
 
-    -- | Make a box table (row-major order).
-    makeTableNoHeader :: [[B.Box]] -> B.Box
-    makeTableNoHeader x' = B.hsep 1 B.center1 $ fmap (B.vsep 0 B.top) $ Data.List.transpose x'
 
-    -- | Make a box table (row-major order), first argument is headers.
-    makeTable :: [B.Box] -> [[B.Box]] -> B.Box
-    makeTable headers rows = makeTableNoHeader $ headers : belowHeaderLines : rows
-      where
-        longestHeader = maximum $ fmap (length . B.render) headers
-        belowHeaderLines = replicate (length headers) (B.text $ replicate longestHeader '-')
-
+-- High level API, all wrappers around (Plot(..), createSinglePlot, drawPlot)
 
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
