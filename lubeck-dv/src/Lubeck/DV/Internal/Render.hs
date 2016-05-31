@@ -113,6 +113,13 @@ data ScatterData = ScatterData
   { scatterDataColor :: Double
   }
 
+
+mapFilterEitherBoth :: (Monad m, Alternative m) => (a -> Either b b) -> m a -> m b
+mapFilterEitherBoth f = (=<<) (g . f)
+  where
+    g (Left x)  = pure x
+    g (Right x) = pure x
+
 mapFilterEither :: (Monad m, Alternative m) => (a -> Either t b) -> m a -> m b
 mapFilterEither f = (=<<) (g . f)
   where
@@ -157,7 +164,7 @@ lineData (LineData colorN dashN) (p:ps) = do
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
                 . dash          (style^.linePlotStroke. to (`extractLineStyle` dashN))
-  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) (p:ps)
+  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
 
 data AreaData = AreaData
   { areaDataColor :: Double
@@ -170,7 +177,7 @@ fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
                 . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) $ addExtraPoints (p:ps)
+  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) $ addExtraPoints (p:ps)
   where
     -- Because of projection (below!), ignore y value for 1st point
     pProjX :: P2 Double
@@ -193,7 +200,7 @@ areaData' _ [_]    = mempty
 areaData' (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEither (getRenderingPosition style) (p:ps)
+  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
 
 -- | Draw a one-dimensional bar graph.
 --
