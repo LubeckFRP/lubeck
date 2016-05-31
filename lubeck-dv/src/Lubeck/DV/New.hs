@@ -152,14 +152,15 @@ import BasePrelude
 import Control.Lens(Getter, to)
 import Control.Lens.Operators hiding ((<~))
 import Data.Functor.Contravariant (Contravariant(..))
-import Data.Map(Map)
+import Data.Map.Strict(Map)
 import Data.Time(UTCTime)
 
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Writer
 import qualified Data.List
-import qualified Data.Map
+import qualified Data.Map.Strict
+import qualified Data.Map.Strict as Map
 import qualified Data.Time
 import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
@@ -340,23 +341,23 @@ customAesthetic' :: (a -> Scale a) -> (a -> Maybe Str) -> (a -> Maybe Drawing) -
 customAesthetic' scale toMStr toMDrawing n =
     Aesthetic mapping specialMapping genPlotBounds genGuides getScaleBaseName
   where
-    mapping       = \vs v -> Data.Map.singleton n $ scaleMapping (scale v) vs v
+    mapping       = \vs v -> Map.singleton n $ scaleMapping (scale v) vs v
 
     specialMapping = \_  v -> case toMStr v of
-      Just str -> Data.Map.singleton n $ SpecialStr str
+      Just str -> Map.singleton n $ SpecialStr str
       Nothing -> case toMDrawing v of
-        Just dr -> Data.Map.singleton n $ SpecialDrawing dr
+        Just dr -> Map.singleton n $ SpecialDrawing dr
         Nothing -> mempty
 
-    genPlotBounds = \vs -> Data.Map.singleton n $ case vs of
+    genPlotBounds = \vs -> Map.singleton n $ case vs of
       []    -> (0,0)
       (v:_) -> scalePlotBounds (scale v) vs
 
-    genGuides  = \vs -> Data.Map.singleton n $ case vs of
+    genGuides  = \vs -> Map.singleton n $ case vs of
       []    -> []
       (v:_) -> scaleGuides (scale v) vs
 
-    getScaleBaseName = \vs -> Data.Map.singleton n $ case vs of
+    getScaleBaseName = \vs -> Map.singleton n $ case vs of
       []    -> ""
       (v:_) -> scaleBaseName (scale v)
 
@@ -1242,8 +1243,6 @@ drawPlot :: Plot -> Styled Drawing
 -- createSinglePlot = undefined
 -- drawPlot = undefined
 
-
-
 createSinglePlot titles dat aess geometry =
   SinglePlot mappedData specialData guides bounds geometry titles
   where
@@ -1257,45 +1256,6 @@ createSinglePlot titles dat aess geometry =
     mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
 
 
-normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
-normalizeGuides b m = normalizeGuides' b m
-  where
-    normalizeGuides' b = Data.Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Data.Map.lookup aesK b))) dsL)
-
-normalizeData :: PlotBounds -> [Map Key Double] -> [Map Key Coord]
-normalizeData b m = fmap (normalizeData' b) m
-  where
-    normalizeData'   b = Data.Map.mapWithKey (\aesK dsL ->              normalize (Data.Map.lookup aesK b)  dsL)
-
-
-
-
-
-mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
-mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = tableFromList $ case b of
-    Nothing        -> mappedAndScaledDataWithSpecial2 bounds1 mappedData specialData
-    (Just bounds2) -> mappedAndScaledDataWithSpecial2 bounds2 mappedData specialData
-  where
-    mappedAndScaledDataWithSpecial2 :: PlotBounds
-                                       -> [Map Key Double]
-                                       -> [Map Key Special]
-                                       -> [Map Key (Coord, Maybe Special)]
-    mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-      = zipWith mergeMapsL mappedAndScaledData specialData
-          :: [Map Key (Coord, Maybe Special)]
-          where
-            mappedAndScaledData :: [Map Key Coord]
-            mappedAndScaledData = normalizeData bounds mappedData
-
-            mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-            mergeMapsL x y = mconcat $ fmap g (Data.Map.keys x)
-              where
-                g k = case (Data.Map.lookup k x, Data.Map.lookup k y) of
-                  (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-                  (Just xv, Nothing) -> Data.Map.singleton k (xv, Nothing)
-                  (Just xv, Just yv) -> Data.Map.singleton k (xv, Just yv)
-
-
 
 
 drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
@@ -1305,7 +1265,7 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
     plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
       where
         outerPlotBounds :: (Ord k) => Map k (Double, Double) -> Map k (Double, Double) -> Map k (Double, Double)
-        outerPlotBounds = Data.Map.unionWith g
+        outerPlotBounds = Map.unionWith g
           where
             g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
 
@@ -1313,7 +1273,7 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
     drawPlot1 bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
       where
         (?) :: (Monoid b, Ord k) => Map k b -> k -> b
-        m ? k = maybe mempty id $ Data.Map.lookup k m
+        m ? k = maybe mempty id $ Map.lookup k m
 
         dataD :: Styled Drawing
         -- TODO only place where we actually look at the geom
@@ -1323,9 +1283,12 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
           -- TODO modify/autoscale zoom from styling here (using Monad.Reader.local)
           -- What does this mean?
           -- There is a weird relationship between rr/zoom and bounds
-          (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
+          (cells :: Table Key Cell) <- pure $ wrapTable (tableFromList $ mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
           (geomMapping $ geometry plot) $ cells
 
+
+        wrapTable :: Table Key Double -> Table Key (Coord, Maybe Special) -> Table Key Cell
+        wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) a b
 
         guidesD :: Styled Drawing
         guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
@@ -1345,9 +1308,39 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
             xs = fmap (second Just) xs2
             ys = fmap (second Just) ys2
 
-        wrapTable :: [Map Key Double] -> Table Key (Coord, Maybe Special) -> Table Key Cell
-        wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) (tableFromList a) b
+        normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
+        normalizeGuides b m = normalizeGuides' b m
+          where
+            normalizeGuides' b = Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Map.lookup aesK b))) dsL)
 
+        normalizeData :: PlotBounds -> [Map Key Double] -> [Map Key Coord]
+        normalizeData b m = fmap (normalizeData' b) m
+          where
+            normalizeData'   b = Map.mapWithKey (\aesK dsL ->              normalize (Map.lookup aesK b)  dsL)
+
+        mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
+        mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = tableFromList $ case b of
+            Nothing        -> mappedAndScaledDataWithSpecial2 bounds1 mappedData specialData
+            (Just bounds2) -> mappedAndScaledDataWithSpecial2 bounds2 mappedData specialData
+          where
+            mappedAndScaledDataWithSpecial2 :: PlotBounds
+                                               -> [Map Key Double]
+                                               -> [Map Key Special]
+                                               -> [Map Key (Coord, Maybe Special)]
+            mappedAndScaledDataWithSpecial2 bounds mappedData specialData
+              = zipWith mergeMapsL mappedAndScaledData specialData
+                  :: [Map Key (Coord, Maybe Special)]
+                  where
+                    mappedAndScaledData :: [Map Key Coord]
+                    mappedAndScaledData = normalizeData bounds mappedData
+
+                    mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
+                    mergeMapsL x y = mconcat $ fmap g (Map.keys x)
+                      where
+                        g k = case (Map.lookup k x, Map.lookup k y) of
+                          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
+                          (Just xv, Nothing) -> Map.singleton k (xv, Nothing)
+                          (Just xv, Just yv) -> Map.singleton k (xv, Just yv)
 
 
 {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}
@@ -1357,7 +1350,7 @@ debugInfo dat aess = box
     box = B.text "N/A"
 
   --   thePlot@(SinglePlot mappedData2 _ boundsM guidesM _ _) = createSinglePlot [] dat aess mempty
-  --   aKeys       = Data.Map.keys $ mconcat mappedData2
+  --   aKeys       = Map.keys $ mconcat mappedData2
   --   scaleBaseNM = aestheticScaleBaseName (mconcat aess) dat :: Map Key Str
   --
   --   {-
@@ -1366,18 +1359,18 @@ debugInfo dat aess = box
   --   -}
   --   rawDataTable = B.vcat B.left $ map (toBox) dat
   --   mappedDataTable = makeTable (fmap (toBox) $ aKeys)
-  --     (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) mappedData2)
+  --     (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Map.lookup k aesMap) aKeys) mappedData2)
   --   -- tab1a = makeTable (fmap (toBox) $ aKeys)
-  --     -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) specialData)
+  --     -- (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Map.lookup k aesMap) aKeys) specialData)
   --   scaledDataTable = makeTable (fmap (toBox) $ aKeys)
-  --     (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Data.Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing thePlot))
+  --     (fmap (\aesMap -> fmap (\k -> maybe "" toBox $ Map.lookup k aesMap) aKeys) (mappedAndScaledDataWithSpecial Nothing thePlot))
   --   aestheticTableTable = makeTable ["Aesthetic", "Scale base", "PlotBounds", "Guide"]
   --     (fmap (\k ->
   --       [ toBox k
-  --       , B.text $ maybe "" show $ Data.Map.lookup k scaleBaseNM
-  --       , B.text $ maybe "" show $ Data.Map.lookup k boundsM
-  --       , B.text $ maybe "" show $ Data.Map.lookup k guidesM
-  --       ]) $ Data.Map.keys guidesM)
+  --       , B.text $ maybe "" show $ Map.lookup k scaleBaseNM
+  --       , B.text $ maybe "" show $ Map.lookup k boundsM
+  --       , B.text $ maybe "" show $ Map.lookup k guidesM
+  --       ]) $ Map.keys guidesM)
   --
   --   box = B.vsep 1 B.left
   --     [ "Raw data    " B.<+> rawDataTable
