@@ -9,6 +9,7 @@
   , NoImplicitPrelude
   , MultiParamTypeClasses
   , DeriveFunctor
+  , ScopedTypeVariables
   #-}
 
 
@@ -148,39 +149,27 @@ where
 import BasePrelude
 import Control.Lens(Getter, to)
 import Control.Lens.Operators hiding ((<~))
--- import Control.Monad.Reader (ask)
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Map(Map)
--- import Data.Set(Set)
--- import Data.IntMap(IntMap)
--- import Data.IntSet(IntSet)
 import Data.Time(UTCTime)
 import Linear.Affine (Point(..))
 import Linear.V1 (V1(..))
 import Linear.V2 (V2(..))
 import Linear.V3 (V3(..))
 
--- import Control.Monad.Trans.Maybe
--- import Control.Monad.Reader
--- import Control.Monad.Writer
--- import Data.Functor.Compose
--- import qualified Data.Char
+import Control.Monad.Identity
+import Control.Monad.Reader
+import Control.Monad.Writer
 import qualified Data.List
 import qualified Data.Map
--- import qualified Data.Set
--- import qualified Data.IntMap
--- import qualified Data.IntSet
--- import qualified Data.Maybe
 import qualified Data.Time
 import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
--- import qualified Data.Colour.Names as Colors
--- import System.IO.Temp (withSystemTempDirectory)
 import System.Directory (createDirectoryIfMissing)
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..))
-import Lubeck.DV.Styling (Styled, Styling)
+import Lubeck.DV.Styling (Styled, Styling, zoom)
 import Lubeck.DV.Internal.Normalized
 import Lubeck.DV.Internal.Table
 
@@ -266,7 +255,7 @@ instance Show Key where
 
 
 {-|
-Special values that can be embedded in a visualizations.
+Non-numerical values that can be embedded in a visualization.
 Just strings (for labels) and drawings (for embedded images) for now.
 -}
 data Special
@@ -859,6 +848,22 @@ data Cell = Cell
   , cSpecial  :: Maybe Special
   }
 
+{-|
+Provides a way to draw mapped and scaled data.
+
+You can think of scaled and mapped data matrix of numbers and special values
+(images, labels etc), where each rows correspond to a tuple in the original
+dataset and each column to an aesthetic attribute such as size, position, color etc.
+-}
+data Geometry = Geometry
+  { geomMapping        :: Table Key Cell -> Styled Drawing
+  , geomBaseName       :: [String]
+  }
+
+instance Monoid Geometry where
+  mempty = Geometry mempty mempty
+  mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
+
 wrapTable :: [Map Key Double] -> [Map Key (Coord, Maybe Special)] -> Table Key Cell
 wrapTable [] _ = mempty
 wrapTable _ [] = mempty
@@ -876,21 +881,6 @@ ifT key = filterRows key (\x -> cScaled x >= 0.5)
 -- TODO stacking/dodging/jittering
 
 
-{-|
-Provides a way to draw mapped and scaled data.
-
-You can think of scaled and mapped data matrix of numbers and special values
-(images, labels etc), where each rows correspond to a tuple in the original
-dataset and each column to an aesthetic attribute such as size, position, color etc.
--}
-data Geometry = Geometry
-  { geomMapping        :: Table Key Cell -> Styled Drawing
-  , geomBaseName       :: [String]
-  }
-
-instance Monoid Geometry where
-  mempty = Geometry mempty mempty
-  mappend (Geometry a1 a2) (Geometry b1 b2) = Geometry (a1 <> b1) (a2 <> b2)
 
 scaledAttr :: Key -> Table Key Cell -> Column Double
 scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
@@ -1306,8 +1296,15 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
 
         dataD :: Styled Drawing
         -- TODO only place where we actually look at the geom
-        dataD = (geomMapping $ geometry plot) $
-         wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
+        dataD = do
+          (style :: Styling) <- ask
+          let zoomV = style^.zoom
+          -- TODO modify/autoscale zoom from styling here (using Monad.Reader.local)
+          -- What does this mean?
+          -- There is a weird relationship between rr/zoom and bounds
+          (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
+          (geomMapping $ geometry plot) $ cells
+
 
         guidesD :: Styled Drawing
         guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
