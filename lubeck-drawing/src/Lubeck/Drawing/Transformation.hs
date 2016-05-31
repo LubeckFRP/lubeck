@@ -147,7 +147,7 @@ lin t =
   in matrix (a,b,c,d,0,0)
 
 
-{-| Return the linear component of a transformation.
+{-| Return the transposition of the linear component of a transformation.
 
 @
     a c x        a b 0
