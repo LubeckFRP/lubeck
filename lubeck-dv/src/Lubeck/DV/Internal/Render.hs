@@ -17,6 +17,7 @@ module Lubeck.DV.Internal.Render
 
 import Prelude hiding (div)
 import qualified Prelude
+import Data.Bifunctor(bimap)
 
 import Control.Applicative
 import Control.Lens (to)
@@ -62,8 +63,10 @@ This is accomplished as follows:
   - Run the linear transformation that defines the rendering rectangle (always a scaling)
 -}
 getRenderingPosition :: Styling -> P2 Double -> Either (P2 Double) (P2 Double)
-getRenderingPosition styling x = fmap (transformPoint (scalingXY $ styling^.renderingRectangle)) $ (\p@(P (V2 x y)) -> if withinNormRange x && withinNormRange y then Right p else Left p) $ transformPoint (styling^.zoom) x
-
+getRenderingPosition styling x = bimapSame (transformPoint (scalingXY $ styling^.renderingRectangle)) $
+  (\p@(P (V2 x y)) -> if withinNormRange x && withinNormRange y then Right p else Left p) $ transformPoint (styling^.zoom) x
+  where
+    bimapSame f = bimap f f
 {-
 Like getRenderingPosition for drawings.
 Carries out transformation directly without filtering. This is usually not what we want.
@@ -115,10 +118,10 @@ data ScatterData = ScatterData
 
 
 mapFilterEitherBoth :: (Monad m, Alternative m) => (a -> Either b b) -> m a -> m b
-mapFilterEitherBoth f = (=<<) (g . f)
+mapFilterEitherBoth f = fmap (g . f)
   where
-    g (Left x)  = pure x
-    g (Right x) = pure x
+    g (Left x)  = x
+    g (Right x) = x
 
 mapFilterEither :: (Monad m, Alternative m) => (a -> Either t b) -> m a -> m b
 mapFilterEither f = (=<<) (g . f)
