@@ -97,7 +97,7 @@ module Lubeck.Drawing
 
   -- ** Transformations
   , Transformation
-  , negTransformation
+  -- , negTransformation
   , lin
   , transp
   , transl
@@ -477,7 +477,7 @@ transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
           -- correct?
           apply  = transformVector
           lapp   = transformVector
-          inv    = negTransformation
+          inv    = recip
 {-# INLINABLE transformEnvelope #-}
 
 juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
@@ -676,7 +676,7 @@ data Drawing
 
   | Em
   -- Compose drawings
-  -- Left-most is a top,
+  -- Left-most is top-most.
   | Ap ![Drawing]
 
 

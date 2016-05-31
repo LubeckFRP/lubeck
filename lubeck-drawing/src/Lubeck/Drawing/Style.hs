@@ -249,6 +249,7 @@ instance Monoid Style where
   mempty =  Style_ ""
   mappend = js_appendStyle
 
+-- TODO SVG abstraction leak
 {-| -}
 styleNamed :: Str -> Str -> Style
 styleNamed = js_styleNamed

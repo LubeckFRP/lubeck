@@ -345,6 +345,15 @@ labeledAxis labelX labelY = do
       , textSelectable = All False
       }
 
+
+{-
+TODO finish/fix filtering
+- Tick fitlering needs a new version of getRenderingPositionX
+- Axes are OK
+- Data could probably be handled by an SVG clip, see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
+  - Lines and areas need mask, otherwise we're OK
+-}
+
 relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
 {-# INLINE relOrigin #-}
