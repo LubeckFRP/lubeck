@@ -487,7 +487,7 @@ main = do
   let !(plotSD :: Styled Drawing) = trace "> plotSD" $ drawPlot $ mconcat
           [ plot (zip [1..10::Double] [31,35,78,23,9,92,53,71,53,42::Double])
               [x <~ _1, y <~ _2]
-              (mconcat [line, fill, pointG, bars, xInterceptAlways, yInterceptAlways])
+              (mconcat [line, fill, pointG, xInterceptAlways, yInterceptAlways])
           , plotLabel "(4,50)" [(4::Double, 50::Double)]
               [x <~ _1, y <~ _2]
           , plotLabel "(7,65)" [(7::Double, 65::Double)]

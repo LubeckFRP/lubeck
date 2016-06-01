@@ -1280,7 +1280,7 @@ rectFromLineSegs (LineSeg (P (V1 x1)) (P (V1 x2))) (LineSeg (P (V1 y1)) (P (V1 y
 Given a plot and a suggested zoom value for X, return a suitable zoom value for Y.
 -}
 autoscaleByX :: Plot -> LineSeg Double -> LineSeg Double
-autoscaleByX _ x = D.transfToLineSeg $ (scaling1 2 <>) $ D.lineSegToTransf x
+autoscaleByX _ x = D.transfToLineSeg $ scaling1 0.5
 -- TODO dummy, implement properly
 
 updateZoomToAutoScale :: Plot -> Styling -> Styling

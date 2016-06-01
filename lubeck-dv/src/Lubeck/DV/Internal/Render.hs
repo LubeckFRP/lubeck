@@ -167,7 +167,9 @@ lineData (LineData colorN dashN) (p:ps) = do
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
                 . strokeWidth   (style^.linePlotStrokeWidth)
                 . dash          (style^.linePlotStroke. to (`extractLineStyle` dashN))
-  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
+
+  return $ lineStyle $ ((either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) :: Drawing -> Drawing) $
+    ((segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)) :: Drawing)
 
 data AreaData = AreaData
   { areaDataColor :: Double
@@ -180,7 +182,7 @@ fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
                 . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) $ addExtraPoints (p:ps)
+  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) $ addExtraPoints (p:ps)
   where
     -- Because of projection (below!), ignore y value for 1st point
     pProjX :: P2 Double
@@ -203,7 +205,7 @@ areaData' _ [_]    = mempty
 areaData' (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (const mempty) translate $ fmap relOrigin $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
+  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
 
 -- | Draw a one-dimensional bar graph.
 --
