@@ -36,20 +36,6 @@ newtype Moment = Moment Str
   deriving (Eq, Ord)
 
 
--- #ifdef __GHCJS__
--- -- These are in https://github.com/ghcjs/ghcjs-base/blob/master/Data/JSString.hs#L189
--- -- TODO are we behind this version?
--- instance Eq Moment where
---   Moment x == Moment y  =  unpack x == unpack y
--- instance Ord Moment where
---   Moment x <= Moment y  =  unpack x <= unpack y
--- #else
--- instance Eq Moment where
---   Moment x == Moment y  =  x == y
--- instance Ord Moment where
---   Moment x <= Moment y  =  x <= y
--- #endif
-
 -- | Create a new 'History'.
 newHistory :: IO History
 newHistory = do
