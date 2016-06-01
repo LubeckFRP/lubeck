@@ -19,6 +19,8 @@ module Lubeck.Drawing.Transformation
   -- ** 1D transformations
   , Transformation1(..)
   , matrix1
+  , scaling1
+  , translation1
   , transformationToMatrix1
   , transformVector1
   , transformPoint1
@@ -314,3 +316,7 @@ instance (Num a, Show a) => Show (Transformation1 a) where
 
 instance (Num a, Show a) => Show (Transformation a) where
   show t = "matrix " <> show (transformationToMatrix t)
+
+
+scaling1 x = matrix1 (x,0)
+translation1 x = matrix1 (1,x)

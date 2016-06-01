@@ -158,14 +158,26 @@ focusDoubleSize =  2 :: Transformation Double
 focusFromRectangle :: Rect Double -> Transformation Double
 focusFromRectangle x = recip $ rectToTransf x
 
+data ZoomType = Standard | AutoScaleY
+  deriving (Eq, Show)
+
+instance Monoid ZoomType where
+  mempty = Standard
+  mappend Standard y = y
+  mappend x _ = x
+
 data Styling = Styling
   { _dummy                            :: ()
 
   -- ^ Rectangle in which the plot will be rendered (default @300 x 300@).
+  --
+  --   This is the distance between the local origin of the plot and the top-right corner.
+  --   The bottom-left corner is always rendered at the local origin, if this is not desired,
+  --   use the combinators in Drawing to move it.
   , _renderingRectangle               :: V2 Double
 
   -- ^ This affine transformation defines a rectangle that is the "current focus"
-  --   of the plot.
+  --   of the plot (but see zoomType below!).
 
   --   Every normalizewed data point (i.e. in the UHQ) is transformed using this
   --   transformation, then possibly discarded (if it now falls outside the UHQ),
@@ -176,6 +188,10 @@ data Styling = Styling
   --    Focus on the right half of the data set: @recip $ rectToTransf (rect 0.5 0 1 1))@
   --    Focus on bottom-left square of the data set: @recip $ rectToTransf (rect 0 0 0.5 0.5))@
   , _zoom                             :: T2 Double
+
+  -- ^ If AutoScaleY, then the Y value of zoom is ignored, and the plot is automatically fitted
+  --   to the visible data points.
+  , _zoomType                         :: ZoomType
 
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight
@@ -279,6 +295,7 @@ instance Monoid Styling where
     -- , _renderingRectangle           = V2 300 300
     , _renderingRectangle           = V2 400 300
     , _zoom                         = 1
+    , _zoomType                     = mempty
 
     , _axisTextFontFamily           = mempty
     , _axisTextFontWeight           = mempty

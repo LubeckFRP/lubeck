@@ -182,6 +182,7 @@ import Lubeck.DV.Internal.Normalized
 import Lubeck.DV.Internal.Table
 
 import qualified Lubeck.Drawing
+import qualified Lubeck.Drawing as D
 import qualified Lubeck.DV.Styling
 import qualified Lubeck.DV.Internal.Render
 
@@ -998,6 +999,7 @@ area = Geometry g []
         color = case colors of
           [] -> 0
           xs -> head xs
+{-# DEPRECATED area "Use fill or area2" #-}
 
 {-|
 An alternative version of 'area' that expects the lower and upper bounds to be distinct points
@@ -1272,7 +1274,13 @@ plotBoundsToTransfX b = Lubeck.Drawing.lineSegToTransf $ Lubeck.Drawing.lineseg
 Given a plot and a suggested zoom value for X, return a suitable zoom value for Y.
 -}
 autoscaleByX :: Plot -> LineSeg Double -> LineSeg Double
-autoscaleByX = undefined
+autoscaleByX _ x = D.transfToLineSeg $ (scaling1 2 <>) $ D.lineSegToTransf x
+-- TODO dummy, implement properly
+
+updateZoomToAutoScale :: Plot -> Styling -> Styling
+updateZoomToAutoScale _ x = x
+-- TODO dummy, implement properly
+
 
 
 newtype Plot = Plot [SinglePlot]
@@ -1298,34 +1306,34 @@ drawPlot :: Plot -> Styled Drawing
 createSinglePlot titles dat aess geometry =
   SinglePlot mappedData specialData guides bounds geometry titles
   where
-    -- Only used locallyhere!
     aes                 = mconcat aess
-
     bounds              = aestheticPlotBounds aes dat
     guides              = aestheticGuides aes dat
-
     specialData         = tableFromList $ fmap (aestheticSpecialMapping aes dat) dat
     mappedData          = tableFromList $ fmap (aestheticMapping aes dat) dat
 
 
 
 
-drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
+drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
   where
-    {-
-    TODO extracting bounds need to take zoom into account
-    Basically, it is not sufficient to store bounds in SinglePlot, as the Y bounds may be filtered depending on zoom
-
-    We need to use the Z lin transf on all X values, remove all points that have values outside UHQ and then run Z^(-1)
-      Could we simplify by limiting ourselves to the X -> Y situation?
-    -}
-
-
     drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled Drawing
-    drawPlot1 bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
+    drawPlot1 bounds includeGuides plot = mconcat
+      [ dataD
+      , if includeGuides
+          then mconcat [axesD, guidesD]
+          else mempty ]
       where
+
+        axesD :: Styled Drawing
+        axesD = Lubeck.DV.Internal.Render.labeledAxis (axesNames !! 0) (axesNames !! 1)
+          where
+            m ? k = maybe mempty id $ Map.lookup k m
+            axesNames = axesTitles plot <> repeat mempty
+
         guidesD :: Styled Drawing
-        guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
+        guidesD = local (updateZoomToAutoScale fullPlot)
+          $ drawGuides (scaledGuides (bounds) plot ? "x") (scaledGuides (bounds) plot ? "y")
           where
             m ? k = maybe mempty id $ Map.lookup k m
             drawGuides xs2 ys2 = Lubeck.DV.Internal.Render.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
@@ -1333,38 +1341,23 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
                 xs = fmap (second Just) xs2
                 ys = fmap (second Just) ys2
 
-        axesD :: Styled Drawing
-        axesD = if not includeGuides then mempty else Lubeck.DV.Internal.Render.labeledAxis (axesNames !! 0) (axesNames !! 1)
-          where
-            m ? k = maybe mempty id $ Map.lookup k m
-            axesNames = axesTitles plot <> repeat mempty
-
         dataD :: Styled Drawing
-        -- TODO only place where we actually look at the geom
-        dataD = do
-          (style :: Styling) <- ask
-          let zoomV = style^.zoom
-          (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
-          (geomMapping $ geometry plot) $ cells
+        dataD = local (updateZoomToAutoScale fullPlot) $ do
+          (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial bounds plot)
+          geomMapping (geometry plot) $ cells
           where
             wrapTable = overlayTablesShort (\a (b,c) -> Cell a b c)
 
         -- Scale/Normalize
 
-        -- These all require a linear transformation ("bounds") to normalize data
-        -- If given nothing, they will use the one inherent in the plot
-
-        mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
-        mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = case b of
-            Nothing        -> g bounds1 mappedData specialData
-            (Just bounds2) -> g bounds2 mappedData specialData
+        mappedAndScaledDataWithSpecial :: PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
+        mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ _ _ _)
+            = g b mappedData specialData
           where
             g b x y = conjoin2L (normalizeData b x) y
 
-        scaledGuides :: Maybe PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
-        scaledGuides (Just bounds2) (SinglePlot _ _ guides _ _ _)      = normalizeGuides bounds2 guides
-        scaledGuides Nothing        (SinglePlot _ _ guides bounds2 _ _) = normalizeGuides bounds2 guides
-
+        scaledGuides :: PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
+        scaledGuides b (SinglePlot _ _ guides _ _ _) = normalizeGuides b guides
 
         normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
         normalizeGuides b m = normalizeGuides' b m
