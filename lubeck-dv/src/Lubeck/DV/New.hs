@@ -1226,10 +1226,16 @@ data SinglePlot = SinglePlot
 
 {-
 Can we write
-  xScaledYBounds :: Plot -> T2 Double -> (Double, Double)
-  yScaledXBounds :: Plot -> T2 Double -> (Double, Double)
+  xScaledYBounds :: Plot -> T1 Double -> (Double, Double)
+  yScaledXBounds :: Plot -> T1 Double -> (Double, Double)
 Yes!
+  Filter mapped data by assuring that x through the transformation is in UHQ]
+  Extract Y values, return new bounds
 
+Then create a linear transformation that fits this value into UHQ
+This could be composed with the given T1 to create a new T2.
+
+We could use this to override the zoom value in the Stylin using local.
 -}
 
 newtype Plot = Plot [SinglePlot]
@@ -1253,16 +1259,16 @@ drawPlot :: Plot -> Styled Drawing
 -- drawPlot = undefined
 
 createSinglePlot titles dat aess geometry =
-  SinglePlot (tableFromList mappedData) (tableFromList specialData) guides bounds geometry titles
+  SinglePlot mappedData specialData guides bounds geometry titles
   where
     -- Only used locallyhere!
     aes                 = mconcat aess
 
-    bounds              = aestheticPlotBounds aes dat                   :: PlotBounds
-    guides              = aestheticGuides aes dat                       :: Map Key [(Double, Str)]
+    bounds              = aestheticPlotBounds aes dat
+    guides              = aestheticGuides aes dat
 
-    specialData         = fmap (aestheticSpecialMapping aes dat) dat    :: [Map Key Special]
-    mappedData          = fmap (aestheticMapping aes dat) dat           :: [Map Key Double]
+    specialData         = tableFromList $ fmap (aestheticSpecialMapping aes dat) dat
+    mappedData          = tableFromList $ fmap (aestheticMapping aes dat) dat
 
 
 
@@ -1289,21 +1295,35 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
     drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled Drawing
     drawPlot1 bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
       where
-        (?) :: (Monoid b, Ord k) => Map k b -> k -> b
-        m ? k = maybe mempty id $ Map.lookup k m
+        guidesD :: Styled Drawing
+        guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
+          where
+            m ? k = maybe mempty id $ Map.lookup k m
+            drawGuides xs2 ys2 = Lubeck.DV.Internal.Render.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
+              where
+                xs = fmap (second Just) xs2
+                ys = fmap (second Just) ys2
+
+        axesD :: Styled Drawing
+        axesD = if not includeGuides then mempty else Lubeck.DV.Internal.Render.labeledAxis (axesNames !! 0) (axesNames !! 1)
+          where
+            m ? k = maybe mempty id $ Map.lookup k m
+            axesNames = axesTitles plot <> repeat mempty
 
         dataD :: Styled Drawing
         -- TODO only place where we actually look at the geom
         dataD = do
           (style :: Styling) <- ask
           let zoomV = style^.zoom
-          -- TODO modify/autoscale zoom from styling here (using Monad.Reader.local)
-          -- What does this mean?
-          -- There is a weird relationship between rr/zoom and bounds
           (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
           (geomMapping $ geometry plot) $ cells
           where
             wrapTable = overlayTablesShort (\a (b,c) -> Cell a b c)
+
+        -- Scale/Normalize
+
+        -- These all require a linear transformation ("bounds") to normalize data
+        -- If given nothing, they will use the one inherent in the plot
 
         mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
         mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = case b of
@@ -1312,23 +1332,10 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
           where
             g b x y = conjoin2L (normalizeData b x) y
 
-        guidesD :: Styled Drawing
-        guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
-
-        axesD :: Styled Drawing
-        axesD = if not includeGuides then mempty else Lubeck.DV.Internal.Render.labeledAxis (axesNames !! 0) (axesNames !! 1)
-
-
         scaledGuides :: Maybe PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
         scaledGuides (Just bounds2) (SinglePlot _ _ guides _ _ _)      = normalizeGuides bounds2 guides
-        scaledGuides Nothing       (SinglePlot _ _ guides bounds2 _ _) = normalizeGuides bounds2 guides
+        scaledGuides Nothing        (SinglePlot _ _ guides bounds2 _ _) = normalizeGuides bounds2 guides
 
-        -- TODO derive names from aesthetic instead
-        axesNames = axesTitles plot <> repeat mempty :: [Str]
-        drawGuides xs2 ys2 = Lubeck.DV.Internal.Render.ticks (fmap (first getNormalized) xs) (fmap (first getNormalized) ys)
-          where
-            xs = fmap (second Just) xs2
-            ys = fmap (second Just) ys2
 
         normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
         normalizeGuides b m = normalizeGuides' b m
