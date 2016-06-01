@@ -93,7 +93,14 @@ module Lubeck.Drawing
   , p1
   , p2
   , rectToTransf
+  , transfToRect
   , fitInsideRect
+
+  , LineSeg(..)
+  , lineseg
+  , transformLineSeg
+  , lineSegToTransf
+  , transfToLineSeg
 
   -- ** Transformations
   , Transformation
@@ -389,7 +396,7 @@ data Rect a = Rect_ { _p1 :: P2 a, _p2 :: P2 a }
 rect :: a -> a -> a -> a -> Rect a
 rect x1 y1 x2 y2 = Rect_ (P (V2 x1 y1)) (P (V2 x2 y2))
 
-transformRect :: Num a => Transformation a -> Rect a -> Rect a
+transformRect :: Num a => T2 a -> Rect a -> Rect a
 transformRect t (Rect_ p1 p2) = Rect_ (transformPoint t p1) (transformPoint t p2)
 
 -- makeLenses ''Rect
@@ -408,6 +415,9 @@ _top     = p2._y
 width r = r^._right - r^._left
 height r = r^._top - r^._bottom
 
+
+
+
 {-
 Fit a drawing inside a rectangle. Accomplished by aligning the drawing
 at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
@@ -421,9 +431,70 @@ fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
     $ align BL
     $ d
 
-rectToTransf :: Rect Double -> Transformation Double
+rectToTransf :: Num a => Rect a -> T2 a
 rectToTransf (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) =
   translation (p1 .-. origin) <> scalingXY   (p2 .-. p1)
+
+transfToRect :: Num a => T2 a -> Rect a
+transfToRect t = transformRect t (rect 0 0 1 1)
+
+
+
+
+{-|
+A rectangle, represented as two points.
+-}
+data LineSeg a = LineSeg { _lp1 :: P1 a, _lp2 :: P1 a }
+  deriving (Eq, Ord, Show)
+
+lineseg :: a -> a -> LineSeg a
+lineseg x1 x2 = LineSeg (P (V1 x1)) (P (V1 x2))
+
+transformLineSeg :: Num a => T1 a -> LineSeg a -> LineSeg a
+transformLineSeg t (LineSeg p1 p2) = LineSeg (transformPoint1 t p1) (transformPoint1 t p2)
+
+-- -- makeLenses ''Rect
+-- p1 :: Lens' (Rect a) (P2 a)
+-- p1 f (Rect_ p1 p2) = fmap (\p1' -> Rect_ p1' p2) $ f p1
+--
+-- p2 :: Lens' (Rect a) (P2 a)
+-- p2 f (Rect_ p1 p2) = fmap (\p2' -> Rect_ p1 p2') $ f p2
+--
+-- _left, _right, _bottom, _top :: Lens' (Rect a) a
+-- _left    = p1._x
+-- _right   = p2._x
+-- _bottom  = p1._y
+-- _top     = p2._y
+--
+-- width r = r^._right - r^._left
+-- height r = r^._top - r^._bottom
+--
+
+
+--
+-- {-
+-- Fit a drawing inside a rectangle. Accomplished by aligning the drawing
+-- at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
+-- -}
+-- fitInsideRect :: Rect Double -> Drawing -> Drawing
+-- fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
+--     $ translate (p1 .-. origin)
+--     $ scaleXY   (p2 .-. p1)
+--     -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
+--     -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
+--     $ align BL
+--     $ d
+
+lineSegToTransf :: Num a => LineSeg a -> T1 a
+lineSegToTransf (LineSeg (p1@(P (v1@(V1 x1)))) (p2@(P (v2@(V1 x2))))) =
+  translation1 (p1 .-. origin) <> scaling1 (p2 .-. p1)
+  where
+    translation1 (V1 x) = matrix1 (1,x)
+    scaling1 (V1 x)     = matrix1 (x,0)
+    -- origin = P (V1 0)
+
+transfToLineSeg :: Num a => T1 a -> LineSeg a
+transfToLineSeg t = transformLineSeg t (lineseg 0 1)
 
 
 
@@ -777,8 +848,6 @@ instance Show Handlers where
 #endif
 instance Show Style where
   show x = "style"
-instance (Show a, Num a) => Show (Transformation a) where
-  show x = "transformation" ++ show (transformationToMatrix x)
 
 data RDrawing
   = RPrim !RNodeInfo !RPrim

@@ -124,7 +124,9 @@ import Linear.V4
 
 import Lubeck.Str
 import Lubeck.Drawing
+import Lubeck.Drawing.Transformation
 import qualified Lubeck.Drawing
+
 import Lubeck.DV.ColorPalette
   ( Palette
   , singleColour
@@ -173,7 +175,7 @@ data Styling = Styling
   --    Focus on the left half of the data set: @recip $ rectToTransf (rect 0 0 0.5 1))@
   --    Focus on the right half of the data set: @recip $ rectToTransf (rect 0.5 0 1 1))@
   --    Focus on bottom-left square of the data set: @recip $ rectToTransf (rect 0 0 0.5 0.5))@
-  , _zoom                             :: Transformation Double
+  , _zoom                             :: T2 Double
 
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight

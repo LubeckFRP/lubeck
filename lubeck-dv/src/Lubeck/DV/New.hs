@@ -175,7 +175,8 @@ import Linear.V2 (V2(..))
 import Linear.V3 (V3(..))
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
-import Lubeck.Drawing (Drawing, RenderingOptions(..))
+import Lubeck.Drawing (Drawing, RenderingOptions(..), Rect(..), LineSeg(..))
+import Lubeck.Drawing.Transformation
 import Lubeck.DV.Styling (Styled, Styling, zoom)
 import Lubeck.DV.Internal.Normalized
 import Lubeck.DV.Internal.Table
@@ -1236,7 +1237,43 @@ Then create a linear transformation that fits this value into UHQ
 This could be composed with the given T1 to create a new T2.
 
 We could use this to override the zoom value in the Stylin using local.
+
+XXX
+OK so far for a single plot, but what about a layered plot?
 -}
+
+plotPlotBounds :: Plot -> PlotBounds
+plotPlotBounds (Plot []) = mempty
+plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
+  where
+    outerPlotBounds :: (Ord k) => Map k (Double, Double) -> Map k (Double, Double) -> Map k (Double, Double)
+    outerPlotBounds = Map.unionWith g
+      where
+        g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
+
+plotBoundsToTransf :: PlotBounds -> T2 Double
+plotBoundsToTransf b = Lubeck.Drawing.rectToTransf $ Lubeck.Drawing.rect
+  (fst $ b ? "x")
+  (fst $ b ? "y")
+  (snd $ b ? "x")
+  (snd $ b ? "y")
+  where
+    m ? k = maybe (error "plotBoundsToTransf: Missing x/y") id $ Map.lookup k m
+
+plotBoundsToTransfX :: PlotBounds -> T1 Double
+plotBoundsToTransfX b = Lubeck.Drawing.lineSegToTransf $ Lubeck.Drawing.lineseg
+  (fst $ b ? "x")
+  (snd $ b ? "x")
+  where
+    m ? k = maybe (error "plotBoundsToTransf: Missing x/y") id $ Map.lookup k m
+
+
+{-
+Given a plot and a suggested zoom value for X, return a suitable zoom value for Y.
+-}
+autoscaleByX :: Plot -> LineSeg Double -> LineSeg Double
+autoscaleByX = undefined
+
 
 newtype Plot = Plot [SinglePlot]
   deriving (Monoid)
@@ -1283,14 +1320,6 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
       Could we simplify by limiting ourselves to the X -> Y situation?
     -}
 
-    plotPlotBounds :: Plot -> PlotBounds
-    plotPlotBounds (Plot []) = mempty
-    plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
-      where
-        outerPlotBounds :: (Ord k) => Map k (Double, Double) -> Map k (Double, Double) -> Map k (Double, Double)
-        outerPlotBounds = Map.unionWith g
-          where
-            g (a1, b1) (a2, b2) = (a1 `min` a2, b1 `max` b2)
 
     drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled Drawing
     drawPlot1 bounds includeGuides plot = mconcat [dataD, axesD, guidesD]
