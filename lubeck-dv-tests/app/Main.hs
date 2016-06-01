@@ -456,6 +456,9 @@ type SRDrawing = Signal RDrawing
 renderDrawingTrace msg d = renderDrawing mempty d
 
 
+kSeries = zipWith (+)
+  [81,32,17,84,45,52,91,26,76,38,58,20,42,71,97,26,69,62,42,17,99,37,42,75,57,94,9,33,27,8,21,28,12,71,69,99,76,99,37,92,82,7,85,1,65,93,68,44,23,2,37,60,21,16,2,7,58,14,39,57,87,61,90,29,88,27,93,14,99,25,27,84,61,56,25,63,63,10,37,15,21,28,37,59,8,75,42,70,88,89,44,52,72,8,62,77,94,60,67,60]
+  (concatMap (replicate 10) (fmap (* 10) [1..]))
 
 
 main :: IO ()
@@ -469,7 +472,7 @@ main = do
   -- retainMain
   (rrV, rrS)          <- rendRectAlts "Rendering rectangle"
   (asV, asS)          <- onOff "Auto-scale Y" False
-  (view0, zoomActive) <- onOff "Zoom active" True
+  (view0, zoomActive) <- onOff "Zoom active" False
   (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X" 1
   (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y" 1
   (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X offset" 0
@@ -485,9 +488,14 @@ main = do
     subscribeEvent (updates zoomXY) print
 
   let !(plotSD :: Styled Drawing) = trace "> plotSD" $ drawPlot $ mconcat
-          [ plot (zip [1..10::Double] [31,35,78,23,9,92,53,71,53,42::Double])
+          [ plot (zip ([1..]::[Double])
+            -- [31,35,78,23,9,71,53,92,53,42::Double]
+            (
+            kSeries
+            ::[Double])
+            )
               [x <~ _1, y <~ _2]
-              (mconcat [line, fill, pointG, xInterceptAlways, yInterceptAlways])
+              (mconcat [line, fill, pointG {-, xInterceptAlways, yInterceptAlways-}])
           , plotLabel "(4,50)" [(4::Double, 50::Double)]
               [x <~ _1, y <~ _2]
           , plotLabel "(7,65)" [(7::Double, 65::Double)]
@@ -571,7 +579,7 @@ main = do
   return ()
 #endif
   where
-    !opts = mempty { dimensions = P (V2 1600 800) }
+    !opts = mempty { dimensions = P (V2 1600 800), originPlacement = BottomLeft }
 
 -- -- | Evaluates events passing through to WHNF before propagating
 -- strictify :: Events a -> FRP (Events a)

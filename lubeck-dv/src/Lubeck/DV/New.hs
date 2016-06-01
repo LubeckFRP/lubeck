@@ -1280,8 +1280,32 @@ rectFromLineSegs (LineSeg (P (V1 x1)) (P (V1 x2))) (LineSeg (P (V1 y1)) (P (V1 y
 Given a plot and a suggested zoom value for X, return a suitable zoom value for Y.
 -}
 autoscaleByX :: Plot -> LineSeg Double -> LineSeg Double
-autoscaleByX _ x = D.transfToLineSeg $ scaling1 0.5
--- TODO dummy, implement properly
+autoscaleByX pl@(Plot ps) xt =
+    -- D.transfToLineSeg $ scaling1 0.5
+  case newBounds of
+    [] -> D.transfToLineSeg 1
+    xs -> D.transfToLineSeg $ recip $ D.lineSegToTransf $ D.lineseg (getNormalized $ minimum xs) (getNormalized $ maximum xs)
+  where
+    newBounds :: [Coord]
+    newBounds = mconcat $ fmap (runColumnFinite . getColumn "y"
+      . filterRows "x" (\x -> withinNormRange (transformNormalized (D.lineSegToTransf xt) x))
+      . scaledData
+      ) ps
+
+    scaledData :: SinglePlot -> Table Key Coord
+    scaledData (SinglePlot mappedData specialData _ _ _ _)
+        = normalizeData (plotPlotBounds pl) mappedData
+
+    normalizeData :: PlotBounds -> Table Key Double -> Table Key Coord
+    normalizeData b m = tableFromList $ fmap (normalizeData' b) $ tableToList m
+      where
+        normalizeData'   b = Map.mapWithKey (\aesK dsL ->              normalize (Map.lookup aesK b)  dsL)
+
+    -- | Is a number within the normalized (UHQ) range?
+    withinNormRange :: (Num a, Ord a) => a -> Bool
+    withinNormRange x = 0 <= x && x <= 1
+
+    transformNormalized t (Normalized x) = let (P (V1 x')) = transformPoint1 t (P (V1 x)) in Normalized x'
 
 updateZoomToAutoScale :: Plot -> Styling -> Styling
 updateZoomToAutoScale plot style
