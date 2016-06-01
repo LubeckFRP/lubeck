@@ -468,13 +468,14 @@ main = do
 
   -- retainMain
   (rrV, rrS)          <- rendRectAlts "Rendering rectangle"
+  (asV, asS)          <- onOff "Auto-scale Y" False
   (view0, zoomActive) <- onOff "Zoom active" True
   (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X" 1
   (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y" 1
   (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X offset" 0
   (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y offset" 0
   let zoomXY = liftA4 (\x y xo yo -> rect xo yo (xo+x) (yo+y)) zoomX zoomY zoomXO zoomYO
-  let zoomV = mconcat [rrV, view0, view1, view2, view1a, view2a]
+  let zoomV = mconcat [rrV, view0, asV, view1, view2, view1a, view2a]
 #else
   let zoomActive = pure True :: Signal Bool
   -- let zoomXY = pure $ V2 1 1
@@ -495,12 +496,13 @@ main = do
 
   -- TODO use rrS here
   let (plotVD :: SDrawing) =
-            let g currentZoom currentRenderingRectangle =
+            let g currentZoom currentRenderingRectangle autoScaleOn =
                         getStyled plotSD
                           $ renderingRectangle .~ currentRenderingRectangle
                           $ zoom .~ (focusFromRectangle currentZoom)
+                          $ zoomType .~ (if autoScaleOn then AutoScaleY else mempty)
                           $ mempty
-            in liftA2 g zoomXY rrS
+            in liftA3 g zoomXY rrS asS
   subscribeEvent (updates $ zoomXY) $ \_ -> print "U: zoomXY"
   subscribeEvent (updates $ rrS) $ \_ -> print "U: rrS"
   subscribeEvent (updates $ plotVD) $ \_ -> print "U: plotVD"

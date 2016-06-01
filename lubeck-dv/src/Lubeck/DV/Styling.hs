@@ -17,6 +17,7 @@ module Lubeck.DV.Styling
   -- TODO exort all lenses here
   , renderingRectangle
   , zoom
+  , zoomType
 
   , axisStrokeWidth
   , axisStrokeColor
@@ -71,7 +72,8 @@ module Lubeck.DV.Styling
   , backgroundTickStrokeColorX
   , backgroundTickStrokeColorY
 
-  -- ** Focus/zoom utils
+  -- ** Focus/zoom
+  , ZoomType(..)
   , focusDefault
   , focusHalfSize
   , focusDoubleSize
@@ -158,12 +160,12 @@ focusDoubleSize =  2 :: Transformation Double
 focusFromRectangle :: Rect Double -> Transformation Double
 focusFromRectangle x = recip $ rectToTransf x
 
-data ZoomType = Standard | AutoScaleY
+data ZoomType = NoAutoScale | AutoScaleY
   deriving (Eq, Show)
 
 instance Monoid ZoomType where
-  mempty = Standard
-  mappend Standard y = y
+  mempty = NoAutoScale
+  mappend NoAutoScale y = y
   mappend x _ = x
 
 data Styling = Styling

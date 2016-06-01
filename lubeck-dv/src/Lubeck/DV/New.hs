@@ -177,7 +177,7 @@ import Linear.V3 (V3(..))
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), Rect(..), LineSeg(..))
 import Lubeck.Drawing.Transformation
-import Lubeck.DV.Styling (Styled, Styling, zoom)
+import Lubeck.DV.Styling (Styled, Styling, zoom, zoomType, ZoomType(AutoScaleY))
 import Lubeck.DV.Internal.Normalized
 import Lubeck.DV.Internal.Table
 
@@ -1270,6 +1270,12 @@ plotBoundsToTransfX b = Lubeck.Drawing.lineSegToTransf $ Lubeck.Drawing.lineseg
     m ? k = maybe (error "plotBoundsToTransf: Missing x/y") id $ Map.lookup k m
 
 
+rectToLineSegX :: Rect a -> LineSeg a
+rectToLineSegX r = D.lineseg (r ^. D._left) (r ^. D._right)
+
+rectFromLineSegs :: LineSeg a -> LineSeg a -> Rect a
+rectFromLineSegs (LineSeg (P (V1 x1)) (P (V1 x2))) (LineSeg (P (V1 y1)) (P (V1 y2))) = D.rect x1 y1 x2 y2
+
 {-
 Given a plot and a suggested zoom value for X, return a suitable zoom value for Y.
 -}
@@ -1278,7 +1284,16 @@ autoscaleByX _ x = D.transfToLineSeg $ (scaling1 2 <>) $ D.lineSegToTransf x
 -- TODO dummy, implement properly
 
 updateZoomToAutoScale :: Plot -> Styling -> Styling
-updateZoomToAutoScale _ x = x
+updateZoomToAutoScale plot style
+  | style^.zoomType == AutoScaleY = (zoom %~ g) style
+  | otherwise                     = style
+  where
+    g z = D.rectToTransf $ rectFromLineSegs xx yy
+      where
+        yy = autoscaleByX plot xx
+        xx = rectToLineSegX (D.transfToRect z)
+
+
 -- TODO dummy, implement properly
 
 

@@ -417,7 +417,6 @@ height r = r^._top - r^._bottom
 
 
 
-
 {-
 Fit a drawing inside a rectangle. Accomplished by aligning the drawing
 at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
