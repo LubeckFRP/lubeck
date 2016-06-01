@@ -1212,16 +1212,25 @@ labelG = Geometry g [""]
 -- Data/guides/labels is mapped but not scaled
 data SinglePlot = SinglePlot
   -- Generated from running aesthetics over data
-  { mappedData        :: [Map Key Double]         -- Table Key Double
-  , specialData       :: [Map Key Special]        -- Table Key Special
+  { mappedData        :: Table Key Double
+  , specialData       :: Table Key Special
   , guides            :: Map Key [(Double, Str)]
-  , bounds            :: PlotBounds               -- Map Key (Double, Double)
+  , bounds            :: Map Key (Double, Double) -- aka PlotBounds
 
   -- Provided by user
   , geometry          :: Geometry
   , axesTitles        :: [Str]
   }
 -- Not a Monoid!
+
+
+{-
+Can we write
+  xScaledYBounds :: Plot -> T2 Double -> (Double, Double)
+  yScaledXBounds :: Plot -> T2 Double -> (Double, Double)
+Yes!
+
+-}
 
 newtype Plot = Plot [SinglePlot]
   deriving (Monoid)
@@ -1244,7 +1253,7 @@ drawPlot :: Plot -> Styled Drawing
 -- drawPlot = undefined
 
 createSinglePlot titles dat aess geometry =
-  SinglePlot mappedData specialData guides bounds geometry titles
+  SinglePlot (tableFromList mappedData) (tableFromList specialData) guides bounds geometry titles
   where
     -- Only used locallyhere!
     aes                 = mconcat aess
@@ -1260,6 +1269,14 @@ createSinglePlot titles dat aess geometry =
 
 drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
   where
+    {-
+    TODO extracting bounds need to take zoom into account
+    Basically, it is not sufficient to store bounds in SinglePlot, as the Y bounds may be filtered depending on zoom
+
+    We need to use the Z lin transf on all X values, remove all points that have values outside UHQ and then run Z^(-1)
+      Could we simplify by limiting ourselves to the X -> Y situation?
+    -}
+
     plotPlotBounds :: Plot -> PlotBounds
     plotPlotBounds (Plot []) = mempty
     plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
@@ -1283,12 +1300,10 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
           -- TODO modify/autoscale zoom from styling here (using Monad.Reader.local)
           -- What does this mean?
           -- There is a weird relationship between rr/zoom and bounds
-          (cells :: Table Key Cell) <- pure $ wrapTable (tableFromList $ mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
+          (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial (Just bounds) plot)
           (geomMapping $ geometry plot) $ cells
-
-
-        wrapTable :: Table Key Double -> Table Key (Coord, Maybe Special) -> Table Key Cell
-        wrapTable a b = overlayTablesShort (\a (b,c) -> Cell a b c) a b
+          where
+            wrapTable = overlayTablesShort (\a (b,c) -> Cell a b c)
 
         guidesD :: Styled Drawing
         guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
@@ -1313,25 +1328,24 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
           where
             normalizeGuides' b = Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Map.lookup aesK b))) dsL)
 
-        normalizeData :: PlotBounds -> [Map Key Double] -> [Map Key Coord]
-        normalizeData b m = fmap (normalizeData' b) m
+        normalizeData :: PlotBounds -> Table Key Double -> Table Key Coord
+        normalizeData b m = tableFromList $ fmap (normalizeData' b) $ tableToList m
           where
             normalizeData'   b = Map.mapWithKey (\aesK dsL ->              normalize (Map.lookup aesK b)  dsL)
 
         mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
-        mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = tableFromList $ case b of
+        mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = case b of
             Nothing        -> mappedAndScaledDataWithSpecial2 bounds1 mappedData specialData
             (Just bounds2) -> mappedAndScaledDataWithSpecial2 bounds2 mappedData specialData
           where
             mappedAndScaledDataWithSpecial2 :: PlotBounds
-                                               -> [Map Key Double]
-                                               -> [Map Key Special]
-                                               -> [Map Key (Coord, Maybe Special)]
+                                               -> Table Key Double
+                                               -> Table Key Special
+                                               -> Table Key (Coord, Maybe Special)
             mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-              = zipWith mergeMapsL mappedAndScaledData specialData
-                  :: [Map Key (Coord, Maybe Special)]
+              = tableFromList $ zipWith mergeMapsL (tableToList mappedAndScaledData) (tableToList specialData)
                   where
-                    mappedAndScaledData :: [Map Key Coord]
+                    mappedAndScaledData :: Table Key Coord
                     mappedAndScaledData = normalizeData bounds mappedData
 
                     mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
