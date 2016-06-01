@@ -1305,6 +1305,13 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
           where
             wrapTable = overlayTablesShort (\a (b,c) -> Cell a b c)
 
+        mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
+        mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = case b of
+            Nothing        -> g bounds1 mappedData specialData
+            (Just bounds2) -> g bounds2 mappedData specialData
+          where
+            g b x y = conjoin2L (normalizeData b x) y
+
         guidesD :: Styled Drawing
         guidesD = if not includeGuides then mempty else drawGuides (scaledGuides (Just bounds) plot ? "x") (scaledGuides (Just bounds) plot ? "y")
 
@@ -1333,28 +1340,6 @@ drawPlot (Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots
           where
             normalizeData'   b = Map.mapWithKey (\aesK dsL ->              normalize (Map.lookup aesK b)  dsL)
 
-        mappedAndScaledDataWithSpecial :: Maybe PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
-        mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ bounds1 _ _)      = case b of
-            Nothing        -> mappedAndScaledDataWithSpecial2 bounds1 mappedData specialData
-            (Just bounds2) -> mappedAndScaledDataWithSpecial2 bounds2 mappedData specialData
-          where
-            mappedAndScaledDataWithSpecial2 :: PlotBounds
-                                               -> Table Key Double
-                                               -> Table Key Special
-                                               -> Table Key (Coord, Maybe Special)
-            mappedAndScaledDataWithSpecial2 bounds mappedData specialData
-              = tableFromList $ zipWith mergeMapsL (tableToList mappedAndScaledData) (tableToList specialData)
-                  where
-                    mappedAndScaledData :: Table Key Coord
-                    mappedAndScaledData = normalizeData bounds mappedData
-
-                    mergeMapsL :: Ord k => Map k a -> Map k b -> Map k (a, Maybe b)
-                    mergeMapsL x y = mconcat $ fmap g (Map.keys x)
-                      where
-                        g k = case (Map.lookup k x, Map.lookup k y) of
-                          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
-                          (Just xv, Nothing) -> Map.singleton k (xv, Nothing)
-                          (Just xv, Just yv) -> Map.singleton k (xv, Just yv)
 
 
 {-| Print original data, mapped data and aesthetcis with their guides and bounds. -}

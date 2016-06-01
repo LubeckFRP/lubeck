@@ -28,6 +28,8 @@ module Lubeck.DV.Internal.Table
   , overlayTablesShort
   , crossTablesLong
   , crossTablesShort
+  , conjoin2With
+  , conjoin2L
   , filterRows
   , getColumn
   -- ** Column type
@@ -58,6 +60,7 @@ import Data.Functor.Compose
 import qualified Data.Char
 import qualified Data.List
 import qualified Data.Map
+import qualified Data.Map as Map
 import qualified Data.Set
 import qualified Data.IntMap
 import qualified Data.IntSet
@@ -218,6 +221,16 @@ getColumn k t = case Data.Map.lookup k (tableToMap' t) of
   Nothing -> empty
   Just c -> c
 
+
+{-
+Filter a row by looking at a single key.
+-}
+filterRows :: Ord k => k -> (a -> Bool) -> Table k a -> Table k a
+filterRows k p (Table t) = Table $ filter (\m -> justJust p $ Data.Map.lookup k m) t
+  where
+    justJust p (Just x) = p x
+    justJust p Nothing  = False
+
 {-
   short/long zips
   cross retains data present in only one tableToMap
@@ -256,36 +269,56 @@ overlayTablesLong f (Table a) (Table b) = Table $ crossWith (combine2With f) a b
     crossWith f a  [] = []
     crossWith f a  b  = take (length a `max` length b) $ zipWith f (cycle a) (cycle b)
 
-
-{-
-Filter a row by looking at a single key.
--}
-filterRows :: Ord k => k -> (a -> Bool) -> Table k a -> Table k a
-filterRows k p (Table t) = Table $ filter (\m -> justJust p $ Data.Map.lookup k m) t
-  where
-    justJust p (Just x) = p x
-    justJust p Nothing  = False
-
-
-
--- Internal
-
 combine2 :: Ord k => Map k a -> Map k b -> Map k (a, b)
-combine2 a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
+combine2 = combine2With (,)
+
+combine2With :: Ord k => (a -> b -> c) -> Map k a -> Map k b -> Map k c
+combine2With f a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
   where
     -- safeLookUpWithKey :: Ord k => Map k a -> Map k b -> k -> Maybe (k, (a, b))
     safeLookUpWithKey as bs k = case (Data.Map.lookup k as, Data.Map.lookup k bs) of
-      (Just a, Just b) -> Just (k, (a, b))
+      (Just a, Just b) -> Just (k, f a b)
       _ -> Nothing
-    ks = sortNub $ ksA <> ksB
-    (ksA, ksB) = (Data.Map.keys a, Data.Map.keys b)
+    ks = sortNub $ Map.keys a <> Map.keys b
     sortNub = Data.List.nub . Data.List.sort
 
-combine2With :: Ord k => (a -> b -> c) -> Map k a -> Map k b -> Map k c
-combine2With f a b = fmap (uncurry f) $ combine2 a b
+
+
+
+conjoin2With :: Ord k => (a -> c) -> (b -> c) -> (a -> b -> c) -> Map k a -> Map k b -> Map k c
+conjoin2With f g h a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
+  where
+    -- safeLookUpWithKey :: Ord k => Map k a -> Map k b -> k -> Maybe (k, (a, b))
+    safeLookUpWithKey as bs k = case (Data.Map.lookup k as, Data.Map.lookup k bs) of
+      (Just a, Just b) -> Just (k, h a b)
+      (Just a, _)      -> Just (k, f a)
+      (_,      Just b) -> Just (k, g b)
+      _                -> Nothing
+    ks = sortNub $ Map.keys a <> Map.keys b
+    sortNub = Data.List.nub . Data.List.sort
+
+
+
+
+
+{-
+TODO this is used in DV.New
+Needs a more general form of combine
+-}
+
+conjoin2L :: Ord k => Table k a -> Table k b -> Table k (a, Maybe b)
+conjoin2L (Table x) (Table y) = tableFromList $ zipWith mergeMapsL x y
+  where
+    mergeMapsL x y = mconcat $ fmap g (Map.keys x)
+      where
+        g k = case (Map.lookup k x, Map.lookup k y) of
+          (Nothing, _)       -> error "mergeMapsL: Impossible as key set is drawn from first map"
+          (Just xv, Nothing) -> Map.singleton k (xv, Nothing)
+          (Just xv, Just yv) -> Map.singleton k (xv, Just yv)
+
 
 {-|
-
+Pretty-print a table.
 -}
 prettyTable :: (Ord k, Show k, Show a) => Table k a -> B.Box
 prettyTable t = makeTable (fmap toBox $ tableHeaders t) (fmap (fmap toBox) $ transpose $ tableValues t)
