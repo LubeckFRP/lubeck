@@ -77,15 +77,6 @@ TODO prove/assure that this is equal to getRenderingPosition/getRenderingPositio
 getRenderingPositionD :: Styling -> Drawing -> Drawing
 getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRectangle) $ transform (styling^.zoom) x
 
-  where
-
-    -- TODO actually use filtering
-    filterTicks :: [(Double, a)] -> [(Double, a)]
-    filterTicks = filter (withinNormRange . fst)
-
-    -- | Is a number within the normalized (UHQ) range?
-    withinNormRange :: Double -> Bool
-    withinNormRange x = 0 <= x && x <= 1
 
 {-|
 Like getRenderingPositionD, but don't actually scale the image.
@@ -158,7 +149,7 @@ lineData (LineData colorN dashN) (p:ps) = do
                 . strokeWidth   (style^.linePlotStrokeWidth)
                 . dash          (style^.linePlotStroke. to (`extractLineStyle` dashN))
 
-  return $ lineStyle $ ((either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) :: Drawing -> Drawing) $
+  return $ maskRenderingRectangle style $ lineStyle $ ((either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) :: Drawing -> Drawing) $
     ((segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)) :: Drawing)
 
 data AreaData = AreaData
@@ -172,7 +163,8 @@ fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
                 . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style pProjX)
+
+  return $ maskRenderingRectangle style $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style pProjX)
     $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) $ addExtraPoints (p:ps)
   where
     -- Because of projection (below!), ignore y value for 1st point
@@ -196,7 +188,8 @@ areaData' _ [_]    = mempty
 areaData' (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p)
+
+  return $ maskRenderingRectangle style $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p)
     $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
 
 -- | Draw a one-dimensional bar graph.
@@ -307,6 +300,7 @@ ticks xTickList1 yTickList1 = do
   let colFgB     = style^.basicTickColor
   let colBgX     = style^.backgroundTickStrokeColorX
   let colBgY     = style^.backgroundTickStrokeColorY
+
   let drawBgX    = not $ isTransparent colBgX
   let drawBgY    = not $ isTransparent colBgY
 
@@ -415,3 +409,7 @@ relOrigin p = p .-. 0
 -- | Is a number within the normalized (UHQ) range?
 withinNormRange :: Double -> Bool
 withinNormRange x = (0-0.001) <= x && x <= (1+0.001)
+
+maskRenderingRectangle :: Styling -> Drawing -> Drawing
+maskRenderingRectangle style = mask $
+  transform (scalingXY $ style^.renderingRectangle) $ fillColorA (Colors.orange `withOpacity` 0.1) $ align BL square

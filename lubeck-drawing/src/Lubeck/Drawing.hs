@@ -85,7 +85,6 @@ module Lubeck.Drawing
   , turn
   , angleToRadians
   , angleToDegrees
-  -- TODO move/rename these?
   , offsetVectors
   , betweenPoints
 
@@ -706,8 +705,6 @@ a \\\ b = a <> juxtapose posDiagonal a b
 a /// b = a <> juxtapose negDiagonal a b
 
 -- TODO general path/beziers (cubic spline?) support (generalizes all others! including text?)
--- TODO masks support
--- TODO better text API
 
 {-|
 Embedded SVG node.
@@ -840,12 +837,18 @@ drawingToRDrawing' nodeInfo x = case x of
     (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
     (Text t)               -> RPrim nodeInfo (RText t)
     (Embed e)              -> RPrim nodeInfo (REmbed e)
-    -- TODO render masks
-    (Mask _ x)             -> drawingToRDrawing' nodeInfo x
+
+    -- TODO render masks properly
+    -- This code just renders it as a group
+    (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
+      where
+        recur = drawingToRDrawing' mempty
+
     (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
     (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
     (Handlers h x) -> drawingToRDrawing' (nodeInfo <> toNodeInfoH h) x
     Em        -> mempty
+
     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
     -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
     -- TODO return empty if concatMap returns empty list
@@ -878,8 +881,6 @@ data RNodeInfo
     , rHandler :: !Handlers
     }
    deriving (Show)
-
--- TODO remove
 
 #ifdef __GHCJS__
 instance Show Handlers where

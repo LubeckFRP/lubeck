@@ -940,6 +940,8 @@ dataset1 =
 -- The only way to do this reliably is to render the SVGs to bitmap, using
 -- something like http://imagemagick.org/script/index.php
 
+-- See #121
+
 -- For now just render to make sure we have no exceptions
 
 main = do
