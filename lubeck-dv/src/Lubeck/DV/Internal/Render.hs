@@ -203,7 +203,15 @@ areaData' (AreaData colorN) (p:ps) = do
 --
 -- For grouped/stacked charts, see `barData2`, `barData3` etc.
 barData :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
-barData ps = do
+barData xs = do
+  style <- ask
+  case style^.barPlotOrientation of
+    Vertical   -> barDataV xs
+    Horizontal -> barDataH xs
+
+
+barDataV :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
+barDataV ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
@@ -215,6 +223,23 @@ barData ps = do
     scaleRR :: Styling -> Drawing -> Drawing
     scaleRR = getRenderingPositionD
 
+barDataH :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
+barDataH ps = do
+  style <- ask
+  let barWidth = 1/fromIntegral (length ps + 1)
+  let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
+  let base = alignL $ fillColorA ({-style^.barPlotBarColors.to paletteToColor-}Colors.green `withOpacity` 1) $ square
+  return $ scaleY (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateY (n * barFullOffset)) [1..] $
+    fmap (\(P (V1 v)) -> scaleY barWidth $ scaleX v $ base) ps
+  where
+    alignL = translate (V2 0.5 0)
+    scaleRR :: Styling -> Drawing -> Drawing
+    scaleRR = getRenderingPositionD
+
+
+{-
+TODO unify/generalize bar pltos
+-}
 
 baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
@@ -256,8 +281,14 @@ ticks
   -> m Drawing
 ticks xTickList1 yTickList1 = do
   style <- ask
-  let !xTickList = xTickList1
-  let !yTickList = yTickList1
+  -- TODO general orientation
+
+  let !xTickList = case style^.barPlotOrientation of
+            Vertical   -> xTickList1
+            Horizontal -> yTickList1
+  let !yTickList = case style^.barPlotOrientation of
+            Vertical   -> yTickList1
+            Horizontal -> xTickList1
 
   -- TODO zoom: derive from zoom , with filtering
   -- let (xPos :: Double) = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)

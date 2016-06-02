@@ -453,6 +453,28 @@ test25 = exportTestDrawing mempty mempty $ drawPlot $
     sortNub = Data.List.nub . Data.List.sort
 
 
+{-
+  Bar plot (horizontal).
+-}
+test26 = exportTestDrawing mempty (barPlotOrientation .~ Horizontal $ mempty) $ drawPlot $
+  plot (zip chars freq) [x <~ _1, y <~ _2] bars
+  where
+    chars :: [Char]
+    freq :: [Int]
+    chars = sortNub text
+    freq = fmap (\c -> length $ filter (== c) text) chars
+    text = filter Data.Char.isAlpha $ fmap Data.Char.toUpper $ [string|
+      Statistics is the study of the collection, analysis, interpretation,
+      presentation, and organization of data.[1] In applying statistics
+      to, e.g., a scientific, industrial, or societal problem, it is
+      conventional to begin with a statistical population or a statistical
+      model process to be studied. Populations can be diverse topics such
+      as "all people living in a country" or "every atom composing a
+      crystal". Statistics deals with all aspects of data including the
+      planning of data collection in terms of the design of surveys and
+      experiments.
+      |]
+    sortNub = Data.List.nub . Data.List.sort
 
 
 -- TODO test30 and test31 should be the same

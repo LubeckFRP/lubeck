@@ -43,6 +43,7 @@ module Lubeck.DV.Styling
   , barPlotUngroupedOffset
   , barPlotGroupedOffset
   , barPlotSpaceUsed
+  , barPlotOrientation
 
   , ratioPlotBackgroundColor
   , ratioPlotForegroundColor
@@ -81,6 +82,9 @@ module Lubeck.DV.Styling
   , focusRight
   , focusBottomLeft
   , focusFromRectangle
+
+  -- ** Misc helper types
+  , VerticalHorizontal(..)
 
   -- ** Running a style
   -- *** Styled monad
@@ -144,8 +148,11 @@ import Lubeck.DV.LineStyles
   )
 
 data VerticalHorizontal = Vertical | Horizontal
+  deriving (Eq, Ord, Show)
+
 -- How to display a bar plot with more than two dimensions
 data BarPlotType = Grouped | Stacked | TwoSides
+  deriving (Eq, Ord, Show)
 
 focusLeft, focusRight, focusBottomLeft :: Transformation Double
 focusLeft       = recip $ rectToTransf (rect 0   0   0.5 1)
@@ -227,7 +234,7 @@ data Styling = Styling
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
   , _barPlotSpaceUsed                 :: Double
   -- Is this bar plot transposed or not?
-  -- , _barPlotTransposed                :: Bool
+  , _barPlotOrientation               :: VerticalHorizontal
 
   , _ratioPlotBackgroundColor         :: Palette Double
   , _ratioPlotForegroundColor         :: Palette Double
@@ -330,6 +337,7 @@ instance Monoid Styling where
     , _barPlotGroupedOffset         = V2 0   0
     , _barPlotStackedOffset         = V2 0   0.1
     , _barPlotSpaceUsed             = 9/10
+    , _barPlotOrientation           = Vertical
 
     , _ratioPlotBackgroundColor     = singleColour $ Colors.whitesmoke `withOpacity` 0.9
     , _ratioPlotForegroundColor     = singleColour $ Colors.red        `withOpacity` 0.6
