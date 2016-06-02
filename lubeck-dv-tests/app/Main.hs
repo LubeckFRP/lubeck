@@ -387,22 +387,33 @@ Otherwise, this displays an invisible drawing across the original image, that re
 and displays feedback on drag events. Whenever a drag action is completed, the rectangle in which
 it was performed is sent.
 -}
-dragRect :: Signal Bool -> FRP (Signal Drawing, Events (Rect Double))
-dragRect activeS = do
+dragRect
+  :: Maybe (Signal Double) -- display fixed X
+  -> Maybe (Signal Double) -- display fixed Y
+  -> Signal Bool
+  -> FRP (Signal Drawing, Events (Rect Double))
+dragRect _ fixedY activeS = do
   (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState) <- withMousePositionStateNR (pure bigTransparent)
 
     -- TODO test bad translation
   let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) (bigTransparentWithHandlers) activeS
   (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
   -- subscribeEvent (updates intermediateRects) print
-  let (dragRectD :: Signal Drawing) = fmap dragRect intermediateRects
+  let (dragRectD :: Signal Drawing) = fmap dragRect (case fixedY of
+          Just fixedY' -> liftA2 (\x -> fmap (h x)) fixedY' intermediateRects
+          Nothing -> intermediateRects
+          )
 
   pure $ (fmap (scaleX 1) $ overlay <> dragRectD, finishedRects)
 
   where
+    h :: Double -> (Rect Double) -> (Rect Double)
+    h yValue r = _top .~ yValue $ _bottom .~ 0 $ r
+
+    dragRect :: Maybe (Rect Double) -> Drawing
     dragRect Nothing = mempty
     dragRect (Just rect) =
-      strokeColor Colors.green $ fillColorA (Colors.black `withOpacity` 0) $ fitInsideRect rect $ square
+      fillColorA (Colors.blue `withOpacity` 0.1) $ fitInsideRect rect $ square
 
     bigTransparent =
       -- Test strange alignment
@@ -530,7 +541,7 @@ main = do
             ::[Double])
             )
               [x <~ _1, y <~ _2]
-              (mconcat [line, fill, pointG {-, xInterceptAlways, yInterceptAlways-}])
+              (mconcat [line {-, fill, pointG, xInterceptAlways, yInterceptAlways-}])
           , plotLabel "(4,50)" [(4::Double, 50::Double)]
               [x <~ _1, y <~ _2]
           , plotLabel "(7,65)" [(7::Double, 65::Double)]
@@ -576,7 +587,7 @@ main = do
   -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
-  (dr, rectDraggedE) <- dragRect zoomActive
+  (dr, rectDraggedE) <- dragRect Nothing (Just $ view _y <$> rrS) zoomActive
 
 
   let (zoomDragInputs :: Events (Rect Double)) =
@@ -606,7 +617,7 @@ main = do
                 , fmap (renderDrawingTrace "R Zoom") dr
                 -- , fmap (renderDrawingTrace "Hoverable square") sqs2
                 -- , sqs2
-                , fmap (renderDrawingTrace "R Plot") plotSD
+                , fmap (renderDrawingTrace "R Plot") plotVD
                 , mempty
                 -- , fmap (renderDrawingTrace "Plot2") (fmap (rotate (turn/3)) plotSD2)
                 -- , fmap (renderDrawingTrace "Plot3") plotSD3
