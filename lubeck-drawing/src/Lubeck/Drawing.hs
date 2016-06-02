@@ -3,6 +3,17 @@
   NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving
   , ScopedTypeVariables, NoImplicitPrelude #-}
 
+{-# OPTIONS_GHC
+  -fwarn-incomplete-patterns
+  -fno-warn-name-shadowing
+  -fno-warn-unused-binds
+  -fno-warn-unused-matches
+  -fno-warn-unused-imports
+  -fno-warn-type-defaults
+  -fno-warn-missing-signatures
+
+  -Werror
+  #-}
 -- {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
 {-|
@@ -169,7 +180,7 @@ module Lubeck.Drawing
   , TextAnchor(..)
   , AlignmentBaseline(..)
   , FontStyle(..)
-  , FontSize(..)
+  , FontSize
   , FontWeight(..)
   , TextOptions(..)
   , textWithOptions
@@ -182,6 +193,9 @@ module Lubeck.Drawing
   , Embed(..)
   , addEmbeddedSVG
   , addEmbeddedSVGFromStr
+
+  -- ** Masking
+  , mask
 
   -- ** Envelopes, Alignment, Juxtaposition
   , Envelope
@@ -236,7 +250,7 @@ module Lubeck.Drawing
   , emitDrawing
   ) where
 
-import BasePrelude hiding (Handler, Handlers, rotate, (|||))
+import BasePrelude hiding (Handler, rotate, (|||), mask)
 -- import Data.Semigroup(Max(..))
 import Data.Colour(Colour, AlphaColour, withOpacity)
 import qualified Data.Colour
@@ -510,6 +524,23 @@ addHandler k v = Handlers ()
 #endif
 
 
+
+{-|
+Mask a drawing (binary).
+
+Behaves like the second drawing, except that every points that is transparent
+in the first drawing becomes transparent in the resulting drawing as well.
+
+If you consider drawings as a function @P2 R -> AlphaColour R@, then
+
+@
+mask d1 d2 = \p -> if d1 p == transparent then transparent else d2 p
+@
+-}
+mask :: Drawing -> Drawing -> Drawing
+mask = Mask
+
+
 newtype Envelope v n = Envelope (Maybe (v n -> n))
 
 instance (Foldable v, Additive v, Floating n, Ord n) => Monoid (Envelope v n) where
@@ -623,6 +654,11 @@ envelope x = case x of
   Text _        -> envelope Rect
 
   Embed _       -> mempty
+
+  {-
+  TODO envelopes should take masking into account.
+  -}
+  Mask d1 d2    -> envelope d2
 
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
@@ -747,6 +783,7 @@ data Drawing
 
   | Embed Embed
 
+  | Mask !Drawing !Drawing
   | Transf !(Transformation Double) !Drawing
   | Style !Style !Drawing
   | Handlers !Handlers !Drawing
@@ -772,6 +809,7 @@ drawingTreeF f = go
     go (Lines _ _) = 1
     go (Text _) = 1
     go (Embed _) = 1
+    go (Mask x y) = go x `f` go y
     go (Transf _ x) = go x + 1
     go (Style _ x) = go x + 1
     go (Handlers _ x) = go x + 1
@@ -802,6 +840,8 @@ drawingToRDrawing' nodeInfo x = case x of
     (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
     (Text t)               -> RPrim nodeInfo (RText t)
     (Embed e)              -> RPrim nodeInfo (REmbed e)
+    -- TODO render masks
+    (Mask _ x)             -> drawingToRDrawing' nodeInfo x
     (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
     (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
     (Handlers h x) -> drawingToRDrawing' (nodeInfo <> toNodeInfoH h) x
@@ -845,8 +885,6 @@ data RNodeInfo
 instance Show Handlers where
   show x = "handlers"
 #endif
-instance Show Style where
-  show x = "style"
 
 data RDrawing
   = RPrim !RNodeInfo !RPrim
@@ -1477,6 +1515,8 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
 
           -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
           -- As long as it is just event handlers, it doesn't matter
+          Mask _ x ->
+            (toSvg1 ps x)
           Transf t x -> single $ mkN "g"
             [mkA "transform" $ "matrix" <> toStr (negY $ transformationToMatrix t) <> ""]
             (toSvg1 ps x)

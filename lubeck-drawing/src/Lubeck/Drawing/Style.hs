@@ -87,3 +87,7 @@ foreign import javascript unsafe "$1 + ':' + $2 + ';'"
 foreign import javascript unsafe "$2 + $1"
   js_appendStyle :: Style -> Style -> Style
 #endif
+
+
+instance Show Style where
+  show x = "style"
