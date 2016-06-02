@@ -1283,8 +1283,9 @@ autoscaleByX :: Plot -> LineSeg Double -> LineSeg Double
 autoscaleByX pl@(Plot ps) xt =
     -- D.transfToLineSeg $ scaling1 0.5
   case newBounds of
-    [] -> D.transfToLineSeg 1
-    xs -> D.transfToLineSeg $ recip $ D.lineSegToTransf $ D.lineseg (getNormalized $ minimum xs) (getNormalized $ maximum xs)
+    []  -> D.transfToLineSeg 1
+    [_] -> D.transfToLineSeg 1
+    xs  -> D.transfToLineSeg $ recip $ D.lineSegToTransf $ D.lineseg (getNormalized $ minimum xs) (getNormalized $ maximum xs)
   where
     newBounds :: [Coord]
     newBounds = mconcat $ fmap (runColumnFinite . getColumn "y"
