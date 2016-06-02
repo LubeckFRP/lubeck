@@ -7,7 +7,7 @@
 module Main where
 
 import BasePrelude hiding ((|||), Signal, rotate)
-import Control.Lens(to, _1, _2, (.~))
+import Control.Lens(to, _1, _2, (.~), view)
 import Linear.Affine ((.+^))
 import Data.Colour (withOpacity)
 import Data.Colour.Names as Colors
@@ -414,9 +414,12 @@ dragRect activeS = do
 {-
 Displays a pair or plus/minus-labeled buttons.
 -}
-plusMinus :: Str -> Double -> FRP (Signal Html, Signal Double)
-plusMinus label init = do
-  (view, alter :: Events (Double -> Double)) <- componentEvent id (multiButtonWidget [] [("-", (subtract 0.1)), ("+", (+ 0.1))]) mempty
+plusMinus :: Str -> Double -> Events Double -> FRP (Signal Html, Signal Double)
+plusMinus label init reset = do
+  (view, alter :: Events (Double -> Double)) <- componentEvent
+    id
+    (multiButtonWidget [] [("-", (subtract 0.1)), ("+", (+ 0.1))])
+    (fmap const reset)
   zoom <- accumS init alter
   pure (mconcat [pure $ text (toJSString label), view], zoom)
 
@@ -504,11 +507,12 @@ main = do
   (asV, asS)          <- onOff "Auto-scale Y" True
   (view0, zoomActive) <- onOff "Zoom active" True
   (resetV, resetE)    <- basicButton "Reset zoom"
-  (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X^2" 1
-  (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y^2" 1
-  (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X^1" 0
-  (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y^1" 0
-  let zoomXY = liftA4 (\x y xo yo -> rect xo yo ({-xo+-}x) ({-yo+-}y)) zoomX zoomY zoomXO zoomYO
+  (rectU, rectE :: Events (Rect Double))      <- newEvent
+  (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X^1" 0 (view _left   <$> rectE)
+  (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y^1" 0 (view _bottom <$> rectE)
+  (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X^2" 1 (view _right  <$> rectE)
+  (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y^2" 1 (view _top    <$> rectE)
+  let (zoomXY :: Signal (Rect Double)) = liftA4 (\x y xo yo -> rect xo yo ({-xo+-}x) ({-yo+-}y)) zoomX zoomY zoomXO zoomYO
   let zoomV = mconcat [resetV, rrV, view0, asV, view1a, view2a, view1, view2]
 #else
   let zoomActive = pure True :: Signal Bool
@@ -582,6 +586,8 @@ main = do
   Consider the foo updates as a series of linear transformations, accumulate with (1 and (*))
   -}
   (compoundZoom :: Signal (T2 Double)) <- foldpSRestart (flip (*)) 1 (rectToTransf <$> zoomDragInputs) (1 <$ resetE)
+  -- Tie the knot!
+  subscribeEvent (transfToRect <$> updates compoundZoom) rectU
 
   subscribeEvent (fmap (($ "") . showFFloat (Just 2)) <$> transfToRect <$> updates compoundZoom) print
   subscribeEvent resetE print
