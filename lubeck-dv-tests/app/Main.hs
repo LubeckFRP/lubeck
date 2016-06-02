@@ -342,43 +342,8 @@ data RectInputEvent
   | AbortRect
   deriving (Eq, Ord, Show)
 
-{-Finished rects-}
-squares :: Events RectInputEvent -> FRP (Events (Rect Double))
-squares = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
-  where
-    f (BeginRect p1)   _            = (Just p1, Nothing)
-    f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect_ p1 p2))
-    f AbortRect        _            = (Nothing, Nothing)
-    f (ContinueRect _) (x, _)       = (x,       Nothing)
 
-{-Rects in the making. TODO-}
-squaresTemp :: Events RectInputEvent -> FRP (Signal (Maybe (Rect Double)))
-squaresTemp ri = do
-  rs <- squaresTemp2 ri
-  stepperS Nothing rs
-squaresTemp2 :: Events RectInputEvent -> FRP (Events (Maybe (Rect Double)))
-squaresTemp2 = fmap (fmap snd) . foldpE f (Nothing, Nothing)
-  where
-    f (BeginRect p1)   _             = (Just p1, Just (Rect_ p1 p1))
-    f (ContinueRect p2) (Just p1, _) = (Just p1, Just (Rect_ p1 p2))
-    f _ _ = (Nothing, Nothing)
-
-mpsToRectInput :: P2 Double -> MouseEv -> RectInputEvent
-mpsToRectInput pos MouseDown        = BeginRect pos
-mpsToRectInput pos MouseUp          = EndRect pos
-mpsToRectInput pos MouseOut         = AbortRect
-mpsToRectInput pos _                = ContinueRect pos
--- mpsToRectInput pos MouseP
-
-emittedAndIntermediateRectangles :: Signal MousePositionState -> FRP (Events (Rect Double), Signal (Maybe (Rect Double)))
-emittedAndIntermediateRectangles bigTransparentMPS = do
-  let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
-  mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
-  finishedRects <- squares mouseMove2
-  intermediateRects <- squaresTemp mouseMove2
-  pure (finishedRects, intermediateRects)
-
-{-
+{-|
 A drag overlay interface.
 
 Whenever the given bool signal is False, behaves like 'opts'.
@@ -387,11 +352,10 @@ Otherwise, this displays an invisible drawing across the original image, that re
 and displays feedback on drag events. Whenever a drag action is completed, the rectangle in which
 it was performed is sent.
 -}
-dragRect
-  :: Maybe (Signal Double) -- display fixed X
-  -> Maybe (Signal Double) -- display fixed Y
-  -> Signal Bool
-  -> FRP (Signal Drawing, Events (Rect Double))
+dragRect  :: Maybe (Signal Double) -- display fixed X
+          -> Maybe (Signal Double) -- display fixed Y
+          -> Signal Bool
+          -> FRP (Signal Drawing, Events (Rect Double))
 dragRect _ fixedY activeS = do
   (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState) <- withMousePositionStateNR (pure bigTransparent)
 
@@ -399,27 +363,62 @@ dragRect _ fixedY activeS = do
   let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) (bigTransparentWithHandlers) activeS
   (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
   -- subscribeEvent (updates intermediateRects) print
-  let (dragRectD :: Signal Drawing) = fmap dragRect (case fixedY of
-          Just fixedY' -> liftA2 (\x -> fmap (h x)) fixedY' intermediateRects
+  let (dragRectD :: Signal Drawing) = fmap dragRectPrim (case fixedY of
+          Just fixedY' -> liftA2 (\x -> fmap (setYBounds 0 x)) fixedY' intermediateRects
           Nothing -> intermediateRects
           )
 
   pure $ (fmap (scaleX 1) $ overlay <> dragRectD, finishedRects)
 
   where
-    h :: Double -> (Rect Double) -> (Rect Double)
-    h yValue r = _top .~ yValue $ _bottom .~ 0 $ r
+    setYBounds :: Double -> Double -> Rect Double -> Rect Double
+    setYBounds y1 y2 rect = _top .~ y2 $ _bottom .~ y1 $ rect
 
-    dragRect :: Maybe (Rect Double) -> Drawing
-    dragRect Nothing = mempty
-    dragRect (Just rect) =
+    dragRectPrim :: Maybe (Rect Double) -> Drawing
+    dragRectPrim Nothing = mempty
+    dragRectPrim (Just rect) =
       fillColorA (Colors.blue `withOpacity` 0.1) $ fitInsideRect rect $ square
 
+    bigTransparent :: Drawing
     bigTransparent =
-      -- Test strange alignment
-      -- align BR $
-      -- TODO no color
-        fillColorA (Colors.green `withOpacity` 0.1) $ Lubeck.Drawing.scale 3000 square
+        fillColorA (Colors.green `withOpacity` 0) $ Lubeck.Drawing.scale 3000 square
+
+    emitFinishedRects :: Events RectInputEvent -> FRP (Events (Rect Double))
+    emitFinishedRects = fmap (filterJust . fmap snd) . foldpE f (Nothing, Nothing)
+      where
+        f (BeginRect p1)   _            = (Just p1, Nothing)
+        f (EndRect p2)     (Just p1, _) = (Nothing, Just (Rect_ p1 p2))
+        f AbortRect        _            = (Nothing, Nothing)
+        f (ContinueRect _) (x, _)       = (x,       Nothing)
+
+    emitIntermediateRects :: Events RectInputEvent -> FRP (Signal (Maybe (Rect Double)))
+    emitIntermediateRects ri = do
+      rs <- emitIntermediateRectsE ri
+      stepperS Nothing rs
+      where
+        emitIntermediateRectsE :: Events RectInputEvent -> FRP (Events (Maybe (Rect Double)))
+        emitIntermediateRectsE = fmap (fmap snd) . foldpE f (Nothing, Nothing)
+          where
+            f (BeginRect p1)   _             = (Just p1, Just (Rect_ p1 p1))
+            f (ContinueRect p2) (Just p1, _) = (Just p1, Just (Rect_ p1 p2))
+            f _ _ = (Nothing, Nothing)
+
+    mpsToRectInput :: P2 Double -> MouseEv -> RectInputEvent
+    mpsToRectInput pos MouseDown        = BeginRect pos
+    mpsToRectInput pos MouseUp          = EndRect pos
+    mpsToRectInput pos MouseOut         = AbortRect
+    mpsToRectInput pos _                = ContinueRect pos
+    -- mpsToRectInput pos MouseP
+
+    emittedAndIntermediateRectangles :: Signal MousePositionState -> FRP (Events (Rect Double), Signal (Maybe (Rect Double)))
+    emittedAndIntermediateRectangles bigTransparentMPS = do
+      let (mouseMove :: Events MousePositionState) = (updates bigTransparentMPS)
+      mouseMove2 <- withPreviousWith (\e1 e2 -> mpsToRectInput (mousePosition e2) (mouseState e2 `diff` mouseState e1)) mouseMove
+      finishedRects <- emitFinishedRects mouseMove2
+      intermediateRects <- emitIntermediateRects mouseMove2
+      pure (finishedRects, intermediateRects)
+
+
 
 #ifdef __GHCJS__
 {-
