@@ -404,7 +404,7 @@ r^.p2.y -- top
 @
 -}
 data Rect a = Rect_ { _p1 :: P2 a, _p2 :: P2 a }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor)
 
 rect :: a -> a -> a -> a -> Rect a
 rect x1 y1 x2 y2 = Rect_ (P (V2 x1 y1)) (P (V2 x2 y2))
@@ -457,7 +457,7 @@ transfToRect t = transformRect t (rect 0 0 1 1)
 A rectangle, represented as two points.
 -}
 data LineSeg a = LineSeg { _lp1 :: P1 a, _lp2 :: P1 a }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor)
 
 lineseg :: a -> a -> LineSeg a
 lineseg x1 x2 = LineSeg (P (V1 x1)) (P (V1 x2))

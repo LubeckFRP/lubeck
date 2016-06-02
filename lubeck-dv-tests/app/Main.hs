@@ -19,6 +19,7 @@ import Control.Concurrent(threadDelay)
 import Lubeck.DV hiding (strokeColor)
 import Lubeck.FRP
 import Lubeck.Str
+import Lubeck.Drawing.Transformation
 import Lubeck.Drawing hiding (text, addProperty)
 
 #ifdef __GHCJS__
@@ -392,11 +393,8 @@ dragRect activeS = do
 
     -- TODO test bad translation
   let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) (bigTransparentWithHandlers) activeS
-
   (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
-
-  subscribeEvent (updates intermediateRects) print
-
+  -- subscribeEvent (updates intermediateRects) print
   let (dragRectD :: Signal Drawing) = fmap dragRect intermediateRects
 
   pure $ (fmap (scaleX 1) $ overlay <> dragRectD, finishedRects)
@@ -442,6 +440,15 @@ rendRectAlts label = do
             ])
     mempty
   pure (mconcat [pure $ text (toJSString label), view], val)
+
+basicButton :: Str -> FRP (Signal Html, Events ())
+basicButton label = do
+  (view, val) <- componentSignal ()
+    (multiButtonWidget []
+            [ (toJSString label, ())
+            ])
+    mempty
+  pure (mconcat [pure $ text (toJSString label), view], updates val)
 #endif
 
 showCurrentValue :: Show a => (Signal Html, Signal a) -> (Signal Html, Signal a)
@@ -461,6 +468,29 @@ kSeries = zipWith (+)
   (concatMap (replicate 10) (fmap (* 10) [1..]))
 
 
+{-|
+Normalize a rectangle to represent a "positive" transformation (i.e. one that only performs positive scaling
+and translation to the left and upwards).
+-}
+normalizeRect :: Ord a => Rect a -> Rect a
+normalizeRect (Rect_ (P (V2 x1 y1)) (P (V2 x2 y2))) = Rect_ (P (V2 xL yL)) (P (V2 xU yU))
+  where
+    !xL = x1 `min` x2
+    !xU = x1 `max` x2
+    !yL = y1 `min` y2
+    !yU = y1 `max` y2
+
+
+foldpS_ :: (a -> b -> b) -> b -> Events a -> FRP (Signal b)
+foldpS_ f z s = accumS z (fmap f s)
+
+{-|
+Like foldpS, but allow destructively sending a new updated value.
+-}
+foldpSRestart :: (a -> b -> b) -> b -> Events a -> Events b -> FRP (Signal b)
+foldpSRestart f z u r = accumS z ((fmap f u) <> fmap (const) r)
+
+
 main :: IO ()
 main = do
 #ifdef __GHCJS__
@@ -471,14 +501,15 @@ main = do
 
   -- retainMain
   (rrV, rrS)          <- rendRectAlts "Rendering rectangle"
-  (asV, asS)          <- onOff "Auto-scale Y" False
-  (view0, zoomActive) <- onOff "Zoom active" False
-  (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X" 1
-  (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y" 1
-  (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X offset" 0
-  (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y offset" 0
-  let zoomXY = liftA4 (\x y xo yo -> rect xo yo (xo+x) (yo+y)) zoomX zoomY zoomXO zoomYO
-  let zoomV = mconcat [rrV, view0, asV, view1, view2, view1a, view2a]
+  (asV, asS)          <- onOff "Auto-scale Y" True
+  (view0, zoomActive) <- onOff "Zoom active" True
+  (resetV, resetE)    <- basicButton "Reset zoom"
+  (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X^2" 1
+  (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y^2" 1
+  (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X^1" 0
+  (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y^1" 0
+  let zoomXY = liftA4 (\x y xo yo -> rect xo yo ({-xo+-}x) ({-yo+-}y)) zoomX zoomY zoomXO zoomYO
+  let zoomV = mconcat [resetV, rrV, view0, asV, view1a, view2a, view1, view2]
 #else
   let zoomActive = pure True :: Signal Bool
   -- let zoomXY = pure $ V2 1 1
@@ -541,7 +572,25 @@ main = do
   -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
-  (dr, _) <- dragRect zoomActive
+  (dr, rectDraggedE) <- dragRect zoomActive
+
+
+  let (zoomDragInputs :: Events (Rect Double)) =
+        snapshotWith (\rr zr -> transformRect (recip $ scalingXY rr) zr) (current rrS) (normalizeRect <$> rectDraggedE)
+
+  {-
+  Consider the foo updates as a series of linear transformations, accumulate with (1 and (*))
+  -}
+  (compoundZoom :: Signal (T2 Double)) <- foldpSRestart (flip (*)) 1 (rectToTransf <$> zoomDragInputs) (1 <$ resetE)
+
+  subscribeEvent (fmap (($ "") . showFFloat (Just 2)) <$> transfToRect <$> updates compoundZoom) print
+  subscribeEvent resetE print
+
+  {-
+  TODO get a signal/event that yields the integral of all zoom transformation
+  Also add an event that resets it
+  -}
+
 
   (srds :: [SRDrawing]) <- mapM strictifyS $
   -- let (srds :: [SRDrawing]) =
