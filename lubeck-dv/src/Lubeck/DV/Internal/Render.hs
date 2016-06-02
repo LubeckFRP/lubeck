@@ -40,6 +40,7 @@ import Linear.V4
 
 import Lubeck.Str
 import Lubeck.Drawing
+import Lubeck.Drawing.Transformation
 import Lubeck.DV.Styling
 import qualified Lubeck.Drawing
 import Lubeck.DV.ColorPalette
@@ -85,17 +86,6 @@ getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRecta
     -- | Is a number within the normalized (UHQ) range?
     withinNormRange :: Double -> Bool
     withinNormRange x = 0 <= x && x <= 1
-
-{-
-Carries out transformation directly without filtering. This is usually not what we want.
--}
-getRenderingPositionT :: Styling -> Transformation Double
-getRenderingPositionT styling = (scalingXY $ styling^.renderingRectangle) <> (styling^.zoom)
-
-getRenderingPositionX :: Styling -> Double -> Double
-getRenderingPositionY :: Styling -> Double -> Double
-getRenderingPositionX st x = let (P (V2 x' _)) = transformPoint (getRenderingPositionT st) (P $ V2 x 0) in x'
-getRenderingPositionY st y = let (P (V2 _ y')) = transformPoint (getRenderingPositionT st) (P $ V2 0 y) in y'
 
 {-|
 Like getRenderingPositionD, but don't actually scale the image.
@@ -182,7 +172,8 @@ fillData (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = id
                 . fillColorA    (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style pProjX) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) $ addExtraPoints (p:ps)
+  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style pProjX)
+    $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) $ addExtraPoints (p:ps)
   where
     -- Because of projection (below!), ignore y value for 1st point
     pProjX :: P2 Double
@@ -205,7 +196,8 @@ areaData' _ [_]    = mempty
 areaData' (AreaData colorN) (p:ps) = do
   style <- ask
   let lineStyle = fillColorA (style^.linePlotFillColor.to (`getColorFromPalette` colorN))
-  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
+  return $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p)
+    $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
 
 -- | Draw a one-dimensional bar graph.
 --
@@ -288,8 +280,8 @@ ticks xTickList1 yTickList1 = do
   let drawBgY    = not $ isTransparent colBgY
 
   let xTicks = mconcat $ flip fmap xTickList $
-          \(pos,str) -> let pos2 = getRenderingPositionX style pos in if False then mempty else
-            translateX pos2 $ mconcat
+          \(pos,str) ->
+            maybe mempty translate (getRenderingPositionX style pos) $ mconcat
             [ mempty
             -- Text
             , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate (turn*xTickTurn) . textX style) $ str
@@ -300,8 +292,8 @@ ticks xTickList1 yTickList1 = do
                 strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
             ]
   let yTicks = mconcat $ flip fmap yTickList $
-          \(pos,str) -> let pos2 = getRenderingPositionY style pos in if False then mempty else
-            translateY pos2 $ mconcat
+          \(pos,str) ->
+            maybe mempty translate (getRenderingPositionY style pos) $ mconcat
             [ mempty
             -- Text
             , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate (turn*yTickTurn) . textY style) $ str
@@ -326,6 +318,22 @@ ticks xTickList1 yTickList1 = do
       , textSelectable    = All False
       }
     isTransparent color = abs (alphaChannel color) < 0.001
+
+    getRenderingPositionX, getRenderingPositionY :: Styling -> Double -> Maybe (V2 Double)
+    fooX styling = fmap (transformPoint (scalingXY $ styling^.renderingRectangle)) . filterPointOutsideUHQ . transformPoint (xComponent $ styling^.zoom)
+    fooY styling = fmap (transformPoint (scalingXY $ styling^.renderingRectangle)) . filterPointOutsideUHQ . transformPoint (yComponent $ styling^.zoom)
+    getRenderingPositionX st x = (.-. origin) <$> fooX st (P $ V2 x 0)
+    getRenderingPositionY st y = (.-. origin) <$> fooY st (P $ V2 0 y)
+
+    xComponent :: Num a => T2 a -> T2 a
+    xComponent = rectToTransf . (_bottom .~ 0) . (_top .~ 1) . transfToRect
+
+    yComponent :: Num a => T2 a -> T2 a
+    yComponent = rectToTransf . (_left .~ 0) . (_top .~ 1) . transfToRect
+
+    filterPointOutsideUHQ p@(P (V2 x y))
+      | (0 <= x && x <= 1) && (0 <= y && y <= 1) = Just p
+      | otherwise = Nothing
 
 -- | Draw X and Y axis.
 labeledAxis
