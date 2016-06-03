@@ -15,7 +15,7 @@
 module Main where
 
 import BasePrelude hiding ((|||), Signal, rotate)
-import Control.Lens(to, _1, _2, (.~), view)
+import Control.Lens(to, _1, _2, (.~), view, (^.))
 import Linear.Affine ((.+^))
 import Data.Colour (withOpacity)
 import Data.Colour.Names as Colors
@@ -342,26 +342,35 @@ data RectInputEvent
 {-|
 A drag overlay interface.
 
-Whenever the given bool signal is False, behaves like 'opts'.
+Whenever the given bool signal is False, the resulting signal behaves like the empty image (i.e. 'mempty').
 
-Otherwise, this displays an invisible drawing across the original image, that registers mouse events
-and displays feedback on drag events. Whenever a drag action is completed, the rectangle in which
-it was performed is sent.
+Whenever the given bool signal is True, this creates a in infinite transparent pane that absorbs mouse
+events from whatever objects may be drawn below it. Drag gestures are captured and drawn as a setupEmit
+transparent rectangle, to provide the user with feedback that a drag operation is taking place.
 
-Returns @(view, emitted rects, double clicks)@.
+The resulting events provide a double-click events and a rectangle that represents the starting
+and ending points of a complete drawing gesture. This is only emitted after the drawing gesture
+is completed.
+
+Note that in this rectangle @p2@ might be greater than @p1@, depending on the
+direction of the gesture. If you don't care about direction (i.e. when) drag is
+used for zoom, you can normalize the rectange with @normalizeRect@.
+
+Returns @(view, (completed) dragged rectangles, double clicks)@.
 -}
 dragRect  :: Maybe (Signal Double) -- display fixed X
           -> Maybe (Signal Double) -- display fixed Y
           -> Signal Bool
           -> FRP (Signal Drawing, Events (Rect Double), Events ())
 dragRect _ fixedY activeS = do
+
   ( bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState, bigTransparentME :: Events MouseEv )
           <- withMousePositionStateNR (pure bigTransparent)
 
     -- TODO test bad translation
   let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) (bigTransparentWithHandlers) activeS
   (finishedRects, intermediateRects) <- emittedAndIntermediateRectangles bigTransparentMPS
-  -- subscribeEvent (updates intermediateRects) print
+
   let (dragRectD :: Signal Drawing) = fmap dragRectPrim (case fixedY of
           Just fixedY' -> liftA2 (\x -> fmap (setYBounds 0 x)) fixedY' intermediateRects
           Nothing -> intermediateRects
@@ -369,12 +378,23 @@ dragRect _ fixedY activeS = do
 
   pure $
           ( fmap (scaleX 1) $ overlay <> dragRectD
-          , finishedRects
-          , scatter $ getDoubleClicks <$> bigTransparentME
+          , filterJust $ ignoreSmallishRectangles <$> finishedRects
+          , filterJust $ getDoubleClicks          <$> bigTransparentME
           )
   where
+    getDoubleClicks :: MouseEv -> Maybe ()
     getDoubleClicks MouseDoubleClick = Just ()
     getDoubleClicks _                = Nothing
+
+    {-|
+    This is necessary to prevent double clicks from being percieved as very small zoom requests.
+    -}
+    ignoreSmallishRectangles :: Rect Double -> Maybe (Rect Double)
+    ignoreSmallishRectangles r
+      | abs (width r) > 5 && abs (height r) > 5 = Just r
+      | otherwise                               = Nothing
+    width r  = r^._right - r^._left
+    height r = r^._top - r^._bottom
 
     setYBounds :: Double -> Double -> Rect Double -> Rect Double
     setYBounds y1 y2 rect = _top .~ y2 $ _bottom .~ y1 $ rect
