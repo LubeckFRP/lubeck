@@ -2,7 +2,15 @@
 {-# LANGUAGE OverloadedStrings, NoImplicitPrelude, ScopedTypeVariables, TypeFamilies
   , FlexibleContexts, BangPatterns, NamedFieldPuns, CPP #-}
 
--- {-# GHC_OPTIONS -ddump-simpl #-}
+{-# OPTIONS_GHC
+  -fwarn-incomplete-patterns
+  -fno-warn-name-shadowing
+  -fno-warn-unused-binds
+  -fno-warn-unused-matches
+  -fno-warn-unused-imports
+  -fno-warn-type-defaults
+  -fno-warn-missing-signatures
+  #-}
 
 module Main where
 
@@ -50,17 +58,18 @@ debugHandlers = False
 -- Easiest would be to just use movementX!
 
 #ifdef __GHCJS__
-onE e n = VirtualDom.on n . contramapS e
-  where
-    contramapS f k x = k (f x)
 
-mouseover  = onE Event "mouseover"
-mouseout   = onE Event "mouseout"
--- Note: use over/out rather than enter/leave!
-mouseenter = onE Event "mouseenter"
-mouseleave = onE Event "mouseleave"
-mouseup    = onE Event "mouseup"
-mousedown  = onE Event "mousedown"
+-- onE e n = VirtualDom.on n . contramapS e
+--   where
+--     contramapS f k x = k (f x)
+--
+-- mouseover  = onE Event "mouseover"
+-- mouseout   = onE Event "mouseout"
+-- -- Note: use over/out rather than enter/leave!
+-- mouseenter = onE Event "mouseenter"
+-- mouseleave = onE Event "mouseleave"
+-- mouseup    = onE Event "mouseup"
+-- mousedown  = onE Event "mousedown"
 -- mousemove = onE Event "mousemove"
 
 
@@ -147,6 +156,7 @@ data MouseEv
   | MouseOver
   | MouseOut
   | MouseMovedInside -- TODO should we have this?
+  | MouseDoubleClick
   deriving (Enum, Eq, Ord, Show, Read)
 
 instance Monoid MouseEv where
@@ -176,9 +186,11 @@ instance Diffable MouseState where
   -- If mouse goes while button is still pressed, release
   patch (MouseState inside down) MouseOut  = MouseState False  False
 
-  -- If the mosue is moved, we must be inside
+  -- If the mouse is moved, we must be inside
   patch (MouseState inside down) MouseMovedInside = MouseState True   down
 
+  -- Double clicks events need not affect state, as they are always
+  -- sent in conjunction with up/down events.
   patch x _ = x
 
 
@@ -208,7 +220,7 @@ Most general way of creating a drawing with mosue interaction.
 Mouse position is relative to the entire drawing area (TODO currently assumes origin is in TL corner).
 Only event handlers sent to the given drawing a are processed (i.e. transparent areas are ignored).
 -}
-withMousePositionState :: (Signal MousePositionState -> Signal Drawing) -> FRP (Signal Drawing, Signal MousePositionState)
+withMousePositionState :: (Signal MousePositionState -> Signal Drawing) -> FRP (Signal Drawing, Signal MousePositionState, Events MouseEv)
 withMousePositionState drawingF = do
   (mouseS, mouseE :: Events MouseEv) <- newEvent
   (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
@@ -225,35 +237,19 @@ withMousePositionState drawingF = do
                            . addHandler "mouseup"   (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseUp)
                            . addHandler "mousedown" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseDown)
                            . addHandler "mousemove" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseMovedInside)
+                           . addHandler "dblclick"  (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e))  >> mouseS MouseDoubleClick)
                            ) drawingF
-  pure $ (dWithHandlers posState, posState)
+  pure $ (dWithHandlers posState, posState, mouseE)
 
 
 {-
 Like withMousePositionState, optimized for non-recursive case.
 -}
-withMousePositionStateNR :: Signal Drawing -> FRP (Signal Drawing, Signal MousePositionState)
-withMousePositionStateNR drawingF = do
-  (mouseS, mouseE :: Events MouseEv) <- newEvent
-  (state :: Signal MouseState) <- accumS mempty (fmap (flip patch) mouseE)
-
-  (mousePosS2, mousePosE :: Events (P2 Double)) <- newEvent
-  let mousePosS = contramapSink compensatePosition' mousePosS2
-  (pos :: Signal (P2 Double)) <- stepperS (P $ V2 0 0) (mousePosE)
-
-  let (posState :: Signal MousePositionState) = liftA2 MousePositionState pos state
-  let (dWithHandlers :: Signal Drawing) = fmap
-                           ( id
-                           . addHandler "mouseover" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOver)
-                           . addHandler "mouseout"  (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseOut)
-                           . addHandler "mouseup"   (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseUp)
-                           . addHandler "mousedown" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseDown)
-                           . addHandler "mousemove" (\ev -> let e = Event ev in mousePosS (P $ V2 (offsetX e) (offsetY e)) >> mouseS MouseMovedInside)
-                           ) drawingF
-  pure $ (dWithHandlers, posState)
+withMousePositionStateNR :: Signal Drawing -> FRP (Signal Drawing, Signal MousePositionState, Events MouseEv)
+withMousePositionStateNR drawing = withMousePositionState (const drawing)
 
 withMouseState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState)
-withMouseState d = fmap (second $ fmap mouseState) $ withMousePositionState (d . fmap mouseState)
+withMouseState d = fmap ((second $ fmap mouseState) . (\(a,b,c) -> (a,b))) $ withMousePositionState (d . fmap mouseState)
 
 {-|
 Like MouseState, but include position.
@@ -351,13 +347,16 @@ Whenever the given bool signal is False, behaves like 'opts'.
 Otherwise, this displays an invisible drawing across the original image, that registers mouse events
 and displays feedback on drag events. Whenever a drag action is completed, the rectangle in which
 it was performed is sent.
+
+Returns @(view, emitted rects, double clicks)@.
 -}
 dragRect  :: Maybe (Signal Double) -- display fixed X
           -> Maybe (Signal Double) -- display fixed Y
           -> Signal Bool
-          -> FRP (Signal Drawing, Events (Rect Double))
+          -> FRP (Signal Drawing, Events (Rect Double), Events ())
 dragRect _ fixedY activeS = do
-  (bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState) <- withMousePositionStateNR (pure bigTransparent)
+  ( bigTransparentWithHandlers, bigTransparentMPS :: Signal MousePositionState, bigTransparentME :: Events MouseEv )
+          <- withMousePositionStateNR (pure bigTransparent)
 
     -- TODO test bad translation
   let overlay :: Signal Drawing = liftA2 (\bt s -> if s then bt else mempty) (bigTransparentWithHandlers) activeS
@@ -368,9 +367,15 @@ dragRect _ fixedY activeS = do
           Nothing -> intermediateRects
           )
 
-  pure $ (fmap (scaleX 1) $ overlay <> dragRectD, finishedRects)
-
+  pure $
+          ( fmap (scaleX 1) $ overlay <> dragRectD
+          , finishedRects
+          , scatter $ getDoubleClicks <$> bigTransparentME
+          )
   where
+    getDoubleClicks MouseDoubleClick = Just ()
+    getDoubleClicks _                = Nothing
+
     setYBounds :: Double -> Double -> Rect Double -> Rect Double
     setYBounds y1 y2 rect = _top .~ y2 $ _bottom .~ y1 $ rect
 
@@ -586,8 +591,7 @@ main = do
   -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
 
-  (dr, rectDraggedE) <- dragRect Nothing (Just $ view _y <$> rrS) zoomActive
-
+  (dr, rectDraggedE, clickResetE) <- dragRect Nothing (Just $ view _y <$> rrS) zoomActive
 
   let (zoomDragInputs :: Events (Rect Double)) =
         snapshotWith (\rr zr -> transformRect (recip $ scalingXY rr) zr) (current rrS) (normalizeRect <$> rectDraggedE)
@@ -595,7 +599,7 @@ main = do
   {-
   Consider the foo updates as a series of linear transformations, accumulate with (1 and (*))
   -}
-  (compoundZoom :: Signal (T2 Double)) <- foldpSRestart (flip (*)) 1 (rectToTransf <$> zoomDragInputs) (1 <$ resetE)
+  (compoundZoom :: Signal (T2 Double)) <- foldpSRestart (flip (*)) 1 (rectToTransf <$> zoomDragInputs) (1 <$ (resetE <> clickResetE))
   -- Tie the knot!
   subscribeEvent (transfToRect <$> updates compoundZoom) rectU
 
