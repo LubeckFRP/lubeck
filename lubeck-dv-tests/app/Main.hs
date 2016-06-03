@@ -391,10 +391,11 @@ dragRect _ fixedY activeS = do
     -}
     ignoreSmallishRectangles :: Rect Double -> Maybe (Rect Double)
     ignoreSmallishRectangles r
-      | abs (width r) > 5 && abs (height r) > 5 = Just r
-      | otherwise                               = Nothing
-    width r  = r^._right - r^._left
-    height r = r^._top - r^._bottom
+      | area r > 12 = Just r
+      | otherwise   = Nothing
+    area r = width r * height r
+    width r  = abs $ r^._right - r^._left
+    height r = abs $ r^._top - r^._bottom
 
     setYBounds :: Double -> Double -> Rect Double -> Rect Double
     setYBounds y1 y2 rect = _top .~ y2 $ _bottom .~ y1 $ rect
@@ -548,7 +549,8 @@ main = do
   (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X^2" 1 (view _right  <$> rectE)
   (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y^2" 1 (view _top    <$> rectE)
   let (zoomXY :: Signal (Rect Double)) = liftA4 (\x y xo yo -> rect xo yo ({-xo+-}x) ({-yo+-}y)) zoomX zoomY zoomXO zoomYO
-  let zoomV = mconcat [resetV, rrV, view0, asV, view1a, view2a, view1, view2]
+  -- let zoomV = mconcat [resetV, rrV, view0, asV, view1a, view2a, view1, view2]
+  let zoomV = mempty
 #else
   let zoomActive = pure True :: Signal Bool
   -- let zoomXY = pure $ V2 1 1
