@@ -7,7 +7,8 @@ import Control.Monad.Random.Class
 import Lubeck.Drawing
 import Data.Colour.Names as C
 import GHCJS.Types(JSString)
-import Web.VirtualDom(nodeWithOptionsSVG, attribute)
+-- import Web.VirtualDom(nodeWithOptionsSVG, attribute)
+import Web.VirtualDom(attribute)
 import Web.Benchmark (SuiteM, add, addWithPrepare, run, onCycle, onComplete, liftIO, name, hz, benchmarks)
 
 twice k = k >> k
@@ -61,30 +62,30 @@ main = run $ do
 
 
 benchVD = do
-  add "nodeWithOptionsSVG single SVG node" $ do
-    let !x = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] []
-    return ()
-
-  add "nodeWithOptionsSVG 10 SVG nodes" $ do
-    let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] []
-    let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10 n1)
-    return ()
-
-  add "nodeWithOptionsSVG single SVG node, 1 attr" $ do
-    let !a = attribute "foo" "bar"
-    let !x = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [a] []
-    return ()
-
-  add "nodeWithOptionsSVG 10 SVG nodes, 1 attr" $ do
-    let !a = attribute "foo" "bar"
-    let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [a] []
-    let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10 n1)
-    return ()
-
-  add "nodeWithOptionsSVG 10,000 SVG nodes, 5 attr" $ do
-    let !a = attribute "foo" "bar"
-    let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" (replicate 5 a) []
-    let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10000 n1)
+  -- add "nodeWithOptionsSVG single SVG node" $ do
+  --   let !x = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] []
+  --   return ()
+  --
+  -- add "nodeWithOptionsSVG 10 SVG nodes" $ do
+  --   let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] []
+  --   let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10 n1)
+  --   return ()
+  --
+  -- add "nodeWithOptionsSVG single SVG node, 1 attr" $ do
+  --   let !a = attribute "foo" "bar"
+  --   let !x = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [a] []
+  --   return ()
+  --
+  -- add "nodeWithOptionsSVG 10 SVG nodes, 1 attr" $ do
+  --   let !a = attribute "foo" "bar"
+  --   let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [a] []
+  --   let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10 n1)
+  --   return ()
+  --
+  -- add "nodeWithOptionsSVG 10,000 SVG nodes, 5 attr" $ do
+  --   let !a = attribute "foo" "bar"
+  --   let !n1 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" (replicate 5 a) []
+  --   let !n2 = nodeWithOptionsSVG "http://www.w3.org/2000/svg" "g" [] (replicate 10000 n1)
     return ()
 
 {-|
