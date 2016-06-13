@@ -478,9 +478,10 @@ joinE eea = E $ \aSink -> do
 joinS :: Signal (Signal a) -> Signal a
 joinS (S (esa, bsa)) = S (ea, ba)
   where
-    ba = join (fmap current bsa)
-    -- when does updates happen?
-    ea = E $ \currentInnerUpdated -> do
+    -- What is the current value?
+    (ba {- Behavior a -}) = join (fmap current bsa)
+    -- When does updates happen?
+    (ea :: Events ()) = E $ \currentInnerUpdated -> do
       unsubInner <- newVar doNothing
       unsubTop <- subscribeEvent esa $ \() -> do
                 join $ readVar unsubInner                         -- Unsubscribe previous inner
