@@ -4,13 +4,13 @@
 module Main.HashSvg where
 
 import BasePrelude
+
 import qualified System.Process as S
--- import Control.Exception(try, SomeException)
 import NeatInterpolation (string)
 import System.IO.Temp(withSystemTempDirectory, withSystemTempFile)
 import Crypto.Hash(hashlazy, SHA256, Digest)
 import qualified Data.ByteString.Lazy as LB
--- import System.Directory(createDirectoryIfMissing)
+import Data.Aeson as A
 
 
 -- Map String (FilePath -> IO (), FilePath -> IO String)
@@ -18,17 +18,19 @@ import qualified Data.ByteString.Lazy as LB
 
 -- | Name of a test image
 type Name = String
+
 -- | Test image represented as an SVG string.
 type SvgString = String
 
-
-{-| Hash and store the given image set. Always succeeds.
+{-|
+Hash and store the given image set. Always succeeds.
 The given file path should be commited intothe repo to allow other developers/tests to call compareHashes.
 -}
 updateHashes :: FilePath -> Map Name SvgString -> IO ()
 updateHashes = undefined
 
-{-| Assure given image set is the same as the last call to updateHashes on this machine.
+{-|
+Assure given image set is the same as the last call to updateHashes on this machine.
 Assumes that somebody called updateHashes on this machine (or commited the result on a different machine).
 -}
 compareHashes :: FilePath -> Map Name SvgString -> IO ()

@@ -4,11 +4,13 @@
   , NoMonomorphismRestriction
   , MultiParamTypeClasses
   , FunctionalDependencies
+  , ScopedTypeVariables
   , GeneralizedNewtypeDeriving
   , OverloadedStrings
   , TupleSections
   , FlexibleContexts
   , NoImplicitPrelude
+  , BangPatterns
   , QuasiQuotes
   #-}
 
@@ -26,26 +28,218 @@ import Linear.Affine (Point(..))
 import Linear.V1 (V1(..), _x)
 import Linear.V2 (V2(..), _y)
 import NeatInterpolation(string)
-
 import qualified Data.Char
 import qualified Data.List
+import Data.Map(Map)
+import qualified Data.Map
 import qualified Data.Colour.Names as Colors
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
-
-import qualified Lubeck.Drawing
 import Lubeck.DV
+import qualified Lubeck.Drawing
+import qualified Lubeck.DV.Styling
 
--- import Main.Generated.Hashes
--- import Main.HashSvg (rasterizeAndHashSvgFile)
--- import Foo
+-- TODO HashSVG
+import qualified System.Process as S
+import NeatInterpolation (string)
+import System.Directory(createDirectoryIfMissing)
+import System.IO.Temp(withSystemTempDirectory, withSystemTempFile)
+import Crypto.Hash(hashlazy, SHA256, Digest)
+import qualified Data.ByteString.Lazy as LB
+import Data.Aeson as A
+-- TODO end HashSVG
 
 
-visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
-visualizeTest dat geom aess = exportTestDrawing mempty mempty
+
+-- TODO HashSvg
+
+-- Map String (FilePath -> IO (), FilePath -> IO String)
+-- IO FilePath
+
+-- | Name of a test image
+type ImageName = String
+
+-- | Test image represented as an SVG string.
+type SvgString = String
+
+{-|
+Hash and store the given image set. Always succeeds.
+The given file path should be commited intothe repo to allow other developers/tests to call compareHashes.
+-}
+updateHashes :: FilePath -> Map ImageName SvgString -> IO ()
+updateHashes = undefined
+
+{-|
+Assure given image set is the same as the last call to updateHashes on this machine.
+Assumes that somebody called updateHashes on this machine (or commited the result on a different machine).
+-}
+compareHashes :: FilePath -> Map ImageName SvgString -> IO ()
+compareHashes = undefined
+
+{-
+Compute the hash of the given SVG string by rasterizing it and hashing the result.
+
+Yields identical hashes for images that look the same, but doesn't necessarily
+have the same internal SVG structure.
+
+Requires PhantomJS 2.1.1. The phantomjs binary must in the path, so that
+@phantomjs --version@ prints @2.1.1@.
+
+This a pure function from the file semantics of the file contents to the result.
+IO is for exception handling when invoking PhantomJS.
+-}
+rasterizeAndHashSvgString :: String -> IO String
+rasterizeAndHashSvgString contents = withSystemTempFile "" $ \filePath _ -> do
+  writeFile filePath contents
+  rasterizeAndHashSvgFile filePath
+
+{-
+Compute the hash of an SVG file by rasterizing it and hashing the result.
+
+Yields identical hashes for images that look the same, but doesn't necessarily
+have the same internal SVG structure.
+
+Requires PhantomJS 2.1.1. The phantomjs binary must in the path, so that
+@phantomjs --version@ prints @2.1.1@.
+
+This a pure function from the file semantics of the file contents to the result.
+IO is for file input exception handling when invoking PhantomJS.
+-}
+rasterizeAndHashSvgFile :: FilePath -> IO String
+rasterizeAndHashSvgFile path = do
+  hasCorrectPhantomVersion_ <- hasCorrectPhantomVersion
+  if not hasCorrectPhantomVersion_
+    then error "Requires phantom 2.1.1"
+    else do
+      runPhantomHashResult path
+  where
+    -- Assumes hasCorrectPhantomVersion, returns hash
+    runPhantomHashResult :: FilePath -> IO String
+    runPhantomHashResult svgFilePath = withSystemTempDirectory "" $ \dir -> do
+      -- phantomjs rasterize.js http://ariya.github.io/svg/tiger.svg tiger.png
+      let rasterizeJsPath = dir <> "/rasterize.js"
+      let outPath = dir <> "/out.png"
+      -- print rasterizeJsPath
+      -- print outPath
+      writeFile rasterizeJsPath rasterizeJsSrc
+      -- S.readProcess "cat" [rasterizeJsPath] "" >>= putStrLn
+      _ <- S.readProcess "phantomjs" [rasterizeJsPath, svgFilePath, outPath] ""
+      outLb <- LB.readFile outPath
+      let (dig :: Digest SHA256) = hashlazy outLb
+      return $ show dig
+      -- return "asjhdshj"
+
+    hasCorrectPhantomVersion :: IO Bool
+    hasCorrectPhantomVersion = do
+      res <- try $ S.readProcess "phantomjs" ["--version"] ""
+      case res of
+        Left e -> const (return False) (e :: SomeException)
+        Right res1 -> return $ res1 == "2.1.1\n"
+
+
+    rasterizeJsSrc :: String
+    rasterizeJsSrc =
+      [string|
+        "use strict";
+          var page = require('webpage').create(),
+              system = require('system'),
+              address, output, size, pageWidth, pageHeight;
+
+          if (system.args.length < 3 || system.args.length > 5) {
+              console.log('Usage: rasterize.js URL filename [paperwidth*paperheight|paperformat] [zoom]');
+              console.log('  paper (pdf output) examples: "5in*7.5in", "10cm*20cm", "A4", "Letter"');
+              console.log('  image (png/jpg output) examples: "1920px" entire page, window width 1920px');
+              console.log('                                   "800px*600px" window, clipped to 800x600');
+              phantom.exit(1);
+          } else {
+              address = system.args[1];
+              output = system.args[2];
+              page.viewportSize = { width: 600, height: 600 };
+              if (system.args.length > 3 && system.args[2].substr(-4) === ".pdf") {
+                  size = system.args[3].split('*');
+                  page.paperSize = size.length === 2 ? { width: size[0], height: size[1], margin: '0px' }
+                                                     : { format: system.args[3], orientation: 'portrait', margin: '1cm' };
+              } else if (system.args.length > 3 && system.args[3].substr(-2) === "px") {
+                  size = system.args[3].split('*');
+                  if (size.length === 2) {
+                      pageWidth = parseInt(size[0], 10);
+                      pageHeight = parseInt(size[1], 10);
+                      page.viewportSize = { width: pageWidth, height: pageHeight };
+                      page.clipRect = { top: 0, left: 0, width: pageWidth, height: pageHeight };
+                  } else {
+                      console.log("size:", system.args[3]);
+                      pageWidth = parseInt(system.args[3], 10);
+                      pageHeight = parseInt(pageWidth * 3/4, 10); // it's as good an assumption as any
+                      console.log ("pageHeight:",pageHeight);
+                      page.viewportSize = { width: pageWidth, height: pageHeight };
+                  }
+              }
+              if (system.args.length > 4) {
+                  page.zoomFactor = system.args[4];
+              }
+              page.open(address, function (status) {
+                  if (status !== 'success') {
+                      console.log('Unable to load the address!');
+                      phantom.exit(1);
+                  } else {
+                      window.setTimeout(function () {
+                          page.render(output);
+                          phantom.exit();
+                      }, 200);
+                  }
+              });
+          }
+      |]
+
+
+
+
+
+drawingToSvgString :: RenderingOptions -> Styling -> Styled Drawing -> Str
+drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
+
+visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> Str
+visualizeTest dat geom aess = drawingToSvgString mempty mempty
   $ drawPlot
   $ plot dat aess geom
+
+
+{-
+Test a single image
+-}
+data DrawingTest = DrawingTest
+  { dt_name      :: !String
+  , dt_comment   :: !String
+  , dt_svgString :: !String }
+
+-- Return a map from name to SVG strings, iff the batch has no duplicate names.
+testBatchToMap :: [DrawingTest] -> Maybe (Map String String)
+testBatchToMap tests
+  | hasDuplicates $ fmap dt_name tests = Nothing
+  | otherwise                          = Just $ Data.Map.fromList
+                                          $ fmap (\x -> (dt_name x, dt_svgString x)) tests
+  where
+    hasDuplicates xs = length (nub xs) /= length xs
+
+renderDrawingTestsToDir :: FilePath -> [DrawingTest] -> IO ()
+renderDrawingTestsToDir dir tests = case testBatchToMap tests of
+  Nothing -> error "renderDrawingTestsToFile: Duplicate names"
+  Just nameToSvgStrMap -> do
+    createDirectoryIfMissing True dir
+    for_ (Data.Map.toList nameToSvgStrMap) $ \(name, svgStr) ->
+      writeFile (dir <> "/" <> name <> ".svg") svgStr
+
+updateHashesDTs :: FilePath -> [DrawingTest] -> IO ()
+updateHashesDTs path tests = case testBatchToMap tests of
+  Nothing -> error "updateHashesDTs: Duplicate names"
+  Just nameToSvgStrMap -> updateHashes path nameToSvgStrMap
+
+compareHashesDTs :: FilePath -> [DrawingTest] -> IO ()
+compareHashesDTs path tests = case testBatchToMap tests of
+  Nothing -> error "compareHashesDTs: Duplicate names"
+  Just nameToSvgStrMap -> updateHashes path nameToSvgStrMap
+
 
 
 -- TEST
@@ -78,9 +272,6 @@ test0 = visualizeTest likeCounts fill
   , y     <~ count
   , color <~ likeType
   ]
-
-
-
 
 
 newtype Name = Name String deriving (Eq, Ord, Show, IsString)
@@ -129,25 +320,29 @@ people = (males `cr` [Male]) <> (females `cr` [Female])
   where
     cr = crossWith (\p gender -> P2 (p^.name) (p^.age) (p^.height) gender)
 
-test = visualizeTest people (mconcat [pointG, line, fill])
+test = DrawingTest "test1" "" $ unpackStr
+  $ visualizeTest people (mconcat [pointG, line, fill])
   [ mempty
   , color <~ gender
   -- , shape <~ gender
   , x     <~ name
   , y     <~ age `withScale` linear
   ]
-test2 = visualizeTest ([(1,2), (3,4)] :: [(Int, Int)]) line
+test2 = DrawingTest "test2" "" $ unpackStr
+  $ visualizeTest ([(1,2), (3,4)] :: [(Int, Int)]) line
   [ mempty
   , x <~ _1
   , y <~ to snd
   ]
-test3 = visualizeTest ( [ ] :: [(UTCTime, Int)]) line
+test3 = DrawingTest "test3" "" $ unpackStr
+  $ visualizeTest ( [ ] :: [(UTCTime, Int)]) line
   [ mempty
   , x <~ to fst
   , y <~ to snd
   ]
 
-test4 = visualizeTest ("hello world" :: String) pointG [x <~ id, y <~ id]
+test4 = DrawingTest "test4" "" $ unpackStr
+  $ visualizeTest ("hello world" :: String) pointG [x <~ id, y <~ id]
 
 
 
@@ -165,11 +360,12 @@ instance Show WD where
 instance HasScale WD where
   scale = const categoricalEnum
 
-test5 = visualizeTest [(Mon, 100 :: Int), (Sun, 400)] line [x <~ to fst, y <~ to snd]
+test5 = DrawingTest "test5" "" $ unpackStr
+  $ visualizeTest [(Mon, 100 :: Int), (Sun, 400)] line [x <~ to fst, y <~ to snd]
 
 
-test6 = do
-  visualizeTest dat geom aes
+test6 = DrawingTest "test6" "" $ unpackStr
+  $ visualizeTest dat geom aes
  where
   dat =
     [ (Mon,   10)
@@ -185,7 +381,8 @@ test6 = do
     ]
   geom = mconcat [pointG, line, fill]
 
-test7 = visualizeTest dat (mconcat [pointG, line, fill])
+test7 = DrawingTest "test7" "" $ unpackStr
+  $ visualizeTest dat (mconcat [pointG, line, fill])
   [ mempty
   , x     <~ to (\(x,_,_) -> x)
   , y     <~ to (\(_,x,_) -> x)
@@ -212,7 +409,8 @@ test7 = visualizeTest dat (mconcat [pointG, line, fill])
 
 -- Version I: Cross with True/False and plot 2 overlapping lines/areas
 -- FIXME not working
-test8a = visualizeTest dat2 (mconcat [line, fill])
+test8a = DrawingTest "test8a" "" $ unpackStr
+  $ visualizeTest dat2 (mconcat [line, fill])
   [ x     <~ _1
   , y     <~ _2
   , color <~ _3
@@ -227,7 +425,8 @@ test8a = visualizeTest dat2 (mconcat [line, fill])
      , (4, 16, 1) :: (Int, Int, Int)
      ]
 -- Version II: Cross with True/False use area plot with bound aesthetic (lower/upper)
-test8b = visualizeTest dat2 (mconcat [area2])
+test8b = DrawingTest "test8b" "" $ unpackStr
+  $ visualizeTest dat2 (mconcat [area2])
   [ x     <~ _1
   , y     <~ _2
   , bound <~ _3
@@ -244,7 +443,8 @@ test8b = visualizeTest dat2 (mconcat [area2])
      ]
 -- Version III: Use are a plot with "two y values" (questionable).
 -- Note that y and yMin needs to have the same bounds for this to work (here [1..16])
-test8c = visualizeTest dat (mconcat [area])
+test8c = DrawingTest "test8c" "" $ unpackStr
+  $ visualizeTest dat (mconcat [area])
   [ x    <~ _1
   , yMin <~ _2
   , y    <~ _3
@@ -259,7 +459,8 @@ test8c = visualizeTest dat (mconcat [area])
      ]
 
 -- Cross-lines
-test9 = visualizeTest dat (mconcat [pointG, xIntercept, yIntercept])
+test9 = DrawingTest "test9" "" $ unpackStr
+  $ visualizeTest dat (mconcat [pointG, xIntercept, yIntercept])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , crossLineX <~ _3
@@ -272,7 +473,8 @@ test9 = visualizeTest dat (mconcat [pointG, xIntercept, yIntercept])
       [True,False,False,True] [False,False,True,True]
 
 -- Labels and custom images
-test10 = visualizeTest dat (mconcat [labelG, pointG, imageG])
+test10 = DrawingTest "test10" "" $ unpackStr
+  $ visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (("value is "<>). toStr) label <~ _1
@@ -288,7 +490,8 @@ test10 = visualizeTest dat (mconcat [labelG, pointG, imageG])
       [1..4] [1..4]
 
 -- Custom image.
-test11 = visualizeTest dat (mconcat [labelG, pointG, imageG])
+test11 = DrawingTest "test1§1" "" $ unpackStr
+  $ visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (const customDr) image <~ _2
@@ -303,7 +506,8 @@ test11 = visualizeTest dat (mconcat [labelG, pointG, imageG])
       [1..4] [1..4]
 
 -- Custom image with size.
-test12 = visualizeTest dat (mconcat [labelG, pointG, imageG])
+test12 = DrawingTest "test12" "" $ unpackStr
+  $ visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , size <~ _1
@@ -319,7 +523,8 @@ test12 = visualizeTest dat (mconcat [labelG, pointG, imageG])
       [1..4] [1..4]
 
 -- Custom image with size (linearly transformed).
-test13 = visualizeTest dat (mconcat [labelG, pointG, imageG])
+test13 = DrawingTest "test13" "" $ unpackStr
+  $ visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (\x -> -1*x + 1) size <~ _1
@@ -335,7 +540,8 @@ test13 = visualizeTest dat (mconcat [labelG, pointG, imageG])
       [1..4] [1..4]
 
 -- Custom image with size (linearly transformed).
-test14 = visualizeTest dat (mconcat [labelG, pointG, imageG])
+test14 = DrawingTest "test14" "" $ unpackStr
+  $ visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
   , contramap (\x -> -1*x + 1) size <~ _1
@@ -364,9 +570,14 @@ test14 = visualizeTest dat (mconcat [labelG, pointG, imageG])
 
       |]
 
+
+-- Note: no test15-19
+
+
 -- Multiple plots composed
 
-test20 = exportTestDrawing mempty mempty $ drawPlot $
+test20 = DrawingTest "test20" "" $ unpackStr
+  $ drawingToSvgString mempty mempty $ drawPlot $
   plot (zip "hans" "sven" :: [(Char,Char)]) [x<~_1,y<~_2] pointG
     <>
   plot (zip "hans" "svfn" :: [(Char,Char)]) [x<~_1,y<~_2] line
@@ -375,7 +586,8 @@ test20 = exportTestDrawing mempty mempty $ drawPlot $
 {-
   Same type/scale.
 -}
-test21 = exportTestDrawing mempty mempty $ drawPlot $
+test21 = DrawingTest "test21" "" $ unpackStr
+  $ drawingToSvgString mempty mempty $ drawPlot $
   plot (zip
     ([1..10] :: [Int])
     ([2,5,1,2,5,-6,7,2,3,9] :: [Int])
@@ -393,7 +605,8 @@ test21 = exportTestDrawing mempty mempty $ drawPlot $
 {-
   Different Y scales
 -}
-test22 = exportTestDrawing mempty mempty $ drawPlot $
+test22 = DrawingTest "test22" "" $ unpackStr
+  $ drawingToSvgString mempty mempty $ drawPlot $
   plot (zip
     ([1..10] :: [Int])
     ([0,1,5,5,4,3,4,4,4,3] :: [Int])
@@ -411,7 +624,8 @@ test22 = exportTestDrawing mempty mempty $ drawPlot $
 {-
   Different X scales
 -}
-test23 = exportTestDrawing mempty mempty $ drawPlot $
+test23 = DrawingTest "test23" "" $ unpackStr
+  $ drawingToSvgString mempty mempty $ drawPlot $
   plot (zip
     ([1..10] :: [Int])
     ([0,1,5,5,4,3,4,4,4,3] :: [Int])
@@ -428,7 +642,8 @@ test23 = exportTestDrawing mempty mempty $ drawPlot $
 {-
   Same type/scale.
 -}
-test24 = exportTestDrawing mempty mempty $ drawPlot $ mconcat $ zipWith putTogether geoms dat
+test24 = DrawingTest "test24" "" $ unpackStr
+  $ drawingToSvgString mempty mempty $ drawPlot $ mconcat $ zipWith putTogether geoms dat
   where
     putTogether = \geom dat -> plot (zip [1..10::Int] dat) [x<~_1,y<~_2] geom
     geoms = [pointG, line, fill, pointG <> line]
@@ -442,7 +657,8 @@ test24 = exportTestDrawing mempty mempty $ drawPlot $ mconcat $ zipWith putToget
 {-
   Bar plot.
 -}
-test25 = exportTestDrawing mempty mempty $ drawPlot $
+test25 = DrawingTest "test25" "" $ unpackStr
+  $ drawingToSvgString mempty mempty $ drawPlot $
   plot (zip chars freq) [x <~ _1, y <~ _2] bars
   where
     chars :: [Char]
@@ -466,7 +682,8 @@ test25 = exportTestDrawing mempty mempty $ drawPlot $
 {-
   Bar plot (horizontal).
 -}
-test26 = exportTestDrawing mempty (barPlotOrientation .~ Horizontal $ mempty) $ drawPlot $
+test26 = DrawingTest "test26" "" $ unpackStr
+  $ drawingToSvgString mempty (barPlotOrientation .~ Horizontal $ mempty) $ drawPlot $
   plot (zip chars freq) [x <~ _1, y <~ _2] bars
   where
     chars :: [Char]
@@ -488,7 +705,8 @@ test26 = exportTestDrawing mempty (barPlotOrientation .~ Horizontal $ mempty) $ 
 
 
 -- TODO test30 and test31 should be the same
-test30 = exportTestDrawing
+test30 = DrawingTest "test30" "" $ unpackStr
+  $ drawingToSvgString
   -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
   -- (renderingRectangle .~ V2 800 500 $ mempty)
   mempty
@@ -501,7 +719,8 @@ test30 = exportTestDrawing
   where
     dat = [ [x,cos x,sin x :: Double] | x <- [0,0.1..pi*2] ]
 
-test31 = exportTestDrawing
+test31 = DrawingTest "test31" "" $ unpackStr
+  $ drawingToSvgString
   -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
   -- (renderingRectangle .~ V2 800 500 $ mempty)
   mempty
@@ -516,7 +735,8 @@ test31 = exportTestDrawing
     dat2 = [ [x,cos x] :: [Double] | x <- [0,0.1..pi*2] ]
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
-test32 = exportTestDrawing
+test32 = DrawingTest "test32" "" $ unpackStr
+  $ drawingToSvgString
   -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
   -- (renderingRectangle .~ V2 800 500 $ mempty)
   mempty
@@ -532,7 +752,8 @@ test32 = exportTestDrawing
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
 -- TODO
-test33 = exportTestDrawing
+test33 = DrawingTest "test33" "" $ unpackStr
+  $ drawingToSvgString
   -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
   -- (renderingRectangle .~ V2 800 500 $ mempty)
   mempty
@@ -549,28 +770,28 @@ test33 = exportTestDrawing
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
 
-testRad = exportTestDrawing
-  (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
-  (renderingRectangle .~ V2 800 500 $ mempty) $ drawPlot $ mconcat
-    [ plot dat [x<~to (!! 0), y<~to (!! 1)] line
-    , plot dat [x<~to (!! 0), y<~to (!! 2)] line
-    ]
-  where
-    dat = dataset1
-
-
-testRad2 = exportTestDrawing
-  -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
-  -- (renderingRectangle .~ V2 800 500 $ mempty)
-  mempty
-  mempty
-  $ drawPlot $ mconcat
-    [ plot dat [x<~to (!! 0), y<~to (!! 1)] line
-    , plot dat [x<~to (!! 0), y<~to (!! 2)] line
-    ]
-  where
-    dat = [ [x,cos x,sin x :: Double] | x <- [0,0.1..pi*2] ]
-
+-- testRad = drawingToSvgString
+--   (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+--   (renderingRectangle .~ V2 800 500 $ mempty) $ drawPlot $ mconcat
+--     [ plot dat [x<~to (!! 0), y<~to (!! 1)] line
+--     , plot dat [x<~to (!! 0), y<~to (!! 2)] line
+--     ]
+--   where
+--     dat = dataset1
+--
+--
+-- testRad2 = drawingToSvgString
+--   -- (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
+--   -- (renderingRectangle .~ V2 800 500 $ mempty)
+--   mempty
+--   mempty
+--   $ drawPlot $ mconcat
+--     [ plot dat [x<~to (!! 0), y<~to (!! 1)] line
+--     , plot dat [x<~to (!! 0), y<~to (!! 2)] line
+--     ]
+--   where
+--     dat = [ [x,cos x,sin x :: Double] | x <- [0,0.1..pi*2] ]
+--
 
 
 
@@ -954,33 +1175,76 @@ dataset1 =
 
 -- For now just render to make sure we have no exceptions
 
-main = do
+batch = [
   test
-  test2
-  test3
-  test4
-  test5
-  test6
-  test7
-  test8a
-  test8b
-  test8c
-  test9
-  test10
-  test11
-  test12
-  test13
-  test14
+  , test2
+  , test3
+  , test4
+  , test5
+  , test6
+  , test7
+  , test8a
+  , test8b
+  , test8c
+  , test9
+  , test10
+  , test11
+  , test12
+  , test13
+  , test14
 
-  test20
-  test21
-  test22
-  test23
-  test24
-  test25
+  , test20
+  , test21
+  , test22
+  , test23
+  , test24
+  , test25
 
-  test30
-  test31
-  test32
+  , test30
+  , test31
+  , test32
+  ]
+--
+--   print "Rendered all test plots"
 
-  print "Rendered all test plots"
+main = do
+  renderDrawingTestsToDir "/tmp/lubeck-dv-test-batch" batch
+  return ()
+
+
+
+
+
+
+
+
+
+
+
+test :: DrawingTest
+test2 :: DrawingTest
+test3 :: DrawingTest
+test4 :: DrawingTest
+test5 :: DrawingTest
+test6 :: DrawingTest
+test7 :: DrawingTest
+test8a :: DrawingTest
+test8b :: DrawingTest
+test8c :: DrawingTest
+test9 :: DrawingTest
+test10 :: DrawingTest
+test11 :: DrawingTest
+test12 :: DrawingTest
+test13 :: DrawingTest
+test14 :: DrawingTest
+test20 :: DrawingTest
+test21 :: DrawingTest
+test22 :: DrawingTest
+test23 :: DrawingTest
+test24 :: DrawingTest
+test25 :: DrawingTest
+test26 :: DrawingTest
+test30 :: DrawingTest
+test31 :: DrawingTest
+test32 :: DrawingTest
+test33 :: DrawingTest
