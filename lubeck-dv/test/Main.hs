@@ -45,9 +45,11 @@ import qualified System.Process as S
 import NeatInterpolation (string)
 import System.Directory(createDirectoryIfMissing)
 import System.IO.Temp(withSystemTempDirectory, withSystemTempFile)
-import Crypto.Hash(hashlazy, SHA256, Digest)
+import Crypto.Hash(hash, hashlazy, SHA256, Digest)
 import qualified Data.ByteString.Lazy as LB
 import Data.Aeson as A
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 -- TODO end HashSVG
 
 
@@ -68,14 +70,57 @@ Hash and store the given image set. Always succeeds.
 The given file path should be commited intothe repo to allow other developers/tests to call compareHashes.
 -}
 updateHashes :: FilePath -> Map ImageName SvgString -> IO ()
-updateHashes = undefined
+updateHashes path oldData = LB.writeFile path $ A.encode (fmap hashStr oldData)
+
+hashStr :: String -> String
+hashStr input = show hashRes
+  where
+    hashRes :: Digest SHA256
+    hashRes = hash (TE.encodeUtf8 $ T.pack input)
+--
+--
+-- data CompareHashDiff = CompareHashDiff
+--   { chr_name          :: ImageName
+--   , chr_expectedHash  :: String
+--   , chr_actualHash    :: String
+--   }
 
 {-|
 Assure given image set is the same as the last call to updateHashes on this machine.
 Assumes that somebody called updateHashes on this machine (or commited the result on a different machine).
 -}
 compareHashes :: FilePath -> Map ImageName SvgString -> IO ()
-compareHashes = undefined
+compareHashes path newData = do
+  res <- compareHashes1 path newData
+  if Data.Map.null res
+    then putStrLn $ "Hashes OK"
+    else do
+      putStrLn $ "Hashes failed, listing differences: "
+      for_ (Data.Map.toList res) $ \(name, (hash1, hash2)) -> do
+        putStrLn $ " '" <> name <> "' differed"
+        putStrLn $ "    Saw      " <> showsPrec 0 hash1 ""
+        putStrLn $ "    Expected " <> showsPrec 0 hash2 ""
+
+compareHashes1 :: FilePath -> Map ImageName SvgString -> IO (Map ImageName (Maybe String, Maybe SvgString))
+compareHashes1 path newData = do
+  let newHashes = fmap hashStr newData
+  (maybeOldHashes :: Maybe (Map ImageName SvgString)) <- fmap A.decode $ LB.readFile path
+  case maybeOldHashes of
+    Nothing -> error "No such file"
+    Just oldHashes -> return $
+      (\f -> unionIncomplete f newHashes oldHashes) $ \name hash1 hash2 ->
+        if hash1 == hash2 then Nothing
+          else Just $ (hash1, hash2)
+      -- Data.Map.unionWithKey (\k h1 h2 -> ) oldHashes
+
+unionIncomplete :: Ord k => (k -> Maybe a -> Maybe b -> Maybe c) -> Map k a -> Map k b -> Map k c
+unionIncomplete f m1 m2 = Data.Map.fromList $ fmap (fmap fromJust) $ filter (isJust . snd) $ zip ks (fmap g ks)
+  where
+    fromJust (Just x) = x
+    fromJust _ = error "Impossible"
+    g k = f k (Data.Map.lookup k m1) (Data.Map.lookup k m2)
+    ks = sort $ nub $ Data.Map.keys m1 <> Data.Map.keys m2
+
 
 {-
 Compute the hash of the given SVG string by rasterizing it and hashing the result.
@@ -238,7 +283,7 @@ updateHashesDTs path tests = case testBatchToMap tests of
 compareHashesDTs :: FilePath -> [DrawingTest] -> IO ()
 compareHashesDTs path tests = case testBatchToMap tests of
   Nothing -> error "compareHashesDTs: Duplicate names"
-  Just nameToSvgStrMap -> updateHashes path nameToSvgStrMap
+  Just nameToSvgStrMap -> compareHashes path nameToSvgStrMap
 
 
 
