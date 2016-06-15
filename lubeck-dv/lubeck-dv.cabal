@@ -43,6 +43,7 @@ library
                      , bytestring
                      , cryptohash
                      , aeson
+                     , filepath
   hs-source-dirs:      src
   default-language:    Haskell2010
   -- ghc-options:         -fno-warn-typed-holes
@@ -75,6 +76,7 @@ test-suite lubeck-dv-test-main
                      , bytestring
                      , cryptohash
                      , aeson
+                     , filepath
 
 test-suite lubeck-dv-test-table
   type:           exitcode-stdio-1.0

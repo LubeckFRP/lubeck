@@ -50,6 +50,7 @@ import qualified Data.ByteString.Lazy as LB
 import Data.Aeson as A
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import Sytem.FilePath (takeDirectory)
 -- TODO end HashSVG
 
 
@@ -70,20 +71,17 @@ Hash and store the given image set. Always succeeds.
 The given file path should be commited intothe repo to allow other developers/tests to call compareHashes.
 -}
 updateHashes :: FilePath -> Map ImageName SvgString -> IO ()
-updateHashes path oldData = LB.writeFile path $ A.encode (fmap hashStr oldData)
+updateHashes path oldData = do
+  ensureParent path
+  LB.writeFile path $ A.encode (fmap hashStr oldData)
+  where
+    ensureParent path = createDirectoryIfMissing True (takeDirectory path)
 
 hashStr :: String -> String
 hashStr input = show hashRes
   where
     hashRes :: Digest SHA256
     hashRes = hash (TE.encodeUtf8 $ T.pack input)
---
---
--- data CompareHashDiff = CompareHashDiff
---   { chr_name          :: ImageName
---   , chr_expectedHash  :: String
---   , chr_actualHash    :: String
---   }
 
 {-|
 Assure given image set is the same as the last call to updateHashes on this machine.
@@ -98,8 +96,8 @@ compareHashes path newData = do
       putStrLn $ "Hashes failed, listing differences: "
       for_ (Data.Map.toList res) $ \(name, (hash1, hash2)) -> do
         putStrLn $ " '" <> name <> "' differed"
-        putStrLn $ "    Saw      " <> showsPrec 0 hash1 ""
-        putStrLn $ "    Expected " <> showsPrec 0 hash2 ""
+        putStrLn $ "    Current codebase gives   " <> showsPrec 0 hash1 ""
+        putStrLn $ "    But the cached result is " <> showsPrec 0 hash2 ""
 
 compareHashes1 :: FilePath -> Map ImageName SvgString -> IO (Map ImageName (Maybe String, Maybe SvgString))
 compareHashes1 path newData = do
@@ -135,7 +133,7 @@ This a pure function from the file semantics of the file contents to the result.
 IO is for exception handling when invoking PhantomJS.
 -}
 rasterizeAndHashSvgString :: String -> IO String
-rasterizeAndHashSvgString contents = withSystemTempFile "" $ \filePath _ -> do
+rasterizeAndHashSvgString contents = withSystemTempFile "rasterizeAndHashSvgFile" $ \filePath _ -> do
   writeFile filePath contents
   rasterizeAndHashSvgFile filePath
 
@@ -161,7 +159,7 @@ rasterizeAndHashSvgFile path = do
   where
     -- Assumes hasCorrectPhantomVersion, returns hash
     runPhantomHashResult :: FilePath -> IO String
-    runPhantomHashResult svgFilePath = withSystemTempDirectory "" $ \dir -> do
+    runPhantomHashResult svgFilePath = withSystemTempDirectory "rasterizeAndHashSvgFile" $ \dir -> do
       -- phantomjs rasterize.js http://ariya.github.io/svg/tiger.svg tiger.png
       let rasterizeJsPath = dir <> "/rasterize.js"
       let outPath = dir <> "/out.png"
@@ -257,6 +255,7 @@ data DrawingTest = DrawingTest
   { dt_name      :: !String
   , dt_comment   :: !String
   , dt_svgString :: !String }
+  deriving (Show)
 
 -- Return a map from name to SVG strings, iff the batch has no duplicate names.
 testBatchToMap :: [DrawingTest] -> Maybe (Map String String)
@@ -535,7 +534,7 @@ test10 = DrawingTest "test10" "" $ unpackStr
       [1..4] [1..4]
 
 -- Custom image.
-test11 = DrawingTest "test1§1" "" $ unpackStr
+test11 = DrawingTest "test11" "" $ unpackStr
   $ visualizeTest dat (mconcat [labelG, pointG, imageG])
   [ x <~ _1 `withScale` categorical
   , y <~ _2 `withScale` linearIntegral
@@ -1252,8 +1251,20 @@ batch = [
 --
 --   print "Rendered all test plots"
 
+
+{-
+
+<test-name>
+  Compares current code against 'lubeck-dv/hashes/test.json'
+<test-name> --generate
+  Regenerates 'lubeck-dv/hashes/test.json'
+  If you change the test suite, you must commit the result, or your test won't pass
+<test-name> --report <directory (default: /tmp/lubeck/dv/test/report)>
+  Generates a directory with the current version of each test
+
+-}
 main = do
-  renderDrawingTestsToDir "/tmp/lubeck-dv-test-batch" batch
+  renderDrawingTestsToDir "/tmp/lubeck/dv/test/report" batch
   return ()
 
 
