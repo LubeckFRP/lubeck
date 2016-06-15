@@ -37,7 +37,8 @@ import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 import qualified Lubeck.Drawing
 import Lubeck.DV hiding (visualize, visualizeWithStyle)
 
-import Main.Generated.Hashes
+-- import Main.Generated.Hashes
+-- import Main.HashSvg (rasterizeAndHashSvgFile)
 -- import Foo
 
 

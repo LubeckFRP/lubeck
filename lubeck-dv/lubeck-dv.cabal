@@ -36,6 +36,12 @@ library
                      , temporary
                      , directory
                      , generic-deriving
+                     -- TODO test suite only (@stack repl@ cofuses this)
+                     , process
+                     , temporary
+                     , directory
+                     , bytestring
+                     , cryptohash
   hs-source-dirs:      src
   default-language:    Haskell2010
   -- ghc-options:         -fno-warn-typed-holes
@@ -62,6 +68,11 @@ test-suite lubeck-dv-test-main
                      , directory
                      , temporary
                      , lubeck-dv
+                     , process
+                     , temporary
+                     , directory
+                     , bytestring
+                     , cryptohash
 
 test-suite lubeck-dv-test-table
   type:           exitcode-stdio-1.0
