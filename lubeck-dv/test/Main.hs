@@ -37,6 +37,8 @@ import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 import qualified Lubeck.Drawing
 import Lubeck.DV hiding (visualize, visualizeWithStyle)
 
+import Main.Generated.Hashes
+-- import Foo
 
 
 -- TEST
@@ -202,6 +204,7 @@ test7 = visualizeTest dat (mconcat [pointG, line, fill])
 -- The same data plotted in 3 different ways:
 
 -- Version I: Cross with True/False and plot 2 overlapping lines/areas
+-- FIXME not working
 test8a = visualizeTest dat2 (mconcat [line, fill])
   [ x     <~ _1
   , y     <~ _2
