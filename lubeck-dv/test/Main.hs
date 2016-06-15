@@ -35,11 +35,17 @@ import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 
 import qualified Lubeck.Drawing
-import Lubeck.DV hiding (visualize, visualizeWithStyle)
+import Lubeck.DV
 
 -- import Main.Generated.Hashes
 -- import Main.HashSvg (rasterizeAndHashSvgFile)
 -- import Foo
+
+
+visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
+visualizeTest dat geom aess = exportTestDrawing mempty mempty
+  $ drawPlot
+  $ plot dat aess geom
 
 
 -- TEST

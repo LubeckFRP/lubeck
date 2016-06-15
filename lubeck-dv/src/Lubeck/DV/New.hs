@@ -25,6 +25,8 @@ A plotting/data visualization library.
 
 Tutorial TODO
 
+Top-level functions: 'plot'/'plotWithTitles' and 'drawPlot'.
+
 For examples, see the @test@ directory.
 
 -}
@@ -125,10 +127,6 @@ module Lubeck.DV.New
   -- ** Mapping aesthetics
   , (<~)
 
-
-
-
-
   -- * Top-level
   , Plot
   , plot
@@ -138,12 +136,8 @@ module Lubeck.DV.New
   , plotLabel
   , plotImage
   , plotXIntercept
-  -- ** Top-level (old)
-  , visualize
-  , visualizeWithStyle
 
   -- * Debug
-  , visualizeTest
   , exportTestDrawing
   )
 where
@@ -1491,22 +1485,16 @@ plotXIntercept dat baseAes =
   plot dat (baseAes <> [True >$ crossLineX]) xIntercept
 
 
-{-| Convenient wrapper for 'visualize' using 'mempty' style. -}
-visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
-visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
+-- {-| Convenient wrapper for 'visualize' using 'mempty' style. -}
+-- visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
+-- visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
+--
+-- {-|
+-- The main entry-point of the library.
+-- -}
+-- visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
+-- visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
 
-{-|
-The main entry-point of the library.
--}
-visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
-visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
-
-visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> IO ()
-visualizeTest dat geom aess = do
-  -- printDebugInfo dat aess
-  putStrLn $ B.render $ debugInfo dat aess
-  let finalD = visualizeWithStyle ["FIRST AXIS", "SECOND AXIS"] dat geom aess
-  exportTestDrawing mempty mempty finalD
 
 exportTestDrawing :: RenderingOptions -> Styling -> Styled Drawing -> IO ()
 exportTestDrawing drawOpts style finalD = do

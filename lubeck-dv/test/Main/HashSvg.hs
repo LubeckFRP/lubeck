@@ -7,10 +7,49 @@ import BasePrelude
 import qualified System.Process as S
 -- import Control.Exception(try, SomeException)
 import NeatInterpolation (string)
-import System.IO.Temp(withSystemTempDirectory)
+import System.IO.Temp(withSystemTempDirectory, withSystemTempFile)
 import Crypto.Hash(hashlazy, SHA256, Digest)
 import qualified Data.ByteString.Lazy as LB
 -- import System.Directory(createDirectoryIfMissing)
+
+
+-- Map String (FilePath -> IO (), FilePath -> IO String)
+-- IO FilePath
+
+-- | Name of a test image
+type Name = String
+-- | Test image represented as an SVG string.
+type SvgString = String
+
+
+{-| Hash and store the given image set. Always succeeds.
+The given file path should be commited intothe repo to allow other developers/tests to call compareHashes.
+-}
+updateHashes :: FilePath -> Map Name SvgString -> IO ()
+updateHashes = undefined
+
+{-| Assure given image set is the same as the last call to updateHashes on this machine.
+Assumes that somebody called updateHashes on this machine (or commited the result on a different machine).
+-}
+compareHashes :: FilePath -> Map Name SvgString -> IO ()
+compareHashes = undefined
+
+{-
+Compute the hash of the given SVG string by rasterizing it and hashing the result.
+
+Yields identical hashes for images that look the same, but doesn't necessarily
+have the same internal SVG structure.
+
+Requires PhantomJS 2.1.1. The phantomjs binary must in the path, so that
+@phantomjs --version@ prints @2.1.1@.
+
+This a pure function from the file semantics of the file contents to the result.
+IO is for exception handling when invoking PhantomJS.
+-}
+rasterizeAndHashSvgString :: String -> IO String
+rasterizeAndHashSvgString contents = withSystemTempFile "" $ \filePath -> do
+  writeFile filePath contents
+  rasterizeAndHashSvgFile filePath
 
 {-
 Compute the hash of an SVG file by rasterizing it and hashing the result.
@@ -21,8 +60,8 @@ have the same internal SVG structure.
 Requires PhantomJS 2.1.1. The phantomjs binary must in the path, so that
 @phantomjs --version@ prints @2.1.1@.
 
-This conceptually a pure function from the file semantics of the file contents to the result.
-This is in IO for exception handling and reading of the input file.
+This a pure function from the file semantics of the file contents to the result.
+IO is for file input exception handling when invoking PhantomJS.
 -}
 rasterizeAndHashSvgFile :: FilePath -> IO String
 rasterizeAndHashSvgFile path = do
@@ -34,7 +73,7 @@ rasterizeAndHashSvgFile path = do
   where
     -- Assumes hasCorrectPhantomVersion, returns hash
     runPhantomHashResult :: FilePath -> IO String
-    runPhantomHashResult svgFilePath = withSystemTempDirectory "lubeck-hash-svg-gen" $ \dir -> do
+    runPhantomHashResult svgFilePath = withSystemTempDirectory "" $ \dir -> do
       -- phantomjs rasterize.js http://ariya.github.io/svg/tiger.svg tiger.png
       let rasterizeJsPath = dir <> "/rasterize.js"
       let outPath = dir <> "/out.png"
