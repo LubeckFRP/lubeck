@@ -1,11 +1,6 @@
 
 # Lubeck
 
-Lubeck front-end
-
-For details see
-
-- https://github.com/BeautifulDestinations/lubeck/wiki
-- https://github.com/BeautifulDestinations/lubeck/issues
+Lubeck front-end libraries
 
 Copyright (c) Beautiful Destinations 2015-2016
