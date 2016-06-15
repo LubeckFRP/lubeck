@@ -38,8 +38,8 @@ rasterizeAndHashSvgFile path = do
       -- phantomjs rasterize.js http://ariya.github.io/svg/tiger.svg tiger.png
       let rasterizeJsPath = dir <> "/rasterize.js"
       let outPath = dir <> "/out.png"
-      print rasterizeJsPath
-      print outPath
+      -- print rasterizeJsPath
+      -- print outPath
       writeFile rasterizeJsPath rasterizeJsSrc
       -- S.readProcess "cat" [rasterizeJsPath] "" >>= putStrLn
       _ <- S.readProcess "phantomjs" [rasterizeJsPath, svgFilePath, outPath] ""
