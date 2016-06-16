@@ -50,7 +50,7 @@ import qualified Data.ByteString.Lazy as LB
 import Data.Aeson as A
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Sytem.FilePath (takeDirectory)
+import System.FilePath (takeDirectory)
 -- TODO end HashSVG
 
 
@@ -59,6 +59,9 @@ import Sytem.FilePath (takeDirectory)
 
 -- Map String (FilePath -> IO (), FilePath -> IO String)
 -- IO FilePath
+
+-- | Name of an image test suite
+type TestSuiteName = String
 
 -- | Name of a test image
 type ImageName = String
@@ -87,17 +90,24 @@ hashStr input = show hashRes
 Assure given image set is the same as the last call to updateHashes on this machine.
 Assumes that somebody called updateHashes on this machine (or commited the result on a different machine).
 -}
-compareHashes :: FilePath -> Map ImageName SvgString -> IO ()
-compareHashes path newData = do
+compareHashes :: TestSuiteName -> FilePath -> Map ImageName SvgString -> IO Bool
+compareHashes suiteName path newData = do
+  putStrLn $ msg suiteName path
   res <- compareHashes1 path newData
   if Data.Map.null res
-    then putStrLn $ "Hashes OK"
+    then do
+      putStrLn $ "Success"
+      return True
     else do
-      putStrLn $ "Hashes failed, listing differences: "
+      putStrLn $ "Failed, listing differences: "
       for_ (Data.Map.toList res) $ \(name, (hash1, hash2)) -> do
         putStrLn $ " '" <> name <> "' differed"
         putStrLn $ "    Current codebase gives   " <> showsPrec 0 hash1 ""
         putStrLn $ "    But the cached result is " <> showsPrec 0 hash2 ""
+      putStrLn $ "You can run this test again with --report to view the current images"
+      return False
+  where
+    msg a b = "Running image test suite '" <> a <> "' against pregenerated hashes in '" <> b <> "'"
 
 compareHashes1 :: FilePath -> Map ImageName SvgString -> IO (Map ImageName (Maybe String, Maybe SvgString))
 compareHashes1 path newData = do
@@ -279,10 +289,10 @@ updateHashesDTs path tests = case testBatchToMap tests of
   Nothing -> error "updateHashesDTs: Duplicate names"
   Just nameToSvgStrMap -> updateHashes path nameToSvgStrMap
 
-compareHashesDTs :: FilePath -> [DrawingTest] -> IO ()
-compareHashesDTs path tests = case testBatchToMap tests of
+compareHashesDTs :: TestSuiteName -> FilePath -> [DrawingTest] -> IO Bool
+compareHashesDTs suiteName path tests = case testBatchToMap tests of
   Nothing -> error "compareHashesDTs: Duplicate names"
-  Just nameToSvgStrMap -> compareHashes path nameToSvgStrMap
+  Just nameToSvgStrMap -> compareHashes suiteName path nameToSvgStrMap
 
 
 
@@ -1219,7 +1229,7 @@ dataset1 =
 
 -- For now just render to make sure we have no exceptions
 
-batch = [
+dvTestBatch = [
   test
   , test2
   , test3
@@ -1263,8 +1273,32 @@ batch = [
   Generates a directory with the current version of each test
 
 -}
+main :: IO ()
 main = do
-  renderDrawingTestsToDir "/tmp/lubeck/dv/test/report" batch
+  args <- getArgs
+  main' args
+
+main' :: [String] -> IO ()
+main' args = do
+  case args of
+    ["--generate"] -> do
+      updateHashesDTs "lubeck-dv/hashes/test.json" dvTestBatch
+
+    ["--compare"] -> do
+      ok <- compareHashesDTs "DV tests" "lubeck-dv/hashes/test.json" dvTestBatch
+      if ok then exitSuccess else exitFailure
+
+    -- Same as --compare
+    [] -> do
+      ok <- compareHashesDTs "DV tests" "lubeck-dv/hashes/test.json" dvTestBatch
+      if ok then exitSuccess else exitFailure
+
+    ["--report"] -> do
+      renderDrawingTestsToDir "/tmp/lubeck/dv/test/report" dvTestBatch
+
+
+    _ -> putStrLn "Bad arguents"
+
   return ()
 
 

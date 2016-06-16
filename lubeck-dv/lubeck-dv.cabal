@@ -70,6 +70,7 @@ test-suite lubeck-dv-test-main
                      , directory
                      , temporary
                      , lubeck-dv
+
                      , process
                      , temporary
                      , directory
@@ -77,6 +78,7 @@ test-suite lubeck-dv-test-main
                      , cryptohash
                      , aeson
                      , filepath
+                     , text
 
 test-suite lubeck-dv-test-table
   type:           exitcode-stdio-1.0
