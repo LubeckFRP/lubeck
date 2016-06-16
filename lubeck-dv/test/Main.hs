@@ -76,15 +76,16 @@ The given file path should be commited intothe repo to allow other developers/te
 updateHashes :: FilePath -> Map ImageName SvgString -> IO ()
 updateHashes path oldData = do
   ensureParent path
-  LB.writeFile path $ A.encode (fmap hashStr oldData)
+  oldDataH <- mapM rasterizeAndHashSvgString oldData
+  LB.writeFile path $ A.encode oldDataH
   where
     ensureParent path = createDirectoryIfMissing True (takeDirectory path)
 
-hashStr :: String -> String
-hashStr input = show hashRes
-  where
-    hashRes :: Digest SHA256
-    hashRes = hash (TE.encodeUtf8 $ T.pack input)
+-- hashStr :: String -> String
+-- hashStr input = show hashRes
+--   where
+--     hashRes :: Digest SHA256
+--     hashRes = hash (TE.encodeUtf8 $ T.pack input)
 
 {-|
 Assure given image set is the same as the last call to updateHashes on this machine.
@@ -111,7 +112,7 @@ compareHashes suiteName path newData = do
 
 compareHashes1 :: FilePath -> Map ImageName SvgString -> IO (Map ImageName (Maybe String, Maybe SvgString))
 compareHashes1 path newData = do
-  let newHashes = fmap hashStr newData
+  newHashes <- mapM rasterizeAndHashSvgString newData
   (maybeOldHashes :: Maybe (Map ImageName SvgString)) <- fmap A.decode $ LB.readFile path
   case maybeOldHashes of
     Nothing -> error "No such file"
