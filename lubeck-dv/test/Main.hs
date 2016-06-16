@@ -1255,7 +1255,9 @@ dvTestBatch = [
   , test11
   , test12
   , test13
-  , test14
+
+  -- Cant' reliably hash an *animation*
+  -- , test14
 
   , test20
   , test21
