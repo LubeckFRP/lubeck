@@ -54,77 +54,35 @@ import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
 
-{-
-Take a point in the UHQ and transform it into its rendering position.
-If the resulting position is outside the RR, return (Left p), otherwise return (Right p).
-
-This is accomplished as follows:
-  - Run the zoom affine transformation (if default zoom, this is the identity)
-  - Optionally filter points that now falls outside the UHQ (i.e. when zooming in)
-  - Run the linear transformation that defines the rendering rectangle (always a scaling)
--}
-getRenderingPosition :: Styling -> P2 Double -> Either (P2 Double) (P2 Double)
-getRenderingPosition styling x = bimapSame (transformPoint (scalingXY $ styling^.renderingRectangle)) $
-  (\p@(P (V2 x y)) -> if withinNormRange x && withinNormRange y then Right p else Left p) $ transformPoint (styling^.zoom) x
-  where
-    bimapSame f = bimap f f
-{-
-Like getRenderingPosition for drawings.
-Carries out transformation directly without filtering. This is usually not what we want.
-
-TODO prove/assure that this is equal to getRenderingPosition/getRenderingPositionT modulo filtering
--}
-getRenderingPositionD :: Styling -> Drawing -> Drawing
-getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRectangle) $ transform (styling^.zoom) x
-
-
-{-|
-Like getRenderingPositionD, but don't actually scale the image.
-
-Effectively, the given image is treated as an image which "anchor point" at
-(origin +^ v). The anchor is transformed into the rendering space (taking zoom
-and rendering rectangle into account), and the image is then translated so that
-its origin aligns with the transformed anchor.
--}
-getRenderingPositionRel :: V2 Double -> Styling -> Drawing -> Drawing
-getRenderingPositionRel v styling dr = case getRenderingPosition styling (origin .+^ v) of
-  Left _ -> mempty
-  Right p -> translate (p .-. origin) dr
-  where
-    origin = P $ V2 0 0
-
-data ScatterData = ScatterData
-  { scatterDataColor :: Double
-  }
-
-
-mapFilterEitherBoth :: (Monad m, Alternative m) => (a -> Either b b) -> m a -> m b
-mapFilterEitherBoth f = fmap (g . f)
-  where
-    g (Left x)  = x
-    g (Right x) = x
-
-mapFilterEither :: (Monad m, Alternative m) => (a -> Either t b) -> m a -> m b
-mapFilterEither f = (=<<) (g . f)
-  where
-    g (Left _)  = empty
-    g (Right x) = pure x
-
 scatterData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => ScatterData -> [P2 Double] -> m Drawing
 scatterData (ScatterData colorN) ps = do
   style <- ask
   let base  = id
-            $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` colorN))
-            $ strokeWidth (style^.scatterPlotStrokeWidth)
-            $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
-            $ scale (style^.scatterPlotSize) circle
+            $ addStyling style
+            $ scale (style^.scatterPlotSize)
+            $ circle
   return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ mapFilterEither (getRenderingPosition style) ps
+  where
+    addStyling style x = id
+      $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` colorN))
+      $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
+      $ strokeWidth (style^.scatterPlotStrokeWidth)
+      $ x
 
 scatterDataX :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] -> m Drawing
 scatterDataX ps = do
   style <- ask
-  let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
+  -- let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
+  let base = id
+          $ addStyling style
+          $ translateY 0.5
+          $ verticalLine
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ mapFilterEither (getRenderingPosition style) ps
+  where
+    addStyling style x = id
+      $ strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor)
+      $ strokeWidth (style^.scatterPlotStrokeWidth)
+      $ x
 
 scatterDataY :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] ->  m Drawing
 scatterDataY ps = do
@@ -390,6 +348,64 @@ labeledAxis labelX labelY = do
       , textSelectable = All False
       }
 
+-- Utility
+
+
+{-
+Take a point in the UHQ and transform it into its rendering position.
+If the resulting position is outside the RR, return (Left p), otherwise return (Right p).
+
+This is accomplished as follows:
+  - Run the zoom affine transformation (if default zoom, this is the identity)
+  - Optionally filter points that now falls outside the UHQ (i.e. when zooming in)
+  - Run the linear transformation that defines the rendering rectangle (always a scaling)
+-}
+getRenderingPosition :: Styling -> P2 Double -> Either (P2 Double) (P2 Double)
+getRenderingPosition styling x = bimapSame (transformPoint (scalingXY $ styling^.renderingRectangle)) $
+  (\p@(P (V2 x y)) -> if withinNormRange x && withinNormRange y then Right p else Left p) $ transformPoint (styling^.zoom) x
+  where
+    bimapSame f = bimap f f
+{-
+Like getRenderingPosition for drawings.
+Carries out transformation directly without filtering. This is usually not what we want.
+
+TODO prove/assure that this is equal to getRenderingPosition/getRenderingPositionT modulo filtering
+-}
+getRenderingPositionD :: Styling -> Drawing -> Drawing
+getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRectangle) $ transform (styling^.zoom) x
+
+
+{-|
+Like getRenderingPositionD, but don't actually scale the image.
+
+Effectively, the given image is treated as an image which "anchor point" at
+(origin +^ v). The anchor is transformed into the rendering space (taking zoom
+and rendering rectangle into account), and the image is then translated so that
+its origin aligns with the transformed anchor.
+-}
+getRenderingPositionRel :: V2 Double -> Styling -> Drawing -> Drawing
+getRenderingPositionRel v styling dr = case getRenderingPosition styling (origin .+^ v) of
+  Left _ -> mempty
+  Right p -> translate (p .-. origin) dr
+  where
+    origin = P $ V2 0 0
+
+data ScatterData = ScatterData
+  { scatterDataColor :: Double
+  }
+
+
+mapFilterEitherBoth :: (Monad m, Alternative m) => (a -> Either b b) -> m a -> m b
+mapFilterEitherBoth f = fmap (g . f)
+  where
+    g (Left x)  = x
+    g (Right x) = x
+
+mapFilterEither :: (Monad m, Alternative m) => (a -> Either t b) -> m a -> m b
+mapFilterEither f = (=<<) (g . f)
+  where
+    g (Left _)  = empty
+    g (Right x) = pure x
 
 {-
 TODO finish/fix filtering
@@ -412,4 +428,6 @@ withinNormRange x = (0-0.001) <= x && x <= (1+0.001)
 
 maskRenderingRectangle :: Styling -> Drawing -> Drawing
 maskRenderingRectangle style = mask $
-  transform (scalingXY $ style^.renderingRectangle) $ fillColorA (Colors.orange `withOpacity` 0.1) $ align BL square
+  transform (scalingXY $ style^.renderingRectangle)
+    $ fillColorA (Colors.orange `withOpacity` 0.1)
+    $ align BL square

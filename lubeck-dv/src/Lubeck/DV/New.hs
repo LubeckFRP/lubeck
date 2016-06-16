@@ -14,7 +14,6 @@
   , ScopedTypeVariables
   #-}
 
-
 {-# OPTIONS_GHC
   -fno-warn-name-shadowing
   -fwarn-incomplete-patterns
@@ -136,9 +135,6 @@ module Lubeck.DV.New
   , plotLabel
   , plotImage
   , plotXIntercept
-
-  -- * Debug
-  , exportTestDrawing
   )
 where
 
@@ -527,16 +523,17 @@ data Scaled a = Scaled
   }
 
 instance HasScale (Scaled a) where
-  -- Here 'scaledScale' is used to extract the actual scale, which will be returned
-  -- The 'contramap scaledValue' bit is to make sure the returned scale can handle
-  -- its input by ignoring the passed scale (looking only at the value).
+  -- Here 'scaledScale' is used to extract the actual scale, which will be
+  -- returned The 'contramap scaledValue' bit is to make sure the returned scale
+  -- can handle its input by ignoring the passed scale (looking only at the
+  -- value).
   scale = contramap scaledValue . scaledScale
 
 {-|
 A scale for unique values out of a set.
 
-Only elements in the data set are included, which may not be what you want
-if your set is small and bounded (i.e. weekdays). Use 'categoricalEnum' for this.
+Only elements in the data set are included, which may not be what you want if
+your set is small and bounded (i.e. weekdays). Use 'categoricalEnum' for this.
 -}
 categorical :: (Ord a, Show a) => Scale a
 categorical = categoricalWithOptions Standard
@@ -545,9 +542,13 @@ categorical = categoricalWithOptions Standard
 How to generate bounds for a categorical plot
 -}
 data CategoricalPlotBounds
-  = UseDataPlotBounds             -- ^ PlotBounds will be @[1..n]@ where n is number of elements
-  | PadDataPlotBounds Int Int     -- ^ Using (AddToDataPlotBounds a b), bounds will be @[1-a..n+b]@ where n is number of elements
-  | Standard                  -- ^ Same as @PadDataPlotBounds 1 1@
+  = UseDataPlotBounds
+  -- ^ PlotBounds will be @[1..n]@ where n is number of elements
+  | PadDataPlotBounds Int Int
+  -- ^ Using (AddToDataPlotBounds a b), bounds will be @[1-a..n+b]@ where n is
+  -- number of elements
+  | Standard
+  -- ^ Same as @PadDataPlotBounds 1 1@
 
 {-|
 Like 'categorical', but with more custom options.
@@ -1483,26 +1484,3 @@ plotImage drawing dat baseAes =
 plotXIntercept :: [a] -> [Aesthetic a] -> Plot
 plotXIntercept dat baseAes =
   plot dat (baseAes <> [True >$ crossLineX]) xIntercept
-
-
--- {-| Convenient wrapper for 'visualize' using 'mempty' style. -}
--- visualize :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Drawing
--- visualize axesNames d g a = Lubeck.DV.Styling.withDefaultStyle $ visualizeWithStyle axesNames d g a
---
--- {-|
--- The main entry-point of the library.
--- -}
--- visualizeWithStyle :: Show s => [Str] -> [s] -> Geometry -> [Aesthetic s] -> Styled Drawing
--- visualizeWithStyle axesNames dat geom aess = drawPlot $ plotWithTitles axesNames dat aess geom
-
-
-exportTestDrawing :: RenderingOptions -> Styling -> Styled Drawing -> IO ()
-exportTestDrawing drawOpts style finalD = do
-  let svgS = Lubeck.Drawing.toSvgStr drawOpts $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
-  return ()
-  -- withSystemTempDirectory "lubeck-dv-test" $ \dir -> do
-  let dir = "/tmp/lubeck-dv-test"
-  do
-    createDirectoryIfMissing True dir
-    writeFile (dir ++ "/test.svg") $ unpackStr svgS
-    return ()
