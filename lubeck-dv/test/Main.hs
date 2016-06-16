@@ -43,7 +43,7 @@ import qualified Lubeck.DV.Styling
 -- TODO HashSVG
 import qualified System.Process as S
 import NeatInterpolation (string)
-import System.Directory(createDirectoryIfMissing)
+import System.Directory(createDirectoryIfMissing, getCurrentDirectory)
 import System.IO.Temp(withSystemTempDirectory, withSystemTempFile)
 import Crypto.Hash(hash, hashlazy, SHA256, Digest)
 import qualified Data.ByteString.Lazy as LB
@@ -276,16 +276,24 @@ testBatchToMap tests
   where
     hasDuplicates xs = length (nub xs) /= length xs
 
-renderDrawingTestsToDir :: FilePath -> [DrawingTest] -> IO ()
-renderDrawingTestsToDir dir tests = case testBatchToMap tests of
+
+renderDrawingTestsToDir :: TestSuiteName -> FilePath -> [DrawingTest] -> IO ()
+renderDrawingTestsToDir suiteName dir tests = do
+  putStrLn $ msg suiteName dir
+  renderDrawingTestsToDir1 dir tests
+  where
+    msg a b = "Rendering image test suite '" <> a <> "' to to directory '" <> b <> "'"
+
+renderDrawingTestsToDir1 :: FilePath -> [DrawingTest] -> IO ()
+renderDrawingTestsToDir1 dir tests = case testBatchToMap tests of
   Nothing -> error "renderDrawingTestsToFile: Duplicate names"
   Just nameToSvgStrMap -> do
     createDirectoryIfMissing True dir
     for_ (Data.Map.toList nameToSvgStrMap) $ \(name, svgStr) ->
       writeFile (dir <> "/" <> name <> ".svg") svgStr
 
-updateHashesDTs :: FilePath -> [DrawingTest] -> IO ()
-updateHashesDTs path tests = case testBatchToMap tests of
+updateHashesDTs :: TestSuiteName -> FilePath -> [DrawingTest] -> IO ()
+updateHashesDTs _ path tests = case testBatchToMap tests of
   Nothing -> error "updateHashesDTs: Duplicate names"
   Just nameToSvgStrMap -> updateHashes path nameToSvgStrMap
 
@@ -1282,22 +1290,25 @@ main' :: [String] -> IO ()
 main' args = do
   case args of
     ["--generate"] -> do
-      updateHashesDTs "lubeck-dv/hashes/test.json" dvTestBatch
+      updateHashesDTs "DV tests" "hashes/test.json" dvTestBatch
 
     ["--compare"] -> do
-      ok <- compareHashesDTs "DV tests" "lubeck-dv/hashes/test.json" dvTestBatch
+      ok <- compareHashesDTs "DV tests" "hashes/test.json" dvTestBatch
       if ok then exitSuccess else exitFailure
 
     -- Same as --compare
     [] -> do
-      ok <- compareHashesDTs "DV tests" "lubeck-dv/hashes/test.json" dvTestBatch
+      -- cwd <- getCurrentDirectory
+      -- print cwd
+
+      ok <- compareHashesDTs "DV tests" "hashes/test.json" dvTestBatch
       if ok then exitSuccess else exitFailure
 
     ["--report"] -> do
-      renderDrawingTestsToDir "/tmp/lubeck/dv/test/report" dvTestBatch
+      renderDrawingTestsToDir "DV tests" "/tmp/lubeck/dv/test/report" dvTestBatch
 
 
-    _ -> putStrLn "Bad arguents"
+    _ -> error "Bad arguments"
 
   return ()
 
