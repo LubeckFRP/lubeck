@@ -250,8 +250,8 @@ module Lubeck.Drawing
   ) where
 
 import BasePrelude hiding (Handler, rotate, (|||), mask)
--- import Data.Semigroup(Max(..))
 import Data.Colour(Colour, AlphaColour, withOpacity)
+import Control.Lens (Lens, Lens', (^.))
 import qualified Data.Colour
 import qualified Data.Colour.Names as Colors
 import qualified Data.Colour.SRGB
@@ -260,10 +260,9 @@ import qualified Data.Ord
 import qualified Data.Map.Strict as Map
 import qualified Data.String
 import qualified Data.Sequence as Seq
--- import Data.Sequence(Seq)
--- import Data.Foldable(toList)
-import Control.Lens (Lens, Lens', (^.))
--- import Control.Lens.TH (makeLenses)
+import qualified Data.List.Split
+import qualified Text.XML.Light
+import qualified Text.XML.Light as X
 
 import Linear.Vector
 import Linear.Affine
@@ -278,13 +277,6 @@ import qualified Linear.V1
 import qualified Linear.V2
 import qualified Linear.V3
 import qualified Linear.V4
-
-import qualified Data.List.Split
-import Data.String (IsString(..))
-
-import qualified Text.XML.Light
-import qualified Text.XML.Light as X
-
 #if MIN_VERSION_linear(1,20,0)
 #else
 import Linear.Epsilon
@@ -825,110 +817,6 @@ instance Monoid Drawing where
 
   -- mconcat = Ap
 
-drawingToRDrawing :: Drawing -> RDrawing
-drawingToRDrawing = drawingToRDrawing' mempty
-{-# INLINE drawingToRDrawing #-}
-
-drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
-drawingToRDrawing' nodeInfo x = case x of
-    Circle                 -> RPrim nodeInfo RCircle
-    Rect                   -> RPrim nodeInfo RRect
-    Line                   -> RPrim nodeInfo RLine
-    (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
-    (Text t)               -> RPrim nodeInfo (RText t)
-    (Embed e)              -> RPrim nodeInfo (REmbed e)
-
-    -- TODO render masks properly
-    -- This code just renders it as a group
-    (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
-      where
-        recur = drawingToRDrawing' mempty
-
-    (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
-    (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
-    (Handlers h x) -> drawingToRDrawing' (nodeInfo <> toNodeInfoH h) x
-    Em        -> mempty
-
-    -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
-    -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
-    -- TODO return empty if concatMap returns empty list
-    (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
-      where
-        recur = drawingToRDrawing' mempty
-
-mapReverse :: (a -> b) -> [a] -> [b]
-mapReverse f l =  rev l mempty
-  where
-    rev []     a = a
-    rev (x:xs) a = rev xs (f x : a)
-
-{-# INLINABLE drawingToRDrawing' #-}
-
-data RPrim
-   = RCircle
-   | RRect
-   | RLine
-   -- TODO use Seq not []
-   | RLines !Bool ![V2 Double]
-   | RText !Str
-   | REmbed !Embed
-   deriving (Show)
-
-data RNodeInfo
-  = RNodeInfo
-    { rStyle   :: !Style
-    , rTransf  :: !(Transformation Double)
-    , rHandler :: !Handlers
-    }
-   deriving (Show)
-
-#ifdef __GHCJS__
-instance Show Handlers where
-  show x = "handlers"
-#endif
-
-data RDrawing
-  = RPrim !RNodeInfo !RPrim
-  | RMany !RNodeInfo ![RDrawing]
-   deriving (Show)
-
-instance Monoid RDrawing where
-  mempty = RMany mempty mempty
-
-  -- TODO this could emit extra nodes
-  mappend x y = RMany mempty (y : pure x)
-
-  mconcat     = RMany mempty . mapReverse id
-
-
-toNodeInfoT :: Transformation Double -> RNodeInfo
-toNodeInfoT t = mempty { rTransf = t }
-{-# INLINABLE toNodeInfoT #-}
-
-toNodeInfoS :: Style -> RNodeInfo
-toNodeInfoS t = mempty { rStyle = t }
-{-# INLINABLE toNodeInfoS #-}
-
-toNodeInfoH :: Handlers -> RNodeInfo
-toNodeInfoH t = mempty { rHandler = t }
-{-# INLINABLE toNodeInfoH #-}
-
-instance Monoid RNodeInfo where
-  mempty = RNodeInfo mempty mempty mempty
-  mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
-    RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
-
-printRTreeInfo :: RDrawing -> IO ()
-printRTreeInfo x = do
-  print $ "RTree N nodes " ++ show (drawingTreeRNNodes x)
-  print $ "RTree depth   " ++ show (drawingTreeRDepth x)
-drawingTreeRNNodes = drawingRTreeFold (+)
-drawingTreeRDepth = drawingRTreeFold max
-drawingRTreeFold :: (Int -> Int -> Int) -> RDrawing -> Int
-drawingRTreeFold f = go
-  where
-    go (RPrim _ _)  = 1
-    go (RMany _ xs) = foldr f 0 (fmap go xs)
 
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
@@ -1319,6 +1207,115 @@ instance Monoid RenderingOptions where
   mempty  = RenderingOptions (P $ V2 800 800) Center
   mappend = const
 
+
+
+
+-- Rendering
+
+drawingToRDrawing :: Drawing -> RDrawing
+drawingToRDrawing = drawingToRDrawing' mempty
+{-# INLINE drawingToRDrawing #-}
+
+drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
+drawingToRDrawing' nodeInfo x = case x of
+    Circle                 -> RPrim nodeInfo RCircle
+    Rect                   -> RPrim nodeInfo RRect
+    Line                   -> RPrim nodeInfo RLine
+    (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
+    (Text t)               -> RPrim nodeInfo (RText t)
+    (Embed e)              -> RPrim nodeInfo (REmbed e)
+
+    -- TODO render masks properly
+    -- This code just renders it as a group
+    (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
+      where
+        recur = drawingToRDrawing' mempty
+
+    (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
+    (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
+    (Handlers h x) -> drawingToRDrawing' (nodeInfo <> toNodeInfoH h) x
+    Em        -> mempty
+
+    -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+    -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
+    -- TODO return empty if concatMap returns empty list
+    (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
+      where
+        recur = drawingToRDrawing' mempty
+
+mapReverse :: (a -> b) -> [a] -> [b]
+mapReverse f l =  rev l mempty
+  where
+    rev []     a = a
+    rev (x:xs) a = rev xs (f x : a)
+
+{-# INLINABLE drawingToRDrawing' #-}
+
+data RPrim
+   = RCircle
+   | RRect
+   | RLine
+   -- TODO use Seq not []
+   | RLines !Bool ![V2 Double]
+   | RText !Str
+   | REmbed !Embed
+   deriving (Show)
+
+data RNodeInfo
+  = RNodeInfo
+    { rStyle   :: !Style
+    , rTransf  :: !(Transformation Double)
+    , rHandler :: !Handlers
+    }
+   deriving (Show)
+
+#ifdef __GHCJS__
+instance Show Handlers where
+  show x = "handlers"
+#endif
+
+data RDrawing
+  = RPrim !RNodeInfo !RPrim
+  | RMany !RNodeInfo ![RDrawing]
+   deriving (Show)
+
+instance Monoid RDrawing where
+  mempty = RMany mempty mempty
+
+  -- TODO this could emit extra nodes
+  mappend x y = RMany mempty (y : pure x)
+
+  mconcat     = RMany mempty . mapReverse id
+
+
+toNodeInfoT :: Transformation Double -> RNodeInfo
+toNodeInfoT t = mempty { rTransf = t }
+{-# INLINABLE toNodeInfoT #-}
+
+toNodeInfoS :: Style -> RNodeInfo
+toNodeInfoS t = mempty { rStyle = t }
+{-# INLINABLE toNodeInfoS #-}
+
+toNodeInfoH :: Handlers -> RNodeInfo
+toNodeInfoH t = mempty { rHandler = t }
+{-# INLINABLE toNodeInfoH #-}
+
+instance Monoid RNodeInfo where
+  mempty = RNodeInfo mempty mempty mempty
+  mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
+    RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
+
+printRTreeInfo :: RDrawing -> IO ()
+printRTreeInfo x = do
+  print $ "RTree N nodes " ++ show (drawingTreeRNNodes x)
+  print $ "RTree depth   " ++ show (drawingTreeRDepth x)
+drawingTreeRNNodes = drawingRTreeFold (+)
+drawingTreeRDepth = drawingRTreeFold max
+drawingRTreeFold :: (Int -> Int -> Int) -> RDrawing -> Int
+drawingRTreeFold f = go
+  where
+    go (RPrim _ _)  = 1
+    go (RMany _ xs) = foldr f 0 (fmap go xs)
 
 renderDrawing :: RenderingOptions -> Drawing -> RDrawing
 renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing $ placeOrigo $ scaleY (-1) $ drawing
