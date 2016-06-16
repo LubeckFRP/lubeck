@@ -871,7 +871,7 @@ drTest1 = DrawingTest
     A centered red circle, radius 10.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
-  $ D.scale 10
+  $ D.scale 50
   $ D.fillColor Colors.red
   $ D.circle
 
@@ -881,7 +881,7 @@ drTest2 = DrawingTest
     A centered blue circle, radius 10.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
-  $ D.scale 10
+  $ D.scale 50
   $ D.fillColor Colors.blue
   $ D.circle
 
@@ -893,8 +893,8 @@ drTest3 = DrawingTest
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ c <> s
   where
-    c = D.scale 10 $ D.fillColor Colors.red D.circle
-    s = D.scale 10 $ D.fillColor Colors.blue D.square
+    c = D.scale 50 $ D.fillColor Colors.red D.circle
+    s = D.scale 50 $ D.fillColor Colors.blue D.square
 
 drTest4 = DrawingTest
   "drTest4"
@@ -910,7 +910,70 @@ drTest5 = DrawingTest
     A semi-transparent triangle.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.scale 50
+  $ D.fillColor Colors.blue
   $ D.triangle
+
+drTest6 = DrawingTest
+  "drTest6"
+  [string|
+    A square moved to the right.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ D.translateX 100
+  $ D.scale 100
+  $ D.fillColor Colors.blue
+  $ D.square
+
+drTest7 = DrawingTest
+  "drTest7"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ D.translateX 10
+  $ D.scale 100
+  $ D.strokeWidth 5
+  $ D.strokeColor Colors.green
+  $ D.verticalLine
+
+drTest7b = DrawingTest
+  "drTest7b"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ D.translateX 10
+  $ D.strokeWidth 5
+  $ D.scale 100
+  $ D.strokeColor Colors.green
+  $ D.verticalLine
+
+drTest8 = DrawingTest
+  "drTest8"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ D.translateY 10
+  $ D.scale 100
+  $ D.strokeWidth 5
+  $ D.strokeColor Colors.green
+  $ D.horizontalLine
+
+drTest9 = DrawingTest
+  "drTest9"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ mconcat [
+    (D.translate (V2 50 50)       $ D.text "1st")
+  , (D.translate (V2 (-50) 50)    $ D.text "2nd")
+  , (D.translate (V2 (-50) (-50)) $ D.text "3rd")
+  , (D.translate (V2 50 (-50))    $ D.text "4th")
+  ]
 
 -- testRad = drawingToSvgString
 --   (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
@@ -1318,7 +1381,16 @@ dataset1 =
 -- For now just render to make sure we have no exceptions
 
 drawingTestBatck = [
-  -- drTest1
+    drTest1
+  , drTest2
+  , drTest3
+  , drTest4
+  , drTest5
+  , drTest6
+  , drTest7
+  , drTest7b
+  , drTest8
+  , drTest9
   -- TODO etc
   ]
 dvTestBatch = [
