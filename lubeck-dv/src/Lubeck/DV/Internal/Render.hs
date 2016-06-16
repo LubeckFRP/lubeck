@@ -419,5 +419,6 @@ withinNormRange x = (0-0.001) <= x && x <= (1+0.001)
 maskRenderingRectangle :: Styling -> Drawing -> Drawing
 maskRenderingRectangle style = mask $
   transform (scalingXY $ style^.renderingRectangle)
-    $ fillColorA (Colors.orange `withOpacity` 0.1)
+    -- Nice color in case we want to debug the mask
+    $ fillColorA (Colors.orange `withOpacity` 0.5)
     $ align BL square

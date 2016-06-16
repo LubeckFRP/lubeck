@@ -38,6 +38,7 @@ import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 import Lubeck.DV
 import qualified Lubeck.Drawing
+import qualified Lubeck.Drawing as D
 import qualified Lubeck.DV.Styling
 
 -- TODO HashSVG
@@ -253,6 +254,9 @@ rasterizeAndHashSvgFile path = do
 
 drawingToSvgString :: RenderingOptions -> Styling -> Styled Drawing -> Str
 drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
+
+drawingToSvgStringUnstyled :: RenderingOptions -> Drawing -> Str
+drawingToSvgStringUnstyled drawOpts finalD = Lubeck.Drawing.toSvgStr drawOpts $ finalD
 
 visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> Str
 visualizeTest dat geom aess = drawingToSvgString mempty mempty
@@ -861,6 +865,53 @@ test33 = DrawingTest "test33" "" $ unpackStr
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
 
+drTest1 = DrawingTest
+  "drTest1"
+  [string|
+    A centered red circle, radius 10.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.scale 10
+  $ D.fillColor Colors.red
+  $ D.circle
+
+drTest2 = DrawingTest
+  "drTest2"
+  [string|
+    A centered blue circle, radius 10.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.scale 10
+  $ D.fillColor Colors.blue
+  $ D.circle
+
+drTest3 = DrawingTest
+  "drTest3"
+  [string|
+    A red circle on top of a blue square, both centered.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ c <> s
+  where
+    c = D.scale 10 $ D.fillColor Colors.red D.circle
+    s = D.scale 10 $ D.fillColor Colors.blue D.square
+
+drTest4 = DrawingTest
+  "drTest4"
+  [string|
+    A transparent image.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ mempty
+
+drTest5 = DrawingTest
+  "drTest5"
+  [string|
+    A semi-transparent triangle.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.triangle
+
 -- testRad = drawingToSvgString
 --   (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
 --   (renderingRectangle .~ V2 800 500 $ mempty) $ drawPlot $ mconcat
@@ -1266,6 +1317,10 @@ dataset1 =
 
 -- For now just render to make sure we have no exceptions
 
+drawingTestBatck = [
+  -- drTest1
+  -- TODO etc
+  ]
 dvTestBatch = [
   test
   , test2
@@ -1297,6 +1352,11 @@ dvTestBatch = [
   , test31
   , test32
   ]
+
+-- TODO separate these, see #126
+drawingPlusDvTestBatch = drawingTestBatck <> dvTestBatch
+
+
 --
 --   print "Rendered all test plots"
 
@@ -1321,10 +1381,10 @@ main' :: [String] -> IO ()
 main' args = do
   case args of
     ["--generate"] -> do
-      updateHashesDTs "DV tests" "hashes/test.json" dvTestBatch
+      updateHashesDTs "Drawing+DV tests" "hashes/test.json" drawingPlusDvTestBatch
 
     ["--compare"] -> do
-      ok <- compareHashesDTs "DV tests" "hashes/test.json" dvTestBatch
+      ok <- compareHashesDTs "Drawing+DV tests" "hashes/test.json" drawingPlusDvTestBatch
       if ok then exitSuccess else exitFailure
 
     -- Same as --compare
@@ -1332,11 +1392,11 @@ main' args = do
       -- cwd <- getCurrentDirectory
       -- print cwd
 
-      ok <- compareHashesDTs "DV tests" "hashes/test.json" dvTestBatch
+      ok <- compareHashesDTs "Drawing+DV tests" "hashes/test.json" drawingPlusDvTestBatch
       if ok then exitSuccess else exitFailure
 
     ["--report"] -> do
-      renderDrawingTestsToDir "DV tests" "/tmp/lubeck/dv/test/report" dvTestBatch
+      renderDrawingTestsToDir "Drawing+DV tests" "/tmp/lubeck/dv/test/report" drawingPlusDvTestBatch
 
 
     _ -> error "Bad arguments"
