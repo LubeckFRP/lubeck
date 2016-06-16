@@ -1436,15 +1436,6 @@ dataset1 =
           [366,2.9,4.3  ]
           ]
 
--- TODO automatically verify the plots look the same
-
--- The only way to do this reliably is to render the SVGs to bitmap, using
--- something like http://imagemagick.org/script/index.php
-
--- See #121
-
--- For now just render to make sure we have no exceptions
-
 drawingTestBatck = [
     drTest1
   , drTest2
