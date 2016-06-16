@@ -43,7 +43,6 @@ executable lubeck-frp-bench
                     --  , linear
                     --  , colour
                      , lubeck-core
-                     , lubeck-dv
                      , lubeck-frp
   if impl(ghcjs)
     build-depends:     ghcjs-base
