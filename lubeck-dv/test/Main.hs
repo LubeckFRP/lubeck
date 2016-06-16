@@ -32,6 +32,7 @@ import qualified Data.Char
 import qualified Data.List
 import Data.Map(Map)
 import qualified Data.Map
+import Data.Colour(withOpacity)
 import qualified Data.Colour.Names as Colors
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
@@ -975,6 +976,70 @@ drTest9 = DrawingTest
   , (D.translate (V2 50 (-50))    $ D.text "4th")
   ]
 
+drTest10 = DrawingTest
+  "drTest10"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ mconcat [
+    (D.translate (V2 21 63) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
+  , (D.translate (V2 01 22) $ D.strokeColor Colors.green $ D.scale 11 $ D.square)
+  , (D.translate (V2 31 51) $ D.strokeColor Colors.green $ D.scale 12 $ D.square)
+  , (D.translate (V2 99 41) $ D.strokeColor Colors.green $ D.scale 13 $ D.square)
+  , (D.translate (V2 71 17) $ D.strokeColor Colors.green $ D.scale 14 $ D.square)
+  ]
+
+drTest11 = DrawingTest
+  "drTest11"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ mconcat [
+    D.rotate (D.turn/2) b
+  , D.rotate (D.turn/3) b
+  , D.rotate (D.turn/4) b
+  , D.rotate (D.turn/5) b
+  , D.rotate (D.turn/6) b
+  , D.rotate (D.turn/7) b
+  ]
+  where
+    b = (D.translate (V2 100 0) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
+
+drTest12 = DrawingTest
+  "drTest12"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ mconcat [
+    D.rotate (0*D.turn/5) b
+  , D.rotate (1*D.turn/5) b
+  , D.rotate (2*D.turn/5) b
+  , D.rotate (3*D.turn/5) b
+  , D.rotate (4*D.turn/5) b
+  ]
+  where
+    b = (D.translate (V2 100 0) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
+
+drTest13 = DrawingTest
+  "drTest13"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ mconcat [
+    D.fitInsideRect r a
+  , D.transform (D.rectToTransf r) b
+  ]
+  where
+    r = D.rect 10 40 200 250
+    a = (D.strokeColorA (Colors.green `withOpacity` 0.2) $ D.scale 10 $ D.square)
+    b = (D.strokeColor Colors.green $ D.scale 10 $ D.square)
+
+
+
 -- testRad = drawingToSvgString
 --   (mempty { dimensions = P (V2 800 500), originPlacement = BottomLeft })
 --   (renderingRectangle .~ V2 800 500 $ mempty) $ drawPlot $ mconcat
@@ -1391,6 +1456,10 @@ drawingTestBatck = [
   , drTest7b
   , drTest8
   , drTest9
+  , drTest10
+  , drTest11
+  , drTest12
+  , drTest13
   -- TODO etc
   ]
 dvTestBatch = [
