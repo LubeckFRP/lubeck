@@ -294,6 +294,32 @@ renderDrawingTestsToDir1 dir tests = case testBatchToMap tests of
     for_ (Data.Map.toList nameToSvgStrMap) $ \(name, svgStr) ->
       writeFile (dir <> "/" <> name <> ".svg") svgStr
 
+    let content = concatMap (\name -> makeItem name)
+          (Data.Map.keys nameToSvgStrMap)
+    writeFile (dir <> "/" <> "index.html") $ makeIndex content
+  where
+    makeItem :: String -> String
+    makeItem name = "<p><a href='" <> name <> ".svg'>" <> name <> "</a></p>\n"
+
+    makeIndex :: String -> String
+    makeIndex a = s1 <> a <> s2
+      where
+        s1 = [string|
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <title>title</title>
+              <link rel="stylesheet" href="style.css">
+              <script src="script.js"></script>
+            </head>
+            <body> |]
+        s2 = [string|
+            </body>
+          </html>
+          |]
+
+
 updateHashesDTs :: TestSuiteName -> FilePath -> [DrawingTest] -> IO ()
 updateHashesDTs _ path tests = case testBatchToMap tests of
   Nothing -> error "updateHashesDTs: Duplicate names"
