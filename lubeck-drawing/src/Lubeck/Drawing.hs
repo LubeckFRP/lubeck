@@ -1219,7 +1219,7 @@ smokeBackground = fillColor Colors.whitesmoke $ scale 5000 $ square
 
 {-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
 xyAxis :: Drawing
-xyAxis = strokeColor Colors.darkgreen $ strokeWidth 0.5 $
+xyAxis = scale 5000 $ strokeColor Colors.darkgreen $ strokeWidth 0.5 $
   mconcat [horizontalLine, verticalLine]
 
 {-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
