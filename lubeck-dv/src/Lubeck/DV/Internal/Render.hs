@@ -191,10 +191,6 @@ barDataH ps = do
     scaleRR = getRenderingPositionD
 
 
-{-
-TODO unify/generalize bar pltos
--}
-
 baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
 baseImage dr x y (Just size) = do
@@ -212,7 +208,6 @@ baseLabel x y str = do
     text_ style = fmap (Lubeck.Drawing.translate absOffset) $ Lubeck.Drawing.textWithOptions $ mempty
       {
       Lubeck.Drawing.textAnchor       = style^.labelTextAnchor
-      -- TODO read family from style
       , Lubeck.Drawing.fontFamily     = style^.labelTextFontFamily
       , Lubeck.Drawing.fontStyle      = style^.labelTextFontStyle
       , Lubeck.Drawing.fontSize       = First $ Just $ (toStr $ style^.labelTextFontSizePx) <> "px"
@@ -221,8 +216,6 @@ baseLabel x y str = do
       }
       where
         absOffset = style^.labelTextAbsOffset
-
-
 
 
 -- | Draw ticks.
@@ -235,7 +228,6 @@ ticks
   -> m Drawing
 ticks xTickList1 yTickList1 = do
   style <- ask
-  -- TODO general orientation
 
   let !xTickList = case style^.barPlotOrientation of
             Vertical   -> xTickList1
@@ -243,10 +235,6 @@ ticks xTickList1 yTickList1 = do
   let !yTickList = case style^.barPlotOrientation of
             Vertical   -> yTickList1
             Horizontal -> xTickList1
-
-  -- TODO zoom: derive from zoom , with filtering
-  -- let (xPos :: Double) = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
-  -- let (yPos :: Double) = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
 
   -- Flipped!
   let xInsideLength = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
@@ -296,7 +284,6 @@ ticks xTickList1 yTickList1 = do
     text_ which which2 style = textWithOptions $ mempty
       { textAnchor        = style^.tickTextAnchor.to which
       , alignmentBaseline = style^.tickTextAlignmentBaseline.to which2
-      -- TODO read family from style
       , fontFamily        = style^.tickTextFontFamily
       , fontStyle         = style^.tickTextFontStyle
       , fontSize          = First $ Just $ (toStr $ style^.tickTextFontSizePx) <> "px"
@@ -353,7 +340,7 @@ labeledAxis labelX labelY = do
 
 -- Utility
 
-{- Take a point in the unit hypercube and return the corresponding rendering
+{-| Take a point in the unit hypercube and return the corresponding rendering
 position. If the resulting position falls outside the rendering rectangle,
 returns (Left p), if it falls inside, return (Right p).
 
@@ -364,18 +351,23 @@ This is accomplished as follows:
 - Run the linear transformation that defines the rendering rectangle (always a
 - scaling) -}
 getRenderingPosition :: Styling -> P2 Double -> Either (P2 Double) (P2 Double)
-getRenderingPosition styling x = bimapSame (transformPoint (scalingXY $ styling^.renderingRectangle)) $
-  (\p@(P (V2 x y)) -> if withinNormRange x && withinNormRange y then Right p else Left p) $ transformPoint (styling^.zoom) x
+getRenderingPosition styling x =
+  bimapSame (transformPoint $ scalingXY $ styling^.renderingRectangle)
+    $ insideUnitHyperCube $ transformPoint (styling^.zoom) x
   where
+    insideUnitHyperCube p@(P (V2 x y)) =
+      if withinNormRange x && withinNormRange y
+        then Right p
+        else Left p
     bimapSame f = bimap f f
 
-{- Similar to 'getRenderingPosition', but return 'empty' if the point falls
+{-| Similar to 'getRenderingPosition', but return 'empty' if the point falls
 outside the rendering rectangle. -}
 getRenderingPositionM :: (Monad m, Alternative m) => Styling -> m (P2 Double) -> m (P2 Double)
 getRenderingPositionM style = mapFilterEither (getRenderingPosition style)
 
 
-{- Similar 'getRenderingPosition' for Drawings. Transforming a drawing is
+{-| Similar 'getRenderingPosition' for Drawings. Transforming a drawing is
 conceptually the same as transformting every point inside it using
 'getRenderingPosition'. However, this function ignores the filtering peformed by
 'getRenderingPosition', so the resulting image might fall partially, or

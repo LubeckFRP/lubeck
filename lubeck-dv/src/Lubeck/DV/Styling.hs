@@ -239,35 +239,6 @@ data Styling = Styling
   , _ratioPlotBackgroundColor         :: Palette Double
   , _ratioPlotForegroundColor         :: Palette Double
 
-  -- Color allocator
-    -- TODO idea: to allocate colors to categories/dimensions
-    -- This could work very well with Control.Monad.Reader.local.
-
-    -- I.e. there should be a function (subStyle 1 4 :: Styling -> Styling) that transforms the styling
-    -- (in this case 1 out of 4), by recursively applying over all styles that support this (i.e. the bar colour space).
-
-    -- NOTE there are two ways of using color with this API: through styling (appropriate for
-    -- bar groups etc where the color is not strictly bound to the data), or through an extra R dimension ("withColor",
-    -- appropriate for heat maps etc)
-
-  -- Axis/ticks
-    -- X,Y axis name
-      -- NOTE: Standard styles: left/below centered, at end
-
-    -- X Axis standard (usually left) line (strokeWith, strokeColorA)
-    -- X Axis opposite                line (strokeWith, strokeColorA)
-    -- Y Axis standard                line (strokeWith, strokeColorA)
-    -- Y Axis opposite                line (strokeWith, strokeColorA)
-
-    -- Axis arrow end?
-
-    -- NOTE: strike-through/background ticks are rarely used together
-    -- X,Y strike-through/background ticks
-    -- X,Y tick (length, width, pos rel axis (see below), strokeColorA)
-    -- Text position relative tick
-    -- Text rotation
-      -- NOTE: common(x,y) is (turn/4,0), (turn/8,0), (0,0)
-
   , _tickTextTurn                     :: (Angle Double, Angle Double)
   , _tickTextAnchor                   :: (TextAnchor, TextAnchor)
   , _tickTextAlignmentBaseline        :: (AlignmentBaseline, AlignmentBaseline)
@@ -369,7 +340,7 @@ instance Monoid Styling where
     }
   mappend = const
 
-{-
+{-|
 A somewhat arbitrary list. Used as a default palette for most colored elements.
 -}
 defColorList =
