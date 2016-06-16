@@ -299,7 +299,8 @@ renderDrawingTestsToDir1 dir tests = case testBatchToMap tests of
     writeFile (dir <> "/" <> "index.html") $ makeIndex content
   where
     makeItem :: String -> String
-    makeItem name = "<p><a href='" <> name <> ".svg'>" <> name <> "</a></p>\n"
+    -- makeItem name = "<p><a href='" <> name <> ".svg'>" <> name <> "</a></p>\n"
+    makeItem name = "<h2>" <> name <> "</h2><p><img src='" <> name <> ".svg' alt='" <> name <> "' /></p>"
 
     makeIndex :: String -> String
     makeIndex a = s1 <> a <> s2
