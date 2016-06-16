@@ -53,6 +53,9 @@ import Lubeck.DV.ColorPalette
 import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
+data ScatterData = ScatterData
+  { scatterDataColor :: Double
+  }
 
 scatterData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => ScatterData -> [P2 Double] -> m Drawing
 scatterData (ScatterData colorN) ps = do
@@ -73,10 +76,10 @@ scatterDataX :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Doub
 scatterDataX ps = do
   style <- ask
   -- let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
-  let base = id
-          $ addStyling style
-          $ translateY 0.5
-          $ verticalLine
+  let base  = id
+            $ addStyling style
+            $ translateY 0.5
+            $ verticalLine
   return $ mconcat $ fmap (\p -> scaleY (style^.renderingRectangle._y) $ translateX (p^._x) base) $ mapFilterEither (getRenderingPosition style) ps
   where
     addStyling style x = id
@@ -350,50 +353,55 @@ labeledAxis labelX labelY = do
 
 -- Utility
 
-
-{-
-Take a point in the UHQ and transform it into its rendering position.
-If the resulting position is outside the RR, return (Left p), otherwise return (Right p).
+{- Take a point in the unit hypercube and return the corresponding rendering
+position. If the resulting position falls outside the rendering rectangle,
+returns (Left p), if it falls inside, return (Right p).
 
 This is accomplished as follows:
-  - Run the zoom affine transformation (if default zoom, this is the identity)
-  - Optionally filter points that now falls outside the UHQ (i.e. when zooming in)
-  - Run the linear transformation that defines the rendering rectangle (always a scaling)
--}
+
+- Run the zoom affine transformation (if default zoom, this is the identity)
+- Optionally filter points that now falls outside the UHQ (i.e. when zooming in)
+- Run the linear transformation that defines the rendering rectangle (always a
+- scaling) -}
 getRenderingPosition :: Styling -> P2 Double -> Either (P2 Double) (P2 Double)
 getRenderingPosition styling x = bimapSame (transformPoint (scalingXY $ styling^.renderingRectangle)) $
   (\p@(P (V2 x y)) -> if withinNormRange x && withinNormRange y then Right p else Left p) $ transformPoint (styling^.zoom) x
   where
     bimapSame f = bimap f f
-{-
-Like getRenderingPosition for drawings.
-Carries out transformation directly without filtering. This is usually not what we want.
 
-TODO prove/assure that this is equal to getRenderingPosition/getRenderingPositionT modulo filtering
--}
+{- Similar to 'getRenderingPosition', but return 'empty' if the point falls
+outside the rendering rectangle. -}
+getRenderingPositionM :: (Monad m, Alternative m) => Styling -> m (P2 Double) -> m (P2 Double)
+getRenderingPositionM style = mapFilterEither (getRenderingPosition style)
+
+
+{- Similar 'getRenderingPosition' for Drawings. Transforming a drawing is
+conceptually the same as transformting every point inside it using
+'getRenderingPosition'. However, this function ignores the filtering peformed by
+'getRenderingPosition', so the resulting image might fall partially, or
+completely outside the rendering rectangle.
+
+TODO prove/assure that this is equal to
+getRenderingPosition/getRenderingPositionT modulo filtering -}
 getRenderingPositionD :: Styling -> Drawing -> Drawing
 getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRectangle) $ transform (styling^.zoom) x
 
 
 {-|
-Like getRenderingPositionD, but don't actually scale the image.
+Like 'getRenderingPositionD', but don't actually scale the image.
 
 Effectively, the given image is treated as an image which "anchor point" at
 (origin +^ v). The anchor is transformed into the rendering space (taking zoom
 and rendering rectangle into account), and the image is then translated so that
 its origin aligns with the transformed anchor.
--}
+
+This is useful for things like labels and text. -}
 getRenderingPositionRel :: V2 Double -> Styling -> Drawing -> Drawing
 getRenderingPositionRel v styling dr = case getRenderingPosition styling (origin .+^ v) of
   Left _ -> mempty
   Right p -> translate (p .-. origin) dr
   where
     origin = P $ V2 0 0
-
-data ScatterData = ScatterData
-  { scatterDataColor :: Double
-  }
-
 
 mapFilterEitherBoth :: (Monad m, Alternative m) => (a -> Either b b) -> m a -> m b
 mapFilterEitherBoth f = fmap (g . f)
@@ -407,20 +415,10 @@ mapFilterEither f = (=<<) (g . f)
     g (Left _)  = empty
     g (Right x) = pure x
 
-{-
-TODO finish/fix filtering
-- Tick fitlering needs a new version of getRenderingPositionX
-- Axes are OK
-- Data could probably be handled by an SVG clip, see https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Clipping_and_masking
-  - Lines and areas need mask, otherwise we're OK
--}
-
+{- Given a point, return the vector from the origin to that point. -}
 relOrigin :: (Num n, Num (v n), Additive v) => Point v n -> v n
 relOrigin p = p .-. 0
 {-# INLINE relOrigin #-}
-
--- filterTicks :: [(Double, a)] -> [(Double, a)]
--- filterTicks = filter (withinNormRange . fst)
 
 -- | Is a number within the normalized (UHQ) range?
 withinNormRange :: Double -> Bool
