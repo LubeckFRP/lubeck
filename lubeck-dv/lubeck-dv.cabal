@@ -36,7 +36,7 @@ library
                      , temporary
                      , directory
                      , generic-deriving
-                     -- TODO test suite only (@stack repl@ cofuses this)
+                     -- TODO test suite only (@stack repl@ confuses these)
                      , process
                      , temporary
                      , directory
