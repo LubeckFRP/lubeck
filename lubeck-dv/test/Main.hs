@@ -1005,7 +1005,7 @@ drTest11 = DrawingTest
   , D.rotate (D.turn/7) b
   ]
   where
-    b = (D.translate (V2 100 0) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
+    b = (D.translate (V2 100 0) $ D.fillColor Colors.green $ D.scale 10 $ D.square)
 
 drTest12 = DrawingTest
   "drTest12"
@@ -1021,7 +1021,7 @@ drTest12 = DrawingTest
   , D.rotate (4*D.turn/5) b
   ]
   where
-    b = (D.translate (V2 100 0) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
+    b = (D.translate (V2 100 0) $ D.fillColor Colors.green $ D.scale 10 $ D.square)
 
 drTest13 = DrawingTest
   "drTest13"
@@ -1035,8 +1035,8 @@ drTest13 = DrawingTest
   ]
   where
     r = D.rect 10 40 200 250
-    a = (D.strokeColorA (Colors.green `withOpacity` 0.2) $ D.scale 10 $ D.square)
-    b = (D.strokeColor Colors.green $ D.scale 10 $ D.square)
+    a = (D.fillColorA (Colors.green `withOpacity` 0.2) $ D.scale 10 $ D.square)
+    b = (D.fillColor Colors.green $ D.scale 0.5 $ D.square)
 
 
 
