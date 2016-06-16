@@ -144,7 +144,8 @@ This a pure function from the file semantics of the file contents to the result.
 IO is for exception handling when invoking PhantomJS.
 -}
 rasterizeAndHashSvgString :: String -> IO String
-rasterizeAndHashSvgString contents = withSystemTempFile "rasterizeAndHashSvgFile" $ \filePath _ -> do
+rasterizeAndHashSvgString contents = withSystemTempDirectory "rasterizeAndHashSvgFile" $ \dir -> do
+  let filePath = dir <> "/image.svg"
   writeFile filePath contents
   rasterizeAndHashSvgFile filePath
 
