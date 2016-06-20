@@ -143,7 +143,7 @@ import Control.Lens(Getter, to)
 import Control.Lens.Operators hiding ((<~))
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Map.Strict(Map)
-import Data.Time(UTCTime)
+import Data.Time(UTCTime, NominalDiffTime)
 
 import Control.Monad.Identity
 import Control.Monad.Reader
@@ -698,17 +698,17 @@ A scale for time values.
 timeScale :: Scale UTCTime
 timeScale = timeScaleWithOptions StandardTR
 
-data TimeRendering = StandardTR | MonthYearTR
+data TimeRendering = StandardTR | MonthYearTR | CustomTR (UTCTime -> UTCTime -> NominalDiffTime -> UTCTime -> Str)
 
 {-|
 Like 'timeScale', but with more custom options.
 -}
 timeScaleWithOptions :: TimeRendering -> Scale UTCTime
 timeScaleWithOptions timeRendering = Scale
-  { scaleMapping  = mapping
+  { scaleMapping      = mapping
   , scalePlotBounds   = bounds . fmap toNDiffTime
-  , scaleGuides   = guides . fmap toNDiffTime
-  , scaleBaseName = "timeScale"
+  , scaleGuides       = guides . fmap toNDiffTime
+  , scaleBaseName     = "timeScale"
   }
   where
     safeMin [] = 0
@@ -718,14 +718,25 @@ timeScaleWithOptions timeRendering = Scale
 
     sortNub = Data.List.nub . Data.List.sort
 
-    showT t = case timeRendering of
+    showT :: UTCTime -> UTCTime -> NominalDiffTime -> UTCTime -> Str
+    showT minT maxT timeInterval t = case timeRendering of
       StandardTR  -> toStr t
       MonthYearTR -> packStr $ Data.Time.formatTime Data.Time.defaultTimeLocale "%m-%Y" t
+      CustomTR f  -> f minT maxT timeInterval t
 
     mapping _ v = realToFrac $ toNDiffTime v
     bounds vs = (realToFrac $ safeMin vs, realToFrac $ safeMax vs)
+
     -- Lots of different possibilities here
-    guides vs = fmap (\x -> (x, showT $ toUTCTime $ realToFrac x)) $ tickCalc 4 (bounds vs)
+    guides :: [NominalDiffTime] -> [(Double, Str)]
+    guides [] = []
+    guides vs = fmap (g) $ tickCalc 4 (bounds vs)
+      where
+        g = \x -> (x, showT
+          (toUTCTime $ (minimum vs))
+          (toUTCTime $ (maximum vs))
+          (maximum vs - minimum vs)
+          (toUTCTime $ realToFrac x))
 
     toNDiffTime = (`Data.Time.diffUTCTime` refTime)
     toUTCTime   = (`Data.Time.addUTCTime` refTime)
