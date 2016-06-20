@@ -1218,6 +1218,13 @@ drawingToRDrawing :: Drawing -> RDrawing
 drawingToRDrawing = drawingToRDrawing' mempty
 {-# INLINE drawingToRDrawing #-}
 
+{-
+  TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
+
+  Pattern is something like this:
+    newMaskId <- addMask (d1::Drawing)
+    RMask newMaskId (d2::Drawing)
+-}
 drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
 drawingToRDrawing' nodeInfo x = case x of
     Circle                 -> RPrim nodeInfo RCircle
@@ -1276,9 +1283,12 @@ instance Show Handlers where
   show x = "handlers"
 #endif
 
+type MaskId = Int
+
 data RDrawing
   = RPrim !RNodeInfo !RPrim
   | RMany !RNodeInfo ![RDrawing]
+  | RMask !MaskId !RDrawing
    deriving (Show)
 
 instance Monoid RDrawing where
@@ -1367,25 +1377,8 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
 
     single x = [x]
     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-    -- negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-    P (V2 x y) = dimensions
 
-    -- TODO scaling all points
-    -- reflY_ (V2 adx ady) = V2 adx (negate ady)
-    reflY_ = id
-    {-
-      How to alter coordinates from Math to SVG?
-
-      Alt 1: change all transformations
-        (scalingY (-1) <>)
-      and all images
-        (scaleY (-1))
-      (or simply emit according to SVG conventions)
-
-      Alt 2: emit AS IS and add an extra outer transformation node that affects the WHOLE image
-    -}
     toSvg1 :: RDrawing -> Svg
     toSvg1 drawing = case drawing of
       RPrim nodeInfo prim -> case prim of
@@ -1399,7 +1392,7 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
           ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
           []
         (RLines closed vs) -> (if closed then E.polygon else E.polyline)
-          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (map reflY_ vs)), noScale] ++ nodeInfoToProperties nodeInfo)
+          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) vs), noScale] ++ nodeInfoToProperties nodeInfo)
           []
         (RText s) -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.text'
           ([A.x "0", A.y "0", A.transform "matrix(1,0,0,-1,0,0)"])
