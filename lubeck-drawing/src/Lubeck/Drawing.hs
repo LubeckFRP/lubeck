@@ -1288,7 +1288,9 @@ type MaskId = Int
 data RDrawing
   = RPrim !RNodeInfo !RPrim
   | RMany !RNodeInfo ![RDrawing]
+{-
   | RMask !MaskId !RDrawing
+-}
    deriving (Show)
 
 instance Monoid RDrawing where
@@ -1378,6 +1380,7 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
     single x = [x]
     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
+    P (V2 x y) = dimensions
 
     toSvg1 :: RDrawing -> Svg
     toSvg1 drawing = case drawing of
