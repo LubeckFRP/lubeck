@@ -104,6 +104,7 @@ lineData _ []     = mempty
 lineData _ [_]    = mempty
 lineData (LineData colorN dashN) (p:ps) = do
   style <- ask
+  let mPrec = style^.precision
   let lineStyle = id
                 . strokeColorA  (style^.linePlotStrokeColor.to (`getColorFromPalette` colorN))
                 . fillColorA    (Colors.black `withOpacity` 0) -- transparent
@@ -111,7 +112,26 @@ lineData (LineData colorN dashN) (p:ps) = do
                 . dash          (style^.linePlotStroke. to (`extractLineStyle` dashN))
 
   return $ maskRenderingRectangle style $ lineStyle $ ((either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) :: Drawing -> Drawing) $
-    ((segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)) :: Drawing)
+    ((segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:mFilterToPrecision mPrec ps)) :: Drawing)
+  -- TODO this should really filter out all points outside data set (except the 2 closest to RR, to get correct slope), and *then* apply precision
+
+mFilterToPrecision :: Maybe Int -> [a] -> [a]
+mFilterToPrecision Nothing xs  = xs
+mFilterToPrecision (Just n) xs = filterToPrecision n xs
+
+filterToPrecision :: Int -> [a] -> [a]
+filterToPrecision n xs = takeEvery n' xs
+  where
+    -- takeEvery 2 [1..] => [1,3,5..]
+    takeEvery :: Int -> [a] -> [a]
+    takeEvery _ []     = []
+    takeEvery n (x:xs) = x : drop (n-1) (takeEvery n xs)
+
+    n' = ceiling $ toDouble (length xs) / toDouble n
+
+    toDouble :: Int -> Double
+    toDouble = fromIntegral
+
 
 data AreaData = AreaData
   { areaDataColor :: Double

@@ -18,6 +18,7 @@ module Lubeck.DV.Styling
   , renderingRectangle
   , zoom
   , zoomType
+  , precision
 
   , axisStrokeWidth
   , axisStrokeColor
@@ -202,6 +203,10 @@ data Styling = Styling
   --   to the visible data points.
   , _zoomType                         :: ZoomType
 
+  -- ^ If Nothing, render all data points.
+  --   If @Just n@, render at least n data points.
+  , _precision                        :: Maybe Int
+
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight
   , _axisTextFontStyle                :: FontStyle
@@ -276,6 +281,7 @@ instance Monoid Styling where
     , _renderingRectangle           = V2 400 300
     , _zoom                         = 1
     , _zoomType                     = mempty
+    , _precision                    = Nothing
 
     , _axisTextFontFamily           = mempty
     , _axisTextFontWeight           = mempty
