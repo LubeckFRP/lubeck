@@ -206,6 +206,8 @@ module Lubeck.Drawing
   , negDiagonal
   , (|||)
   , (===)
+  , (///)
+  , (\\\)
   , juxtapose
 
   , boundaries
