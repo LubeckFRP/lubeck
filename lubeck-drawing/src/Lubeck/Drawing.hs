@@ -459,38 +459,6 @@ lineseg x1 x2 = LineSeg (P (V1 x1)) (P (V1 x2))
 transformLineSeg :: Num a => T1 a -> LineSeg a -> LineSeg a
 transformLineSeg t (LineSeg p1 p2) = LineSeg (transformPoint1 t p1) (transformPoint1 t p2)
 
--- -- makeLenses ''Rect
--- p1 :: Lens' (Rect a) (P2 a)
--- p1 f (Rect_ p1 p2) = fmap (\p1' -> Rect_ p1' p2) $ f p1
---
--- p2 :: Lens' (Rect a) (P2 a)
--- p2 f (Rect_ p1 p2) = fmap (\p2' -> Rect_ p1 p2') $ f p2
---
--- _left, _right, _bottom, _top :: Lens' (Rect a) a
--- _left    = p1._x
--- _right   = p2._x
--- _bottom  = p1._y
--- _top     = p2._y
---
--- width r = r^._right - r^._left
--- height r = r^._top - r^._bottom
---
-
-
---
--- {-
--- Fit a drawing inside a rectangle. Accomplished by aligning the drawing
--- at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
--- -}
--- fitInsideRect :: Rect Double -> Drawing -> Drawing
--- fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
---     $ translate (p1 .-. origin)
---     $ scaleXY   (p2 .-. p1)
---     -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
---     -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
---     $ align BL
---     $ d
-
 lineSegToTransf :: Num a => LineSeg a -> T1 a
 lineSegToTransf (LineSeg (p1@(P (v1@(V1 x1)))) (p2@(P (v2@(V1 x2))))) =
   translation1 (p1 .-. origin) <> scaling1 (p2 .-. p1)
