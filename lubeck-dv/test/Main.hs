@@ -1038,6 +1038,107 @@ drTest13 = DrawingTest
     a = (D.fillColorA (Colors.green `withOpacity` 0.2) $ D.scale 10 $ D.square)
     b = (D.fillColor Colors.green $ D.scale 0.5 $ D.square)
 
+-- Angle/Point/Vector geometry
+-- Directions
+-- Rect/LineSet
+-- All transformations
+-- Basic styles (which?)
+-- Text API
+-- Embedded SVG
+-- Masking
+-- Envelopes
+-- Polygons
+-- Rendering options
+drTestRO1 = DrawingTest
+  "drTestRO1"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+drTestRO2 = DrawingTest
+  "drTestRO2"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+drTestRO3 = DrawingTest
+  "drTestRO3"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+drTestU1 = DrawingTest
+  "drTestU1"
+  [string|
+    Direction pointing to TR corner.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.showDirection (D.dir $ V2 1 1)
+drTestU2 = DrawingTest
+  "drTestU2"
+  [string|
+    Direction pointing to BL corner.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.showDirection (D.dir $ V2 (-1) (-1))
+drTestU3 = DrawingTest
+  "drTestU3"
+  [string|
+    Direction pointing to BR corner.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.showDirection (D.dir $ V2 1 (-1))
+
+drTestU4 = DrawingTest
+  "drTestU4"
+  [string|
+    The points (100, 20) (-30,400)
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.showPoint (P $ V2 100 20) <> D.showPoint (P $ V2 (-30) 400)
+
+drTestU5 = DrawingTest
+  "drTestU5"
+  [string|
+    The points (100, 20) (-30,400)
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ mempty
+
+drTestU6 = DrawingTest
+  "drTestU6"
+  [string|
+    Envelope across the (1,1) diagonal for a square of size 100.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.showEnvelope (V2 1 1)
+  $ D.scale 100
+  $ D.fillColor Colors.pink D.square
+
+drTestU7 = DrawingTest
+  "drTestU7"
+  [string|
+    The unit vector.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ D.showUnitX
+
+
+
+-- Template:
+
+-- drTestU1 = DrawingTest
+--   "drTestU1"
+--   [string|
+--   |]
+  -- $ unpackStr $ drawingToSvgStringUnstyled mempty
+--   mempty
+
+
+
 
 
 -- testRad = drawingToSvgString
@@ -1451,6 +1552,17 @@ drawingTestBatck = [
   , drTest11
   , drTest12
   , drTest13
+
+  , drTestRO1
+  , drTestRO2
+  , drTestRO3
+  , drTestU1
+  , drTestU2
+  , drTestU3
+  , drTestU4
+  , drTestU5
+  , drTestU6
+  , drTestU7
   -- TODO etc
   ]
 dvTestBatch = [
