@@ -108,6 +108,9 @@ compareHashes suiteName path newData = do
         putStrLn $ "    Current codebase gives   " <> showsPrec 0 hash1 ""
         putStrLn $ "    But the cached result is " <> showsPrec 0 hash2 ""
       putStrLn $ "You can run this test again with --report to view the current images"
+      putStrLn $ ""
+      putStrLn $ "If you have changed/added test suites, verify their looks with report,"
+      putStrLn $ "run test with --generate to update hashes, and commit the result"
       return False
   where
     msg a b = "Running image test suite '" <> a <> "' against pregenerated hashes in '" <> b <> "'"
