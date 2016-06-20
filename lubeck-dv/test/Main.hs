@@ -1114,7 +1114,7 @@ drTestU6 = DrawingTest
     Envelope across the (1,1) diagonal for a square of size 100.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
-  $ D.showEnvelope (V2 1 1)
+  $ D.showEnvelope (D.posDiagonal)
   $ D.scale 100
   $ D.fillColor Colors.pink D.square
 
