@@ -1041,14 +1041,175 @@ drTest13 = DrawingTest
 -- Angle/Point/Vector geometry
 -- Directions
 -- Rect/LineSet
+
 -- All transformations
+drTestTransf1 = DrawingTest
+  "drTestTransf1"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestTransf2 = DrawingTest
+  "drTestTransf2"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestTransf3 = DrawingTest
+  "drTestTransf3"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestTransf4 = DrawingTest
+  "drTestTransf4"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestTransf5 = DrawingTest
+  "drTestTransf5"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
 -- Basic styles (which?)
+drTestStyles1 = DrawingTest
+  "drTestStyles1"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestStyles2 = DrawingTest
+  "drTestStyles2"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestStyles3 = DrawingTest
+  "drTestStyles3"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestStyles4 = DrawingTest
+  "drTestStyles4"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestStyles5 = DrawingTest
+  "drTestStyles5"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestStyles6 = DrawingTest
+  "drTestStyles6"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestStyles7 = DrawingTest
+  "drTestStyles7"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
 -- Text API
+drTestText1 = DrawingTest
+  "drTestText1"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestText2 = DrawingTest
+  "drTestText2"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestText3 = DrawingTest
+  "drTestText3"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestText4 = DrawingTest
+  "drTestText4"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+drTestText5 = DrawingTest
+  "drTestText5"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
 -- Embedded SVG
+drTestEmbed = DrawingTest
+  "drTestEmbed"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+
 -- Masking
+
+drTestMasking1 = DrawingTest
+  "drTestMasking1"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+drTestMasking2 = DrawingTest
+  "drTestMasking2"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
 -- Envelopes
+
+drTestEnvelope1 = DrawingTest
+  "drTestEnvelope1"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+drTestEnvelope2 = DrawingTest
+  "drTestEnvelope2"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+
 -- Polygons
+drTestPolygon1 = DrawingTest
+  "drTestPolygon1"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+drTestPolygon2 = DrawingTest
+  "drTestPolygon2"
+  [string|
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  mempty
+
+
 -- Rendering options
+
 drTestRO1 = DrawingTest
   "drTestRO1"
   [string|
@@ -1134,7 +1295,7 @@ drTestU7 = DrawingTest
 --   "drTestU1"
 --   [string|
 --   |]
-  -- $ unpackStr $ drawingToSvgStringUnstyled mempty
+--   $ unpackStr $ drawingToSvgStringUnstyled mempty
 --   mempty
 
 
@@ -1563,6 +1724,17 @@ drawingTestBatck = [
   , drTestU5
   , drTestU6
   , drTestU7
+
+  , drTestTransf1
+  --
+  , drTestStyles1
+  --
+  , drTestText1
+  --
+  , drTestMasking1
+  , drTestEmbed
+  , drTestEnvelope1
+  --
   -- TODO etc
   ]
 dvTestBatch = [
