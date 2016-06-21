@@ -602,7 +602,7 @@ categoricalEnum = Scale
 A linear scale.
 -}
 linear :: (Real a, Show a) => Scale a
-linear = linearWithOptions False UseMin
+linear = linearWithOptions (DecimalPlacesLR Nothing) UseMin
 
 {-|
 A linear scale for integral values.
@@ -610,7 +610,7 @@ A linear scale for integral values.
 Accepts (and renders) non-integral values, but displays guides without decimals.
 -}
 linearIntegral :: (Real a, Show a) => Scale a
-linearIntegral = linearWithOptions True UseMin
+linearIntegral = linearWithOptions IntegerLR UseMin
 
 {-|
 How to choose lower bound for a scale.
@@ -622,13 +622,23 @@ data LinearPlotBounds
   | InterpZeroAndMin Double     -- ^ Interpolate between zero and minimum value (0.5 for middle).
   | UseMin                      -- ^ Use minimum value.
 
+data LinearRendering
+  = IntegerLR -- former True
+  | DecimalPlacesLR (Maybe Int) -- former False
+  | CustomLR ((Double, Double) -> Double -> Str)
+
 {-|
 A linear scale with options.
+
+Api change:
+@
+True  -> IntegerLR
+False -> DecimalPlacesLR Nothing
+@
+
 -}
 linearWithOptions :: (Real a, Show a)
-  => Bool
-    -- ^ If true, use the integral version of show (i.e. no decimals).
-    --   If false, a predefined number of decimal places is used
+  => LinearRendering
   -> LinearPlotBounds
     -- ^ How to deterine bounds .
   -> Scale a
@@ -652,9 +662,12 @@ linearWithOptions
 
     sortNub = Data.List.nub . Data.List.sort
 
-    showN x = case useIntegralShow of
-      True  -> toStr $ round x
-      False -> toStr $ roundTo 5 x
+    showN :: (Double, Double) -> Double -> Str
+    showN bs x = case useIntegralShow of
+      IntegerLR                -> toStr $ round x
+      DecimalPlacesLR Nothing  -> toStr $ roundTo 5 x
+      DecimalPlacesLR (Just n) -> toStr $ roundTo n x
+      CustomLR f               -> f bs x
 
     chooseLB minVal = case lowerBoundChoice of
       UseZero               -> 0
@@ -663,7 +676,7 @@ linearWithOptions
     chooseUB = id
 
     bounds vs = (chooseLB $ realToFrac $ safeMin vs, chooseUB $ realToFrac $ safeMax vs)
-    guides vs = fmap (\x -> (x, showN x)) $ tickCalc 4 (bounds vs)
+    guides vs = fmap (\x -> (x, showN (bounds vs) x)) $ tickCalc 4 (bounds vs)
 
     -- number of ticks, interval, outpouts ticks
     tickCalc :: Int -> (Double, Double) -> [Double]
