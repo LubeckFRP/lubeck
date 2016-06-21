@@ -725,8 +725,9 @@ textXmlLightElementToEmbed = unE
 
   Semantically
   @
-  Drawing ~ (P2 -> AlphaColour, P2 -> ?)
-  @
+  -- TODO specify full semantics for mouse/touch interaction
+  Drawing ~ ( P2 -> AlphaColour, Behavior P2 -> Events () -> ?)
+  @s
 
   TODO semantics for mouse interaction.
 
@@ -762,29 +763,6 @@ data Drawing
   -- Left-most is top-most.
   | Ap ![Drawing]
 
-
-printTreeInfo :: Drawing -> IO ()
-printTreeInfo x = do
-  print $ "Tree N nodes " ++ show (drawingTreeNNodes x)
-  print $ "Tree depth   " ++ show (drawingTreeDepth x)
-drawingTreeNNodes = drawingTreeF (+)
-drawingTreeDepth = drawingTreeF max
-
-drawingTreeF f = go
-  where
-    go Circle = 1
-    go Rect = 1
-    go Line = 1
-    go (Lines _ _) = 1
-    go (Text _) = 1
-    go (Embed _) = 1
-    go (Mask x y) = go x `f` go y
-    go (Transf _ x) = go x + 1
-    go (Style _ x) = go x + 1
-    go (Handlers _ x) = go x + 1
-    go Em = 1
-    go (Ap xs) = foldr f 0 (fmap go xs)
-
 instance Monoid Drawing where
   mempty  = Em
 
@@ -794,10 +772,7 @@ instance Monoid Drawing where
   mappend x (Ap ys) = Ap (x : ys)
   mappend (Ap xs) y = Ap (xs <> pure y)
   mappend x y = Ap [x, y]
-
-  -- mconcat = Ap
-
-
+  mconcat = Ap
 
 {-| An empty and transparent drawing. Same as 'mempty'. -}
 transparent :: Drawing
