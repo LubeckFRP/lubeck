@@ -243,6 +243,10 @@ module Lubeck.Drawing
   , showEnvelope
   , smokeBackground
 
+
+
+
+
   -- * Rendering drawings
   , OriginPlacement(..)
   , RenderingOptions(..)
