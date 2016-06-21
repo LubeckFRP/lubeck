@@ -1,7 +1,15 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFunctor, TypeFamilies, OverloadedStrings,
-  NamedFieldPuns, CPP, NoMonomorphismRestriction, BangPatterns, StandaloneDeriving
-  , ScopedTypeVariables, NoImplicitPrelude #-}
+{-# LANGUAGE
+    GeneralizedNewtypeDeriving
+  , DeriveFunctor
+  , TypeFamilies
+  , OverloadedStrings
+  , NamedFieldPuns
+  , CPP
+  , BangPatterns
+  , ScopedTypeVariables
+  , NoImplicitPrelude
+  #-}
 
 {-# OPTIONS_GHC
   -fwarn-incomplete-patterns
@@ -11,10 +19,8 @@
   -fno-warn-unused-imports
   -fno-warn-type-defaults
   -fno-warn-missing-signatures
-
   -Werror
   #-}
--- {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
 {-|
 
