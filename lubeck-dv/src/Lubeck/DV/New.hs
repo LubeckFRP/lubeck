@@ -46,6 +46,7 @@ module Lubeck.DV.New
   , linear
   , linearIntegral
   , linearWithOptions
+  , LinearRendering(..)
   , LinearPlotBounds(..)
   , categorical
   , categoricalEnum
