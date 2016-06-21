@@ -1186,7 +1186,31 @@ instance Monoid RenderingOptions where
 
 
 
+
+
+
+
+
+
+
+
+
+
 -- Rendering
+
+{-
+  , OriginPlacement(..)
+  , RenderingOptions(..)
+  -- mempty
+  , toSvg
+  , toSvgStr
+  , toSvgAny
+
+  -- ** High-performance
+  , RDrawing
+  , renderDrawing
+  , emitDrawing
+-}
 
 drawingToRDrawing :: Drawing -> RDrawing
 drawingToRDrawing = drawingToRDrawing' mempty

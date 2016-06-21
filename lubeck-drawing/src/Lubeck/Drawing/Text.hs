@@ -4,6 +4,14 @@
   , ScopedTypeVariables #-}
 
 module Lubeck.Drawing.Text
+  ( TextAnchor(..)
+  , AlignmentBaseline(..)
+  , FontStyle(..)
+  , FontWeight(..)
+  , FontSize(..)
+  , TextOptions(..)
+  , textOptionsToStyle
+  )
 where
 
 import BasePrelude
