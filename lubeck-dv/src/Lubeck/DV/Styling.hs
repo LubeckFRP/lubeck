@@ -194,9 +194,9 @@ data Styling = Styling
   --   then transformed into the rendering rectangle.
 
   --   Some examples:
-  --    Focus on the left half of the data set: @recip $ rectToTransf (rect 0 0 0.5 1))@
-  --    Focus on the right half of the data set: @recip $ rectToTransf (rect 0.5 0 1 1))@
-  --    Focus on bottom-left square of the data set: @recip $ rectToTransf (rect 0 0 0.5 0.5))@
+  --    Focus on the left half of the data set: @focusFromRectangle (rect 0 0 0.5 1))@
+  --    Focus on the right half of the data set: @focusFromRectangle (rect 0.5 0 1 1))@
+  --    Focus on bottom-left square of the data set: @focusFromRectangle (rect 0 0 0.5 0.5))@
   , _zoom                             :: T2 Double
 
   -- ^ If AutoScaleY, then the Y value of zoom is ignored, and the plot is automatically fitted
