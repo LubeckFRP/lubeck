@@ -945,14 +945,14 @@ pointG = Geometry g []
         y <- scaledAttr "y" t
         return (P (V2 x y))
       (color        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "color" t
-      (strokeColor  :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "strokeColor" t
-      (fillColor    :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "fillColor" t
+      (strokeColor  :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "strokeColor" t
+      (fillColor    :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "fillColor" t
       (size         :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "size" t
       (shape        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "shape" t
       return $ Lubeck.DV.Internal.Render.ScatterData2
         { R.scatterDataColor2       = color
-        , R.scatterDataStrokeColor2 = color
-        , R.scatterDataFillColor2   = color
+        , R.scatterDataStrokeColor2 = strokeColor
+        , R.scatterDataFillColor2   = fillColor
         , R.scatterDataPoint2       = p
         , R.scatterDataShape2       = Lubeck.DV.Internal.Render.Circle
         , R.scatterDataSize2        = 1
