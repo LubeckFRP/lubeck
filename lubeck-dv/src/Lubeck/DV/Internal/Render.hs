@@ -54,8 +54,8 @@ import Lubeck.DV.ColorPalette
 import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
-data Shape = Circle | Triangle | Square | Cross | XSquare | Start
-  deriving (Enum, Eq, Ord, Show)
+data Shape = Circle | Triangle | Square | Cross | XSquare | Star
+  deriving (Enum, Bounded, Eq, Ord, Show)
 
 data ScatterData2 = ScatterData2
   { scatterDataColor2 :: Double
@@ -71,20 +71,26 @@ scatterData2Point = lens scatterDataPoint2 (\s b -> s {scatterDataPoint2 = b})
 scatterData2 :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [ScatterData2] -> m Drawing
 scatterData2 ps = do
   style <- ask
-  let base  = id
-            $ scale (style^.scatterPlotSize)
-            $ circle
-            -- $ square
+  let base pp = id
+            $ scale (style^.scatterPlotSize * scatterDataSize2 pp)
+            $ shape pp
   return $ mconcat $ fmap
     (\pp ->
       translate (relOrigin (scatterDataPoint2 pp))
-      (addStyling (scatterDataColor2 pp) style base)
+      (addStyling pp style (base pp))
       )
     $ mapFilterEither (getRenderingPosition2 scatterData2Point style) ps
   where
-    addStyling colorN style x = id
-      $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` colorN))
-      $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
+    shape pp = case scatterDataShape2 pp of
+      Circle    -> circle
+      Triangle  -> triangle
+      Square    -> square
+      Cross     -> rotate (-1/8) verticalLine <> rotate (1/8) verticalLine
+      XSquare   -> rotate (-1/8) verticalLine <> rotate (1/8) verticalLine <> square
+      Star      -> mconcat $ fmap (\r -> rotate r verticalLine) [0,1/8..7/8]
+    addStyling pp style x = id
+      $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` (scatterDataFillColor2 pp)))
+      $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` (scatterDataStrokeColor2 pp)))
       $ strokeWidth (style^.scatterPlotStrokeWidth)
       $ x
 

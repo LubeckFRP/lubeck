@@ -423,7 +423,7 @@ test = DrawingTest "test1" "" $ unpackStr
   $ visualizeTest people (mconcat [pointG, line, fill])
   [ mempty
   , color <~ gender
-  -- , shape <~ gender
+  , shape <~ gender
   , x     <~ name
   , y     <~ age `withScale` linear
   ]

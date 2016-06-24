@@ -947,16 +947,19 @@ pointG = Geometry g []
       (color        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "color" t
       (strokeColor  :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "strokeColor" t
       (fillColor    :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "fillColor" t
-      (size         :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "size" t
+      (size         :: Double) <- fmap (maybe 1 id) $ runColumnZ $ unscaledAttr "size" t
       (shape        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "shape" t
       return $ Lubeck.DV.Internal.Render.ScatterData2
         { R.scatterDataColor2       = color
         , R.scatterDataStrokeColor2 = strokeColor
         , R.scatterDataFillColor2   = fillColor
         , R.scatterDataPoint2       = p
-        , R.scatterDataShape2       = Lubeck.DV.Internal.Render.Circle
-        , R.scatterDataSize2        = 1
+        , R.scatterDataShape2       = rToBoundedEnum shape
+        , R.scatterDataSize2        = size
         }
+    rToBoundedEnum x = safeLookup (floor x) [minBound..maxBound]
+    safeLookup n xs = cycle xs !! n
+
 
 {-|
 Line geometry.
