@@ -303,7 +303,7 @@ instance Monoid Styling where
 
     , _scatterPlotStrokeColor       = paletteFromList $ fmap (`withOpacity` 0.6) defColorList
     , _scatterPlotStrokeWidth       = 1
-    -- , _scatterPlotFillColor         = Colors.red `withOpacity` 0.6
+    -- , _scatterPlotFillColor         = paletteFromList $ fmap (`withOpacity` 0.1) defColorList
     , _scatterPlotFillColor         = singleColour $ Colors.white `withOpacity` 1
     , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
     , _scatterPlotShape             = mempty

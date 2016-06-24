@@ -176,6 +176,7 @@ import qualified Lubeck.Drawing
 import qualified Lubeck.Drawing as D
 import qualified Lubeck.DV.Styling
 import qualified Lubeck.DV.Internal.Render
+import qualified Lubeck.DV.Internal.Render as R
 
 {-$data
 
@@ -921,9 +922,17 @@ Point geometry.
 Can be combined with line and fill.
 
 Aesthetics:
-
 @
 x, y
+@
+
+Optional aesthetics:
+@
+color
+strokeColor
+fillColor
+size
+shape
 @
 -}
 pointG :: Geometry
@@ -935,8 +944,19 @@ pointG = Geometry g []
         x <- scaledAttr "x" t
         y <- scaledAttr "y" t
         return (P (V2 x y))
-      (c :: Maybe Double) <- runColumnZ $ unscaledAttr "color" t
-      return $ Lubeck.DV.Internal.Render.ScatterData2 (maybe 0 id c) p
+      (color        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "color" t
+      (strokeColor  :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "strokeColor" t
+      (fillColor    :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "fillColor" t
+      (size         :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "size" t
+      (shape        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "shape" t
+      return $ Lubeck.DV.Internal.Render.ScatterData2
+        { R.scatterDataColor2       = color
+        , R.scatterDataStrokeColor2 = color
+        , R.scatterDataFillColor2   = color
+        , R.scatterDataPoint2       = p
+        , R.scatterDataShape2       = Lubeck.DV.Internal.Render.Circle
+        , R.scatterDataSize2        = 1
+        }
 
 {-|
 Line geometry.

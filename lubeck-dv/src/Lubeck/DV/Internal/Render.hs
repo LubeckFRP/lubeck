@@ -73,9 +73,16 @@ scatterData (ScatterData colorN) ps = do
       $ strokeWidth (style^.scatterPlotStrokeWidth)
       $ x
 
+data Shape = Circle | Triangle | Square | Cross | XSquare | Start
+  deriving (Enum, Eq, Ord, Show)
+
 data ScatterData2 = ScatterData2
   { scatterDataColor2 :: Double
+  , scatterDataStrokeColor2 :: Double
+  , scatterDataFillColor2 :: Double
   , scatterDataPoint2 :: P2 Double
+  , scatterDataSize2 :: Double
+  , scatterDataShape2 :: Shape
   }
 scatterData2Point :: Lens' ScatterData2 (P2 Double)
 scatterData2Point = lens scatterDataPoint2 (\s b -> s {scatterDataPoint2 = b})
@@ -86,7 +93,12 @@ scatterData2 ps = do
   let base  = id
             $ scale (style^.scatterPlotSize)
             $ circle
-  return $ mconcat $ fmap (\(ScatterData2 colorN p) -> translate (relOrigin p) (addStyling colorN style base))
+            -- $ square
+  return $ mconcat $ fmap
+    (\pp ->
+      translate (relOrigin (scatterDataPoint2 pp))
+      (addStyling (scatterDataColor2 pp) style base)
+      )
     $ mapFilterEither (getRenderingPosition2 scatterData2Point style) ps
   where
     addStyling colorN style x = id
