@@ -12,6 +12,7 @@
   , NoImplicitPrelude
   , MultiParamTypeClasses
   , DeriveFunctor
+  , CPP
   #-}
 
 module Lubeck.DV.Internal.Table
@@ -93,8 +94,12 @@ INTERESTINGLY
 -}
 
 -- TODO orphans
+
+#if MIN_VERSION_linear(1,20,0)
+#else
 deriving instance Foldable ZipList
 deriving instance Traversable ZipList
+#endif
 deriving instance Eq1 ZipList
 deriving instance Ord1 ZipList
 
