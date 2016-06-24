@@ -404,6 +404,9 @@ getRenderingPosition styling x =
         else Left p
     bimapSame f = bimap f f
 
+{-|
+Like getRenderingPosition but works for any value with a point.
+-}
 getRenderingPosition2 :: Lens' a (P2 Double) -> Styling -> a -> Either a a
 getRenderingPosition2 l styling x =
   bimapSame (transformPointWithLens l (scalingXY $ styling^.renderingRectangle))
