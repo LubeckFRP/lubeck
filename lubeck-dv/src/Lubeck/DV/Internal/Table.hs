@@ -37,7 +37,9 @@ module Lubeck.DV.Internal.Table
   , Column
   , columnFromList
   , runColumn
+  , runColumnZ
   , runColumnFinite
+  , runColumnFiniteZ
   -- ** Utility
   , prettyTable
   , printTable
@@ -135,6 +137,10 @@ columnFromList xs = Column $ MaybeT $ ZipList xs
 runColumn :: Column a -> [Maybe a]
 runColumn = getZipList . runMaybeT . getColumn_
 
+runColumnZ :: Column a -> ZipList (Maybe a)
+runColumnZ = runMaybeT . getColumn_
+
+
 {-|
 The top-most non-Nothing values of a column.
 -}
@@ -144,6 +150,9 @@ runColumnFinite = fmap fromJust . takeWhile isJust . runColumn
     isJust (Just _) = True
     isJust _        = False
     fromJust (Just x) = x
+
+runColumnFiniteZ :: Column a -> ZipList a
+runColumnFiniteZ = ZipList . runColumnFinite
 
 {-
 Table type used to represent data internally in Lubeck DV.

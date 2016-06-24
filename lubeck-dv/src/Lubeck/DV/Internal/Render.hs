@@ -9,6 +9,7 @@
   , ConstraintKinds
   , FlexibleContexts
   , ScopedTypeVariables
+  , RankNTypes
   , BangPatterns
   #-}
 
@@ -20,7 +21,7 @@ import qualified Prelude
 import Data.Bifunctor(bimap)
 
 import Control.Applicative
-import Control.Lens (to)
+import Control.Lens (to, Lens', view, over, set, lens)
 import Control.Lens.Operators
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Identity
@@ -67,6 +68,28 @@ scatterData (ScatterData colorN) ps = do
   return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ mapFilterEither (getRenderingPosition style) ps
   where
     addStyling style x = id
+      $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` colorN))
+      $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
+      $ strokeWidth (style^.scatterPlotStrokeWidth)
+      $ x
+
+data ScatterData2 = ScatterData2
+  { scatterDataColor2 :: Double
+  , scatterDataPoint2 :: P2 Double
+  }
+scatterData2Point :: Lens' ScatterData2 (P2 Double)
+scatterData2Point = lens scatterDataPoint2 (\s b -> s {scatterDataPoint2 = b})
+
+scatterData2 :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [ScatterData2] -> m Drawing
+scatterData2 ps = do
+  style <- ask
+  let base  = id
+            $ scale (style^.scatterPlotSize)
+            $ circle
+  return $ mconcat $ fmap (\(ScatterData2 colorN p) -> translate (relOrigin p) (addStyling colorN style base))
+    $ mapFilterEither (getRenderingPosition2 scatterData2Point style) ps
+  where
+    addStyling colorN style x = id
       $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` colorN))
       $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
       $ strokeWidth (style^.scatterPlotStrokeWidth)
@@ -380,6 +403,18 @@ getRenderingPosition styling x =
         then Right p
         else Left p
     bimapSame f = bimap f f
+
+getRenderingPosition2 :: Lens' a (P2 Double) -> Styling -> a -> Either a a
+getRenderingPosition2 l styling x =
+  bimapSame (transformPointWithLens l (scalingXY $ styling^.renderingRectangle))
+    $ insideUnitHyperCube $ transformPointWithLens l (styling^.zoom) x
+  where
+    insideUnitHyperCube p =
+      if withinNormRange (view (l._x) p) && withinNormRange (view (l._y) p)
+        then Right p
+        else Left p
+    bimapSame f = bimap f f
+    transformPointWithLens l t x = over l (transformPoint t) x
 
 {-| Similar to 'getRenderingPosition', but return 'empty' if the point falls
 outside the rendering rectangle. -}

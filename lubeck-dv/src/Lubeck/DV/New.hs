@@ -929,16 +929,20 @@ x, y
 pointG :: Geometry
 pointG = Geometry g []
   where
-    g t = Lubeck.DV.Internal.Render.scatterData (Lubeck.DV.Internal.Render.ScatterData color) $ runColumnFinite $ do
-      x <- scaledAttr "x" t
-      y <- scaledAttr "y" t
-      return $ P $ V2 x y
+    -- x and y required, default color to 0 if not present
+    g t = Lubeck.DV.Internal.Render.scatterData2 $ getZipList $ do
+      (p :: Point V2 Double) <- runColumnFiniteZ $ do
+        x <- scaledAttr "x" t
+        y <- scaledAttr "y" t
+        return (P (V2 x y))
+      (c :: Maybe Double) <- runColumnZ $ unscaledAttr "color" t
+      return $ Lubeck.DV.Internal.Render.ScatterData2 (maybe 0 id c) p
       where
         -- TODO color separation
-        colors = runColumnFinite $ unscaledAttr "color" t
-        color = case colors of
-          [] -> 0
-          xs -> head xs
+        -- colors = runColumnFinite $ unscaledAttr "color" t
+        -- color = case colors of
+        --   [] -> 0
+        --   xs -> head xs
 
 {-|
 Line geometry.
