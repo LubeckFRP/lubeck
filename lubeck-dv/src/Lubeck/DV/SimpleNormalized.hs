@@ -38,7 +38,7 @@ import Linear.V4
 import Lubeck.Str (Str, toStr, packStr, unpackStr, takeStr, replaceStr)
 import Lubeck.Drawing
 import qualified Lubeck.Drawing
-import Lubeck.DV.Internal.Render(defLineData, scatterData, scatterDataX, lineData, ticks, labeledAxis)
+import Lubeck.DV.Internal.Render(defLineData, scatterDataX, lineData, ticks, labeledAxis)
 import Lubeck.DV.Styling(withDefaultStyle, Styled)
 
 utcTimeToApproxReal :: UTCTime -> Double

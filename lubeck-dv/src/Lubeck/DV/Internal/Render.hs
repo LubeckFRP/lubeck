@@ -54,25 +54,6 @@ import Lubeck.DV.ColorPalette
 import Lubeck.DV.LineStyles
   ( extractLineStyle )
 
-data ScatterData = ScatterData
-  { scatterDataColor :: Double
-  }
-
-scatterData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => ScatterData -> [P2 Double] -> m Drawing
-scatterData (ScatterData colorN) ps = do
-  style <- ask
-  let base  = id
-            $ addStyling style
-            $ scale (style^.scatterPlotSize)
-            $ circle
-  return $ mconcat $ fmap (\p -> translate (relOrigin p) base) $ mapFilterEither (getRenderingPosition style) ps
-  where
-    addStyling style x = id
-      $ fillColorA (style^.scatterPlotFillColor.to (`getColorFromPalette` colorN))
-      $ strokeColorA (style^.scatterPlotStrokeColor.to (`getColorFromPalette` colorN))
-      $ strokeWidth (style^.scatterPlotStrokeWidth)
-      $ x
-
 data Shape = Circle | Triangle | Square | Cross | XSquare | Start
   deriving (Enum, Eq, Ord, Show)
 
