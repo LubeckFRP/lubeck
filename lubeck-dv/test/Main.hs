@@ -868,6 +868,69 @@ test33 = DrawingTest "test33" "" $ unpackStr
     dat2 = [ [x,cos x,1] :: [Double] | x <- [0,0.1..pi*2] ]
     dat3 = [ [x,1    ] :: [Double] | x <- [0,0.1..pi*2] ]
 
+test34 = DrawingTest
+  "test34"
+  [string|
+    Scatter plot with various colors, GG-style.
+  |]
+  $ unpackStr $ drawingToSvgString mempty mempty
+  $ drawPlot $ plot persons [x <~ to height33,
+                             y <~ to weight,
+                             color <~ to is_male] pointG
+  where
+    persons =
+        [ Person33 {height33 = 165.7360491771233, weight = 76.03799460579975, is_male = False, heart_attack = False}
+        , Person33 {height33 = 175.12193932322913, weight = 65.25275937074434, is_male = False, heart_attack = False}
+        , Person33 {height33 = 167.7922983463412, weight = 67.5555097845642, is_male = False, heart_attack = True}
+        , Person33 {height33 = 207.27006559896898, weight = 103.98944174820292, is_male = True, heart_attack = True}
+        , Person33 {height33 = 172.7052026387999, weight = 65.14306580066584, is_male = False, heart_attack = False}
+        , Person33 {height33 = 175.28393694345976, weight = 83.71385106124151, is_male = False, heart_attack = False}
+        , Person33 {height33 = 182.894317016853, weight = 74.80525732560123, is_male = True, heart_attack = False}
+        , Person33 {height33 = 153.49345812200315, weight = 61.51298500649473, is_male = True, heart_attack = False}
+        , Person33 {height33 = 143.77358608461873, weight = 43.97494290530609, is_male = False, heart_attack = False}
+        , Person33 {height33 = 143.01580698995238, weight = 52.91724210008227, is_male = True, heart_attack = True}
+        , Person33 {height33 = 169.9527441504168, weight = 67.42385983097182, is_male = False, heart_attack = False}
+        , Person33 {height33 = 168.18366078277452, weight = 45.27022580745364, is_male = False, heart_attack = False}
+        , Person33 {height33 = 174.13957282626728, weight = 45.84929758563176, is_male = False, heart_attack = False}
+        , Person33 {height33 = 206.11505956041583, weight = 76.72414574085815, is_male = True, heart_attack = False}
+        , Person33 {height33 = 151.82726364867673, weight = 69.40687007977549, is_male = False, heart_attack = False}
+        , Person33 {height33 = 172.0123851019946, weight = 71.33650394073732, is_male = True, heart_attack = False}
+        , Person33 {height33 = 189.21507200328045, weight = 72.89958051622676, is_male = True, heart_attack = True}
+        , Person33 {height33 = 184.77110958562676, weight = 64.89459630555031, is_male = True, heart_attack = False}
+        , Person33 {height33 = 199.01350781906189, weight = 71.72674160898778, is_male = True, heart_attack = False}
+        , Person33 {height33 = 163.75707191336923, weight = 81.666482664923, is_male = True, heart_attack = False}
+        , Person33 {height33 = 173.88257149211242, weight = 65.46667120205059, is_male = False, heart_attack = False}
+        , Person33 {height33 = 182.5680008738076, weight = 55.284679398245196, is_male = True, heart_attack = True}
+        , Person33 {height33 = 171.96214339495825, weight = 81.49072035455242, is_male = True, heart_attack = True}
+        , Person33 {height33 = 170.43165032290557, weight = 76.96430321586323, is_male = True, heart_attack = True}
+        , Person33 {height33 = 196.94388723587585, weight = 82.61400121306723, is_male = True, heart_attack = False}
+        , Person33 {height33 = 143.41321064584798, weight = 69.36088022700234, is_male = False, heart_attack = False}
+        , Person33 {height33 = 154.63867930841468, weight = 58.34811447430104, is_male = False, heart_attack = True}
+        , Person33 {height33 = 190.97131160977506, weight = 61.52556015970118, is_male = True, heart_attack = False}
+        , Person33 {height33 = 180.53267762627934, weight = 76.52010849484034, is_male = False, heart_attack = False}
+        , Person33 {height33 = 208.89983685523458, weight = 72.60304408690126, is_male = True, heart_attack = True}
+        , Person33 {height33 = 136.75601295831578, weight = 51.09542205184846, is_male = False, heart_attack = False}
+        , Person33 {height33 = 179.98472036130877, weight = 54.74798743766594, is_male = False, heart_attack = True}
+        , Person33 {height33 = 214.46567802416826, weight = 86.85193172799728, is_male = True, heart_attack = True}
+        , Person33 {height33 = 131.95913283620402, weight = 49.88661920169436, is_male = False, heart_attack = False}
+        , Person33 {height33 = 169.92809718718337, weight = 66.60618647551475, is_male = False, heart_attack = False}
+        , Person33 {height33 = 195.87848540631023, weight = 75.52644021142304, is_male = True, heart_attack = False}
+        , Person33 {height33 = 175.38693731767734, weight = 69.80460199892678, is_male = False, heart_attack = False}
+        , Person33 {height33 = 192.88051291105833, weight = 80.49399916337688, is_male = True, heart_attack = False}
+        , Person33 {height33 = 145.48409755913838, weight = 39.57766825848976, is_male = False, heart_attack = False}
+        , Person33 {height33 = 181.9614002944488, weight = 76.22363513792163, is_male = True, heart_attack = False}
+        , Person33 {height33 = 159.8764263559022, weight = 68.65001135360272, is_male = True, heart_attack = False}
+        , Person33 {height33 = 206.21647427857067, weight = 81.51927873902375, is_male = False, heart_attack = True}
+        , Person33 {height33 = 151.48341434326196, weight = 76.26485838805596, is_male = False, heart_attack = False}
+        , Person33 {height33 = 147.3011984188401, weight = 51.833082792649805, is_male = False, heart_attack = False}
+        , Person33 {height33 = 153.87643066940038, weight = 61.91454510318069, is_male = False, heart_attack = True}
+        , Person33 {height33 = 175.71618868380574, weight = 70.44070554104657, is_male = False, heart_attack = True}
+        , Person33 {height33 = 188.70346257993054, weight = 74.0383256289079, is_male = True, heart_attack = True}
+        , Person33 {height33 = 179.78702726884129, weight = 69.17839718808246, is_male = True, heart_attack = True}
+        , Person33 {height33 = 189.84341440906817, weight = 68.45823389669266, is_male = True, heart_attack = False}
+        ]
+
+data Person33 = Person33 { height33 :: Double, weight :: Double, is_male :: Bool, heart_attack :: Bool }
 
 drTest1 = DrawingTest
   "drTest1"
@@ -1878,6 +1941,8 @@ dvTestBatch = [
   , test30
   , test31
   , test32
+
+  , test34
   ]
 
 -- TODO separate these, see #126
