@@ -937,12 +937,6 @@ pointG = Geometry g []
         return (P (V2 x y))
       (c :: Maybe Double) <- runColumnZ $ unscaledAttr "color" t
       return $ Lubeck.DV.Internal.Render.ScatterData2 (maybe 0 id c) p
-      where
-        -- TODO color separation
-        -- colors = runColumnFinite $ unscaledAttr "color" t
-        -- color = case colors of
-        --   [] -> 0
-        --   xs -> head xs
 
 {-|
 Line geometry.
