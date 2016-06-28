@@ -181,7 +181,7 @@ instance Monoid ZoomType where
   mappend NoAutoScale y = y
   mappend x _ = x
 
-data HoverSelect = Nothing | Hovering | Selected
+data HoverSelect = NoHoverSelect | Hovering | Selected
   deriving (Eq, Ord, Enum, Show)
 
 data Styling = Styling
