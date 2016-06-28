@@ -249,7 +249,7 @@ data Styling = Styling
 
   -- Bar plots
   -- Infinite list of bar colours:
-  , _barPlotBarColor                 :: Palette Double
+  , _barPlotBarColor                  :: Palette Double
   , _barPlotWidth                     :: V2 Double
   , _barPlotUngroupedOffset           :: V2 Double
   , _barPlotGroupedOffset             :: V2 Double
