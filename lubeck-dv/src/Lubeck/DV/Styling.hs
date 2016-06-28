@@ -39,7 +39,7 @@ module Lubeck.DV.Styling
   , scatterPlotShape
   , scatterPlotSize
 
-  , barPlotBarColors
+  , barPlotBarColor
   , barPlotWidth
   , barPlotUngroupedOffset
   , barPlotGroupedOffset
@@ -249,7 +249,7 @@ data Styling = Styling
 
   -- Bar plots
   -- Infinite list of bar colours:
-  , _barPlotBarColors                 :: Palette Double
+  , _barPlotBarColor                 :: Palette Double
   , _barPlotWidth                     :: V2 Double
   , _barPlotUngroupedOffset           :: V2 Double
   , _barPlotGroupedOffset             :: V2 Double
@@ -334,7 +334,7 @@ instance Monoid Styling where
     , _scatterPlotSize              = 10 -- TODO should really be a ratio of rendering rectangle (x or y?)
     , _scatterPlotShape             = mempty
 
-    , _barPlotBarColors             = paletteFromList $ fmap (`withOpacity` 0.6) $ defColorList
+    , _barPlotBarColor              = paletteFromList $ fmap (`withOpacity` 0.6) $ defColorList
     , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
     , _barPlotUngroupedOffset       = V2 0.5 0
     , _barPlotGroupedOffset         = V2 0   0

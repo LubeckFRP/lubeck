@@ -211,7 +211,7 @@ barDataV ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  let base = alignB $ fillColorA (style^.barPlotBarColors.to paletteToColor) $ square
+  let base = alignB $ fillColorA (style^.barPlotBarColor.to paletteToColor) $ square
   return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
     fmap (\(P (V1 v)) -> scaleX barWidth $ scaleY v $ base) ps
   where
@@ -224,7 +224,7 @@ barDataH ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  let base = alignL $ fillColorA ({-style^.barPlotBarColors.to paletteToColor-}Colors.green `withOpacity` 1) $ square
+  let base = alignL $ fillColorA ({-style^.barPlotBarColor.to paletteToColor-}Colors.green `withOpacity` 1) $ square
   return $ scaleY (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateY (n * barFullOffset)) [1..] $
     fmap (\(P (V1 v)) -> scaleY barWidth $ scaleX v $ base) ps
   where
