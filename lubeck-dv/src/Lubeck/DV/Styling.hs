@@ -87,6 +87,8 @@ module Lubeck.DV.Styling
   -- ** Element selection
   , HoverSelect(..)
   , hoverSelectStates
+  , HoverSelectUpdate(..)
+  , hoverSelectEvents
 
   -- ** Misc helper types
   , VerticalHorizontal(..)
@@ -136,6 +138,7 @@ import Linear.V4
 
 import Lubeck.Str
 import Lubeck.Drawing
+import Lubeck.FRP(Sink, emptySink)
 import Lubeck.Drawing.Transformation
 import qualified Lubeck.Drawing
 
@@ -183,6 +186,14 @@ instance Monoid ZoomType where
 
 data HoverSelect = NoHoverSelect | Hovering | Selected
   deriving (Eq, Ord, Enum, Show)
+
+data HoverSelectUpdate a
+  = HoverSelectMouseUp a
+  | HoverSelectMouseDown a
+  | HoverSelectMouseOver a
+  | HoverSelectMouseOut a
+  | HoverSelectMouseMovedInside a
+  deriving (Eq, Ord, Show)
 
 data Styling = Styling
   { _dummy                            :: ()
@@ -277,9 +288,14 @@ data Styling = Styling
   , _backgroundTickStrokeWidthX       :: Double
   , _backgroundTickStrokeWidthY       :: Double
 
+  {-
+  Mouse interaction for discrete elements.
+  The elements are indexed by their offset in the list provided to 'Lubeck.DV.plot'.
+  -}
   , _hoverSelectStates                :: IntMap HoverSelect
+  , _hoverSelectEvents                :: Sink (HoverSelectUpdate Int)
   }
-  deriving (Show)
+  -- deriving (Show)
 
 makeLenses ''Styling
 
@@ -355,6 +371,7 @@ instance Monoid Styling where
     , _backgroundTickStrokeWidthY   = 1
 
     , _hoverSelectStates            = mempty
+    , _hoverSelectEvents            = emptySink
     }
   mappend = const
 
