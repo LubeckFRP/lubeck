@@ -84,6 +84,10 @@ module Lubeck.DV.Styling
   , focusBottomLeft
   , focusFromRectangle
 
+  -- ** Element selection
+  , HoverSelect(..)
+  , hoverSelectStates
+
   -- ** Misc helper types
   , VerticalHorizontal(..)
 
@@ -119,6 +123,7 @@ import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.Colour (Colour, AlphaColour, withOpacity, blend)
 import Data.Monoid
+import Data.IntMap(IntMap)
 import qualified Data.Colour.Names as Colors
 
 import Linear.Vector
@@ -175,6 +180,9 @@ instance Monoid ZoomType where
   mempty = NoAutoScale
   mappend NoAutoScale y = y
   mappend x _ = x
+
+data HoverSelect = Nothing | Hovering | Selected
+  deriving (Eq, Ord, Enum, Show)
 
 data Styling = Styling
   { _dummy                            :: ()
@@ -268,6 +276,8 @@ data Styling = Styling
   , _backgroundTickStrokeColorY       :: AlphaColour Double
   , _backgroundTickStrokeWidthX       :: Double
   , _backgroundTickStrokeWidthY       :: Double
+
+  , _hoverSelectStates                :: IntMap HoverSelect
   }
   deriving (Show)
 
@@ -343,6 +353,8 @@ instance Monoid Styling where
     , _backgroundTickStrokeColorY   = Colors.lightgrey  `withOpacity` 1
     , _backgroundTickStrokeWidthX   = 1
     , _backgroundTickStrokeWidthY   = 1
+
+    , _hoverSelectStates            = mempty
     }
   mappend = const
 
