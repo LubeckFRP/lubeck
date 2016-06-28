@@ -40,6 +40,7 @@ import Linear.V3
 import Linear.V4
 
 import Lubeck.Str
+import Lubeck.FRP
 import Lubeck.Drawing
 import Lubeck.Drawing.Transformation
 import Lubeck.DV.Styling
@@ -224,7 +225,7 @@ barDataH ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  let base = alignL $ fillColorA ({-style^.barPlotBarColor.to paletteToColor-}Colors.green `withOpacity` 1) $ square
+  let base = alignL $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette NoHoverSelect)) $ square
   return $ scaleY (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateY (n * barFullOffset)) [1..] $
     fmap (\(P (V1 v)) -> scaleY barWidth $ scaleX v $ base) ps
   where
