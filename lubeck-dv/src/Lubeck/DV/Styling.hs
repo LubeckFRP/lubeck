@@ -353,7 +353,7 @@ instance Monoid Styling where
           Hovering ->
             (paletteFromList $ fmap (`withOpacity` 0.2) $ defColorList)
           Selected ->
-            (paletteFromList $ fmap (`withOpacity` 0.4) $ defColorList)
+            (paletteFromList $ fmap (`withOpacity` 0.9) $ defColorList)
     , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
     , _barPlotUngroupedOffset       = V2 0.5 0
     , _barPlotGroupedOffset         = V2 0   0
