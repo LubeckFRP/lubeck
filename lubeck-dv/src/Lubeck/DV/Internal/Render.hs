@@ -233,9 +233,13 @@ barDataHV hv ps = do
   return $ scaleHV (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateHV (n * barFullOffset)) [1..] $
     fmap (\(P (V1 v)) -> scaleHV barWidth $ scaleHVInv v $ base) ps
   where
-    alignB = translate (V2 0 0.5)
-    alignL = translate (V2 0.5 0)
-    alignHV = case hv of { Vertical -> alignL ; Horizontal -> alignB }
+    -- Either of these works (first version more efficient):
+    -- alignB = translate (V2 0 0.5)
+    -- alignL = translate (V2 0.5 0)
+    alignB = align B
+    alignL = align L
+
+    alignHV = case hv of { Vertical -> alignB ; Horizontal -> alignL }
 
     scaleHV     = case hv of { Vertical -> scaleX ; Horizontal -> scaleY }
     scaleHVInv  = case hv of { Vertical -> scaleY ; Horizontal -> scaleX }
