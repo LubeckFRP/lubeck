@@ -202,37 +202,48 @@ areaData' (AreaData colorN) (p:ps) = do
 barData :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
 barData xs = do
   style <- ask
-  case style^.barPlotOrientation of
-    Vertical   -> barDataV xs
-    Horizontal -> barDataH xs
-
+  barDataHV (style^.barPlotOrientation) xs
 
 barDataV :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
-barDataV ps = do
-  style <- ask
-  let barWidth = 1/fromIntegral (length ps + 1)
-  let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  let base = alignB $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette NoHoverSelect)) $ square
-  return $ scaleX (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateX (n * barFullOffset)) [1..] $
-    fmap (\(P (V1 v)) -> scaleX barWidth $ scaleY v $ base) ps
-  where
-    alignB = translate (V2 0 0.5)
-    scaleRR :: Styling -> Drawing -> Drawing
-    scaleRR = getRenderingPositionD
+barDataV = barDataHV Vertical
 
 barDataH :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
-barDataH ps = do
+barDataH = barDataHV Horizontal
+
+{-
+Note:
+  The naming convention for the orientation style attributes all assume vertical plots (the default).
+
+  So things like width/offset._x etc will make sense when rendering verticals need to be transposed when renderign horizontal.
+
+  For example the space between two bars in a non-grouped/stacked plot is always the scalar 'barPlotUngroupedOffset._x',
+  which may be rendered horizontally or vertically and the space "thickness" of a bar is always referred to as its "barPlotWidth".
+
+
+-}
+barDataHV :: (Monad m, MonadReader Styling m) => VerticalHorizontal -> [P1 Double] -> m Drawing
+barDataHV hv ps = do
   style <- ask
   let barWidth = 1/fromIntegral (length ps + 1)
   let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  let base = alignL $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette NoHoverSelect)) $ square
-  return $ scaleY (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateY (n * barFullOffset)) [1..] $
-    fmap (\(P (V1 v)) -> scaleY barWidth $ scaleX v $ base) ps
+
+  let base = alignHV
+            $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette NoHoverSelect))
+            $ square
+  return $ scaleHV (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateHV (n * barFullOffset)) [1..] $
+    fmap (\(P (V1 v)) -> scaleHV barWidth $ scaleHVInv v $ base) ps
   where
+    alignB = translate (V2 0 0.5)
     alignL = translate (V2 0.5 0)
+    alignHV = case hv of { Vertical -> alignL ; Horizontal -> alignB }
+
+    scaleHV     = case hv of { Vertical -> scaleX ; Horizontal -> scaleY }
+    scaleHVInv  = case hv of { Vertical -> scaleY ; Horizontal -> scaleX }
+    translateHV = case hv of { Vertical -> translateX ; Horizontal -> translateY }
+
+    -- Reads (renderingRectangle, zoom) from the style
     scaleRR :: Styling -> Drawing -> Drawing
     scaleRR = getRenderingPositionD
-
 
 baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
