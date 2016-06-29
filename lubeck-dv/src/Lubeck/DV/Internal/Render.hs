@@ -29,6 +29,8 @@ import Control.Monad.Reader
 import Data.Colour (Colour, AlphaColour, withOpacity, blend, alphaChannel)
 import Data.Monoid
 import Data.Map(Map)
+import Data.IntMap(IntMap)
+import qualified Data.IntMap as IntMap
 import qualified Data.Colour.Names as Colors
 
 import Linear.Vector
@@ -224,15 +226,22 @@ Note:
 barDataHV :: (Monad m, MonadReader Styling m) => VerticalHorizontal -> [P1 Double] -> m Drawing
 barDataHV hv ps = do
   style <- ask
-  let barWidth = 1/fromIntegral (length ps + 1)
-  let barFullOffset = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
+  let barWidth      :: Double             = 1/fromIntegral (length ps + 1)
+  let barFullOffset :: Double             = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
+  let hsState       :: IntMap HoverSelect = style^.hoverSelectStates
 
-  let base = alignHV
-            $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette NoHoverSelect))
+  let base maybeHS = alignHV
+            $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette (foo1 maybeHS)))
             $ square
-  return $ scaleHV (2/3) $ scaleRR style $ mconcat $ zipWith (\n -> translateHV (n * barFullOffset)) [1..] $
-    fmap (\(P (V1 v)) -> scaleHV barWidth $ scaleHVInv v $ base) ps
+  return $ scaleHV (2/3) $ scaleRR style $ mconcat
+    $ zipWith (\n x -> translateHV (realToFrac n * barFullOffset) (foo barWidth (base (IntMap.lookup (pred n) hsState)) x))
+      [1..]
+      ps
   where
+    foo1 Nothing  = NoHoverSelect
+    foo1 (Just x) = x
+
+    foo barWidth base = (\(P (V1 v)) -> scaleHV barWidth $ scaleHVInv v $ base)
     -- Either of these works (first version more efficient):
     -- alignB = translate (V2 0 0.5)
     -- alignL = translate (V2 0.5 0)
