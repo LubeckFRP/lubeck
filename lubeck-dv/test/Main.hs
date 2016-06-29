@@ -32,12 +32,15 @@ import qualified Data.Char
 import qualified Data.List
 import Data.Map(Map)
 import qualified Data.Map
+import Data.IntMap(IntMap)
+import qualified Data.IntMap
 import Data.Colour(withOpacity)
 import qualified Data.Colour.Names as Colors
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
 import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
 import Lubeck.DV
+import Lubeck.DV.Styling(HoverSelect(..))
 import qualified Lubeck.Drawing
 import qualified Lubeck.Drawing as D
 import qualified Lubeck.DV.Styling
@@ -801,6 +804,59 @@ test26 = DrawingTest "test26" "" $ unpackStr
       experiments.
       |]
     sortNub = Data.List.nub . Data.List.sort
+
+
+
+{-
+TODO
+Bar plot with highlights (vertical):
+  - 2nd element hovered
+  - 3rd and 5th element selected
+-}
+test27 = DrawingTest "test27" "" $ unpackStr
+  $ drawingToSvgString mempty (barPlotOrientation .~ Vertical $ hoverSelectStates .~ hss $ mempty) $ drawPlot $
+  plot (zip chars freq) [x <~ _1, y <~ _2 `withScale` linearWithOptions IntegerLR UseZero] bars
+  where
+    chars :: [Char]
+    freq :: [Int]
+    chars = sortNub text
+    freq = fmap (\c -> length $ filter (== c) text) chars
+    text = filter Data.Char.isAlpha $ fmap Data.Char.toUpper $ [string|
+      Statistics is the study of the collection, analysis, interpretation,
+      presentation, and organization of data.[1] In applying statistics
+      to, e.g., a scientific, industrial, or societal problem, it is
+      conventional to begin with a statistical population or a statistical
+      model process to be studied. Populations can be diverse topics such
+      as "all people living in a country" or "every atom composing a
+      crystal". Statistics deals with all aspects of data including the
+      planning of data collection in terms of the design of surveys and
+      experiments.
+      |]
+    sortNub = Data.List.nub . Data.List.sort
+    hss = Data.IntMap.fromList [(pred 2,Hovering), (pred 3,Selected),(pred 5,Selected)]
+
+{-
+TODO
+Bar plot with highlights (horizontal):
+  - 2nd element hovered
+  - 3rd and 5th element selected
+-}
+test28 = DrawingTest "test28" "" $ unpackStr
+  $ drawingToSvgString mempty (barPlotOrientation .~ Horizontal $ hoverSelectStates .~ hss $ mempty) $ drawPlot $
+  plot (zip chars freq) [x <~ _1, y <~ _2 `withScale` linearWithOptions IntegerLR UseZero] bars
+  where
+    chars :: [Char]
+    freq :: [Int]
+    chars = sortNub text
+    freq = fmap (\c -> length $ filter (== c) text) chars
+    text = filter Data.Char.isAlpha $ fmap Data.Char.toUpper $ [string|
+      Foo bar baz.
+      |]
+    sortNub = Data.List.nub . Data.List.sort
+    hss = Data.IntMap.fromList [(pred 2,Hovering), (pred 3,Selected),(pred 5,Selected)]
+
+
+
 
 
 -- TODO test30 and test31 should be the same
@@ -1937,6 +1993,12 @@ dvTestBatch = [
   , test23
   , test24
   , test25
+  , test26
+
+  , test27
+  , test28
+
+
 
   , test30
   , test31
