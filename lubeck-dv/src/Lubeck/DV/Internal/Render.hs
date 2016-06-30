@@ -18,6 +18,7 @@
 {-# OPTIONS_GHC
   -fno-warn-name-shadowing
   -fwarn-incomplete-patterns
+  -Werror
   #-}
 
 module Lubeck.DV.Internal.Render
@@ -249,7 +250,12 @@ barDataHV hv ps = do
       ps
   where
     handleInteraction u n mouseEv = case mouseEv of
-      MouseOver -> u $ HoverSelectMouseOver n
+      MouseOver         -> u $ HoverSelectMouseOver n
+      MouseOut          -> u $ HoverSelectMouseOut n
+      MouseDown         -> u $ HoverSelectMouseDown n
+      MouseUp           -> u $ HoverSelectMouseUp n
+      MouseMovedInside  -> u $ HoverSelectMouseMovedInside n
+      _ -> return ()
 
     foo1 Nothing  = NoHoverSelect
     foo1 (Just x) = x
