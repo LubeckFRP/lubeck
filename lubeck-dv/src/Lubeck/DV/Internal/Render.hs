@@ -10,7 +10,14 @@
   , FlexibleContexts
   , ScopedTypeVariables
   , RankNTypes
+  , TypeFamilies
   , BangPatterns
+  #-}
+
+
+{-# OPTIONS_GHC
+  -fno-warn-name-shadowing
+  -fwarn-incomplete-patterns
   #-}
 
 module Lubeck.DV.Internal.Render
@@ -34,7 +41,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Colour.Names as Colors
 
 import Linear.Vector
-import Linear.Affine
+import Linear.Affine hiding (Diff)
 import Linear.V0
 import Linear.V1
 import Linear.V2
@@ -228,16 +235,22 @@ barDataHV hv ps = do
   style <- ask
   let barWidth      :: Double             = 1/fromIntegral (length ps + 1)
   let barFullOffset :: Double             = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
-  let hsState       :: IntMap HoverSelect = style^.hoverSelectStates
+  let hsState       :: IntMap HoverSelect           = style^.hoverSelectStates
+  let hsSink        :: Sink (HoverSelectUpdate Int) = style^.hoverSelectEvents
 
-  let base maybeHS = alignHV
+  -- TODO unify approach to n/pred n
+  let base n maybeHS = alignHV
             $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette (foo1 maybeHS)))
+            $ addBasicHandlers (handleInteraction hsSink (pred n))
             $ square
   return $ scaleHV (2/3) $ scaleRR style $ mconcat
-    $ zipWith (\n x -> translateHV (realToFrac n * barFullOffset) (foo barWidth (base (IntMap.lookup (pred n) hsState)) x))
+    $ zipWith (\n x -> translateHV (realToFrac n * barFullOffset) (foo barWidth (base n (IntMap.lookup (pred n) hsState)) x))
       [1..]
       ps
   where
+    handleInteraction u n mouseEv = case mouseEv of
+      MouseOver -> u $ HoverSelectMouseOver n
+
     foo1 Nothing  = NoHoverSelect
     foo1 (Just x) = x
 
@@ -504,3 +517,97 @@ maskRenderingRectangle style = mask $
     -- Nice color in case we want to debug the mask
     $ fillColorA (Colors.orange `withOpacity` 0.5)
     $ align BL square
+
+
+
+
+
+
+{-|
+Diffable is AffineSpace, except the Diff type is just a monoid (rather than an additive group).
+I.e. the vectors/patches can not be inverted.
+
+@
+  (.-.) ~ diff
+  (.+^) ~ patch
+@
+-}
+class Monoid (Diff p) => Diffable p where
+  type Diff p :: *
+  diff :: p -> p -> Diff p
+  patch :: p -> Diff p -> p
+
+data MouseEv
+  = MouseNone -- TODO should we have this?
+  | MouseUp
+  | MouseDown
+  | MouseOver
+  | MouseOut
+  | MouseMovedInside -- TODO should we have this?
+  | MouseDoubleClick
+  deriving (Enum, Eq, Ord, Show, Read)
+
+instance Monoid MouseEv where
+  mempty = MouseNone
+  mappend x y = x -- last event to happen as
+
+data MouseState = MouseState { mouseInside :: !Bool, mouseDown :: !Bool }
+  deriving (Eq, Ord, Show, Read)
+
+instance Monoid MouseState where
+  mempty = MouseState False False -- how do we know this?
+  mappend x y = x -- ?
+
+instance Diffable MouseState where
+  type Diff MouseState = MouseEv
+  diff (MouseState False d1) (MouseState True d2)  = MouseOut
+  diff (MouseState True  d1) (MouseState False d2) = MouseOver
+  diff (MouseState i1 False) (MouseState i2 True)  = MouseUp
+  diff (MouseState i1 True)  (MouseState i2 False) = MouseDown
+  diff (MouseState i1 d1)    (MouseState i2 d2)
+    | i1 == i2 && d1 == d2 = MouseMovedInside
+    | otherwise            = MouseNone
+
+  patch (MouseState inside down) MouseUp   = MouseState inside False
+  patch (MouseState inside down) MouseDown = MouseState inside True
+  patch (MouseState inside down) MouseOver = MouseState True   down
+
+  -- If mouse goes while button is still pressed, release
+  patch (MouseState inside down) MouseOut  = MouseState False  False
+
+  -- If the mouse is moved, we must be inside
+  patch (MouseState inside down) MouseMovedInside = MouseState True   down
+
+  -- Double clicks events need not affect state, as they are always
+  -- sent in conjunction with up/down events.
+  patch x _ = x
+
+
+addBasicHandlers :: (MouseEv -> IO ()) -> Drawing -> Drawing
+addBasicHandlers mouseS dr = ( id
+   . addHandler "mouseover" (\ev -> mouseS MouseOver)
+   . addHandler "mouseout"  (\ev -> mouseS MouseOut)
+   . addHandler "mouseup"   (\ev -> mouseS MouseUp)
+   . addHandler "mousedown" (\ev -> mouseS MouseDown)
+   . addHandler "mousemove" (\ev -> mouseS MouseMovedInside)
+   . addHandler "dblclick"  (\ev -> mouseS MouseDoubleClick)
+   ) dr
+
+{-
+Most general way of creating a drawing with mosue interaction.
+Only event handlers sent to the given drawing a are processed (i.e. transparent areas are ignored).
+-}
+withMousePositionState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState, Events MouseEv)
+withMousePositionState drawingF = do
+  (mouseS,    mouseE    :: Events MouseEv)     <- newEvent
+  state :: Signal MouseState <- accumS mempty (fmap (flip patch) mouseE)
+  let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
+                           ( id
+                           . addHandler "mouseover" (\ev -> mouseS MouseOver)
+                           . addHandler "mouseout"  (\ev -> mouseS MouseOut)
+                           . addHandler "mouseup"   (\ev -> mouseS MouseUp)
+                           . addHandler "mousedown" (\ev -> mouseS MouseDown)
+                           . addHandler "mousemove" (\ev -> mouseS MouseMovedInside)
+                           . addHandler "dblclick"  (\ev -> mouseS MouseDoubleClick)
+                           ) drawingF
+  pure $ (dWithHandlers state, state, mouseE)
