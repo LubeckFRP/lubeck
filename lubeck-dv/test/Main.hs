@@ -986,6 +986,20 @@ test34 = DrawingTest
         , Person33 {height33 = 189.84341440906817, weight = 68.45823389669266, is_male = True, heart_attack = False}
         ]
 
+
+{-
+  Tick text at 45 degrees counter-clockwise (X and Y).
+-}
+test35 = DrawingTest "test35" "" $ unpackStr
+  $ drawingToSvgString mempty st $ drawPlot $
+  plot (zip
+    ([1..10] :: [Int])
+    ([0,1,5,5,4,3,4,4,4,3] :: [Int])
+    ) [x<~_1,y<~_2]
+    line
+  where
+    st = tickTextTurn .~ (D.turn*1/8, D.turn*1/8) $ mempty
+
 data Person33 = Person33 { height33 :: Double, weight :: Double, is_male :: Bool, heart_attack :: Bool }
 
 drTest1 = DrawingTest
@@ -2005,6 +2019,7 @@ dvTestBatch = [
   , test32
 
   , test34
+  , test35
   ]
 
 -- TODO separate these, see #126

@@ -344,7 +344,7 @@ ticks xTickList1 yTickList1 = do
             maybe mempty translate (getRenderingPositionX style pos) $ mconcat
             [ mempty
             -- Text
-            , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate (turn*xTickTurn) . textX style) $ str
+            , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate xTickTurn . textX style) $ str
             -- Outside quadrant (main) tick
             , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
             -- Inside quadrant (background) grid
@@ -356,7 +356,7 @@ ticks xTickList1 yTickList1 = do
             maybe mempty translate (getRenderingPositionY style pos) $ mconcat
             [ mempty
             -- Text
-            , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate (turn*yTickTurn) . textY style) $ str
+            , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate yTickTurn . textY style) $ str
             -- Outside quadrant (main) tick
             , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
             -- Inside quadrant (background) grid
