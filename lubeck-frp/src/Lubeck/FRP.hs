@@ -481,20 +481,26 @@ joinS (S (esa, bsa)) = S (ea, ba)
     -- What is the current value?
     (ba {- Behavior a -}) = join (fmap current bsa)
     -- When does updates happen?
-    (ea :: Events ()) = E $ \currentInnerUpdated -> do
-      unsubInner <- newVar doNothing
+    (ea :: Events ()) = E $ \triggerResultingSignalUpdate -> do
+      (S (initEvent, _)) <- pollBehavior bsa
+      -- TODO initEvent must call into triggerResultingSignalUpdate
+      -- Until esa fires, as below
+      (unsubFirst :: IO ()) <- subscribeEvent initEvent $ \() -> do
+        triggerResultingSignalUpdate ()
+      (unsubInner :: Var (IO ())) <- newVar unsubFirst
       unsubTop <- subscribeEvent esa $ \() -> do
                 join $ readVar unsubInner                         -- Unsubscribe previous inner
                 currentEvent <- fmap updates $ pollBehavior bsa   -- Subscribe new inner
                 us <- subscribeEvent currentEvent $ \_ -> do
-                  currentInnerUpdated ()
+                  triggerResultingSignalUpdate ()                 -- Trigger res update for inner switch
                 writeVar unsubInner us                            -- Remember how to ubsubscribe
+                triggerResultingSignalUpdate ()                   -- Trigger res update for outer switch
       return $ do
         unsubTop                                                  -- Assure new inner events will not be suscribed
         join $ readVar unsubInner                                 -- Usubscribe current inner event
         return ()
 
-    doNothing = return ()
+    -- doNothing = return ()
 
 
 -- | Create a new event stream and a sink that writes to it in the 'FRP' monad.
