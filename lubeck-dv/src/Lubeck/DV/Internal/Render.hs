@@ -5,7 +5,6 @@
   , QuasiQuotes
   , OverloadedStrings
   , TupleSections
-  , TemplateHaskell
   , ConstraintKinds
   , FlexibleContexts
   , ScopedTypeVariables

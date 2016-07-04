@@ -1,5 +1,5 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, TemplateHaskell, OverloadedStrings, TupleSections, CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, QuasiQuotes, OverloadedStrings, TupleSections, CPP #-}
 
 -- |
 -- Basic normalized visualization.

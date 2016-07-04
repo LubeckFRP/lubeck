@@ -2,7 +2,6 @@
 {-# LANGUAGE
     GeneralizedNewtypeDeriving
   , OverloadedStrings
-  , TemplateHaskell
   , OverloadedStrings
   , TupleSections
   , ConstraintKinds
