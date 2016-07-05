@@ -46,15 +46,19 @@ module Lubeck.DV.New
   , linear
   , linearIntegral
   , linearWithOptions
+  , linear'
   , LinearRendering(..)
   , LinearPlotBounds(..)
+  , LinearOptions(..)
   , categorical
   , categoricalEnum
   , categoricalWithOptions
   , CategoricalPlotBounds(..)
   , timeScale
   , timeScaleWithOptions
+  , timeScale'
   , TimeRendering(..)
+  , TimeOptions(..)
 
   -- ** HasScale type class
   , HasScale(..)
@@ -629,24 +633,34 @@ data LinearRendering
   | DecimalPlacesLR (Maybe Int) -- former False
   | CustomLR ((Double, Double) -> Double -> Str)
 
+
+data LinearOptions = LinearOptions
+  { _linearRendering    :: LinearRendering
+  , _linearPlotBounds   :: LinearPlotBounds
+  , _linearTicks        :: Int
+  }
+
+instance Monoid LinearOptions where
+  mempty      = LinearOptions
+                  { _linearRendering  = DecimalPlacesLR Nothing
+                  , _linearPlotBounds = UseMin
+                  , _linearTicks      = 5
+                  }
+  mappend x y = x
+
 {-|
 A linear scale with options.
-
-Api change:
-@
-True  -> IntegerLR
-False -> DecimalPlacesLR Nothing
-@
-
 -}
 linearWithOptions :: (Real a, Show a)
   => LinearRendering
   -> LinearPlotBounds
     -- ^ How to deterine bounds .
   -> Scale a
-linearWithOptions
-  useIntegralShow
-  lowerBoundChoice
+linearWithOptions lr lpb = linear' $ mempty { _linearRendering = lr, _linearPlotBounds = lpb, _linearTicks = 4 }
+{-# DEPRECATED linearWithOptions "Use linear'" #-}
+
+linear' :: (Real a, Show a) => LinearOptions -> Scale a
+linear' (LinearOptions useIntegralShow lowerBoundChoice linearTicks)
   = Scale
   { scaleMapping  = \vs v -> realToFrac v
   -- TODO resize LB to 0?
@@ -678,7 +692,7 @@ linearWithOptions
     chooseUB = id
 
     bounds vs = (chooseLB $ realToFrac $ safeMin vs, chooseUB $ realToFrac $ safeMax vs)
-    guides vs = fmap (\x -> (x, showN (bounds vs) x)) $ tickCalc 4 (bounds vs)
+    guides vs = fmap (\x -> (x, showN (bounds vs) x)) $ tickCalc linearTicks (bounds vs)
 
     -- number of ticks, interval, outpouts ticks
     tickCalc :: Int -> (Double, Double) -> [Double]
@@ -715,11 +729,24 @@ timeScale = timeScaleWithOptions StandardTR
 
 data TimeRendering = StandardTR | MonthYearTR | CustomTR (UTCTime -> UTCTime -> NominalDiffTime -> UTCTime -> Str)
 
+data TimeOptions = TimeOptions
+  { _timeRendering :: TimeRendering
+  , _timeTicks :: Int
+  }
+
+instance Monoid TimeOptions where
+  mempty      = TimeOptions { _timeRendering = StandardTR, _timeTicks = 5 }
+  mappend x y = x
+
 {-|
 Like 'timeScale', but with more custom options.
 -}
 timeScaleWithOptions :: TimeRendering -> Scale UTCTime
-timeScaleWithOptions timeRendering = Scale
+timeScaleWithOptions tr = timeScale' $ mempty { _timeRendering = tr, _timeTicks = 4 }
+{-# DEPRECATED timeScaleWithOptions "Use timeScale'" #-}
+
+timeScale' :: TimeOptions -> Scale UTCTime
+timeScale' (TimeOptions timeRendering timeTicks) = Scale
   { scaleMapping      = mapping
   , scalePlotBounds   = bounds . fmap toNDiffTime
   , scaleGuides       = guides . fmap toNDiffTime
@@ -745,7 +772,7 @@ timeScaleWithOptions timeRendering = Scale
     -- Lots of different possibilities here
     guides :: [NominalDiffTime] -> [(Double, Str)]
     guides [] = []
-    guides vs = fmap (g) $ tickCalc 4 (bounds vs)
+    guides vs = fmap (g) $ tickCalc timeTicks (bounds vs)
       where
         g = \x -> (x, showT
           (toUTCTime $ (minimum vs))
