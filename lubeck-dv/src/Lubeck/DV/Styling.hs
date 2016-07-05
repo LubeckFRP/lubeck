@@ -5,6 +5,7 @@
   , OverloadedStrings
   , TupleSections
   , ConstraintKinds
+  , TemplateHaskell
   #-}
 
 module Lubeck.DV.Styling
