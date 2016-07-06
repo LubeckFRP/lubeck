@@ -1349,10 +1349,10 @@ anglesToPolarScaleOffset
   :: Angle Double
   -> Angle Double
   -> (Double, Double)
-anglesToPolarScaleOffset a1 a2 = (s,o)
+anglesToPolarScaleOffset a1 a2 = (s, o )
   where
-    o = 1 - angleToTurns a2
-    s = angleToTurns a2 - angleToTurns a1
+    o = mod' (1 - angleToTurns a2) 1
+    s = mod' (angleToTurns a2 - angleToTurns a1) 1
 
 #ifdef __GHCJS__
 {-| Generate an SVG from a drawing. -}
@@ -1406,7 +1406,7 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
               $ E.circle
                 [ A.r "0.5", A.strokeWidth "1"
                 , A.strokeDasharray $ (toJSString $ toStr (s*pi)) <> " " <> (toJSString $ toStr pi)
-                , A.transform $ "rotation("<>(toJSString $ toStr $ o * 360) <> ")"
+                , A.transform $ "rotate("<>(toJSString $ toStr $ o * 360) <> ")"
                 ]
             []
         RRect -> E.rect
@@ -1516,9 +1516,15 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Circle     -> single $ mkN "circle"
             ([mkA "r" "0.5", noScale]++ps)
             []
-          CircleSector r1 r2 -> single $ mkN "circle"
-            ([mkA "r" "0.5", noScale]++ps)
-            [] -- FIXME
+          CircleSector a1 a2 ->
+            let (s, o) = anglesToPolarScaleOffset a1 a2
+            in
+               single $ mkN "circle"
+                  [ mkA "r" "0.5", mkA "stroke-width" "1"
+                  , mkA "stroke-dasharray" $ (toStr (s*pi)) <> " " <> (toStr pi)
+                  , mkA "transform" $ "rotate("<>(toStr $ o * 360) <> ")"
+                  ]
+              []
           Rect       -> single $ mkN "rect"
             ([mkA "x" "-0.5", mkA "y" "-0.5", mkA "width" "1", mkA "height" "1", noScale]++ps)
             []
