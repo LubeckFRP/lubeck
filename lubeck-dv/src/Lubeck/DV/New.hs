@@ -81,6 +81,7 @@ module Lubeck.DV.New
   -- interval
   , fill
   , bars
+  , circular
   , xIntercept
   , yIntercept
   , xInterceptAlways
@@ -609,6 +610,8 @@ A linear scale.
 -}
 linear :: (Real a, Show a) => Scale a
 linear = linearWithOptions (DecimalPlacesLR Nothing) UseMin
+-- TODO this should be changed to behave as @linear' mempty@
+-- We don't want to do this yet for BG compability
 
 {-|
 A linear scale for integral values.
@@ -643,7 +646,7 @@ data LinearOptions = LinearOptions
 instance Monoid LinearOptions where
   mempty      = LinearOptions
                   { _linearRendering  = DecimalPlacesLR Nothing
-                  , _linearPlotBounds = UseMin
+                  , _linearPlotBounds = UseZero
                   , _linearTicks      = 5
                   }
   mappend x y = x
@@ -1124,6 +1127,21 @@ bars = Geometry g []
       y <- scaledAttr "y" t
       return $ P $ V1 y
 
+{-|
+Circular geometry.
+
+Aesthetics:
+
+@
+y
+@
+-}
+circular :: Geometry
+circular = Geometry g []
+  where
+    g t = Lubeck.DV.Internal.Render.circularData $ runColumnFinite $ do
+      y <- scaledAttr "y" t
+      return $ y
 {-|
 A line intercepting X values. Drawn if @crossLineX@ is present and non-zero.
 

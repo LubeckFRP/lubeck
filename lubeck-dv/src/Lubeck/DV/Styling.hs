@@ -19,6 +19,7 @@ module Lubeck.DV.Styling
   , zoom
   , zoomType
   , precision
+  , noXY
 
   , axisStrokeWidth
   , axisStrokeColor
@@ -45,6 +46,8 @@ module Lubeck.DV.Styling
   , barPlotGroupedOffset
   , barPlotSpaceUsed
   , barPlotOrientation
+
+  , circularPlotColor
 
   , ratioPlotBackgroundColor
   , ratioPlotForegroundColor
@@ -238,6 +241,10 @@ data Styling = Styling
   --   If @Just n@, render at least n data points.
   , _precision                        :: Maybe Int
 
+  -- ^ If true the standard X/Y axis, ticks and legends are not rendered.
+  --   Sensible default for circular plots.
+  , _noXY                             :: Any
+
   , _axisTextFontFamily               :: First Str
   , _axisTextFontWeight               :: FontWeight
   , _axisTextFontStyle                :: FontStyle
@@ -271,6 +278,8 @@ data Styling = Styling
   , _barPlotSpaceUsed                 :: Double
   -- Is this bar plot transposed or not?
   , _barPlotOrientation               :: VerticalHorizontal
+
+  , _circularPlotColor                :: Palette Double
 
   , _ratioPlotBackgroundColor         :: Palette Double
   , _ratioPlotForegroundColor         :: Palette Double
@@ -320,6 +329,7 @@ instance Monoid Styling where
     , _zoom                         = 1
     , _zoomType                     = mempty
     , _precision                    = Nothing
+    , _noXY                         = mempty
 
     , _axisTextFontFamily           = mempty
     , _axisTextFontWeight           = mempty
@@ -360,6 +370,8 @@ instance Monoid Styling where
     , _barPlotStackedOffset         = V2 0   0.1
     , _barPlotSpaceUsed             = 9/10
     , _barPlotOrientation           = Vertical
+
+    , _circularPlotColor            = paletteFromList $ fmap (`withOpacity` 0.6) defColorList
 
     , _ratioPlotBackgroundColor     = singleColour $ Colors.whitesmoke `withOpacity` 0.9
     , _ratioPlotForegroundColor     = singleColour $ Colors.red        `withOpacity` 0.6

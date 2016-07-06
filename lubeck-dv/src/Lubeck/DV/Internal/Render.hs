@@ -26,6 +26,7 @@ module Lubeck.DV.Internal.Render
 import Prelude hiding (div)
 import qualified Prelude
 import Data.Bifunctor(bimap)
+import Debug.Trace
 
 import Control.Applicative
 import Control.Lens (to, Lens', view, over, set, lens)
@@ -204,6 +205,64 @@ areaData' (AreaData colorN) (p:ps) = do
 
   return $ maskRenderingRectangle style $ (either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p)
     $ lineStyle $ segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:ps)
+
+-- data CircularData = CircularData
+--   { circularDataWeight :: Double --i.e. relative size
+--   }
+
+-- TODO pie vs. donut
+circularData :: (Monad m, MonadReader Styling m) => [Double] -> m Drawing
+circularData ps = do
+  style <- ask
+  pure
+    $ transform (scaleToRR style)
+    $ mconcat (zipWith strokeColorA (colorList style) shapes)
+  -- barDataHV (style^.barPlotOrientation) xs
+  where
+    -- To keep this a circle, we scale by (min X Y) of the rendering rectangle
+    --
+    -- It is placed in the middle of the RR (at the origin would make more sense,
+    -- but this will make it an out of the box replacement for bar charts in most
+    -- contexts)
+    --
+    -- Zoom is ignored
+    scaleToRR :: Styling -> T2 Double
+    scaleToRR st = translation (V2 dx dy) <> scaling r <> scaling (1/2)
+      where
+        dx = (st^.renderingRectangle._x) / 2
+        dy = (st^.renderingRectangle._y) / 2
+        r  = min (st^.renderingRectangle._x) (st^.renderingRectangle._y)
+
+
+    -- TODO it is not clear how a circular chart would listen to the color aesthetic
+    -- as we must also ensure colors are unique.
+    --
+    -- For now, just use default color values (from the 'circularPlotColor palette).
+    colorList st = fmap (getColorFromPalette $ st^.circularPlotColor) [0..]
+
+    -- | Given a list of proportions, split the range [0..1] into the subranges of
+    -- the same relative size.
+    --
+    -- > intoRanges [1,2]
+    -- [(0.0,0.3333333333333333),(0.3333333333333333,1.0)]
+    -- > intoRanges [1,2,1]
+    -- [(0.0,0.25),(0.25,0.75),(0.75,1.0)]
+    intoRanges xs = let rs = scanl (+) 0 (fmap (/ sum xs) xs) in zip rs (tail rs)
+    -- rangeToScaleOffset (a1,a2) = (a2-a1,a1)
+
+    -- (scale,offset) values
+    plotData :: [(Double, Double)]
+    -- plotData = [(0.0,0.25),(0.25,0.75),(0.75,1.0)]
+    plotData = intoRanges $ ps
+
+    angleFromTurns :: Double -> Angle Double
+    angleFromTurns x = realToFrac x * turn
+
+    shapes :: [Drawing]
+    shapes = fmap (\(s,o) -> fillColorA transparent $
+      circleSector (angleFromTurns s) (angleFromTurns o)) plotData
+
+    transparent = Colors.black `withOpacity` 0
 
 -- | Draw a one-dimensional bar graph.
 --
