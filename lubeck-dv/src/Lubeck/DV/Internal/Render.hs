@@ -372,56 +372,59 @@ ticks
   -> m Drawing
 ticks xTickList1 yTickList1 = do
   style <- ask
+  if getAny $ style^.noXY
+  then
+    pure mempty
+  else do
+    let !xTickList = case style^.barPlotOrientation of
+              Vertical   -> xTickList1
+              Horizontal -> yTickList1
+    let !yTickList = case style^.barPlotOrientation of
+              Vertical   -> yTickList1
+              Horizontal -> xTickList1
 
-  let !xTickList = case style^.barPlotOrientation of
-            Vertical   -> xTickList1
-            Horizontal -> yTickList1
-  let !yTickList = case style^.barPlotOrientation of
-            Vertical   -> yTickList1
-            Horizontal -> xTickList1
+    -- Flipped!
+    let xInsideLength = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
+    let yInsideLength = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
 
-  -- Flipped!
-  let xInsideLength = {-(style^.zoom._y) *-} (style^.renderingRectangle._y)
-  let yInsideLength = {-(style^.zoom._x) *-} (style^.renderingRectangle._x)
+    let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
 
-  let (xTickTurn, yTickTurn) = style^.tickTextTurn -- (1/8, 0)
+    let tl         = style^.basicTickLength
+    let widthFgB   = style^.basicTickStrokeWidth
+    let widthBgX   = style^.backgroundTickStrokeWidthX
+    let widthBgY   = style^.backgroundTickStrokeWidthY
+    let colFgB     = style^.basicTickColor
+    let colBgX     = style^.backgroundTickStrokeColorX
+    let colBgY     = style^.backgroundTickStrokeColorY
 
-  let tl         = style^.basicTickLength
-  let widthFgB   = style^.basicTickStrokeWidth
-  let widthBgX   = style^.backgroundTickStrokeWidthX
-  let widthBgY   = style^.backgroundTickStrokeWidthY
-  let colFgB     = style^.basicTickColor
-  let colBgX     = style^.backgroundTickStrokeColorX
-  let colBgY     = style^.backgroundTickStrokeColorY
+    let drawBgX    = not $ isTransparent colBgX
+    let drawBgY    = not $ isTransparent colBgY
 
-  let drawBgX    = not $ isTransparent colBgX
-  let drawBgY    = not $ isTransparent colBgY
-
-  let xTicks = mconcat $ flip fmap xTickList $
-          \(pos,str) ->
-            maybe mempty translate (getRenderingPositionX style pos) $ mconcat
-            [ mempty
-            -- Text
-            , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate xTickTurn . textX style) $ str
-            -- Outside quadrant (main) tick
-            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
-            -- Inside quadrant (background) grid
-            , if not drawBgX then mempty else
-                strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
-            ]
-  let yTicks = mconcat $ flip fmap yTickList $
-          \(pos,str) ->
-            maybe mempty translate (getRenderingPositionY style pos) $ mconcat
-            [ mempty
-            -- Text
-            , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate yTickTurn . textY style) $ str
-            -- Outside quadrant (main) tick
-            , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
-            -- Inside quadrant (background) grid
-            , if not drawBgY then mempty else
-                strokeWidth widthBgY $ strokeColorA colBgY $ scale yInsideLength $ translateX (0.5) horizontalLine
-            ]
-  return $ mconcat [xTicks, yTicks]
+    let xTicks = mconcat $ flip fmap xTickList $
+            \(pos,str) ->
+              maybe mempty translate (getRenderingPositionX style pos) $ mconcat
+              [ mempty
+              -- Text
+              , maybe mempty id $ fmap (translateY (tl * (-1.5)) . rotate xTickTurn . textX style) $ str
+              -- Outside quadrant (main) tick
+              , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateY (-0.5) verticalLine
+              -- Inside quadrant (background) grid
+              , if not drawBgX then mempty else
+                  strokeWidth widthBgX $ strokeColorA colBgX $ scale xInsideLength $ translateY (0.5) verticalLine
+              ]
+    let yTicks = mconcat $ flip fmap yTickList $
+            \(pos,str) ->
+              maybe mempty translate (getRenderingPositionY style pos) $ mconcat
+              [ mempty
+              -- Text
+              , maybe mempty id $ fmap (translateX (tl * (-1.5)) . rotate yTickTurn . textY style) $ str
+              -- Outside quadrant (main) tick
+              , strokeWidth widthFgB $ strokeColorA colFgB $ scale tl $ translateX (-0.5) horizontalLine
+              -- Inside quadrant (background) grid
+              , if not drawBgY then mempty else
+                  strokeWidth widthBgY $ strokeColorA colBgY $ scale yInsideLength $ translateX (0.5) horizontalLine
+              ]
+    return $ mconcat [xTicks, yTicks]
   where
     textX = text_ fst fst
     textY = text_ snd snd
@@ -460,18 +463,22 @@ labeledAxis
   -> m Drawing
 labeledAxis labelX labelY = do
   style <- ask
-  let x = style^.renderingRectangle._x
-  let y = style^.renderingRectangle._y
+  if getAny $ style^.noXY
+  then
+    pure mempty
+  else do
+    let x = style^.renderingRectangle._x
+    let y = style^.renderingRectangle._y
 
-  let axisX = strokeWidth (style^.axisStrokeWidth.to fst) $ strokeColorA (style^.axisStrokeColor.to fst) $ translateX 0.5 horizontalLine
-  let axisY = strokeWidth (style^.axisStrokeWidth.to snd) $ strokeColorA (style^.axisStrokeColor.to snd) $ translateY 0.5 verticalLine
-  let axis = mconcat [axisY, axisX]
+    let axisX = strokeWidth (style^.axisStrokeWidth.to fst) $ strokeColorA (style^.axisStrokeColor.to fst) $ translateX 0.5 horizontalLine
+    let axisY = strokeWidth (style^.axisStrokeWidth.to snd) $ strokeColorA (style^.axisStrokeColor.to snd) $ translateY 0.5 verticalLine
+    let axis = mconcat [axisY, axisX]
 
-  return $ mconcat
-    [ scaleX x $ scaleY y $ axis
-    , translateX (x/2) $ translateY (-50*x/300) $ text_ style labelX
-    , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ style labelY
-    ]
+    return $ mconcat
+      [ scaleX x $ scaleY y $ axis
+      , translateX (x/2) $ translateY (-50*x/300) $ text_ style labelX
+      , translateY (y/2) $ translateX (-50*y/300) $ rotate (turn/4) $ text_ style labelY
+      ]
   where
     text_ style= textWithOptions $ mempty
       { textAnchor     = TextAnchorMiddle

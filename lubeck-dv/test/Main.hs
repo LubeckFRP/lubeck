@@ -862,7 +862,7 @@ test28 = DrawingTest "test28" "" $ unpackStr
   Pie/circular plot.
 -}
 test29a = DrawingTest "test29a" "" $ unpackStr
-  $ drawingToSvgString mempty mempty $ drawPlot $
+  $ drawingToSvgString mempty (noXY .~ Any True $ mempty) $ drawPlot $
   plot (zip chars freq) [x <~ _1, y <~ _2] circular
   where
     chars :: [Char]
@@ -886,7 +886,7 @@ test29a = DrawingTest "test29a" "" $ unpackStr
   Pie/circular plot.
 -}
 test29b = DrawingTest "test29b" "" $ unpackStr
-  $ drawingToSvgString mempty mempty $ drawPlot $
+  $ drawingToSvgString mempty (noXY .~ Any True $ mempty) $ drawPlot $
   plot dat [x <~ _1, y <~ _2 `withScale` linear' mempty] circular
   where
     -- No need for Y values to add up to anything
