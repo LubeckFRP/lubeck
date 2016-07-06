@@ -226,6 +226,7 @@ module Lubeck.Drawing
   -- ** Basic drawings
   , transparent
   , circle
+  , circleSector
   , square
   , triangle
   , horizontalLine
