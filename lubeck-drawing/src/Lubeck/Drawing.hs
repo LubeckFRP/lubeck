@@ -359,8 +359,12 @@ instance Num n => Monoid (Angle n) where
 
 {-| The value representing a full turn.
 This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
-turn :: Floating a => Angle a
-turn = pure $ pi * 2
+turn :: Floating a => a
+turn = pi * 2
+
+{-| Convert an angle to turns. -}
+angleToTurns :: Floating a => Angle a -> a
+angleToTurns (Radians x) = x / turn
 
 {-| Convert an angle to radians. -}
 angleToRadians :: Floating a => Angle a -> a
@@ -375,6 +379,7 @@ acosA = pure . acos
 
 -- Ideomatically: Direction V2 Double
 newtype Direction v a = Direction (v a)
+  deriving (Eq, Ord, Show)
 
 dir :: v n -> Direction v n
 dir = Direction
@@ -616,7 +621,9 @@ moveOriginTo p = moveOriginBy (origin .-. p)
 
 envelope :: Drawing -> Envelope V2 Double
 envelope x = case x of
-  Circle        -> Envelope $ Just $ \v -> (0.5/norm v)
+  Circle            -> Envelope $ Just $ \v -> (0.5/norm v)
+  -- FIXME no envelope for CircleSector
+  CircleSector _ _  -> envelope Circle
   Rect          -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
   Line          -> pointsEnvelope $ fmap P [V2 0 0, V2 1 0]
   Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
@@ -743,6 +750,7 @@ textXmlLightElementToEmbed = unE
 -}
 data Drawing
   = Circle
+  | CircleSector !(Angle Double) !(Angle Double)
   | Rect
   -- A line along the unit vector
   | Line
@@ -782,6 +790,17 @@ transparent      = Em
 circle :: Drawing
 circle    = Circle
 {-# INLINABLE circle #-}
+
+{-| A centered circle sector with radius one and the given radii.
+
+A point is in the sector if its in the circle with the same radius and the angle from origin to
+the point x is (r1 < x < r2), where r1 and r2 are the radii of the sector.
+
+https://en.wikipedia.org/wiki/Circular_sector
+ -}
+circleSector :: Angle Double -> Angle Double -> Drawing
+circleSector = CircleSector
+{-# INLINABLE circleSector #-}
 
 {-| A centered square with a width and height of one. -}
 square :: Drawing
@@ -1205,6 +1224,7 @@ drawingToRDrawing = drawingToRDrawing' mempty
 drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
 drawingToRDrawing' nodeInfo x = case x of
     Circle                 -> RPrim nodeInfo RCircle
+    CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
     Rect                   -> RPrim nodeInfo RRect
     Line                   -> RPrim nodeInfo RLine
     (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
@@ -1239,6 +1259,7 @@ mapReverse f l =  rev l mempty
 
 data RPrim
    = RCircle
+   | RCircleSector !(Angle Double) !(Angle Double)
    | RRect
    | RLine
    -- TODO use Seq not []
@@ -1320,6 +1341,17 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
 
     P (V2 dx dy) = dimensions
 
+{-
+Turn two radii to scale and offset in polar coordinates, clockwise direction.
+-}
+anglesToPolarScaleOffset
+  :: Angle Double
+  -> Angle Double
+  -> (Double, Double)
+anglesToPolarScaleOffset a1 a2 = (s,o)
+  where
+    o = 1 - angleToTurns a2
+    s = angleToTurns a2 - angleToTurns a1
 
 #ifdef __GHCJS__
 {-| Generate an SVG from a drawing. -}
@@ -1365,6 +1397,17 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
         RCircle -> E.circle
           (nodeInfoToProperties nodeInfo ++ [A.r "0.5", noScale])
           []
+        -- Where S and O in [0..1] , <circle r="R" stroke-width="R*2" stroke-dasharray="S*(pi*R*2) (pi*R*2)" transform="rotate(O*360)">
+        RCircleSector a1 a2 ->
+          let (s, o) = anglesToPolarScaleOffset a1 a2
+          in
+            E.g (nodeInfoToProperties nodeInfo) $ pure
+              $ E.circle
+                [ A.r "0.5", A.strokeWidth "1"
+                , A.strokeDasharray $ (toJSString $ toStr (s*pi)) <> " " <> (toJSString $ toStr pi)
+                , A.transform $ "rotation("<>(toJSString $ toStr $ o * 360) <> ")"
+                ]
+            []
         RRect -> E.rect
           (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
           []
@@ -1472,6 +1515,9 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Circle     -> single $ mkN "circle"
             ([mkA "r" "0.5", noScale]++ps)
             []
+          CircleSector r1 r2 -> single $ mkN "circle"
+            ([mkA "r" "0.5", noScale]++ps)
+            [] -- FIXME
           Rect       -> single $ mkN "rect"
             ([mkA "x" "-0.5", mkA "y" "-0.5", mkA "width" "1", mkA "height" "1", noScale]++ps)
             []

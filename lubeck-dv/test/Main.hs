@@ -1174,10 +1174,6 @@ drTest13 = DrawingTest
     a = (D.fillColorA (Colors.green `withOpacity` 0.2) $ D.scale 10 $ D.square)
     b = (D.fillColor Colors.green $ D.scale 0.5 $ D.square)
 
--- Angle/Point/Vector geometry
--- Directions
--- Rect/LineSet
-
 -- All transformations
 drTestTransf1 = DrawingTest
   "drTestTransf1"
