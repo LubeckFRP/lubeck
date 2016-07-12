@@ -516,12 +516,13 @@ relOrigin p = p .-. 0
 withinNormRange :: Double -> Bool
 withinNormRange x = (0-0.001) <= x && x <= (1+0.001)
 
+{-|
+This is intended to assure that no pieces of data are accidentally rendered
+outside the rendering rectangle. As masking is not yet implemented in Lubeck Drawing
+it is a no-op.
+-}
 maskRenderingRectangle :: Styling -> Drawing -> Drawing
-maskRenderingRectangle style = mask $
-  transform (scalingXY $ style^.renderingRectangle)
-    -- Nice color in case we want to debug the mask
-    $ fillColorA (Colors.orange `withOpacity` 0.5)
-    $ align BL square
+maskRenderingRectangle _ x = x
 
 
 
