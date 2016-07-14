@@ -35,13 +35,14 @@ import           BDPlatform.HTMLCombinators
 data GridAction a = Select [a] | Delete [a] | Other [a] | SelectNone | Noop deriving Show
 data GridCommand a = Replace [a] | ClearSelection
 
-data GridOptions = GridOptions { deleteButton :: Bool
-                               , selectButton :: Bool
-                               , otherButton  :: Bool
-                               , width        :: Int -- px
-                               , height       :: Int }
+data GridOptions = GridOptions { deleteButton     :: Bool
+                               , selectButton     :: Bool
+                               , otherButton      :: Bool
+                               , initialSelection :: Set.Set a 
+                               , width            :: Int -- px
+                               , height           :: Int }
 
-defaultGridOptions = GridOptions True True True 200 200
+defaultGridOptions = GridOptions True True True Set.empty 200 200
 
 gridW :: Ord a => GridOptions -> (a -> Html) -> Widget ([a], Set.Set a) (GridAction a)
 gridW _    _     _        ([], _)              = contentPanel mempty
@@ -74,7 +75,7 @@ gridComponent mbOpts as itemW = do
   (lifecycleSink, lifecycleEvents)  <- newSyncEventOf (undefined                     :: (GridCommand a))
 
   let selE                          = fmap commandToSelection actionsEvents -- :: Events (Set.Set a -> Set.Set a)
-  selectedS                         <- accumS (Set.empty :: Set.Set a) selE
+  selectedS                         <- accumS (fromMaybe Set.empty $ initialSelection mbOpts) selE
   let selectedB                     = current selectedS
 
   subscribeEvent (FRP.filter filterResetSelectionEvents lifecycleEvents) $ const . actionsSink $ SelectNone
