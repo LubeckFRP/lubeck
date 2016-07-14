@@ -81,9 +81,8 @@ gridComponent mbOpts as itemW = do
   let selE                          = fmap commandToSelection actionsEvents -- :: Events (Set.Set a -> Set.Set a)
   selectedS                         <- accumS (maybe Set.empty initialSelection mbOpts) selE
   itemsS                            <- stepperS as (fmap (\(Replace as) -> as) (FRP.filter filterResetSelectionEvents lifecycleEvents))
-  currentItems                      <- pollBehavior $ current itemsS
   currentSelections                 <- pollBehavior $ current selectedS
-  selectedS'                        <- stepperS currentSelections (modifySelection currentItems <$> lifecycleEvents)
+  selectedS'                        <- stepperS currentSelections =<< reactimateIOAsync (modifySelection itemsS <$> lifecycleEvents)
 
   subscribeEvent (FRP.filter filterResetSelectionEvents lifecycleEvents) $ const . actionsSink $ SelectNone
 
@@ -98,9 +97,12 @@ gridComponent mbOpts as itemW = do
     filterResetSelectionEvents (Replace _)          = True
     filterResetSelectionEvents (ReplaceSelection _) = False
 
-    modifySelection :: Ord a => [a] -> GridCommand a -> Set.Set a
-    modifySelection items (ReplaceSelection set) = Set.intersection set $ Set.fromList items
-    modifySelection _                      _     = Set.empty
+    modifySelection :: Ord a => Signal [a] -> GridCommand a -> FRP (Set.Set a)
+    modifySelection items (ReplaceSelection set) = do
+      currentItems <- pollBehavior $ current items 
+      return $ Set.intersection set (Set.fromList currentItems)
+    modifySelection _     (Replace xs)           = return Set.empty
+    modifySelection _     (ClearSelection)       = return Set.empty
 
     commandToSelection :: Ord a => GridAction a -> Set.Set a -> Set.Set a
     commandToSelection (Select y') x = let y = Set.fromList y' in
