@@ -79,7 +79,7 @@ gridComponent mbOpts as itemW = do
 
   subscribeEvent (FRP.filter filterResetSelectionEvents lifecycleEvents) $ const . actionsSink $ SelectNone
 
-  asS                               <- stepperS [] (fmap (\(Replace as) -> as) (FRP.filter filterReplaceEvents lifecycleEvents))
+  asS                               <- stepperS as (fmap (\(Replace as) -> as) (FRP.filter filterReplaceEvents lifecycleEvents))
 
   let asAndSelS                     = liftA2 (,) asS selectedS                 --  :: Signal ([a], Set.Set a)
 
