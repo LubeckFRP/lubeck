@@ -42,7 +42,7 @@ data GridCommand a = Replace [a] | ReplaceSelection (Set.Set a) | ClearSelection
 data GridOptions a = GridOptions { deleteButton     :: Bool
                                  , selectButton     :: Bool
                                  , otherButton      :: Bool
-                                 , initialSelection :: Set.Set a 
+                                 , initialSelection :: Set.Set a
                                  , width            :: Int -- px
                                  , height           :: Int }
 
@@ -51,7 +51,10 @@ defaultGridOptions = GridOptions True True True Set.empty 200 200
 gridW :: Ord a => GridOptions a -> (a -> Html) -> Widget ([a], Set.Set a) (GridAction a)
 gridW _    _     _        ([], _)              = contentPanel mempty
 gridW opts itemW gridSink (items, selectedSet) = contentPanel $ E.div []
-  [ E.div [A.class_ "grid-container"] (map (itemWrapperW opts itemW selectedSet gridSink) items) ]
+  [ E.div [A.class_ $ "grid-container " <> isEmptyClass items] (map (itemWrapperW opts itemW selectedSet gridSink) items) ]
+  where
+    isEmptyClass [] = "grid-empty"
+    isEmptyClass _  = "grid-not-empty"
 
 itemWrapperW :: Ord a => GridOptions a -> (a -> Html) -> Set.Set a -> Widget a (GridAction a)
 itemWrapperW opts itemW selectedSet gridSink x =
@@ -81,13 +84,13 @@ gridComponent mbOpts as itemW = do
   itemsS                            <- stepperS as (fmap (\(Replace as) -> as) (FRP.filter filterResetSelectionEvents lifecycleEvents))
   let selE                          = fmap commandToSelection actionsEvents -- :: Events (Set.Set a -> Set.Set a)
   commandE                          <- reactimateIOAsync $ modifySelection itemsS <$> lifecycleEvents
-  selectedS                         <- accumS (maybe Set.empty initialSelection mbOpts) $ merge selE (fmap const commandE) 
+  selectedS                         <- accumS (maybe Set.empty initialSelection mbOpts) $ merge selE (fmap const commandE)
 
   subscribeEvent (FRP.filter filterResetSelectionEvents lifecycleEvents) $ const . actionsSink $ SelectNone
 
   let selectedB                     = current selectedS
       itemsAndSelectedS             = liftA2 (,) itemsS selectedS                 --  :: Signal ([a], Set.Set a)
-      gridView                      = fmap (gridW (fromMaybe defaultGridOptions mbOpts) (itemW itemSink) actionsSink) itemsAndSelectedS 
+      gridView                      = fmap (gridW (fromMaybe defaultGridOptions mbOpts) (itemW itemSink) actionsSink) itemsAndSelectedS
 
   return (gridView, lifecycleSink, actionsEvents, itemEvents, selectedB)
 
@@ -98,7 +101,7 @@ gridComponent mbOpts as itemW = do
 
     modifySelection :: Ord a => Signal [a] -> GridCommand a -> FRP (Set.Set a)
     modifySelection items (ReplaceSelection set) = do
-      currentItems <- pollBehavior $ current items 
+      currentItems <- pollBehavior $ current items
       return $ Set.intersection set (Set.fromList currentItems)
     modifySelection _     (Replace xs)           = return Set.empty
     modifySelection _     (ClearSelection)       = return Set.empty
