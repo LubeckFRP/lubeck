@@ -14,6 +14,7 @@ import           Prelude                        hiding (div)
 import qualified Prelude
 
 import           Control.Applicative
+import           Control.Monad                  (join)
 import qualified Data.Set as Set
 import           Data.Maybe
 import           Data.Monoid
@@ -33,22 +34,29 @@ import           BDPlatform.HTMLCombinators
 
 
 data GridAction a = Select [a] | Delete [a] | Other [a] | SelectNone | Noop deriving Show
-data GridCommand a = Replace [a] | ClearSelection
 
-data GridOptions = GridOptions { deleteButton :: Bool
-                               , selectButton :: Bool
-                               , otherButton  :: Bool
-                               , width        :: Int -- px
-                               , height       :: Int }
+-- Maybe make all GridCommands return ([a], Set a) and in 'modifySelection'
+-- function, check to see that the Set a is a subset of (Set.fromList [a])
+data GridCommand a = Replace [a] | ReplaceSelection (Set.Set a) | ClearSelection
 
-defaultGridOptions = GridOptions True True True 200 200
+data GridOptions a = GridOptions { deleteButton     :: Bool
+                                 , selectButton     :: Bool
+                                 , otherButton      :: Bool
+                                 , initialSelection :: Set.Set a
+                                 , width            :: Int -- px
+                                 , height           :: Int }
 
-gridW :: Ord a => GridOptions -> (a -> Html) -> Widget ([a], Set.Set a) (GridAction a)
+defaultGridOptions = GridOptions True True True Set.empty 200 200
+
+gridW :: Ord a => GridOptions a -> (a -> Html) -> Widget ([a], Set.Set a) (GridAction a)
 gridW _    _     _        ([], _)              = contentPanel mempty
 gridW opts itemW gridSink (items, selectedSet) = contentPanel $ E.div []
-  [ E.div [A.class_ "grid-container"] (map (itemWrapperW opts itemW selectedSet gridSink) items) ]
+  [ E.div [A.class_ $ "grid-container " <> isEmptyClass items] (map (itemWrapperW opts itemW selectedSet gridSink) items) ]
+  where
+    isEmptyClass [] = "grid-empty"
+    isEmptyClass _  = "grid-not-empty"
 
-itemWrapperW :: Ord a => GridOptions -> (a -> Html) -> Set.Set a -> Widget a (GridAction a)
+itemWrapperW :: Ord a => GridOptions a -> (a -> Html) -> Set.Set a -> Widget a (GridAction a)
 itemWrapperW opts itemW selectedSet gridSink x =
   let selIcon = if Set.member x selectedSet then "check-square" else "check-square-o"
       selCls  = if Set.member x selectedSet then "grid-cell-selected" else ""
@@ -59,7 +67,7 @@ itemWrapperW opts itemW selectedSet gridSink x =
       <> [buttonIcon_ "btn-link grid-item-other"  "" "circle-o" False [Ev.click $ \_ -> gridSink $ Other  [x]] | otherButton opts]
       <> [itemW x])
 
-gridComponent :: Ord a => Maybe GridOptions               -- custom grid options
+gridComponent :: Ord a => Maybe (GridOptions a)           -- custom grid options
                        -> [a]                             -- initial items
                        -> Widget a b                      -- widget to render each item with inside a grid cell
                        -> IO ( Signal Html                -- grid view
@@ -73,27 +81,30 @@ gridComponent mbOpts as itemW = do
   (actionsSink, actionsEvents)      <- newSyncEventOf (undefined                     :: (GridAction a))
   (lifecycleSink, lifecycleEvents)  <- newSyncEventOf (undefined                     :: (GridCommand a))
 
+  itemsS                            <- stepperS as (fmap (\(Replace as) -> as) (FRP.filter filterResetSelectionEvents lifecycleEvents))
   let selE                          = fmap commandToSelection actionsEvents -- :: Events (Set.Set a -> Set.Set a)
-  selectedS                         <- accumS (Set.empty :: Set.Set a) selE
-  let selectedB                     = current selectedS
+  commandE                          <- reactimateIOAsync $ modifySelection itemsS <$> lifecycleEvents
+  selectedS                         <- accumS (maybe Set.empty initialSelection mbOpts) $ merge selE (fmap const commandE)
 
   subscribeEvent (FRP.filter filterResetSelectionEvents lifecycleEvents) $ const . actionsSink $ SelectNone
 
-  asS                               <- stepperS [] (fmap (\(Replace as) -> as) (FRP.filter filterReplaceEvents lifecycleEvents))
+  let selectedB                     = current selectedS
+      itemsAndSelectedS             = liftA2 (,) itemsS selectedS                 --  :: Signal ([a], Set.Set a)
+      gridView                      = fmap (gridW (fromMaybe defaultGridOptions mbOpts) (itemW itemSink) actionsSink) itemsAndSelectedS
 
-  let asAndSelS                     = liftA2 (,) asS selectedS                 --  :: Signal ([a], Set.Set a)
-
-  let view                          = fmap (gridW (fromMaybe defaultGridOptions mbOpts) (itemW itemSink) actionsSink) asAndSelS
-
-  return (view, lifecycleSink, actionsEvents, itemEvents, selectedB)
+  return (gridView, lifecycleSink, actionsEvents, itemEvents, selectedB)
 
   where
-    filterResetSelectionEvents ClearSelection = True
-    filterResetSelectionEvents (Replace _)    = True
-    filterResetSelectionEvents _              = False
+    filterResetSelectionEvents ClearSelection       = True
+    filterResetSelectionEvents (Replace _)          = True
+    filterResetSelectionEvents (ReplaceSelection _) = False
 
-    filterReplaceEvents (Replace _)           = True
-    filterReplaceEvents _                     = False
+    modifySelection :: Ord a => Signal [a] -> GridCommand a -> FRP (Set.Set a)
+    modifySelection items (ReplaceSelection set) = do
+      currentItems <- pollBehavior $ current items
+      return $ Set.intersection set (Set.fromList currentItems)
+    modifySelection _     (Replace xs)           = return Set.empty
+    modifySelection _     (ClearSelection)       = return Set.empty
 
     commandToSelection :: Ord a => GridAction a -> Set.Set a -> Set.Set a
     commandToSelection (Select y') x = let y = Set.fromList y' in
