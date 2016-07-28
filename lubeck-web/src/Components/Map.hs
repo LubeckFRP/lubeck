@@ -10,6 +10,7 @@ module Components.Map
   , MapAction(..)
   , MapCommand(..)
   , BalloonContent(..)
+  , MapCfg(..)
   ) where
 
 import           Prelude                        hiding (div)
@@ -47,6 +48,12 @@ import           Lubeck.Util
 
 data Point = Point { lat :: Double, lon :: Double } deriving Show
 type Line = (Point, Point)
+
+data MapCfg = MapCfg 
+  { tileLayerUrl :: JSString
+  , attribution  :: JSString
+  , zoom         :: Int -- [0..19]
+  }
 
 -- TODO a newtype to abstract a bit over DOMNode?
 data BalloonContent = BalloonString JSString | BalloonDOMNode DOMNode
@@ -116,9 +123,9 @@ setView lm (Point lat lng) zoom = setView_ (lMap lm) lat lng zoom
 foreign import javascript unsafe "L['tileLayer']($1, { maxZoom: $2, attribution: $3})"
   makeTileLayer_ :: JSString -> Int -> JSString -> IO JSVal
 
-makeTileLayer :: JSString -> Int -> String -> IO LTileLayer
+makeTileLayer :: JSString -> Int -> JSString -> IO LTileLayer
 makeTileLayer src maxZoom attribution =
-  makeTileLayer_ src maxZoom (showJS attribution) >>= return . LTileLayer
+  makeTileLayer_ src maxZoom attribution >>= return . LTileLayer
 
 foreign import javascript unsafe "L.markerClusterGroup()"
   makeMarkerClusterGroup_ :: IO JSVal
@@ -196,8 +203,8 @@ withMap' mapRef e f = do
     Nothing -> e
     Just x  -> f x
 
-mapComponent :: [Marker] -> IO (Signal Html, Sink MapCommand, Events MapAction)
-mapComponent z = do
+mapComponent :: MapCfg -> [Marker] -> IO (Signal Html, Sink MapCommand, Events MapAction)
+mapComponent mapcfg z = do
   (actionsSink, actionsEvents)      <- newSyncEventOf (undefined                     :: MapAction)
   (lifecycleSink, lifecycleEvents)  <- newSyncEventOf (undefined                     :: MapCommand)
 
@@ -240,9 +247,9 @@ mapComponent z = do
       atomically $ TVar.writeTVar mapRef (Just gmap)
 
       fitBounds gmap defaultBounds
-      tl <- makeTileLayer "http://{s}.tile.osm.org/{z}/{x}/{y}.png"
-                          18
-                          "&copy; <a href='http://osm.org/copyright'>OpenStreetMap</a> contributors, Points &copy 2012 LINZ"
+      tl <- makeTileLayer (tileLayerUrl mapcfg) -- "http://{s}.tile.osm.org/{z}/{x}/{y}.png"
+                          (zoom mapcfg) -- 18
+                          (attribution mapcfg) --"&copy; <a href='http://osm.org/copyright'>OpenStreetMap</a> contributors, Points &copy 2012 LINZ"
       addLayerToMap tl gmap
       print "Map initialised"
 
