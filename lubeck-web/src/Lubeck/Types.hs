@@ -26,8 +26,7 @@ import qualified GHC.Generics     as GHC
 import           GHCJS.Types      (JSString)
 -- import           BD.Types
 
-data AppError = ApiError JSString | BLError JSString | NotImplementedError JSString
-
+data AppError = GeneralError JSString | ApiError JSString | BLError JSString | NotImplementedError JSString
 
 data Notification = NError AppError | NInfo JSString | NWarning JSString | NSuccess JSString
 
