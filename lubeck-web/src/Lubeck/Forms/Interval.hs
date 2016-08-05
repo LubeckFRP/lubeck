@@ -50,14 +50,14 @@ customIntervalWidget
   -> (Bool -> Widget' a)    -- ^ Underlying widget type. Argument is @False@ whenever the widget disabled,
                             --   i.e. because the endpoint is not in use.
   -> JSString               -- ^ Title
-  -> IntervalSpec           -- ^ Bounded if always "Between", else Unbounded
+  -> IntervalSpec           -- ^ Choose whether IntervalRange is static or malleable
   -> Widget' (Interval a)
 customIntervalWidget z numW title spec = 
     mapHtmlWidget (\x -> E.div [A.class_ "form-group"]
       [ E.label [A.class_ "control-label col-xs-2"] [E.text title]
       , E.div [A.class_ "col-xs-10 form-inline"] [x]
       ]) $ case spec of 
-        Bounded -> dimapWidget fromIntervalBetween toIntervalBetween $ numsW Between 
+        Bounded -> dimapWidget (snd . fromInterval) toIntervalBetween $ numsW Between 
         Varying -> dimapWidget fromInterval toInterval spanWidget2 
   where
     fromInterval :: Interval a -> (IntervalRange, (a,a))
@@ -81,9 +81,6 @@ customIntervalWidget z numW title spec =
 
     toIntervalBetween :: (a,a) -> Interval a
     toIntervalBetween (x,y) = toInterval (Between, (x,y)) 
-
-    fromIntervalBetween :: Interval a -> (a,a)
-    fromIntervalBetween = snd . fromInterval
 
     spanWidget2 :: Widget' (IntervalRange, (a,a))
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
