@@ -1,10 +1,12 @@
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Lubeck.Forms.Interval
   ( integerIntervalWidget
   , dateIntervalWidget
   , customIntervalWidget
+  , IntervalSpec(..)
   ) where
 
 import qualified Data.List
@@ -26,12 +28,14 @@ import Lubeck.Forms.Select
 data IntervalRange = Any | LessThan | GreaterThan | Between
   deriving (Show, Eq)
 
+data IntervalSpec = Varying | Bounded
+
 -- | A widget for selecting an integer range.
-integerIntervalWidget :: JSString -> Widget' (Interval Int)
+integerIntervalWidget :: JSString -> IntervalSpec -> Widget' (Interval Int)
 integerIntervalWidget = customIntervalWidget 0 hideableIntegerWidget
 
 -- | A widget for selecting a date range.
-dateIntervalWidget :: Day -> JSString -> Widget' (Interval Day)
+dateIntervalWidget :: Day -> JSString -> IntervalSpec -> Widget' (Interval Day)
 dateIntervalWidget dayNow = customIntervalWidget dayNow hideableDateWidget
 
 -- |
@@ -41,21 +45,22 @@ dateIntervalWidget dayNow = customIntervalWidget dayNow hideableDateWidget
 -- by two sub-widgets representing endpoints.
 --
 customIntervalWidget
-  :: Ord a
+  :: forall a. Ord a
   => a                      -- ^ Default value, used i.e. when switching from \"Any\" to an interval with endpoints.
   -> (Bool -> Widget' a)    -- ^ Underlying widget type. Argument is @False@ whenever the widget disabled,
                             --   i.e. because the endpoint is not in use.
   -> JSString               -- ^ Title
+  -> IntervalSpec           -- ^ Bounded if always "Between", else Unbounded
   -> Widget' (Interval a)
-customIntervalWidget z numW title = id
-    $ mapHtmlWidget (\x -> E.div [A.class_ "form-group"]
-                            [ E.label [A.class_ "control-label col-xs-2"] [E.text title]
-                            , E.div [A.class_ "col-xs-10 form-inline"] [x]
-                            ])
-    $ lmapWidget fromInterval
-    $ rmapWidget toInterval
-    $ spanWidget2
+customIntervalWidget z numW title spec = 
+    mapHtmlWidget (\x -> E.div [A.class_ "form-group"]
+      [ E.label [A.class_ "control-label col-xs-2"] [E.text title]
+      , E.div [A.class_ "col-xs-10 form-inline"] [x]
+      ]) $ case spec of 
+        Bounded -> dimapWidget fromIntervalBetween toIntervalBetween $ numsW Between 
+        Varying -> dimapWidget fromInterval toInterval spanWidget2 
   where
+    fromInterval :: Interval a -> (IntervalRange, (a,a))
     fromInterval i = case (lowerBound i, upperBound i) of
       (NegInf,    PosInf)     -> (Any,          (z,z))
       (NegInf,    Finite b)   -> (LessThan,     (b,b))
@@ -63,6 +68,7 @@ customIntervalWidget z numW title = id
       (Finite a,  Finite b)   -> (Between,      (a, b))
       _                       -> (Any,          (z,z)) -- empty
 
+    toInterval :: (IntervalRange, (a,a)) -> Interval a
     toInterval x = case x of
       (Any,         (_,_)) -> interval (NegInf,True) (PosInf,True)
       (GreaterThan, (x,_)) -> interval (Finite x,True) (PosInf,True)
@@ -73,10 +79,16 @@ customIntervalWidget z numW title = id
             then interval (Finite x,True) (Finite x,True)
             else interval (Finite x,True) (Finite y,True)
 
-    -- spanWidget2 :: Widget' (IntervalRange, (a, a))
+    toIntervalBetween :: (a,a) -> Interval a
+    toIntervalBetween (x,y) = toInterval (Between, (x,y)) 
+
+    fromIntervalBetween :: Interval a -> (a,a)
+    fromIntervalBetween = snd . fromInterval
+
+    spanWidget2 :: Widget' (IntervalRange, (a,a))
     spanWidget2 s x = composeWidget spanTypeW (numsW $ fst x) s x
 
-    -- spanTypeW :: Widget' IntervalRange
+    spanTypeW :: Widget' IntervalRange
     spanTypeW = selectWidget
       [ (Any,         "Any")
       , (GreaterThan, "Greater than")
@@ -84,9 +96,10 @@ customIntervalWidget z numW title = id
       , (Between,     "Between")
       ]
 
-    -- numsW :: IntervalRange -> Widget' (a, a)
+    numsW :: IntervalRange -> Widget' (a, a)
     numsW infFin = composeWidget (numW (fst $ visible infFin)) (numW (snd $ visible infFin))
 
+    visible :: IntervalRange -> (Bool,Bool)
     visible x = case x of
       Any         -> (False, False)
       GreaterThan -> (True, False)
@@ -94,5 +107,7 @@ customIntervalWidget z numW title = id
       Between     -> (True, True)
 
     -- TODO is the (Monoid Html) instance what we need?
-    composeWidget :: Widget' a -> Widget' b -> Widget (a,b) (a,b)
+    composeWidget :: Widget' b -> Widget' c -> Widget' (b,c) 
     composeWidget a b = bothWidget mappend (subWidget Control.Lens._1 a) (subWidget Control.Lens._2 b)
+
+
