@@ -1,6 +1,6 @@
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Components.Notifications
   ( notificationsComponent
@@ -22,7 +22,7 @@ import qualified Web.VirtualDom.Html.Attributes as A
 import           Web.VirtualDom.Html.Events     (change, click, preventDefault,
                                                  stopPropagation, submit, value)
 
-import           Lubeck.App                     (Html, KbdEvents(..))
+import           Lubeck.App                     (Html, KbdEvents (..))
 import           Lubeck.Forms
 import           Lubeck.FRP
 import           Lubeck.Types
@@ -35,6 +35,7 @@ notificationW :: Widget [Notification] Int
 notificationW _    []   = mempty
 notificationW sink ns = div [A.class_ "notifPanel"] [ div [] (map (notifItem sink) (zip [0..] ns))]
   where
+    notifItem sink (idx, NError (GeneralError s))        = nbody idx "danger"  s
     notifItem sink (idx, NError (ApiError s))            = nbody idx "danger"  ("API Error: "       <> s)
     notifItem sink (idx, NError (BLError s))             = nbody idx "danger"  ("BL Error: "        <> s)
     notifItem sink (idx, NError (NotImplementedError s)) = nbody idx "danger"  ("Not implemented: " <> s)
