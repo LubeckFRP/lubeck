@@ -1,13 +1,16 @@
 
 flags: {}
 
-compiler: ghcjs-0.2.0.20151230.3_ghc-7.10.2
+compiler: ghcjs-0.2.0.20151230.100_ghc-7.10.2
 compiler-check: match-exact
 setup-info:
  ghcjs:
   source:
-   ghcjs-0.2.0.20151230.3_ghc-7.10.2:
-    url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
+#   ghcjs-0.2.0.20151230.3_ghc-7.10.2:
+#    url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
+   ghcjs-0.2.0.20151230.100_ghc-7.10.2:
+    url: "http://loris.beautifuldestinations.com:2006/ghcjs/ghcjs-0.2.0.20151230.100.tar.gz"
+
 
 packages:
 - 'lubeck-core'
