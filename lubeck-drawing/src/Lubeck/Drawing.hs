@@ -1238,10 +1238,10 @@ drawingToRDrawing' nodeInfo x = case x of
       where
         recur = drawingToRDrawing' mempty
 
-    (Transf t x)           -> drawingToRDrawing' (nodeInfo <> toNodeInfoT t) x
-    (Style s x)            -> drawingToRDrawing' (nodeInfo <> toNodeInfoS s) x
-    (Handlers h x) -> drawingToRDrawing' (nodeInfo <> toNodeInfoH h) x
-    Em        -> mempty
+    (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
+    (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
+    (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
+    Em                     -> mempty
 
     -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
     -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
@@ -1301,17 +1301,17 @@ instance Monoid RDrawing where
   mconcat     = RMany mempty . mapReverse id
 
 
-toNodeInfoT :: Transformation Double -> RNodeInfo
-toNodeInfoT t = mempty { rTransf = t }
-{-# INLINABLE toNodeInfoT #-}
+transformationToNodeInfo :: Transformation Double -> RNodeInfo
+transformationToNodeInfo t = mempty { rTransf = t }
+{-# INLINABLE transformationToNodeInfo #-}
 
-toNodeInfoS :: Style -> RNodeInfo
-toNodeInfoS t = mempty { rStyle = t }
-{-# INLINABLE toNodeInfoS #-}
+styleToNodeInfo :: Style -> RNodeInfo
+styleToNodeInfo t = mempty { rStyle = t }
+{-# INLINABLE styleToNodeInfo #-}
 
-toNodeInfoH :: Handlers -> RNodeInfo
-toNodeInfoH t = mempty { rHandler = t }
-{-# INLINABLE toNodeInfoH #-}
+handlerToNodeInfo :: Handlers -> RNodeInfo
+handlerToNodeInfo t = mempty { rHandler = t }
+{-# INLINABLE handlerToNodeInfo #-}
 
 instance Monoid RNodeInfo where
   mempty = RNodeInfo mempty mempty mempty
