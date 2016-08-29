@@ -29,6 +29,7 @@ executable lubeck-minimal-app
                      , base-prelude
                      , lens
                      , linear
+                     , time
                      , colour
                      , lubeck-core
                      , lubeck-dv
