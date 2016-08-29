@@ -244,9 +244,9 @@ module Lubeck.Drawing
   , showEnvelope
   , smokeBackground
 
-
-
-
+  -- ** Debug
+  , printTreeInfo
+  , printRTreeInfo
 
   -- * Rendering drawings
   , OriginPlacement(..)
