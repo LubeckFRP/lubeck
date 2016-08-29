@@ -245,8 +245,8 @@ module Lubeck.Drawing
   , smokeBackground
 
   -- ** Debug
-  , printTreeInfo
-  , printRTreeInfo
+  , drawingTreeInfo
+  , DrawingTreeInfo(..)
 
   -- * Rendering drawings
   , OriginPlacement(..)
@@ -771,6 +771,18 @@ data Drawing
   -- Compose drawings
   -- Left-most is top-most.
   | Ap ![Drawing]
+
+data DrawingTreeInfo = DrawingTreeInfo
+  { numberOfNodes :: Int -- ^ Number of nodes in the internal tree representing the drawing, not counting embedded SVGs.
+  }
+  deriving (Show)
+
+drawingTreeInfo :: Drawing -> DrawingTreeInfo
+drawingTreeInfo drawing = DrawingTreeInfo (numNodes drawing)
+  where
+    numNodes (Mask a b) = numNodes a + numNodes b
+    numNodes (Ap as)    = sum $ fmap numNodes as
+    numNodes _          = 1
 
 instance Monoid Drawing where
   mempty  = Em

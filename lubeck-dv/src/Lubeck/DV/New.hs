@@ -1312,6 +1312,8 @@ data SinglePlot = SinglePlot
   }
 -- Not a Monoid!
 
+instance Show SinglePlot where
+  show (SinglePlot md sd gs bs _ ax) = show ("SinglePlot", md, sd, gs, bs, ax)
 
 {-
 Can we write

@@ -29,6 +29,7 @@ import Lubeck.FRP
 import Lubeck.Str
 import Lubeck.Drawing.Transformation
 import Lubeck.Drawing hiding (text, addProperty)
+import qualified Lubeck.Drawing as D
 
 #ifdef __GHCJS__
 import Lubeck.Forms(componentEvent, componentSignal)
@@ -836,20 +837,37 @@ data GrowthGraphFilter = GrowthGraphFilter
 
 -- main = runAppReactive $ pure $ text "Hello!"
 
+-- createSinglePlot [] dat aess geom
+
 main = do
-  (rotationV,rotationS) <- plusMinusI "Rotation" 0 mempty
-  runAppReactive $ mconcat [rotationV, fmap plotRotatedNSteps rotationS]
+  (inputV,inputS) <- plusMinusI "Rotation" 0 mempty
+  let nPointsS = fmap (2^) inputS
+  subscribeEvent (updates nPointsS) $ \x -> print $ "Number of points: " ++ show x
+  subscribeEvent (updates nPointsS) $ drawingInfo
+  runAppReactive $ mconcat
+              [ inputV
+              , fmap drawingView nPointsS
+              ]
   where
-    plotRotatedNSteps n = toSvg mempty
-      $ withDefaultStyle
-      $ drawPlot
-      $ plot (dat n) [ x <~ _1 , y <~ _2 ] pointG
+    drawingView = toSvg mempty . createDrawing
+    drawingInfo = print . drawingTreeInfo . createDrawing
+
+    createDrawing n = id
+      -- Just n circles
+      $ mconcat
+      $ fmap (\x -> D.translateX x $ D.scale 5 $ D.fillColor Colors.red $ D.circle) [1..n]
+
+      -- Plot n points using LubeckDV
+      -- $ withDefaultStyle
+      -- $ drawPlot
+      -- $ plot (zip [(1::Int)..] [(1::Int)..n]) [ x <~ _1 , y <~ _2 ] pointG
+
+
     -- dat n = zip [0..] (rotate n [1..200]) :: [(Int,Int)]
+    --
+    -- dat 0 = zip [0..] [1..nPoints] :: [(Int,Int)]
+    -- dat 1 = zip [0..] [nPoints,nPoints-1..1]
+    -- dat _ = error "No such data set"
 
-    dat 0 = zip [0..] [1..nPoints] :: [(Int,Int)]
-    dat 1 = zip [0..] [nPoints,nPoints-1..1]
-    dat _ = error "No such data set"
-
-    nPoints = 2000
-
-    rotate n xs = drop n xs ++ take n xs
+    -- nPoints = 550
+    -- rotate n xs = drop n xs ++ take n xs
