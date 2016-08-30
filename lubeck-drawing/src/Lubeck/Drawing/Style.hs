@@ -4,14 +4,15 @@
   , ScopedTypeVariables, NoImplicitPrelude #-}
 
 module Lubeck.Drawing.Style
-  ( Style
-  , styleNamed
-  , styleToAttrString
-  )
+  -- ( Style
+  -- , styleNamed
+  -- , styleToAttrString
+  -- )
 where
 
 import BasePrelude
 import Data.Map.Strict(Map)
+import Data.Colour(Colour, AlphaColour, withOpacity)
 import qualified Data.Map.Strict as Map
 
 import Lubeck.Str
@@ -91,3 +92,17 @@ foreign import javascript unsafe "$2 + $1"
 
 instance Show Style where
   show x = "style"
+
+
+data GradientStop = GradientStop
+  { gradientOffset :: Int -- Percent
+  , gradientColor :: Colour Double
+  }
+  deriving (Eq, Show)
+
+data Gradient = LinearGradient ![GradientStop]
+  deriving (Eq, Show)
+
+newtype SpecialStyle
+  = FillGradient Gradient
+  deriving (Eq, Show)

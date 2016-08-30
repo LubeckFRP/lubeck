@@ -92,7 +92,9 @@ module Lubeck.DV.Styling
   , hoverSelectStates
   , HoverSelectUpdate(..)
   , hoverSelectEvents
+
   , InteractivePalette(..)
+  , paletteToInteractive
   , getInteractivePalette
 
   -- ** Misc helper types
@@ -205,6 +207,9 @@ Similar to palette, but include alternative colors depending hover/select state.
 -}
 newtype InteractivePalette a
   = InteractivePalette (HoverSelect -> Palette a)
+
+paletteToInteractive :: Palette a -> InteractivePalette a
+paletteToInteractive p = InteractivePalette (const p)
 
 getInteractivePalette :: InteractivePalette a -> HoverSelect -> Palette a
 getInteractivePalette (InteractivePalette x) = x

@@ -29,6 +29,7 @@ import Lubeck.FRP
 import Lubeck.Str
 import Lubeck.Drawing.Transformation
 import Lubeck.Drawing hiding (text, addProperty)
+import qualified Lubeck.Drawing as D
 
 #ifdef __GHCJS__
 import Lubeck.Forms(componentEvent, componentSignal)
@@ -45,6 +46,8 @@ import Web.VirtualDom.Html.Events(Event(..), mousemove)
 import           GHCJS.Foreign.Callback(syncCallback,Callback,OnBlocked(..))
 #endif
 
+-- TODO
+import Data.Time
 
 ----------
 
@@ -459,6 +462,15 @@ plusMinus label init reset = do
   zoom <- accumS init alter
   pure (mconcat [pure $ text (toJSString label), view], zoom)
 
+plusMinusI :: Str -> Int -> Events Int -> FRP (Signal Html, Signal Int)
+plusMinusI label init reset = do
+  (view, alter :: Events (Int -> Int)) <- componentEvent
+    id
+    (multiButtonWidget [] [("-", (subtract 1)), ("+", (+ 1))])
+    (fmap const reset)
+  zoom <- accumS init alter
+  pure (mconcat [pure $ text (toJSString label), view], zoom)
+
 
 onOff :: Str -> Bool -> FRP (Signal Html, Signal Bool)
 onOff label init = do
@@ -530,161 +542,161 @@ foldpSRestart :: (a -> b -> b) -> b -> Events a -> Events b -> FRP (Signal b)
 foldpSRestart f z u r = accumS z ((fmap f u) <> fmap (const) r)
 
 
-main :: IO ()
-main = do
-#ifdef __GHCJS__
-  setupEmit
-  setupEmit2
-  setupRender
-  setupRender2
-
-  -- retainMain
-  (rrV, rrS)          <- rendRectAlts "Rendering rectangle"
-  (asV, asS)          <- onOff "Auto-scale Y" True
-  (view0, zoomActive) <- onOff "Zoom active" True
-  (resetV, resetE)    <- basicButton "Reset zoom"
-  (rectU, rectE :: Events (Rect Double))      <- newEvent
-  (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X^1" 0 (view _left   <$> rectE)
-  (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y^1" 0 (view _bottom <$> rectE)
-  (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X^2" 1 (view _right  <$> rectE)
-  (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y^2" 1 (view _top    <$> rectE)
-  let (zoomXY :: Signal (Rect Double)) = liftA4 (\x y xo yo -> rect xo yo ({-xo+-}x) ({-yo+-}y)) zoomX zoomY zoomXO zoomYO
-  -- let zoomV = mconcat [resetV, rrV, view0, asV, view1a, view2a, view1, view2]
-  let zoomV = mempty
-#else
-  let zoomActive = pure True :: Signal Bool
-  -- let zoomXY = pure $ V2 1 1
-#endif
-  -- Debug
-  when debugHandlers $ void $
-    subscribeEvent (updates zoomXY) print
-
-  let !(plotSD :: Styled Drawing) = trace "> plotSD" $ drawPlot $ mconcat
-          [ plot (zip ([1..]::[Double])
-            -- [31,35,78,23,9,71,53,92,53,42::Double]
-            (
-            kSeries
-            ::[Double])
-            )
-              [x <~ _1, y <~ _2]
-              (mconcat [line {-, fill, pointG, xInterceptAlways, yInterceptAlways-}])
-          , plotLabel "(4,50)" [(4::Double, 50::Double)]
-              [x <~ _1, y <~ _2]
-          , plotLabel "(7,65)" [(7::Double, 65::Double)]
-              [x <~ _1, y <~ _2]
-          ]
-
-  -- TODO use rrS here
-  let (plotVD :: SDrawing) =
-            let g currentZoom currentRenderingRectangle autoScaleOn =
-                        getStyled plotSD
-                          $ renderingRectangle .~ currentRenderingRectangle
-                          $ zoom .~ (focusFromRectangle currentZoom)
-                          $ zoomType .~ (if autoScaleOn then AutoScaleY else mempty)
-                          $ mempty
-            in liftA3 g zoomXY rrS asS
-  subscribeEvent (updates $ zoomXY) $ \_ -> print "U: zoomXY"
-  subscribeEvent (updates $ rrS) $ \_ -> print "U: rrS"
-  subscribeEvent (updates $ plotVD) $ \_ -> print "U: plotVD"
-
-  -- let plotD = getStyled plotSD mempty :: Drawing
-  (plotSD :: SDrawing) <- draggable_ $ plotVD
-  (plotSD2 :: SDrawing) <- draggable_ $ plotVD
-  (plotSD3 :: SDrawing) <- draggable_ $ plotVD
-  (plotSD4 :: SDrawing) <- draggable_ $ plotVD
-
-  let purpleCircle = trace "> purpleCircle" $ Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
-  let pinkCircle   = trace "> pinkCircle" $ Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
-  let !redSquare    = trace "> redSquare" $ Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
-  let !blueSquare   = trace "> blueSquare" $ Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
-
-  dc1 <- draggable_ $ pure (pinkCircle ||| redSquare)
-  -- dc2 <- draggable_ $ pure purpleCircle
-
-  let (sqs  :: Signal Bool -> SDrawing) = (fmap $ \t -> if t then blueSquare else redSquare)
-
-  (sqs2 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
-  (sqs3 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
-  (sqs4 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
-  (sqs5 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
-  (sqs6 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
-  (sqs7 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
-  (sqs8 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
-  -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
-  -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
-
-  (dr, rectDraggedE, clickResetE) <- dragRect Nothing (Just $ view _y <$> rrS) zoomActive
-
-  let (zoomDragInputs :: Events (Rect Double)) =
-        snapshotWith (\rr zr -> transformRect (recip $ scalingXY rr) zr) (current rrS) (normalizeRect <$> rectDraggedE)
-
-  {-
-  Consider the foo updates as a series of linear transformations, accumulate with (1 and (*))
-  -}
-  (compoundZoom :: Signal (T2 Double)) <- foldpSRestart (flip (*)) 1 (rectToTransf <$> zoomDragInputs) (1 <$ (resetE <> clickResetE))
-  -- Tie the knot!
-  subscribeEvent (transfToRect <$> updates compoundZoom) rectU
-
-  subscribeEvent (fmap (($ "") . showFFloat (Just 2)) <$> transfToRect <$> updates compoundZoom) print
-  subscribeEvent resetE print
-
-  {-
-  TODO get a signal/event that yields the integral of all zoom transformation
-  Also add an event that resets it
-  -}
-
-
-  (srds :: [SRDrawing]) <- mapM strictifyS $
-  -- let (srds :: [SRDrawing]) =
-              -- fmap (fmap $ renderDrawing opts)
-                [ mempty
-                -- fmap (renderDrawingTrace "R Circle and square") dc1
-                , fmap (renderDrawingTrace "R Zoom") dr
-                -- , fmap (renderDrawingTrace "Hoverable square") sqs2
-                -- , sqs2
-                , fmap (renderDrawingTrace "R Plot") plotVD
-                , mempty
-                -- , fmap (renderDrawingTrace "Plot2") (fmap (rotate (turn/3)) plotSD2)
-                -- , fmap (renderDrawingTrace "Plot3") plotSD3
-                -- , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
-                -- , fmap (renderDrawingTrace "Plot4") plotSD4
-                ]
-  let (sd :: SRDrawing) = mconcat srds
-  -- (sd :: SRDrawing) <- let [a,b,c,d,e,f,g] = srds in do
-  --   x <- fastMconcatS3 a b c
-  --   y <- fastMconcatS3 d e f
-  --   fastMconcatS3 x y f
-#ifdef __GHCJS__
-  let allS =
-            mconcat [zoomV,
-            fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
-            ]
-  -- runAppReactive $ allS
-  -- allS2 <- strictifyS allS
-  let allS2 = allS
-  runWithAnimation $ (allS2 :: Signal Html)
-  print "Done!"
-#else
-  let allS = fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
-  subscribeEvent (updates allS) $ \_ -> print "New image"
-  return ()
-#endif
-  where
-    !opts = mempty { dimensions = P (V2 1600 800), originPlacement = BottomLeft }
-
--- -- | Evaluates events passing through to WHNF before propagating
--- strictify :: Events a -> FRP (Events a)
--- strictify e = do
---   (s,e2) <- newEvent
---   subscribeEvent e $ \x -> seq x (s x)
---   return e2
+-- main :: IO ()
+-- main = do
+-- #ifdef __GHCJS__
+--   setupEmit
+--   setupEmit2
+--   setupRender
+--   setupRender2
 --
--- -- | Evaluates events passing through to WHNF before propagating
--- strictifyS :: Signal a -> FRP (Signal a)
--- strictifyS s = do
---   !z <- pollBehavior (current s)
---   u2 <- strictify (updates s)
---   stepperS z u2
+--   -- retainMain
+--   (rrV, rrS)          <- rendRectAlts "Rendering rectangle"
+--   (asV, asS)          <- onOff "Auto-scale Y" True
+--   (view0, zoomActive) <- onOff "Zoom active" True
+--   (resetV, resetE)    <- basicButton "Reset zoom"
+--   (rectU, rectE :: Events (Rect Double))      <- newEvent
+--   (view1a, zoomXO)    <- showCurrentValue <$> plusMinus "Zoom X^1" 0 (view _left   <$> rectE)
+--   (view2a, zoomYO)    <- showCurrentValue <$> plusMinus "Zoom Y^1" 0 (view _bottom <$> rectE)
+--   (view1, zoomX)      <- showCurrentValue <$> plusMinus "Zoom X^2" 1 (view _right  <$> rectE)
+--   (view2, zoomY)      <- showCurrentValue <$> plusMinus "Zoom Y^2" 1 (view _top    <$> rectE)
+--   let (zoomXY :: Signal (Rect Double)) = liftA4 (\x y xo yo -> rect xo yo ({-xo+-}x) ({-yo+-}y)) zoomX zoomY zoomXO zoomYO
+--   -- let zoomV = mconcat [resetV, rrV, view0, asV, view1a, view2a, view1, view2]
+--   let zoomV = mempty
+-- #else
+--   let zoomActive = pure True :: Signal Bool
+--   -- let zoomXY = pure $ V2 1 1
+-- #endif
+--   -- Debug
+--   when debugHandlers $ void $
+--     subscribeEvent (updates zoomXY) print
+--
+--   let !(plotSD :: Styled Drawing) = trace "> plotSD" $ drawPlot $ mconcat
+--           [ plot (zip ([1..]::[Double])
+--             -- [31,35,78,23,9,71,53,92,53,42::Double]
+--             (
+--             kSeries
+--             ::[Double])
+--             )
+--               [x <~ _1, y <~ _2]
+--               (mconcat [line {-, fill, pointG, xInterceptAlways, yInterceptAlways-}])
+--           , plotLabel "(4,50)" [(4::Double, 50::Double)]
+--               [x <~ _1, y <~ _2]
+--           , plotLabel "(7,65)" [(7::Double, 65::Double)]
+--               [x <~ _1, y <~ _2]
+--           ]
+--
+--   -- TODO use rrS here
+--   let (plotVD :: SDrawing) =
+--             let g currentZoom currentRenderingRectangle autoScaleOn =
+--                         getStyled plotSD
+--                           $ renderingRectangle .~ currentRenderingRectangle
+--                           $ zoom .~ (focusFromRectangle currentZoom)
+--                           $ zoomType .~ (if autoScaleOn then AutoScaleY else mempty)
+--                           $ mempty
+--             in liftA3 g zoomXY rrS asS
+--   subscribeEvent (updates $ zoomXY) $ \_ -> print "U: zoomXY"
+--   subscribeEvent (updates $ rrS) $ \_ -> print "U: rrS"
+--   subscribeEvent (updates $ plotVD) $ \_ -> print "U: plotVD"
+--
+--   -- let plotD = getStyled plotSD mempty :: Drawing
+--   (plotSD :: SDrawing) <- draggable_ $ plotVD
+--   (plotSD2 :: SDrawing) <- draggable_ $ plotVD
+--   (plotSD3 :: SDrawing) <- draggable_ $ plotVD
+--   (plotSD4 :: SDrawing) <- draggable_ $ plotVD
+--
+--   let purpleCircle = trace "> purpleCircle" $ Lubeck.Drawing.fillColorA (Colors.purple `withOpacity` 0.2) $ Lubeck.Drawing.scale 190 circle
+--   let pinkCircle   = trace "> pinkCircle" $ Lubeck.Drawing.fillColor Colors.pink $ Lubeck.Drawing.scale 150 circle
+--   let !redSquare    = trace "> redSquare" $ Lubeck.Drawing.fillColor Colors.red $ Lubeck.Drawing.scale 190 square
+--   let !blueSquare   = trace "> blueSquare" $ Lubeck.Drawing.fillColor Colors.blue $ Lubeck.Drawing.scale 190 square
+--
+--   dc1 <- draggable_ $ pure (pinkCircle ||| redSquare)
+--   -- dc2 <- draggable_ $ pure purpleCircle
+--
+--   let (sqs  :: Signal Bool -> SDrawing) = (fmap $ \t -> if t then blueSquare else redSquare)
+--
+--   (sqs2 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+--   (sqs3 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+--   (sqs4 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+--   (sqs5 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+--   (sqs6 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+--   (sqs7 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+--   (sqs8 :: SRDrawing) <- (draggable_ <=< hoverable_) sqs >>= strictifyS . fmap (renderDrawing2 opts)
+--   -- (sqsb :: SDrawing) <- hoverable_ (fmap $ \t -> if t then blueSquare else redSquare)
+--   -- sqs2b <- draggable_ $ fmap (Lubeck.Drawing.scale 0.5) sqsb
+--
+--   (dr, rectDraggedE, clickResetE) <- dragRect Nothing (Just $ view _y <$> rrS) zoomActive
+--
+--   let (zoomDragInputs :: Events (Rect Double)) =
+--         snapshotWith (\rr zr -> transformRect (recip $ scalingXY rr) zr) (current rrS) (normalizeRect <$> rectDraggedE)
+--
+--   {-
+--   Consider the foo updates as a series of linear transformations, accumulate with (1 and (*))
+--   -}
+--   (compoundZoom :: Signal (T2 Double)) <- foldpSRestart (flip (*)) 1 (rectToTransf <$> zoomDragInputs) (1 <$ (resetE <> clickResetE))
+--   -- Tie the knot!
+--   subscribeEvent (transfToRect <$> updates compoundZoom) rectU
+--
+--   subscribeEvent (fmap (($ "") . showFFloat (Just 2)) <$> transfToRect <$> updates compoundZoom) print
+--   subscribeEvent resetE print
+--
+--   {-
+--   TODO get a signal/event that yields the integral of all zoom transformation
+--   Also add an event that resets it
+--   -}
+--
+--
+--   (srds :: [SRDrawing]) <- mapM strictifyS $
+--   -- let (srds :: [SRDrawing]) =
+--               -- fmap (fmap $ renderDrawing opts)
+--                 [ mempty
+--                 -- fmap (renderDrawingTrace "R Circle and square") dc1
+--                 , fmap (renderDrawingTrace "R Zoom") dr
+--                 -- , fmap (renderDrawingTrace "Hoverable square") sqs2
+--                 -- , sqs2
+--                 , fmap (renderDrawingTrace "R Plot") plotVD
+--                 , mempty
+--                 -- , fmap (renderDrawingTrace "Plot2") (fmap (rotate (turn/3)) plotSD2)
+--                 -- , fmap (renderDrawingTrace "Plot3") plotSD3
+--                 -- , fmap (renderDrawingTrace "R Circles") $ pure $ duplicateN 10 (V2 1 1) purpleCircle
+--                 -- , fmap (renderDrawingTrace "Plot4") plotSD4
+--                 ]
+--   let (sd :: SRDrawing) = mconcat srds
+--   -- (sd :: SRDrawing) <- let [a,b,c,d,e,f,g] = srds in do
+--   --   x <- fastMconcatS3 a b c
+--   --   y <- fastMconcatS3 d e f
+--   --   fastMconcatS3 x y f
+-- #ifdef __GHCJS__
+--   let allS =
+--             mconcat [zoomV,
+--             fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
+--             ]
+--   -- runAppReactive $ allS
+--   -- allS2 <- strictifyS allS
+--   let allS2 = allS
+--   runWithAnimation $ (allS2 :: Signal Html)
+--   print "Done!"
+-- #else
+--   let allS = fmap (\x -> {-trace "E" $-} emitDrawing2 opts x) sd
+--   subscribeEvent (updates allS) $ \_ -> print "New image"
+--   return ()
+-- #endif
+--   where
+--     !opts = mempty { dimensions = P (V2 1600 800), originPlacement = BottomLeft }
+--
+-- -- -- | Evaluates events passing through to WHNF before propagating
+-- -- strictify :: Events a -> FRP (Events a)
+-- -- strictify e = do
+-- --   (s,e2) <- newEvent
+-- --   subscribeEvent e $ \x -> seq x (s x)
+-- --   return e2
+-- --
+-- -- -- | Evaluates events passing through to WHNF before propagating
+-- -- strictifyS :: Signal a -> FRP (Signal a)
+-- -- strictifyS s = do
+-- --   !z <- pollBehavior (current s)
+-- --   u2 <- strictify (updates s)
+-- --   stepperS z u2
 --
 
 emitDrawing2 opts x = unsafePerformIO $ do
@@ -801,3 +813,61 @@ animated b = do
 -- #endif
 
 liftA4 f a b c d = f <$> a <*> b <*> c <*> d
+
+
+
+
+
+
+
+
+
+data GrowthGraphRaw = GrowthGraphRaw
+  { followers   :: [(UTCTime, Int)]
+  , likes       :: [(UTCTime, Int)] -- up to 5'000
+  , comments    :: [(UTCTime, Int)] -- up to 5'000
+  , positions   :: [(UTCTime, String, Int, Int)] -- (time, img url, likes, comments)
+  }
+data GrowthType = Followers | Likes | Comments
+data GrowthGraphFilter = GrowthGraphFilter
+  { growthType :: GrowthType
+  , dateRange  :: Maybe (UTCTime, UTCTime)
+  }
+
+
+-- main = runAppReactive $ pure $ text "Hello!"
+
+-- createSinglePlot [] dat aess geom
+
+main = do
+  (inputV,inputS) <- plusMinusI "Rotation" 0 mempty
+  let nPointsS = fmap (2^) inputS
+  subscribeEvent (updates nPointsS) $ \x -> print $ "Number of points: " ++ show x
+  subscribeEvent (updates nPointsS) $ drawingInfo
+  runAppReactive $ mconcat
+              [ inputV
+              , fmap drawingView nPointsS
+              ]
+  where
+    drawingView = toSvg mempty . createDrawing
+    drawingInfo = print . drawingTreeInfo . createDrawing
+
+    createDrawing n = id
+      -- Just n circles
+      $ mconcat
+      $ fmap (\x -> D.translateX x $ D.scale 5 $ D.fillColor Colors.red $ D.circle) [1..n]
+
+      -- Plot n points using LubeckDV
+      -- $ withDefaultStyle
+      -- $ drawPlot
+      -- $ plot (zip [(1::Int)..] [(1::Int)..n]) [ x <~ _1 , y <~ _2 ] pointG
+
+
+    -- dat n = zip [0..] (rotate n [1..200]) :: [(Int,Int)]
+    --
+    -- dat 0 = zip [0..] [1..nPoints] :: [(Int,Int)]
+    -- dat 1 = zip [0..] [nPoints,nPoints-1..1]
+    -- dat _ = error "No such data set"
+
+    -- nPoints = 550
+    -- rotate n xs = drop n xs ++ take n xs
