@@ -165,6 +165,7 @@ module Lubeck.Drawing
   , fillColorA
   , strokeColor
   , strokeColorA
+  , fillGradient
   , strokeWidth
   -- *** Rendering styles
   , styleToAttrString
@@ -228,6 +229,7 @@ module Lubeck.Drawing
   , circle
   , circleSector
   , square
+  , rectangle
   , triangle
   , horizontalLine
   , verticalLine
@@ -625,7 +627,9 @@ envelope x = case x of
   Circle            -> Envelope $ Just $ \v -> (0.5/norm v)
   -- FIXME no envelope for CircleSector
   CircleSector _ _  -> envelope Circle
-  Rect          -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
+  -- Goes around like: TL, TR, BR, BL
+  Rect                -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
+  RectRounded x y _ _ -> pointsEnvelope $ fmap P [V2 (0.5*x) (0.5*y), V2 (-0.5*x) (0.5*y), V2 (-0.5*x) (-0.5*y), V2 (0.5*x) (-0.5*y)]
   Line          -> pointsEnvelope $ fmap P [V2 0 0, V2 1 0]
   Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
   -- No proper text envelopes, fake by using a single rectangles
@@ -641,6 +645,7 @@ envelope x = case x of
 
   Transf t x    -> transformEnvelope t (envelope x)
   Style _ x     -> envelope x
+  SpecialStyle _ x     -> envelope x
   Handlers _ x  -> envelope x
   Em            -> mempty
   Ap xs         -> mconcat (fmap envelope xs)
@@ -753,6 +758,7 @@ data Drawing
   = Circle
   | CircleSector !(Angle Double) !(Angle Double)
   | Rect
+  | RectRounded !Double !Double !Double !Double
   -- A line along the unit vector
   | Line
   -- A sequence of straight lines, closed or not. For closed lines, there is no need
@@ -765,6 +771,7 @@ data Drawing
   | Mask !Drawing !Drawing
   | Transf !(Transformation Double) !Drawing
   | Style !Style !Drawing
+  | SpecialStyle !SpecialStyle !Drawing
   | Handlers !Handlers !Drawing
 
   | Em
@@ -819,6 +826,11 @@ circleSector = CircleSector
 square :: Drawing
 square = Rect
 {-# INLINABLE square #-}
+
+{-| A centered square the given x, y, rx, ry dimensions. -}
+rectangle :: Double -> Double -> Double -> Double -> Drawing
+rectangle = RectRounded
+{-# INLINABLE rectangle #-}
 
 
 {-| An equilateral triangle. -}
@@ -1174,6 +1186,10 @@ strokeWidth :: Double -> Drawing -> Drawing
 strokeWidth x = style (styleNamed "stroke-width" (toStr x <> "px"))
 -- TODO this can be overriden by setting the non-scaling-stroke attribute. Wrap in nice API?
 
+fillGradient :: Gradient -> Drawing -> Drawing
+fillGradient g = SpecialStyle $ FillGradient g
+-- TODO feel bad this is not a Style (performance reasons)
+
 
 {-| Where to place origo in the generated SVG. -}
 data OriginPlacement
@@ -1239,6 +1255,7 @@ drawingToRDrawing' nodeInfo x = case x of
     Circle                 -> RPrim nodeInfo RCircle
     CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
     Rect                   -> RPrim nodeInfo RRect
+    RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
     Line                   -> RPrim nodeInfo RLine
     (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
     (Text t)               -> RPrim nodeInfo (RText t)
@@ -1252,6 +1269,9 @@ drawingToRDrawing' nodeInfo x = case x of
 
     (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
     (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
+    -- FIXME render special styles
+    (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
+
     (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
     Em                     -> mempty
 
@@ -1274,6 +1294,7 @@ data RPrim
    = RCircle
    | RCircleSector !(Angle Double) !(Angle Double)
    | RRect
+   | RRectRounded !Double !Double !Double !Double
    | RLine
    -- TODO use Seq not []
    | RLines !Bool ![V2 Double]
@@ -1424,6 +1445,17 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
         RRect -> E.rect
           (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
           []
+        RRectRounded w h rx ry -> E.rect
+          (nodeInfoToProperties nodeInfo ++
+            [ A.x (toJSString $ toStr $ negate w / 2)
+            , A.y (toJSString $ toStr $ negate h / 2)
+            , A.width (toJSString $ toStr $ w)
+            , A.height (toJSString $ toStr $ h)
+            , A.rx (toJSString $ toStr $ rx)
+            , A.ry (toJSString $ toStr $ ry)
+            , noScale]
+            )
+          []
         RLine -> E.line
           ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
           []
@@ -1540,6 +1572,17 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Rect       -> single $ mkN "rect"
             ([mkA "x" "-0.5", mkA "y" "-0.5", mkA "width" "1", mkA "height" "1", noScale]++ps)
             []
+          RectRounded w h rx ry -> single $ mkN "rect"
+            (
+              [ mkA "x" (toStr $ negate w / 2)
+              , mkA "y" (toStr $ negate h / 2)
+              , mkA "width" (toStr w)
+              , mkA "height" (toStr h)
+              , mkA "rx" (toStr rx)
+              , mkA "ry" (toStr ry)
+              , noScale
+              ]++ps)
+            []
           Line -> single $ mkN "line"
             ([mkA "x1" "0", mkA "y1" "0", mkA "x2" "1", mkA "y2" "0", noScale]++ps)
             []
@@ -1561,6 +1604,10 @@ toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
           Style s x  -> single $ mkN "g"
             [mkA "style" $ styleToAttrString s]
             (toSvg1 ps x)
+
+          -- TODO should render special styles (such as gradients)
+          -- Ignored until #133
+          SpecialStyle _ x -> toSvg1 ps x
           -- Ignore event handlers
           Handlers _ x -> toSvg1 ps x
 
