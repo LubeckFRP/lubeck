@@ -279,14 +279,14 @@ barDataH :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
 barDataH = barDataHV Horizontal
 
 {-
-Note:
-  The naming convention for the orientation style attributes all assume vertical plots (the default).
+NOTE
+  Better naming convention:
 
-  So things like width/offset._x etc will make sense when rendering verticals need to be transposed when rendering horizontally.
-
-  For example the space between two bars in a non-grouped/stacked plot is always the scalar 'barPlotUngroupedOffset._x',
-  which may be rendered horizontally or vertically and the space "thickness" of a bar is always referred to as its "barPlotWidth".
-
+          | Vertical      Horizontal
+    Along | Y             X
+    Cross | X             Y
+    Home  | Bottom        Left
+    Away  | Top           Right
 
 NOTE
   How are bars positioned (in RR, assuming horizontal conventions)?
@@ -296,22 +296,31 @@ NOTE
   So for n elements, our bars barWidthwill be placed at [1..n].
   The width of the whole plot is 1, so the distance between plots will be (1/(n + 1)), adding an extra space between the last element and the rightmost edge.
 
+
+TODO prove that width = 1, regardless of the value of barPlotUngroupedOffset
+
 -}
 barDataHV :: (Monad m, MonadReader Styling m) => VerticalHorizontal -> [P1 Double] -> m Drawing
 barDataHV hv ps = do
   style <- ask
-  let barWidth      :: Double             = 1/fromIntegral (length ps + 1)
-  let barFullOffset :: Double             = barWidth + barWidth * (style^.barPlotUngroupedOffset._x)
+
+  let barWidth      :: Double             = 1 / fromIntegral (length ps + 1)
+  let scaleUp       :: Double             = 1 + style^.barPlotUngroupedOffset
+  let barFullOffset :: Double             = barWidth * scaleUp
+
   let hsState       :: IntMap HoverSelect           = style^.hoverSelectStates
   let hsSink        :: Sink (HoverSelectUpdate Int) = style^.hoverSelectEvents
 
-  -- TODO unify approach to n/pred n
-  let base n maybeHS = alignHV
-            $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette (defHoverSelect maybeHS)))
+  -- This is a square with correct color and handlers attached
+  -- TODO render colors from palette?
+  let base n maybeHS = alignHome
+            $ fillColorA ( (paletteToColor $ getInteractivePalette (style^.barPlotBarColor) (defHoverSelect maybeHS)) )
+            -- $ _
             $ addBasicHandlers (handleInteraction hsSink (pred n))
             $ square
-  return $ scaleHV (2/3) $ scaleRR style $ mconcat
-    $ zipWith (\n x -> translateHV (realToFrac n * barFullOffset) (foo barWidth (base n (IntMap.lookup (pred n) hsState)) x))
+
+  return $ scaleCross (recip $ scaleUp) $ scaleRR style $ mconcat
+    $ zipWith (\n x -> translateCross (realToFrac n * barFullOffset) (scaleCrossAlong barWidth x (base n (IntMap.lookup (pred n) hsState))))
       [1..]
       ps
   where
@@ -327,8 +336,8 @@ barDataHV hv ps = do
     defHoverSelect Nothing  = NoHoverSelect
     defHoverSelect (Just x) = x
 
-    foo :: Double -> Drawing -> Point V1 Double -> Drawing
-    foo barWidth base (P (V1 v)) = scaleHV barWidth $ scaleHVInv v $ base
+    scaleCrossAlong :: Double -> Point V1 Double -> Drawing -> Drawing
+    scaleCrossAlong c (P (V1 a)) = scaleCross c . scaleAlong a
 
     -- Either of these works (first version more efficient):
     -- alignB = translate (V2 0 0.5)
@@ -337,13 +346,13 @@ barDataHV hv ps = do
     alignL = align L
 
     -- Align to the bottom (if vertical/default)
-    alignHV = case hv of { Vertical -> alignB ; Horizontal -> alignL }
+    alignHome = case hv of { Vertical -> alignB ; Horizontal -> alignL }
     -- Scale X (if vertical/default)
-    scaleHV     = case hv of { Vertical -> scaleX ; Horizontal -> scaleY }
+    scaleCross     = case hv of { Vertical -> scaleX ; Horizontal -> scaleY }
     -- Scale Y (if vertical/default)
-    scaleHVInv  = case hv of { Vertical -> scaleY ; Horizontal -> scaleX }
+    scaleAlong  = case hv of { Vertical -> scaleY ; Horizontal -> scaleX }
     -- Translate X (if vertical/default)
-    translateHV = case hv of { Vertical -> translateX ; Horizontal -> translateY }
+    translateCross = case hv of { Vertical -> translateX ; Horizontal -> translateY }
 
     -- Reads (renderingRectangle, zoom) from the style
     scaleRR :: Styling -> Drawing -> Drawing

@@ -41,10 +41,10 @@ module Lubeck.DV.Styling
   , scatterPlotSize
 
   , barPlotBarColor
-  , barPlotWidth
+  -- , barPlotWidth
   , barPlotUngroupedOffset
-  , barPlotGroupedOffset
-  , barPlotSpaceUsed
+  -- , barPlotGroupedOffset
+  -- , barPlotSpaceUsed
   , barPlotOrientation
 
   , circularPlotColor
@@ -275,14 +275,14 @@ data Styling = Styling
   -- Infinite list of bar colours:
   , _barPlotBarColor                  :: InteractivePalette Double
 
-  , _barPlotWidth                     :: V2 Double -- TODO not used
-  , _barPlotUngroupedOffset           :: V2 Double
-  , _barPlotGroupedOffset             :: V2 Double -- TODO not used
-  , _barPlotStackedOffset             :: V2 Double
+  -- , _barPlotWidth                     :: V2 Double -- TODO not used
+  , _barPlotUngroupedOffset           :: Double
+  -- , _barPlotGroupedOffset             :: V2 Double -- TODO not used
+  -- , _barPlotStackedOffset             :: V2 Double
   -- Percentage of horizontal dim taken up by plots, in [0..1] (default 1)
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
 
-  , _barPlotSpaceUsed                 :: Double -- TODO not used
+  -- , _barPlotSpaceUsed                 :: Double -- TODO not used
   -- Is this bar plot transposed or not?
   , _barPlotOrientation               :: VerticalHorizontal
 
@@ -371,11 +371,11 @@ instance Monoid Styling where
             (paletteFromList $ fmap (`withOpacity` 0.2) $ defColorList)
           Selected ->
             (paletteFromList $ fmap (`withOpacity` 0.9) $ defColorList)
-    , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
-    , _barPlotUngroupedOffset       = V2 0.5 0
-    , _barPlotGroupedOffset         = V2 0   0
-    , _barPlotStackedOffset         = V2 0   0.1
-    , _barPlotSpaceUsed             = 9/10
+    -- , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
+    , _barPlotUngroupedOffset       = 0.5
+    -- , _barPlotGroupedOffset         = V2 0   0
+    -- , _barPlotStackedOffset         = V2 0   0.1
+    -- , _barPlotSpaceUsed             = 9/10
     , _barPlotOrientation           = Vertical
 
     , _circularPlotColor            = paletteFromList $ fmap (`withOpacity` 0.6) defColorList
