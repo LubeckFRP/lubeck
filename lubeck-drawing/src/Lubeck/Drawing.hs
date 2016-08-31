@@ -398,6 +398,17 @@ transformDirection t (Direction v) = Direction (transformVector t v)
 angleBetweenDirections :: (Metric v, Floating n) => Direction v n -> Direction v n -> Angle n
 angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
 
+{-
+Turn two radii to scale and offset in polar coordinates, clockwise direction.
+-}
+anglesToPolarScaleOffset
+  :: Angle Double
+  -> Angle Double
+  -> (Double, Double)
+anglesToPolarScaleOffset a1 a2 = (s, o )
+  where
+    o = mod' (1 - angleToTurns a2) 1
+    s = mod' (angleToTurns a2 - angleToTurns a1) 1
 
 
 {-|
@@ -1230,6 +1241,44 @@ instance Monoid RenderingOptions where
 
 -- Rendering
 
+{-|
+
+RDrawing is a tree similar to Drawing, with some differences:
+
+- Child nodes (in RMany) are stored in order bottom-top instead of top-bottom
+
+- Instead of having explicit nodes for transform/style/handlers, each node
+  contains a RNodeInfo object storing all three of them.
+
+  When converting Drawings to RDrawings, we collapse all style/transform/handlers
+  to the the next descending group or node, for example:
+
+    T t1 (T t2 (H h (Ap [...]))) -> RMany (t <> t2, mempty, h)
+
+- Masks and Gradients are hoisted to the top and assigned unique identities.
+
+
+When rendering to SVG
+- Each RTopInfo corresponds to a sub-tree <defs> entry
+- Each RDrawing corresponds to a node in the SVG ree
+
+-}
+
+data RTopInfo
+  = RTopGradient !Str !Gradient
+  | RTopMask !Str !RDrawing
+
+data RDrawing
+  = RPrim !RNodeInfo !RPrim
+  | RMany !RNodeInfo ![RDrawing]
+   deriving (Show)
+
+instance Monoid RDrawing where
+  mempty = RMany mempty mempty
+
+  -- TODO this could emit extra nodes
+  mappend x y = RMany mempty (y : pure x)
+  mconcat     = RMany mempty . mapReverse id
 
 data RPrim
    = RCircle
@@ -1251,91 +1300,14 @@ data RNodeInfo
     }
    deriving (Show)
 
-#ifdef __GHCJS__
-instance Show Handlers where
-  show x = "handlers"
-#endif
-
-type MaskId = Int
-
-data RDrawing
-  = RPrim !RNodeInfo !RPrim
-  | RMany !RNodeInfo ![RDrawing]
-{-
-  | RMask !MaskId !RDrawing
--}
-   deriving (Show)
-
-instance Monoid RDrawing where
-  mempty = RMany mempty mempty
-
-  -- TODO this could emit extra nodes
-  mappend x y = RMany mempty (y : pure x)
-  mconcat     = RMany mempty . mapReverse id
-
-
-transformationToNodeInfo :: Transformation Double -> RNodeInfo
-transformationToNodeInfo t = mempty { rTransf = t }
-{-# INLINABLE transformationToNodeInfo #-}
-
-styleToNodeInfo :: Style -> RNodeInfo
-styleToNodeInfo t = mempty { rStyle = t }
-{-# INLINABLE styleToNodeInfo #-}
-
-handlerToNodeInfo :: Handlers -> RNodeInfo
-handlerToNodeInfo t = mempty { rHandler = t }
-{-# INLINABLE handlerToNodeInfo #-}
-
 instance Monoid RNodeInfo where
   mempty = RNodeInfo mempty mempty mempty
   mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
     RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
-drawingToRDrawing :: Drawing -> RDrawing
-drawingToRDrawing = drawingToRDrawing' mempty
-  where
-  {-
-    TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
 
-    Pattern is something like this:
-      newMaskId <- addMask (d1::Drawing)
-      RMask newMaskId (d2::Drawing)
-  -}
-  drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
-  drawingToRDrawing' nodeInfo x = case x of
-      Circle                 -> RPrim nodeInfo RCircle
-      CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
-      Rect                   -> RPrim nodeInfo RRect
-      RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
-      Line                   -> RPrim nodeInfo RLine
-      (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
-      (Text t)               -> RPrim nodeInfo (RText t)
-      (Embed e)              -> RPrim nodeInfo (REmbed e)
-
-      -- TODO render masks properly
-      -- This code just renders it as a group
-      (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
-        where
-          recur = drawingToRDrawing' mempty
-
-      (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
-      (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
-      -- FIXME render special styles
-      (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
-
-      (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
-      Em                     -> mempty
-
-      -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
-      -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
-      -- TODO return empty if concatMap returns empty list
-      (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
-        where
-          recur = drawingToRDrawing' mempty
-
-{-# INLINEABLE drawingToRDrawing #-}
 
 renderDrawing :: RenderingOptions -> Drawing -> RDrawing
-renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing $ placeOrigo $ scaleY (-1) $ drawing
+renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing' mempty $ placeOrigo $ scaleY (-1) $ drawing
   where
     placeOrigo :: Drawing -> Drawing
     -- placeOrigo = id
@@ -1346,17 +1318,54 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
 
     P (V2 dx dy) = dimensions
 
-{-
-Turn two radii to scale and offset in polar coordinates, clockwise direction.
--}
-anglesToPolarScaleOffset
-  :: Angle Double
-  -> Angle Double
-  -> (Double, Double)
-anglesToPolarScaleOffset a1 a2 = (s, o )
-  where
-    o = mod' (1 - angleToTurns a2) 1
-    s = mod' (angleToTurns a2 - angleToTurns a1) 1
+    {-
+      TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
+    -}
+    drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
+    drawingToRDrawing' nodeInfo x = case x of
+        Circle                 -> RPrim nodeInfo RCircle
+        CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
+        Rect                   -> RPrim nodeInfo RRect
+        RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
+        Line                   -> RPrim nodeInfo RLine
+        (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
+        (Text t)               -> RPrim nodeInfo (RText t)
+        (Embed e)              -> RPrim nodeInfo (REmbed e)
+
+        -- TODO render masks properly
+        -- This code just renders it as a group
+        (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
+          where
+            recur = drawingToRDrawing' mempty
+
+        (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
+        (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
+        -- FIXME render special styles
+        (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
+
+        (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
+        Em                     -> mempty
+
+        -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+        -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
+        -- TODO return empty if concatMap returns empty list
+        (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
+          where
+            recur = drawingToRDrawing' mempty
+
+    transformationToNodeInfo :: Transformation Double -> RNodeInfo
+    transformationToNodeInfo t = mempty { rTransf = t }
+    {-# INLINABLE transformationToNodeInfo #-}
+
+    styleToNodeInfo :: Style -> RNodeInfo
+    styleToNodeInfo t = mempty { rStyle = t }
+    {-# INLINABLE styleToNodeInfo #-}
+
+    handlerToNodeInfo :: Handlers -> RNodeInfo
+    handlerToNodeInfo t = mempty { rHandler = t }
+    {-# INLINABLE handlerToNodeInfo #-}
+
+
 
 #ifdef __GHCJS__
 {-| Generate an SVG from a drawing. -}
@@ -1442,28 +1451,19 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
         -- TODO use seq in virtual-dom too!
         nodes -> E.g (nodeInfoToProperties nodeInfo) (toList nodes)
 
-styleToProperty :: Style -> E.Property
-styleToProperty s = A.style $ toJSString $ styleToAttrString s
-{-# INLINABLE styleToProperty #-}
-
-{-
-transformationToProperty :: Transformation Double -> E.Property
--- transformationToProperty t = A.transform $ "matrix" <> (toJSString . toStr) (negY $ transformationToMatrix t) <> ""
---   where
---     negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-
-transformationToProperty (TF (V3 (V3 a c e) (V3 b d f) _)) = A.transform $ toJSString $ "matrix("<>toStr a<>","<>toStr b<>","<>toStr c<>","<>toStr d<>","<>toStr e<>","<>toStr (negate f)<>")"
-{-# INLINABLE transformationToProperty #-}
--}
-
-transformationToProperty :: Transformation Double -> E.Property
-transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
-  VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
-{-# INLINABLE transformationToProperty #-}
+{-# INLINEABLE renderDrawing #-}
 
 nodeInfoToProperties :: RNodeInfo -> [E.Property]
 nodeInfoToProperties (RNodeInfo style transf handlers) =
   transformationToProperty transf : styleToProperty style : handlersToProperties handlers
+  where
+    styleToProperty :: Style -> E.Property
+    styleToProperty s = A.style $ toJSString $ styleToAttrString s
+
+    transformationToProperty :: Transformation Double -> E.Property
+    transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
+      VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
+
 {-# INLINABLE nodeInfoToProperties #-}
 
 
@@ -1608,6 +1608,12 @@ toSvgStr st dr = toSvgAny st dr id $
           <> mconcat (Data.List.intersperse " " $ fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
           <> ">"
           <> mconcat nodes <> "</" <> name <> ">"
+
+
+
+
+
+
 
 
 

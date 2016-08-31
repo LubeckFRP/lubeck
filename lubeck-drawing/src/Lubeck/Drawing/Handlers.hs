@@ -30,6 +30,9 @@ import qualified Web.VirtualDom.Svg.Attributes as A
 #ifdef __GHCJS__
 newtype Handler = Handler (JSVal -> IO ())
 
+instance Show Handlers where
+  show x = "handlers"
+
 -- TODO would be derivable if IO lifted the Monoid...
 instance Monoid Handler where
   mempty = Handler (\_ -> pure ())
@@ -51,8 +54,10 @@ handlersToProperties (Handlers_ m)
 {-# INLINABLE handlersToProperties #-}
 
 #else
+
 type Handler = ()
 type Handlers = ()
 singleTonHandlers = ()
 handlersToProperties = ()
+
 #endif
