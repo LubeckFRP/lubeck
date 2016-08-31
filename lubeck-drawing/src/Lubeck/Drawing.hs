@@ -1232,64 +1232,6 @@ instance Monoid RenderingOptions where
 
 -- Rendering
 
-{-
-  , OriginPlacement(..)
-  , RenderingOptions(..)
-  -- mempty
-  , toSvg
-  , toSvgStr
-  , toSvgAny
-
-  -- ** High-performance
-  , RDrawing
-  , renderDrawing
-  , emitDrawing
--}
-
-drawingToRDrawing :: Drawing -> RDrawing
-drawingToRDrawing = drawingToRDrawing' mempty
-  where
-  {-
-    TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
-
-    Pattern is something like this:
-      newMaskId <- addMask (d1::Drawing)
-      RMask newMaskId (d2::Drawing)
-  -}
-  drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
-  drawingToRDrawing' nodeInfo x = case x of
-      Circle                 -> RPrim nodeInfo RCircle
-      CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
-      Rect                   -> RPrim nodeInfo RRect
-      RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
-      Line                   -> RPrim nodeInfo RLine
-      (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
-      (Text t)               -> RPrim nodeInfo (RText t)
-      (Embed e)              -> RPrim nodeInfo (REmbed e)
-
-      -- TODO render masks properly
-      -- This code just renders it as a group
-      (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
-        where
-          recur = drawingToRDrawing' mempty
-
-      (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
-      (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
-      -- FIXME render special styles
-      (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
-
-      (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
-      Em                     -> mempty
-
-      -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
-      -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
-      -- TODO return empty if concatMap returns empty list
-      (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
-        where
-          recur = drawingToRDrawing' mempty
-
-{-# INLINEABLE drawingToRDrawing #-}
-
 
 data RPrim
    = RCircle
@@ -1350,18 +1292,49 @@ instance Monoid RNodeInfo where
   mempty = RNodeInfo mempty mempty mempty
   mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
     RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
+drawingToRDrawing :: Drawing -> RDrawing
+drawingToRDrawing = drawingToRDrawing' mempty
+  where
+  {-
+    TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
 
--- printRTreeInfo :: RDrawing -> IO ()
--- printRTreeInfo x = do
---   print $ "RTree N nodes " ++ show (drawingTreeRNNodes x)
---   print $ "RTree depth   " ++ show (drawingTreeRDepth x)
--- drawingTreeRNNodes = drawingRTreeFold (+)
--- drawingTreeRDepth = drawingRTreeFold max
--- drawingRTreeFold :: (Int -> Int -> Int) -> RDrawing -> Int
--- drawingRTreeFold f = go
---   where
---     go (RPrim _ _)  = 1
---     go (RMany _ xs) = foldr f 0 (fmap go xs)
+    Pattern is something like this:
+      newMaskId <- addMask (d1::Drawing)
+      RMask newMaskId (d2::Drawing)
+  -}
+  drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
+  drawingToRDrawing' nodeInfo x = case x of
+      Circle                 -> RPrim nodeInfo RCircle
+      CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
+      Rect                   -> RPrim nodeInfo RRect
+      RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
+      Line                   -> RPrim nodeInfo RLine
+      (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
+      (Text t)               -> RPrim nodeInfo (RText t)
+      (Embed e)              -> RPrim nodeInfo (REmbed e)
+
+      -- TODO render masks properly
+      -- This code just renders it as a group
+      (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
+        where
+          recur = drawingToRDrawing' mempty
+
+      (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
+      (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
+      -- FIXME render special styles
+      (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
+
+      (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
+      Em                     -> mempty
+
+      -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+      -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
+      -- TODO return empty if concatMap returns empty list
+      (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
+        where
+          recur = drawingToRDrawing' mempty
+
+{-# INLINEABLE drawingToRDrawing #-}
 
 renderDrawing :: RenderingOptions -> Drawing -> RDrawing
 renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing $ placeOrigo $ scaleY (-1) $ drawing
@@ -1503,6 +1476,19 @@ toSvg _ _ = ()
 emitDrawing :: RenderingOptions -> RDrawing -> ()
 emitDrawing _ _ = mempty
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 {-| Generate an SVG from a drawing. -}
