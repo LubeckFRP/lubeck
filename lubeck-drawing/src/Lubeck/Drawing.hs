@@ -313,8 +313,6 @@ import qualified Web.VirtualDom.Svg as E
 import qualified Web.VirtualDom.Svg.Attributes as A
 #endif
 
-import System.IO.Unsafe(unsafePerformIO)
-
 -- Ideomatically: (V2 Double), (P2 Double) and so on
 -- |
 -- @

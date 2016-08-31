@@ -31,7 +31,6 @@ library
                      , linear
                      , colour
                      , xml
-                     , containers
                      , split
                      , neat-interpolation
   if impl(ghcjs)
