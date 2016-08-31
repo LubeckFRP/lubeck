@@ -1303,13 +1303,14 @@ data RNodeInfo
     { rStyle   :: !Style
     , rTransf  :: !(Transformation Double)
     , rHandler :: !Handlers
+    , rFill    :: First Str
     }
    deriving (Show)
 
 instance Monoid RNodeInfo where
-  mempty = RNodeInfo mempty mempty mempty
-  mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
-    RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
+  mempty = RNodeInfo mempty mempty mempty mempty
+  mappend (RNodeInfo a1 a2 a3 a4) (RNodeInfo b1 b2 b3 b4) =
+    RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
 
 -- | Render monad
 -- Writer for RTopInfo values
@@ -1369,7 +1370,7 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
         (SpecialStyle (FillGradient g) x) -> do
           s <- newId
           writeTopInfo $ RTopGradient s g
-          drawingToRDrawing' nodeInfo x
+          drawingToRDrawing' (nodeInfo <> fillToNodeInfo s) x
 
         (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
         Em                     -> pure mempty
@@ -1382,6 +1383,10 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
           pure $ RMany nodeInfo ((\x -> seqListE x x) ys)
           where
             recur = drawingToRDrawing' mempty
+
+    fillToNodeInfo ::  Str -> RNodeInfo
+    fillToNodeInfo s = mempty { rFill = First (Just s) }
+    {-# INLINABLE fillToNodeInfo #-}
 
     transformationToNodeInfo :: Transformation Double -> RNodeInfo
     transformationToNodeInfo t = mempty { rTransf = t }
@@ -1500,15 +1505,22 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !topInfo !drawing =
 {-# INLINEABLE renderDrawing #-}
 
 nodeInfoToProperties :: RNodeInfo -> [E.Property]
-nodeInfoToProperties (RNodeInfo style transf handlers) =
-  transformationToProperty transf : styleToProperty style : handlersToProperties handlers
+nodeInfoToProperties (RNodeInfo style transf handlers fill) =
+  transformationToProperty transf : styleToProperty style <> fillToProperty fill <> handlersToProperties handlers
   where
-    styleToProperty :: Style -> E.Property
-    styleToProperty s = A.style $ toJSString $ styleToAttrString s
+    styleToProperty :: Style -> [E.Property]
+    styleToProperty s
+      -- TODO handle null case, see #132
+      -- | Map.null s = []
+      = [A.style $ toJSString $ styleToAttrString s]
 
     transformationToProperty :: Transformation Double -> E.Property
     transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
       VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
+
+    fillToProperty :: First Str -> [E.Property]
+    fillToProperty (First Nothing)   = []
+    fillToProperty (First (Just id)) = [VD.attribute "fill" ("url(#" <> toJSString id <> ")")]
 
 {-# INLINABLE nodeInfoToProperties #-}
 
