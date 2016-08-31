@@ -1200,14 +1200,21 @@ data OriginPlacement
 
 {-| Specifies how to generate an SVG from a Drawing. -}
 data RenderingOptions = RenderingOptions
-  { dimensions      :: !(P2 Double)                -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
-  , originPlacement :: !OriginPlacement          -- ^ Where to place origo in the generated image.
+  { dimensions          :: !(P2 Double)
+  -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
+  -- Default is @800 x 800@..
+  , originPlacement     :: !OriginPlacement
+  -- ^ Where to place origo in the generated image.
+  -- Default is @Center@.
+  , renderSpecialStyles :: !Bool
+  -- ^ When true, render special styles (currently only gradients), which could make
+  -- rendering slower. Default is @False@.
   }
   deriving (Eq, Ord, Show)
 
 -- | Left-biased. Mainly here for the 'mempty'.
 instance Monoid RenderingOptions where
-  mempty  = RenderingOptions (P $ V2 800 800) Center
+  mempty  = RenderingOptions (P $ V2 800 800) Center False
   mappend = const
 
 
