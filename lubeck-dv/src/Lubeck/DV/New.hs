@@ -627,27 +627,28 @@ How to choose lower bound for a scale.
 Used to be called 'IntegralPlotBounds'.
 -}
 data LinearPlotBounds
-  = UseZero                     -- ^ Use zero.
-  | InterpZeroAndMin Double     -- ^ Interpolate between zero and minimum value (0.5 for middle).
-  | UseMin                      -- ^ Use minimum value.
+  = UseZero                     -- ^ Use zero for lower bound.
+  | InterpZeroAndMin Double     -- ^ Interpolate between zero and minimum value for lower bound (0.5 for middle).
+  | UseMin                      -- ^ Use minimum value for lower bound.
 
 data LinearRendering
   = IntegerLR -- former True
   | DecimalPlacesLR (Maybe Int) -- former False
   | CustomLR ((Double, Double) -> Double -> Str)
 
-
 data LinearOptions = LinearOptions
-  { _linearRendering    :: LinearRendering
-  , _linearPlotBounds   :: LinearPlotBounds
-  , _linearTicks        :: Int
+  { _linearRendering     :: LinearRendering      -- ^ How to write out tick/guide values.
+  , _linearPlotBounds    :: LinearPlotBounds     -- ^ How to select (lower) bound. Upper bound is always the maximum value.
+  , _linearTicks         :: Int                  -- ^ Desired number of ticks.
+  , _linearTickPositions :: Maybe [Double]       -- ^ If set, use these tick positions rather than auto-generating ticks.
   }
 
 instance Monoid LinearOptions where
   mempty      = LinearOptions
-                  { _linearRendering  = DecimalPlacesLR Nothing
-                  , _linearPlotBounds = UseZero
-                  , _linearTicks      = 5
+                  { _linearRendering     = DecimalPlacesLR Nothing
+                  , _linearPlotBounds    = UseZero
+                  , _linearTicks         = 5
+                  , _linearTickPositions = Nothing
                   }
   mappend x y = x
 
@@ -663,15 +664,15 @@ linearWithOptions lr lpb = linear' $ mempty { _linearRendering = lr, _linearPlot
 {-# DEPRECATED linearWithOptions "Use linear'" #-}
 
 linear' :: (Real a, Show a) => LinearOptions -> Scale a
-linear' (LinearOptions useIntegralShow lowerBoundChoice linearTicks)
+linear' (LinearOptions useIntegralShow lowerBoundChoice desiredNumOfTicks linearTickPositions)
   = Scale
-  { scaleMapping  = \vs v -> realToFrac v
+  { scaleMapping      = \vs v -> realToFrac v
   -- TODO resize LB to 0?
   , scalePlotBounds   = bounds
-  , scaleGuides   = guides
+  , scaleGuides       = guides
   -- , scaleGuides   = \vs -> [(0, "0"), (1, "1")]
   -- , scaleGuides   = \vs   -> fmap (\v -> (realToFrac v, toStr v)) $ sortNub vs
-  , scaleBaseName = "linear"
+  , scaleBaseName     = "linear"
   }
   where
     safeMin [] = 0
@@ -695,7 +696,9 @@ linear' (LinearOptions useIntegralShow lowerBoundChoice linearTicks)
     chooseUB = id
 
     bounds vs = (chooseLB $ realToFrac $ safeMin vs, chooseUB $ realToFrac $ safeMax vs)
-    guides vs = fmap (\x -> (x, showN (bounds vs) x)) $ tickCalc linearTicks (bounds vs)
+    guides vs = case linearTickPositions of
+      Just xs -> fmap (\x -> (x, showN (bounds vs) x)) $ xs
+      Nothing -> fmap (\x -> (x, showN (bounds vs) x)) $ tickCalc desiredNumOfTicks (bounds vs)
 
     -- number of ticks, interval, outpouts ticks
     tickCalc :: Int -> (Double, Double) -> [Double]
