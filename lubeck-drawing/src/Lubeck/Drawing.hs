@@ -260,6 +260,8 @@ module Lubeck.Drawing
 
   -- ** High-performance
   , RDrawing
+  , RD
+  , runRD
   , renderDrawing
   , emitDrawing
   ) where
@@ -267,6 +269,9 @@ module Lubeck.Drawing
 import BasePrelude hiding (Handler, rotate, (|||), mask)
 import Data.Colour(Colour, AlphaColour, withOpacity)
 import Control.Lens (Lens, Lens', (^.))
+import Control.Monad.Writer
+import Control.Monad.State
+import Data.Functor.Identity
 import qualified Data.Colour
 import qualified Data.Colour.Names as Colors
 import qualified Data.Colour.SRGB
@@ -1171,6 +1176,7 @@ fillColor x = style (styleNamed "fill" $ showColor x)
 strokeColor :: Colour Double -> Drawing -> Drawing
 strokeColor x = style (styleNamed "stroke" $ showColor x)
 
+showColor :: Colour Double -> Str
 showColor = packStr . Data.Colour.SRGB.sRGB24show
 
 {-| -}
@@ -1260,13 +1266,13 @@ RDrawing is a tree similar to Drawing, with some differences:
 
 When rendering to SVG
 - Each RTopInfo corresponds to a sub-tree <defs> entry
-- Each RDrawing corresponds to a node in the SVG ree
+- Each RDrawing corresponds to a node in the SVG tree
 
 -}
 
 data RTopInfo
   = RTopGradient !Str !Gradient
-  | RTopMask !Str !RDrawing
+  -- | RTopMask !Str !RDrawing
 
 data RDrawing
   = RPrim !RNodeInfo !RPrim
@@ -1305,8 +1311,26 @@ instance Monoid RNodeInfo where
   mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
     RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
 
+-- | Render monad
+-- Writer for RTopInfo values
+--
+newtype RD a = RD { runRD_ :: WriterT [RTopInfo] (StateT Int Identity) a }
+  deriving (Functor, Applicative, Monad, MonadWriter [RTopInfo], MonadState Int)
 
-renderDrawing :: RenderingOptions -> Drawing -> RDrawing
+runRD :: RD a -> (a, [RTopInfo])
+runRD x = fst $ runState (runWriterT $ runRD_ x) 0
+
+newId :: RD Str
+newId = do
+  i <- get
+  put $ i + 1
+  pure $ "id" <> toStr i
+
+writeTopInfo :: RTopInfo -> RD ()
+writeTopInfo x = tell [x]
+
+
+renderDrawing :: RenderingOptions -> Drawing -> RD RDrawing
 renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing' mempty $ placeOrigo $ scaleY (-1) $ drawing
   where
     placeOrigo :: Drawing -> Drawing
@@ -1321,35 +1345,41 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
     {-
       TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
     -}
-    drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
+    drawingToRDrawing' :: RNodeInfo -> Drawing -> RD RDrawing
     drawingToRDrawing' nodeInfo x = case x of
-        Circle                 -> RPrim nodeInfo RCircle
-        CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
-        Rect                   -> RPrim nodeInfo RRect
-        RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
-        Line                   -> RPrim nodeInfo RLine
-        (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
-        (Text t)               -> RPrim nodeInfo (RText t)
-        (Embed e)              -> RPrim nodeInfo (REmbed e)
+        Circle                 -> pure $ RPrim nodeInfo RCircle
+        CircleSector r1 r2     -> pure $ RPrim nodeInfo $ RCircleSector r1 r2
+        Rect                   -> pure $ RPrim nodeInfo RRect
+        RectRounded x y rx ry  -> pure $ RPrim nodeInfo $ RRectRounded x y rx ry
+        Line                   -> pure $ RPrim nodeInfo RLine
+        (Lines closed vs)      -> pure $ RPrim nodeInfo (RLines closed vs)
+        (Text t)               -> pure $ RPrim nodeInfo (RText t)
+        (Embed e)              -> pure $ RPrim nodeInfo (REmbed e)
 
         -- TODO render masks properly
         -- This code just renders it as a group
-        (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
+        (Mask x y)             -> do
+          ys <- mapMReverse recur [x, y]
+          pure $ RMany nodeInfo ((\x -> seqListE x x) $ ys)
           where
             recur = drawingToRDrawing' mempty
 
         (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
         (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
-        -- FIXME render special styles
-        (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
+        (SpecialStyle (FillGradient g) x) -> do
+          s <- newId
+          writeTopInfo $ RTopGradient s g
+          drawingToRDrawing' nodeInfo x
 
         (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
-        Em                     -> mempty
+        Em                     -> pure mempty
 
         -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
         -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
         -- TODO return empty if concatMap returns empty list
-        (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
+        (Ap xs)   -> do
+          ys <- mapMReverse recur xs
+          pure $ RMany nodeInfo ((\x -> seqListE x x) ys)
           where
             recur = drawingToRDrawing' mempty
 
@@ -1370,22 +1400,26 @@ renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawing
 #ifdef __GHCJS__
 {-| Generate an SVG from a drawing. -}
 toSvg :: RenderingOptions -> Drawing -> Svg
-toSvg opts d = emitDrawing opts $ renderDrawing opts d
+toSvg opts d =
+  let (rd, rt) = runRD $ renderDrawing opts d
+  in emitDrawing opts rt rd
 
 {-| Generate an SVG from a drawing. TODO rename emitDrawingSvg or similar -}
-emitDrawing :: RenderingOptions -> RDrawing -> Svg
-emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
+emitDrawing :: RenderingOptions -> [RTopInfo] -> RDrawing -> Svg
+emitDrawing (RenderingOptions {dimensions, originPlacement}) !topInfo !drawing =
   svgTopNode
     (toStr $ floor x)
     (toStr $ floor y)
     ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-    (single $ toSvg1 $ drawing)
+    [ topInfoToDefs topInfo
+    , toSvg1 drawing
+    ]
   where
     svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
-    svgTopNode w h vb = E.svg
+    svgTopNode w h vb children = E.svg
       [ A.width (toJSString w)
       , A.height (toJSString h)
-      , A.viewBox (toJSString vb) ]
+      , A.viewBox (toJSString vb) ] children
 
     pointsToSvgString :: [P2 Double] -> Str
     pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
@@ -1400,10 +1434,22 @@ emitDrawing (RenderingOptions {dimensions, originPlacement}) !drawing =
         (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
         (fmap embedToSvg children)
 
-    single x = [x]
+    -- single x = [x]
     noScale = VD.attribute "vector-effect" "non-scaling-stroke"
     offsetVectorsWithOrigin p vs = p : offsetVectors p vs
     P (V2 x y) = dimensions
+
+    topInfoToDefs :: [RTopInfo] -> Svg
+    topInfoToDefs ts = E.defs [] (fmap topInfoToDef ts)
+
+    topInfoToDef :: RTopInfo -> Svg
+    topInfoToDef (RTopGradient name (LinearGradient stops)) =
+        E.node "linearGradient" [A.id $ toJSString name] (fmap g stops)
+      where
+        g (GradientStop o c) = E.node "stop"
+          [ A.offset (toJSString (toStr o) <> "%")
+          , A.stopColor (toJSString $ showColor c <> "")
+          ] []
 
     toSvg1 :: RDrawing -> Svg
     toSvg1 drawing = case drawing of
@@ -1636,5 +1682,10 @@ seqListE !xs b = case xs of { [] -> b ; (x:xs) -> seq x (seqListE xs b) }
 mapReverse :: (a -> b) -> [a] -> [b]
 mapReverse f l =  rev l mempty
   where
+    -- rev :: [a] -> [b] -> [b]
     rev []     a = a
     rev (x:xs) a = rev xs (f x : a)
+
+mapMReverse :: Monad m => (a -> m b) -> [a] -> m [b]
+mapMReverse f xs = mapM f (reverse xs)
+-- TODO faster version a la the above

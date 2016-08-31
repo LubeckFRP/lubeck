@@ -107,11 +107,13 @@ benchRenderEmitForDrawing name drawing = do
     add ("render " <> name) $ do
       let !x = renderDrawing mempty drawing
       return ()
-  addWithPrepare ("emit " <> name) $ do
-    let !rd = renderDrawing mempty drawing
-    return $ do
-      let !x = emitDrawing mempty rd
-      return ()
+  -- TODO make compile with monadic render/emit
+  -- addWithPrepare ("emit " <> name) $ do
+  --   let !rd = renderDrawing mempty drawing
+  --   return $ do
+  --     let !x = emitDrawing mempty rd
+  --     return ()
+
   -- addWithPrepare ("emit (optimized)" <> name) $ do
   --   let !rd = renderDrawing mempty drawing
   --   return $ do
