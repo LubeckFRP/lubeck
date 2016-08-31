@@ -139,7 +139,7 @@ textOptionsToStyle opts = mconcat
 
     _fontSize = case fontSize opts of
       (First (Just v))          -> styleNamed "font-size" v
-      _                         -> styleNamed "font-family" "10px"
+      _                         -> styleNamed "font-size" "10px"
 
     _fontFamily  = case fontFamily opts of
       (First (Just v))          -> styleNamed "font-family" v
