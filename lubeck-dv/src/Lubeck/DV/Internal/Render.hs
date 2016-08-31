@@ -282,11 +282,19 @@ barDataH = barDataHV Horizontal
 Note:
   The naming convention for the orientation style attributes all assume vertical plots (the default).
 
-  So things like width/offset._x etc will make sense when rendering verticals need to be transposed when renderign horizontal.
+  So things like width/offset._x etc will make sense when rendering verticals need to be transposed when rendering horizontally.
 
   For example the space between two bars in a non-grouped/stacked plot is always the scalar 'barPlotUngroupedOffset._x',
   which may be rendered horizontally or vertically and the space "thickness" of a bar is always referred to as its "barPlotWidth".
 
+
+NOTE
+  How are bars positioned (in RR, assuming horizontal conventions)?
+  Y positions are simply (0..y)
+  For X positions, we rely on the conventions from the categorical scales to render at [1..]
+
+  So for n elements, our bars barWidthwill be placed at [1..n].
+  The width of the whole plot is 1, so the distance between plots will be (1/(n + 1)), adding an extra space between the last element and the rightmost edge.
 
 -}
 barDataHV :: (Monad m, MonadReader Styling m) => VerticalHorizontal -> [P1 Double] -> m Drawing
@@ -299,7 +307,7 @@ barDataHV hv ps = do
 
   -- TODO unify approach to n/pred n
   let base n maybeHS = alignHV
-            $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette (foo1 maybeHS)))
+            $ fillColorA (style^.barPlotBarColor.to (paletteToColor . flip getInteractivePalette (defHoverSelect maybeHS)))
             $ addBasicHandlers (handleInteraction hsSink (pred n))
             $ square
   return $ scaleHV (2/3) $ scaleRR style $ mconcat
@@ -315,25 +323,37 @@ barDataHV hv ps = do
       MouseMovedInside  -> u $ HoverSelectMouseMovedInside n
       _ -> return ()
 
-    foo1 Nothing  = NoHoverSelect
-    foo1 (Just x) = x
+    defHoverSelect :: Maybe HoverSelect -> HoverSelect
+    defHoverSelect Nothing  = NoHoverSelect
+    defHoverSelect (Just x) = x
 
-    foo barWidth base = (\(P (V1 v)) -> scaleHV barWidth $ scaleHVInv v $ base)
+    foo :: Double -> Drawing -> Point V1 Double -> Drawing
+    foo barWidth base (P (V1 v)) = scaleHV barWidth $ scaleHVInv v $ base
+
     -- Either of these works (first version more efficient):
     -- alignB = translate (V2 0 0.5)
     -- alignL = translate (V2 0.5 0)
     alignB = align B
     alignL = align L
 
+    -- Align to the bottom (if vertical/default)
     alignHV = case hv of { Vertical -> alignB ; Horizontal -> alignL }
-
+    -- Scale X (if vertical/default)
     scaleHV     = case hv of { Vertical -> scaleX ; Horizontal -> scaleY }
+    -- Scale Y (if vertical/default)
     scaleHVInv  = case hv of { Vertical -> scaleY ; Horizontal -> scaleX }
+    -- Translate X (if vertical/default)
     translateHV = case hv of { Vertical -> translateX ; Horizontal -> translateY }
 
     -- Reads (renderingRectangle, zoom) from the style
     scaleRR :: Styling -> Drawing -> Drawing
     scaleRR = getRenderingPositionD
+
+
+
+
+
+
 
 baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)

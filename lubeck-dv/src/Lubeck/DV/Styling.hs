@@ -274,13 +274,15 @@ data Styling = Styling
   -- Bar plots
   -- Infinite list of bar colours:
   , _barPlotBarColor                  :: InteractivePalette Double
-  , _barPlotWidth                     :: V2 Double
+
+  , _barPlotWidth                     :: V2 Double -- TODO not used
   , _barPlotUngroupedOffset           :: V2 Double
-  , _barPlotGroupedOffset             :: V2 Double
+  , _barPlotGroupedOffset             :: V2 Double -- TODO not used
   , _barPlotStackedOffset             :: V2 Double
   -- Percentage of horizontal dim taken up by plots, in [0..1] (default 1)
   -- I.e. https://infogr.am/average_temperature_of_6_major_deserts
-  , _barPlotSpaceUsed                 :: Double
+
+  , _barPlotSpaceUsed                 :: Double -- TODO not used
   -- Is this bar plot transposed or not?
   , _barPlotOrientation               :: VerticalHorizontal
 
