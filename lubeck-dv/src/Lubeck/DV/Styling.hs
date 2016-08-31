@@ -41,6 +41,7 @@ module Lubeck.DV.Styling
   , scatterPlotSize
 
   , barPlotBarColor
+  , barPlotRotateColors
   -- , barPlotWidth
   , barPlotUngroupedOffset
   -- , barPlotGroupedOffset
@@ -275,6 +276,13 @@ data Styling = Styling
   -- Infinite list of bar colours:
   , _barPlotBarColor                  :: InteractivePalette Double
 
+  -- ^ If true, each bar is rendered with a distinct color based on the
+  -- colors provided to @barPlotBarColor@, otherwise the default color
+  -- of the palette (as provided by @paletteToColor@) is used.
+  --
+  -- Note that the @color@ aesthetic is currently ignored for bar plots.
+  , _barPlotRotateColors              :: Any
+
   -- , _barPlotWidth                     :: V2 Double -- TODO not used
   , _barPlotUngroupedOffset           :: Double
   -- , _barPlotGroupedOffset             :: V2 Double -- TODO not used
@@ -372,6 +380,7 @@ instance Monoid Styling where
           Selected ->
             (paletteFromList $ fmap (`withOpacity` 0.9) $ defColorList)
     -- , _barPlotWidth                 = V2 1   0 -- TODO not actually used as other values are relative this anyway
+    , _barPlotRotateColors          = mempty
     , _barPlotUngroupedOffset       = 0.5
     -- , _barPlotGroupedOffset         = V2 0   0
     -- , _barPlotStackedOffset         = V2 0   0.1

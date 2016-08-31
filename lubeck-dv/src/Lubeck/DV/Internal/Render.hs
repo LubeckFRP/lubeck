@@ -296,6 +296,11 @@ NOTE
   So for n elements, our bars barWidthwill be placed at [1..n].
   The width of the whole plot is 1, so the distance between plots will be (1/(n + 1)), adding an extra space between the last element and the rightmost edge.
 
+NOTE
+  There are various ways of handling color in a bar plot.
+  For now we either
+    - Pick the default value in the palette
+    - Use a separate color for each bar
 
 TODO prove that width = 1, regardless of the value of barPlotUngroupedOffset
 
@@ -314,13 +319,13 @@ barDataHV hv ps = do
   -- This is a square with correct color and handlers attached
   -- TODO render colors from palette?
   let base n maybeHS = alignHome
-            $ fillColorA ( (paletteToColor $ getInteractivePalette (style^.barPlotBarColor) (defHoverSelect maybeHS)) )
-            -- $ _
+            $ fillColorA (colorForIndexVal (style^.barPlotRotateColors) (style^.barPlotBarColor) maybeHS (fromIntegral n))
             $ addBasicHandlers (handleInteraction hsSink (pred n))
             $ square
 
   return $ scaleCross (recip $ scaleUp) $ scaleRR style $ mconcat
-    $ zipWith (\n x -> translateCross (realToFrac n * barFullOffset) (scaleCrossAlong barWidth x (base n (IntMap.lookup (pred n) hsState))))
+    $ zipWith (\n x -> translateCross (realToFrac n * barFullOffset)
+        (scaleCrossAlong barWidth x (base n (IntMap.lookup (pred n) hsState))))
       [1..]
       ps
   where
@@ -331,6 +336,12 @@ barDataHV hv ps = do
       MouseUp           -> u $ HoverSelectMouseUp n
       MouseMovedInside  -> u $ HoverSelectMouseMovedInside n
       _ -> return ()
+
+    colorForIndexVal :: Any -> InteractivePalette Double -> Maybe HoverSelect -> Double -> AlphaColour Double
+    colorForIndexVal rotateColors color maybeHS n =
+        getInteractivePalette color (defHoverSelect maybeHS)
+          `getColorFromPalette`
+        (if getAny rotateColors then n else 0)
 
     defHoverSelect :: Maybe HoverSelect -> HoverSelect
     defHoverSelect Nothing  = NoHoverSelect
