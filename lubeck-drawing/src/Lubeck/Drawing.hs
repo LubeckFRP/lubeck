@@ -1248,54 +1248,48 @@ instance Monoid RenderingOptions where
 
 drawingToRDrawing :: Drawing -> RDrawing
 drawingToRDrawing = drawingToRDrawing' mempty
-{-# INLINE drawingToRDrawing #-}
-
-{-
-  TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
-
-  Pattern is something like this:
-    newMaskId <- addMask (d1::Drawing)
-    RMask newMaskId (d2::Drawing)
--}
-drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
-drawingToRDrawing' nodeInfo x = case x of
-    Circle                 -> RPrim nodeInfo RCircle
-    CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
-    Rect                   -> RPrim nodeInfo RRect
-    RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
-    Line                   -> RPrim nodeInfo RLine
-    (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
-    (Text t)               -> RPrim nodeInfo (RText t)
-    (Embed e)              -> RPrim nodeInfo (REmbed e)
-
-    -- TODO render masks properly
-    -- This code just renders it as a group
-    (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
-      where
-        recur = drawingToRDrawing' mempty
-
-    (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
-    (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
-    -- FIXME render special styles
-    (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
-
-    (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
-    Em                     -> mempty
-
-    -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
-    -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
-    -- TODO return empty if concatMap returns empty list
-    (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
-      where
-        recur = drawingToRDrawing' mempty
-
-mapReverse :: (a -> b) -> [a] -> [b]
-mapReverse f l =  rev l mempty
   where
-    rev []     a = a
-    rev (x:xs) a = rev xs (f x : a)
+  {-
+    TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
 
-{-# INLINABLE drawingToRDrawing' #-}
+    Pattern is something like this:
+      newMaskId <- addMask (d1::Drawing)
+      RMask newMaskId (d2::Drawing)
+  -}
+  drawingToRDrawing' :: RNodeInfo -> Drawing -> RDrawing
+  drawingToRDrawing' nodeInfo x = case x of
+      Circle                 -> RPrim nodeInfo RCircle
+      CircleSector r1 r2     -> RPrim nodeInfo $ RCircleSector r1 r2
+      Rect                   -> RPrim nodeInfo RRect
+      RectRounded x y rx ry  -> RPrim nodeInfo $ RRectRounded x y rx ry
+      Line                   -> RPrim nodeInfo RLine
+      (Lines closed vs)      -> RPrim nodeInfo (RLines closed vs)
+      (Text t)               -> RPrim nodeInfo (RText t)
+      (Embed e)              -> RPrim nodeInfo (REmbed e)
+
+      -- TODO render masks properly
+      -- This code just renders it as a group
+      (Mask x y)             -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur [x, y])
+        where
+          recur = drawingToRDrawing' mempty
+
+      (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
+      (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
+      -- FIXME render special styles
+      (SpecialStyle s x)     -> drawingToRDrawing' nodeInfo x
+
+      (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
+      Em                     -> mempty
+
+      -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
+      -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
+      -- TODO return empty if concatMap returns empty list
+      (Ap xs)   -> RMany nodeInfo ((\x -> seqListE x x) $ mapReverse recur xs)
+        where
+          recur = drawingToRDrawing' mempty
+
+{-# INLINEABLE drawingToRDrawing #-}
+
 
 data RPrim
    = RCircle
@@ -1337,7 +1331,6 @@ instance Monoid RDrawing where
 
   -- TODO this could emit extra nodes
   mappend x y = RMany mempty (y : pure x)
-
   mconcat     = RMany mempty . mapReverse id
 
 
@@ -1358,17 +1351,17 @@ instance Monoid RNodeInfo where
   mappend (RNodeInfo a1 a2 a3) (RNodeInfo b1 b2 b3) =
     RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3)
 
-printRTreeInfo :: RDrawing -> IO ()
-printRTreeInfo x = do
-  print $ "RTree N nodes " ++ show (drawingTreeRNNodes x)
-  print $ "RTree depth   " ++ show (drawingTreeRDepth x)
-drawingTreeRNNodes = drawingRTreeFold (+)
-drawingTreeRDepth = drawingRTreeFold max
-drawingRTreeFold :: (Int -> Int -> Int) -> RDrawing -> Int
-drawingRTreeFold f = go
-  where
-    go (RPrim _ _)  = 1
-    go (RMany _ xs) = foldr f 0 (fmap go xs)
+-- printRTreeInfo :: RDrawing -> IO ()
+-- printRTreeInfo x = do
+--   print $ "RTree N nodes " ++ show (drawingTreeRNNodes x)
+--   print $ "RTree depth   " ++ show (drawingTreeRDepth x)
+-- drawingTreeRNNodes = drawingRTreeFold (+)
+-- drawingTreeRDepth = drawingRTreeFold max
+-- drawingRTreeFold :: (Int -> Int -> Int) -> RDrawing -> Int
+-- drawingRTreeFold f = go
+--   where
+--     go (RPrim _ _)  = 1
+--     go (RMany _ xs) = foldr f 0 (fmap go xs)
 
 renderDrawing :: RenderingOptions -> Drawing -> RDrawing
 renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing $ placeOrigo $ scaleY (-1) $ drawing
@@ -1641,7 +1634,17 @@ foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+$
 
 #endif
 
--- Evaluate a list (but not its elements) before returning second argument
+-- | Evaluate a list (but not its elements) before returning second argument
+seqList :: [a] -> b -> b
 seqList !xs b = case xs of { [] -> b ; (x:xs) -> seqList xs b }
--- Evaluate a list (and its elements to WHNF) before returning second argument
+
+-- | Evaluate a list (and its elements to WHNF) before returning second argument
+seqListE :: [a] -> b -> b
 seqListE !xs b = case xs of { [] -> b ; (x:xs) -> seq x (seqListE xs b) }
+
+-- | Fast equivalent of @\f -> map f . reverse@
+mapReverse :: (a -> b) -> [a] -> [b]
+mapReverse f l =  rev l mempty
+  where
+    rev []     a = a
+    rev (x:xs) a = rev xs (f x : a)
