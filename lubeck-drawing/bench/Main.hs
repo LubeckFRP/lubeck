@@ -107,18 +107,11 @@ benchRenderEmitForDrawing name drawing = do
     add ("render " <> name) $ do
       let !x = renderDrawing mempty drawing
       return ()
-  -- TODO make compile with monadic render/emit
-  -- addWithPrepare ("emit " <> name) $ do
-  --   let !rd = renderDrawing mempty drawing
-  --   return $ do
-  --     let !x = emitDrawing mempty rd
-  --     return ()
-
-  -- addWithPrepare ("emit (optimized)" <> name) $ do
-  --   let !rd = renderDrawing mempty drawing
-  --   return $ do
-  --     let !x = emitDrawing mempty rd
-  --     return ()
+  addWithPrepare ("emit " <> name) $ do
+    let !rd = fst $ runRD $ renderDrawing mempty drawing
+    return $ do
+      let !x = emitDrawing mempty [] rd
+      return ()
 #else
 import BasePrelude
 main = print "Only available in GHCJS"
