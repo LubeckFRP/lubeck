@@ -171,7 +171,6 @@ module Lubeck.Drawing
   , styleToAttrString
   -- *** Applying styles
   , style
-
   -- *** Line style
   , dash
   , dashing
@@ -456,7 +455,7 @@ height r = r^._top - r^._bottom
 
 
 
-{-
+{-|
 Fit a drawing inside a rectangle. Accomplished by aligning the drawing
 at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
 -}
@@ -469,18 +468,28 @@ fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
     $ align BL
     $ d
 
+{-|
+Turn a rectangle into a transformation that transforms the unit square into
+the original rectangle.
+
+Inverse of @rectToTransf@.
+-}
 rectToTransf :: Num a => Rect a -> T2 a
 rectToTransf (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) =
-  translation (p1 .-. origin) <> scalingXY   (p2 .-. p1)
+  translation (p1 .-. origin) <> scalingXY (p2 .-. p1)
 
+{-|
+The inverse of @rectToTransf@.
+-}
 transfToRect :: Num a => T2 a -> Rect a
 transfToRect t = transformRect t (rect 0 0 1 1)
 
 
 
-
 {-|
-A rectangle, represented as two points.
+A line segment.
+
+The 1-dimensional analogue of @Rect@.
 -}
 data LineSeg a = LineSeg { _lp1 :: P1 a, _lp2 :: P1 a }
   deriving (Eq, Ord, Show, Functor)

@@ -4,10 +4,13 @@
   , ScopedTypeVariables, NoImplicitPrelude #-}
 
 module Lubeck.Drawing.Style
-  -- ( Style
-  -- , styleNamed
-  -- , styleToAttrString
-  -- )
+  ( Style
+  , styleNamed
+  , styleToAttrString
+  , Gradient(..)
+  , GradientStop(..)
+  , SpecialStyle(..)
+  )
 where
 
 import BasePrelude
