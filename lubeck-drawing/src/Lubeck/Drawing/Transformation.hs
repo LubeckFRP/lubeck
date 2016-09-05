@@ -320,5 +320,5 @@ instance (Num a, Show a) => Show (Transformation a) where
 scaling1 :: Num a => a -> Transformation1 a
 scaling1 x = matrix1 (x,0)
 
-translation1 :: :: Num a => a -> Transformation1 a
+translation1 :: Num a => a -> Transformation1 a
 translation1 x = matrix1 (1,x)
