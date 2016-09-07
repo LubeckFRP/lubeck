@@ -103,3 +103,22 @@ test-suite lubeck-dv-test-table
                      , temporary
                      , lubeck-dv
                      , QuickCheck
+
+executable lubeck-dv-bench
+  hs-source-dirs:      bench
+  main-is:             Main.hs
+  ghc-options:         -Wall
+  build-depends:       base
+                     , base-prelude
+                    --  , lens
+                    --  , linear
+                    --  , colour
+                     , lubeck-core
+                     , lubeck-frp
+                     , lubeck-dv
+  if impl(ghcjs)
+    build-depends:     ghcjs-base
+                    --  , lubeck-web
+                     , virtual-dom
+                     , benchmark
+  default-language:    Haskell2010
