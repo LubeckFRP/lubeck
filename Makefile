@@ -11,6 +11,8 @@ PROF_FLAGS := --executable-profiling --library-profiling --ghc-options="-fprof-a
 
 ghc:
 	stack --stack-yaml=$(GHC)   build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
+ghc-repl:
+	stack --stack-yaml=$(GHC)   repl $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 ghcjs:
 	stack --stack-yaml=$(GHCJS) build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 test-run:
@@ -22,8 +24,7 @@ test-generate:
 test-report:
 	stack --stack-yaml=$(GHC)   test --test-arguments --report $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 
-ghc-prof:
-	stack --stack-yaml=$(GHC) build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
-
+ghc-prof-run:
+	stack --stack-yaml=$(GHC)   exec lubeck-dv-profiling -- +RTS -p
 
 		# && stack exec bench-ad-dashboard-calc -- config.json.local +RTS -p
