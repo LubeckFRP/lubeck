@@ -1185,6 +1185,7 @@ fillColor x = style (styleNamed "fill" $ showColor x)
 strokeColor :: Colour Double -> Drawing -> Drawing
 strokeColor x = style (styleNamed "stroke" $ showColor x)
 
+-- SLOW
 showColor :: Colour Double -> Str
 showColor = packStr . Data.Colour.SRGB.sRGB24show
 
