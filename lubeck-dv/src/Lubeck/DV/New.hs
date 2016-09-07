@@ -981,27 +981,51 @@ pointG = Geometry g []
   where
     -- x and y required, default color to 0 if not present
     -- SLOW
-    g t = Lubeck.DV.Internal.Render.scatterData2 $ getZipList $ do -- ZipList monad
-      (p :: Point V2 Double) <- runColumnFiniteZ $ do -- Column monad
-        x <- scaledAttr "x" t
-        y <- scaledAttr "y" t
-        return (P (V2 x y))
-      (color        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "color" t
-      (strokeColor  :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "strokeColor" t
-      (fillColor    :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "fillColor" t
-      (size         :: Double) <- fmap (maybe 1 id) $ runColumnZ $ unscaledAttr "size" t
-      (shape        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "shape" t
-      return $ Lubeck.DV.Internal.Render.ScatterData2
-        { R.scatterDataColor2       = color
-        , R.scatterDataStrokeColor2 = strokeColor
-        , R.scatterDataFillColor2   = fillColor
-        , R.scatterDataPoint2       = p
-        , R.scatterDataShape2       = rToBoundedEnum shape
-        , R.scatterDataSize2        = size
-        }
+    -- g t = Lubeck.DV.Internal.Render.scatterData2 $ getZipList $ do -- ZipList monad
+    --   (p :: Point V2 Double) <- runColumnFiniteZ $ do -- Column monad
+    --     x <- scaledAttr "x" t
+    --     y <- scaledAttr "y" t
+    --     return (P (V2 x y))
+    --   (color        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "color" t
+    --   (strokeColor  :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "strokeColor" t
+    --   (fillColor    :: Double) <- fmap (maybe color id) $ runColumnZ $ unscaledAttr "fillColor" t
+    --   (size         :: Double) <- fmap (maybe 1 id) $ runColumnZ $ unscaledAttr "size" t
+    --   (shape        :: Double) <- fmap (maybe 0 id) $ runColumnZ $ unscaledAttr "shape" t
+    --   return $ Lubeck.DV.Internal.Render.ScatterData2
+    --     { R.scatterDataColor2       = color
+    --     , R.scatterDataStrokeColor2 = strokeColor
+    --     , R.scatterDataFillColor2   = fillColor
+    --     , R.scatterDataPoint2       = p
+    --     , R.scatterDataShape2       = rToBoundedEnum shape
+    --     , R.scatterDataSize2        = size
+    --     }
+    g tab = Lubeck.DV.Internal.Render.scatterData2 $ getZipList $ h -- ZipList applicative
+      <$> (runColumnFiniteZ $ scaledAttr "x" tab)
+      <*> (runColumnFiniteZ $ scaledAttr "y" tab)
+      <*> (runColumnZ $ unscaledAttr "color" tab)
+      <*> (runColumnZ $ unscaledAttr "strokeColor" tab)
+      <*> (runColumnZ $ unscaledAttr "fillColor" tab)
+      <*> (runColumnZ $ unscaledAttr "size" tab)
+      <*> (runColumnZ $ unscaledAttr "shape" tab)
+    h x y mcolor mstrokeColor mfillColor size shape = let color = fromMaybe 0 mcolor in
+      Lubeck.DV.Internal.Render.ScatterData2
+      { R.scatterDataColor2       = color
+      , R.scatterDataStrokeColor2 = fromMaybe color mstrokeColor
+      , R.scatterDataFillColor2   = fromMaybe color mfillColor
+      , R.scatterDataPoint2       = P (V2 x y)
+      , R.scatterDataShape2       = rToBoundedEnum $ fromMaybe 0 shape
+      , R.scatterDataSize2        = fromMaybe 1 size
+      }
+
+-- fromMaybe z Nothing = z
+-- fromMaybe z (Just x) = x
+
 rToBoundedEnum :: Double -> Lubeck.DV.Internal.Render.Shape
+rToBoundedEnum 0 = minBound
 rToBoundedEnum x = safeLookup (floor x) [minBound..maxBound]
-safeLookup n xs = cycle xs !! n
+  where
+    -- TODO could be optimized
+    safeLookup n xs = cycle xs !! n
 
 
 {-|

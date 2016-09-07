@@ -73,7 +73,7 @@ import qualified Data.Time.Format
 import qualified Text.PrettyPrint.Boxes as B
 import qualified Data.Colour.Names as Colors
 
-import Data.Functor.Classes(Eq1, Ord1)
+import Data.Functor.Classes(Eq1, Ord1, Show1)
 import Lubeck.DV.Internal.ZipListMonad
 
 {-
@@ -105,6 +105,7 @@ deriving instance Traversable ZipList
 #endif
 deriving instance Eq1 ZipList
 deriving instance Ord1 ZipList
+deriving instance Show1 ZipList
 
 
 {-|
@@ -113,9 +114,8 @@ Single column of a 'Table'. Isomorphic to [Maybe a].
 newtype Column a = Column { getColumn_ :: MaybeT ZipList a }
   deriving (Functor, Applicative, Monad,
    Foldable, Traversable,
-   Alternative, Eq, Ord
+   Alternative, Eq, Ord, Show
    )
-
 
 
 -- instance Alternative Column where
