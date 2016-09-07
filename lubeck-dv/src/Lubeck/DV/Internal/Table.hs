@@ -74,6 +74,7 @@ import qualified Text.PrettyPrint.Boxes as B
 import qualified Data.Colour.Names as Colors
 
 import Data.Functor.Classes(Eq1, Ord1)
+import Lubeck.DV.Internal.ZipListMonad
 
 {-
 Assuming (Ord k) =>
@@ -115,6 +116,8 @@ newtype Column a = Column { getColumn_ :: MaybeT ZipList a }
    Alternative, Eq, Ord
    )
 
+
+
 -- instance Alternative Column where
 --   empty = Column (MaybeT (ZipList empty))
 --   (Column (MaybeT (ZipList a))) <|> (Column (MaybeT (ZipList b))) = Column (MaybeT (ZipList $ a <|> b))
@@ -125,11 +128,6 @@ newtype Column a = Column { getColumn_ :: MaybeT ZipList a }
 
 -- TODO good Alternative/MonadPlus?
 
-instance Monad ZipList where
-   return = ZipList . repeat
-   ZipList [] >>= _ = ZipList []
-   ZipList xs >>= f = ZipList $ zipWith ((!!) . cycle . getZipList . f) xs
-      [0..]
 
 columnFromList :: [Maybe a] -> Column a
 columnFromList xs = Column $ MaybeT $ ZipList xs

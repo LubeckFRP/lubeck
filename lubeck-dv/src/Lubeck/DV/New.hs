@@ -939,13 +939,21 @@ ifT key = filterRows key (\x -> cScaled x >= 0.5)
 -- TODO stacking/dodging/jittering
 
 
-
+{-|
+Extract an attribute column from the rendering table, using scaled values.
+-}
 scaledAttr :: Key -> Table Key Cell -> Column Double
 scaledAttr k = fmap (getNormalized . cScaled) . getColumn k
 
+{-|
+Extract an attribute column from the rendering table, using unscaled (original) values.
+-}
 unscaledAttr :: Key -> Table Key Cell -> Column Double
 unscaledAttr k = fmap cUnscaled . getColumn k
 
+{-|
+Extract a special attribute column from the rendering table.
+-}
 specialAttr :: Key -> Table Key Cell -> Column (Maybe Special)
 specialAttr k = fmap cSpecial . getColumn k
 
@@ -972,8 +980,9 @@ pointG :: Geometry
 pointG = Geometry g []
   where
     -- x and y required, default color to 0 if not present
-    g t = Lubeck.DV.Internal.Render.scatterData2 $ getZipList $ do
-      (p :: Point V2 Double) <- runColumnFiniteZ $ do
+    -- SLOW
+    g t = Lubeck.DV.Internal.Render.scatterData2 $ getZipList $ do -- ZipList monad
+      (p :: Point V2 Double) <- runColumnFiniteZ $ do -- Column monad
         x <- scaledAttr "x" t
         y <- scaledAttr "y" t
         return (P (V2 x y))
@@ -990,8 +999,9 @@ pointG = Geometry g []
         , R.scatterDataShape2       = rToBoundedEnum shape
         , R.scatterDataSize2        = size
         }
-    rToBoundedEnum x = safeLookup (floor x) [minBound..maxBound]
-    safeLookup n xs = cycle xs !! n
+rToBoundedEnum :: Double -> Lubeck.DV.Internal.Render.Shape
+rToBoundedEnum x = safeLookup (floor x) [minBound..maxBound]
+safeLookup n xs = cycle xs !! n
 
 
 {-|
@@ -1008,7 +1018,7 @@ line :: Geometry
 line = Geometry g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Internal.Render.lineData (Lubeck.DV.Internal.Render.LineData color 0) $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.lineData (Lubeck.DV.Internal.Render.LineData color 0) $ runColumnFinite $ do -- Column monad
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -1036,7 +1046,7 @@ fill :: Geometry
 fill = Geometry g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Internal.Render.fillData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.fillData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do -- Column monad
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
       return $ P $ V2 x y
@@ -1062,7 +1072,7 @@ area :: Geometry
 area = Geometry g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Internal.Render.areaData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.areaData (Lubeck.DV.Internal.Render.AreaData color) $ runColumnFinite $ do -- Column monad
       x    <- scaledAttr "x" t
       yMin <- scaledAttr "yMin" t
       y    <- scaledAttr "y" t
@@ -1094,7 +1104,7 @@ area2 = Geometry g []
   where
     g t = Lubeck.DV.Internal.Render.areaData' (Lubeck.DV.Internal.Render.AreaData color) (ps1 <> reverse ps2)
       where
-        ps1 = runColumnFinite $ do
+        ps1 = runColumnFinite $ do -- Column monad
           let low  = filterRows "bound" (\x -> cScaled x <  0.5) t
           x1 <- scaledAttr "x" low
           y1 <- scaledAttr "y" low
@@ -1126,7 +1136,7 @@ bars :: Geometry
 bars = Geometry g []
   where
     -- TODO color, stack, dodge
-    g t = Lubeck.DV.Internal.Render.barData $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.barData $ runColumnFinite $ do -- Column monad
       y <- scaledAttr "y" t
       return $ P $ V1 y
 
@@ -1142,7 +1152,7 @@ y
 circular :: Geometry
 circular = Geometry g []
   where
-    g t = Lubeck.DV.Internal.Render.circularData $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.circularData $ runColumnFinite $ do -- Column monad
       y <- scaledAttr "y" t
       return $ y
 {-|
@@ -1158,7 +1168,7 @@ xIntercept :: Geometry
 xIntercept = Geometry g []
   where
     -- TODO extract color
-    g t2 = Lubeck.DV.Internal.Render.scatterDataX $ runColumnFinite $ do
+    g t2 = Lubeck.DV.Internal.Render.scatterDataX $ runColumnFinite $ do -- Column monad
       let t = ifT "crossLineX" t2
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
@@ -1176,7 +1186,7 @@ yIntercept :: Geometry
 yIntercept = Geometry g []
   where
     -- TODO extract color
-    g t2 = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do
+    g t2 = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do -- Column monad
       let t = ifT "crossLineY" t2
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
@@ -1213,7 +1223,7 @@ yInterceptAlways:: Geometry
 yInterceptAlways = Geometry g []
   where
     -- TODO extract color
-    g t = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do
+    g t = Lubeck.DV.Internal.Render.scatterDataY $ runColumnFinite $ do -- Column monad
       -- let t = ifT "crossLineY" t2
       x <- scaledAttr "x" t
       y <- scaledAttr "y" t
@@ -1472,6 +1482,7 @@ drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (P
                 xs = fmap (second Just) xs2
                 ys = fmap (second Just) ys2
 
+        -- SLOW
         dataD :: Styled Drawing
         dataD = local (updateZoomToAutoScale fullPlot) $ do
           (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial bounds plot)
