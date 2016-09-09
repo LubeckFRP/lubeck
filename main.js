@@ -173,8 +173,6 @@ if(0) {
     }
     setup()
     loop()
-
-
 }
 
 
@@ -182,6 +180,287 @@ if(0) {
 
 
 
+
+/*
+Alternative crazy idea:
+  Instead of letting core functions allocate JS obejcts we will
+    - Let core function call into asm.js functions that returns "pointers" (i.e. numbers indexing objects in their local heap)
+    - At render time, pass such as pointer (representing a drawing tree) to an asm function
+    - Expose functions to "free" these pointers/drawings (need to hook into HS garbage collector with Foreign.ForeignPtr
+ for this to work)
+
+ How to generate heap HEAP8 = new Int8Array(buffer);
+   HEAP16 = new Int16Array(buffer);
+    [i>>1]
+   HEAP32 = new Int32Array(buffer);
+    [i>>2]
+   HEAPU8 = new Uint8Array(buffer);
+    [i>>0]
+
+   HEAPU16 = new Uint16Array(buffer);
+    [i>>1]
+   HEAPU32 = new Uint32Array(buffer);
+    [i>>2]
+
+   HEAPF32 = new Float32Array(buffer);
+    [i>>2]
+   HEAPF64 = new Float64Array(buffer);
+    [i>>3]
+
+
+
+ Validator
+  http://anvaka.github.io/asmalidator/
+
+ Each "drawing" is a tuople stored on the heap a tuple of 32 bytes (i.e.8 fields of I32, U32, F32)
+ First fields is a type id, the rest is parameters depending on type
+
+    Name        ID(I32) Params
+    (offset:)   0       1       2       3       4       5       6      7
+    circle      0       x:f32   y:f32   rad:f32
+    transf      32      a:f32   b:f32   c:f32   d:f32   e:f32   f:f32 dr:i32
+    fillColor   64      r       g       b       a
+    ap2         128     dr1:i32 dr2:i32
+
+
+*/
+
+function AsmDrawingRenderer(stdlib, foreign, heap) {
+  "use asm";
+
+  // var HEAP16 = new stdlib.Int16Array(heap);
+  var HEAP32 = new stdlib.Int32Array(heap);
+  // var HEAPU8 = new stdlib.Uint8Array(heap);
+  // var HEAPU16 = new stdlib.Uint16Array(heap);
+  // var HEAPU32 = new stdlib.Uint32Array(heap);
+  var HEAPF32 = new stdlib.Float32Array(heap);
+  // var HEAPF64 = new stdlib.Float64Array(heap);
+
+  var _debug = foreign.debug;
+  var _beginPath = foreign.beginPath;
+  var _fill = foreign.fill;
+  var _fillStyle = foreign.fillStyle;
+  var _arc = foreign.arc;
+  var _save = foreign.save;
+  var _restore = foreign.restore;
+  var _transform = foreign.transform;
+
+
+  var tuplesCreated = 0
+
+  // Return pointer to the first slot as a pointer (byte offset)
+  // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
+  function newTuple() {
+    // Treet first 8 bytes in
+    var next = 0;
+    next = tuplesCreated
+    tuplesCreated = tuplesCreated + 1|0
+    // return (next * 4)|0
+    return ((next * 8) << 2)|0
+  }
+
+  // Double ^ 3 -> Drawing*
+  function primCircle(x, y, rad) {
+    x = +x;
+    y = +y;
+    rad = +rad;
+
+    var p = 0
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = 0|0
+    HEAPF32[(p + (1<<2)) >> 2] = x
+    HEAPF32[(p + (2<<2)) >> 2] = y
+    HEAPF32[(p + (3<<2)) >> 2] = rad
+    return p|0
+  }
+  // Double ^ 4 -> Drawing*
+  function primFillColor(r,g,b,a,dr) {
+    r = +r;
+    g = +g;
+    b = +b;
+    a = +a;
+    dr = dr|0;
+
+    var p = 0
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = 64|0
+    HEAPF32[(p + (1<<2)) >> 2] = r
+    HEAPF32[(p + (2<<2)) >> 2] = g
+    HEAPF32[(p + (3<<2)) >> 2] = b
+    HEAPF32[(p + (4<<2)) >> 2] = a
+    HEAP32 [(p + (5<<2)) >> 2] = dr
+    return p|0
+  }
+  // Double ^ 6 -> Drawing*
+  function primTransf(a,b,c,d,e,f,dr) {
+    a = +a;
+    b = +b;
+    c = +c;
+    d = +d;
+    e = +e;
+    f = +f;
+    dr = dr|0;
+
+    var p = 0
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = 32|0
+    HEAPF32[(p + (1<<2)) >> 2] = a
+    HEAPF32[(p + (2<<2)) >> 2] = b
+    HEAPF32[(p + (3<<2)) >> 2] = c
+    HEAPF32[(p + (4<<2)) >> 2] = d
+    HEAPF32[(p + (5<<2)) >> 2] = e
+    HEAPF32[(p + (6<<2)) >> 2] = f
+    HEAP32 [(p + (7<<2)) >> 2] = dr
+    return p|0
+  }
+  // Drawing* -> Drawing* -> Drawing*
+  function primAp2(dr1,dr2) {
+    dr1 = dr1|0;
+    dr2 = dr2|0;
+
+    var p = 0
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = 128|0
+    HEAP32 [(p + (1<<2)) >> 2] = dr1
+    HEAP32 [(p + (2<<2)) >> 2] = dr2
+    return p|0
+  }
+  // Drawing* -> Drawing* -> Drawing*
+  // function primAp3(dr1,dr2) {
+  //   dr1 = dr1|0;
+  //   dr2 = dr2|0;
+  // }
+
+
+  function drawCircle(x,y,r) {
+    x=+x
+    y=+y
+    r=+r
+    var bp = 0;
+
+    _beginPath();
+    _arc(x,y,r,0, 6.283185307179586,0/*false*/);
+    _fill();
+  }
+
+  // function renderFillColor(r, g, b, a) {
+  //   _fillStyle_(r, g, b, a)
+  // }
+  // function renderTransf(opts,a,b,c,d,e,f,sub) {
+  //     _save()
+  //     _transform(a,b,c,d,e,f)
+  //     render(opts, sub)
+  //     _restore()
+  // }
+
+
+  // Opts* -> Drawing* -> ()
+  function render(opts,dr) {
+    opts = opts|0;
+    dr = dr|0;
+    // var drType = 0|0;
+
+    // var t = 0
+    // t = (newTuple()|0)
+    // _debug(t|0)
+    // t = (newTuple()|0)
+    // _debug(t|0)
+    // t = (newTuple()|0)
+    // _debug(t|0)
+    //
+    // drawCircle(1.,2.,3.)
+
+    var drType = 0
+    var x = 0.
+    var y = 0.
+    var r = 0.
+    var dr1 = 0
+    var dr2 = 0
+
+    //DEBUG see below
+    var i = 0
+
+    drType = HEAP32[(dr+(0<<2)) >> 2]|0;
+    switch (drType|0) {
+      case 0:
+          x = +HEAPF32[(dr+(1<<2)) >> 2];
+          y = +HEAPF32[(dr+(2<<2)) >> 2];
+          r = +HEAPF32[(dr+(3<<2)) >> 2];
+          drawCircle(x,y,r)
+        break;
+      case 64:
+        break;
+      case 32:
+        break;
+      case 128:
+          dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
+          dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
+
+          render(opts,dr1)
+          render(opts,dr2)
+
+
+        break;
+    }
+
+    // if (drType == 0) {
+    //   // drawCircle(context, drawing.x, drawing.y, drawing.rad);
+    // } else
+    // if (drType == 32) {
+    // //   // renderTransf(opts,context,drawing)
+    // } else
+    // if (drType == 64) {
+    // //   // renderStyle(opts,context,drawing)
+    // } else
+    // if (drType == 128) {
+    // //   // for (var i = 0, len = drawing.children.length; i < len; i++) {
+    // //     // render(opts, drawing.children[i]);
+    //   }
+    // }
+  }
+  // etc
+  return { render : render
+      , primCircle : primCircle
+      , primFillColor : primFillColor
+      , primTransf : primTransf
+      , primAp2 : primAp2
+    }
+}
+
+function createRenderer() {
+  // TODO generate and link a proper drawing context
+
+  // Renderer is linked here...
+  return new AsmDrawingRenderer(window,
+      { beginPath:
+        x=>console.log('beginPath')
+      , fill:
+        x=>console.log('fill')
+      , fillStyle:
+        x=>console.log('fillStyle_')
+      , arc:
+        x=>console.log('arc')
+      , save: x=>console.log('x')
+      , restore: x=>console.log('x')
+      , transform: x=>console.log('x')
+      , debug:
+        x=>console.log(x)
+      }, new ArrayBuffer( 0x10000))
+}
+
+function test () {
+  r = createRenderer()
+
+  r.render(0,
+     r.primAp2(r.primCircle(), r.primCircle())
+   )
+}
+
+// test()
 
 
 
