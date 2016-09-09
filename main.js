@@ -1,8 +1,8 @@
 
-var dims = {x:800, y:800}
+var dims = {x:1600, y:800}
 var elem = document.getElementById('canvas-div');
-var nElems = 7000
-var nMoving = 1000
+var nElems  = 1000
+var nMoving = 350
 
 
 if(0) {
@@ -15,7 +15,7 @@ if(0) {
 
     var group = two.makeGroup();
     var circles = [...Array(nElems).keys()].map(function(i) {
-      var c = two.makeCircle(Math.floor(Math.random() * dims.x), Math.floor(Math.random() * dims.y), 4);
+      var c = two.makeCircle(Math.floor(Math.random() * dims.x), Math.floor(Math.random() * dims.y), 15);
       // c.fill = ['red', 'green', 'blue'][Math.floor(Math.random() * 3)]
       c.fill = 'grey'
       c.noStroke()
@@ -49,15 +49,16 @@ if(0) {
       c.fill();
     }
 
+    const STYLE_TYPES  = {fillColor:1|0}
     const DRAWING_TYPES  = {circle:1|0, transf: 2|0, style: 3|0, ap: 4|0}
 
-    function renderStyle(name, value, context) {
+    function renderStyle1(name, value, context) {
       switch (name) {
-        case 'fillColor':
+        case STYLE_TYPES.fillColor:
           context.fillStyle = value; // TODO opacity etc
           break;
-        default:
-          throw ('renderStyle: Unknown style ' + name);
+        // default:
+          // throw ('renderStyle: Unknown style ' + name);
       }
     }
     /*
@@ -65,37 +66,38 @@ if(0) {
     Does NOT clear the rectangle beforehand.
     FIXME adjust co-ordinates based on opts.originPlacement, opts.dimensions (a la Drawing)
     */
+    function renderTransf(opts,context,drawing) {
+                context.save()
+                let [a,b,c,d,e,f] = drawing.transf;
+                context.transform(a,b,c,d,e,f)
+                renderDrawing(opts, drawing.sub, context)
+                context.restore()
+    }
+    function renderStyle(opts,context,drawing) {
+                context.save()
+                renderStyle1(drawing.name, drawing.value, context)
+                renderDrawing(opts, drawing.sub, context)
+                context.restore()
+    }
     function renderDrawing(opts, drawing, context) {
-      if (opts === undefined) opts = {};
+      // if (opts === undefined) opts = {};
 
-      switch (drawing.type) {
-        case DRAWING_TYPES.circle:
-          drawCircle(context, drawing.x, drawing.y, drawing.rad);
-          break;
-        // case 'rect':
-        //   break;
-        case DRAWING_TYPES.transf:
-          context.save()
-          let [a,b,c,d,e,f] = drawing.transf;
-          context.transform(a,b,c,d,e,f)
-          renderDrawing(opts, drawing.sub, context)
-          // drawing.children.forEach (sd => renderDrawing(opts, sd, context))
-          context.restore()
-          break;
-        case DRAWING_TYPES.style:
-          context.save()
-          renderStyle(drawing.name, drawing.value, context)
-          renderDrawing(opts, drawing.sub, context)
-          // drawing.children.forEach (sd => renderDrawing(opts, sd, context))
-          context.restore()
-          break;
-        case DRAWING_TYPES.ap:
-          drawing.children.forEach (sd => renderDrawing(opts, sd, context))
-          break;
-        default:
-          throw ('renderDrawing: Unknown drawing type ' + drawing.type);
+      if (drawing.type === DRAWING_TYPES.circle) {
+        drawCircle(context, drawing.x, drawing.y, drawing.rad);
+      } else
+      if (drawing.type === DRAWING_TYPES.transf) {
+        renderTransf(opts,context,drawing)
+      } else
+      if (drawing.type === DRAWING_TYPES.style) {
+        renderStyle(opts,context,drawing)
+      } else
+      if (drawing.type === DRAWING_TYPES.ap) {
+          for (var i = 0, len = drawing.children.length; i < len; i++) {
+            renderDrawing(opts, drawing.children[i], context);
+          }
+      } else {
+        // throw ('renderDrawing: Unknown drawing type ' + drawing.type);
       }
-
     }
 
     function replicate(n,x) {
@@ -123,9 +125,9 @@ if(0) {
     //   }
     // };
     const nonMovingDef =
-      {type:DRAWING_TYPES.style, name:'fillColor', value:'lightblue', sub:
+      {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'blue', sub:
         {type:DRAWING_TYPES.ap, children:
-          enumFromZeroTo(nElems-nMoving).map(function(_) {return {type: DRAWING_TYPES.circle, x:Math.random()*dims.x, y:Math.random()*dims.y, rad:4} } )
+          enumFromZeroTo(nElems-nMoving).map(function(_) {return {type: DRAWING_TYPES.circle, x:Math.floor(Math.random()*dims.x), y:Math.floor(Math.random()*dims.y), rad:15} } )
         }
       }
     ;
@@ -135,10 +137,10 @@ if(0) {
       for(var i = 0; i < nMoving; ++i) {
         let [x, y] = (movingDef_positions[i] || [ Math.random()*dims.x, Math.random()*dims.y ]);
         // Update position state (for next time)
-        movingDef_positions[i] = [x, (y + 1) % dims.y];
-        circles.push({type: DRAWING_TYPES.circle, x:x, y:y, rad:4})
+        movingDef_positions[i] = [(x + 1) % dims.x, (y + 1) % dims.y];
+        circles.push({type: DRAWING_TYPES.circle, x:x, y:y, rad:2})
       }
-      return {type:DRAWING_TYPES.style, name:'fillColor', value:'red', sub: {type:DRAWING_TYPES.ap, children: circles}}
+      return {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'red', sub: {type:DRAWING_TYPES.ap, children: circles}}
     }
     function drawingDef() {
       let md = movingDef()
@@ -150,7 +152,7 @@ if(0) {
       // c.fillCircle(50,50,50,50)
       // drawCircle(c, dims.x/2, dims.x/2, 5)
 
-
+      c.translate(0.5,0.5);
     }
     function drawFrame() {
       c.clearRect(0, 0, dims.x, dims.y);
