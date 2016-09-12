@@ -1,181 +1,181 @@
 
-var dims = {x:1600, y:800}
+var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
 var nElems  = 5000
-var nMoving = 350
+var nMoving = 35
 
 
-if(0) {
-    //------------------------------
-    var two = new Two({
-      type: Two.Types.canvas,
-      width: dims.x,
-      height: dims.y
-    }).appendTo(elem);
-
-    var group = two.makeGroup();
-    var circles = [...Array(nElems).keys()].map(function(i) {
-      var c = two.makeCircle(Math.floor(Math.random() * dims.x), Math.floor(Math.random() * dims.y), 15);
-      // c.fill = ['red', 'green', 'blue'][Math.floor(Math.random() * 3)]
-      c.fill = 'grey'
-      c.noStroke()
-      group.add(c)
-      return c
-    })
-    circles.reverse() // Side-effects!
-    console.log("reversed")
-    two.update();
-    // Bind a function to scale and rotate the group
-    // to the animation loop.
-    two.bind('update', function(frameCount) {
-       if ((frameCount % 1) !== 0) return;
-       for (var i = 0; i < Math.min(circles.length, nMoving); ++i) {
-         var c = circles[i]
-         c.fill = 'red'
-         c.translation.y = (c.translation.y + 1) % dims.x
-       }
-    }).play(); // Finally, start the animation loop
-    //------------------------------
-
-} else {
-    // State
-    var canvas = document.getElementById('canvas');
-    var c = canvas.getContext('2d');
-    // console.log(c)
-
-    function drawCircle(c,x,y,r) {
-      c.beginPath();
-      c.arc(x,y,r, 0, 2 * Math.PI, false);
-      c.fill();
-    }
-
-    const STYLE_TYPES  = {fillColor:1|0}
-    const DRAWING_TYPES  = {circle:1|0, transf: 2|0, style: 3|0, ap: 4|0}
-
-    function renderStyle1(name, value, context) {
-      switch (name) {
-        case STYLE_TYPES.fillColor:
-          context.fillStyle = value; // TODO opacity etc
-          break;
-        // default:
-          // throw ('renderStyle: Unknown style ' + name);
-      }
-    }
-    /*
-    Render the given drawing object using the given context.
-    Does NOT clear the rectangle beforehand.
-    FIXME adjust co-ordinates based on opts.originPlacement, opts.dimensions (a la Drawing)
-    */
-    function renderTransf(opts,context,drawing) {
-                context.save()
-                let [a,b,c,d,e,f] = drawing.transf;
-                context.transform(a,b,c,d,e,f)
-                renderDrawing(opts, drawing.sub, context)
-                context.restore()
-    }
-    function renderStyle(opts,context,drawing) {
-                context.save()
-                renderStyle1(drawing.name, drawing.value, context)
-                renderDrawing(opts, drawing.sub, context)
-                context.restore()
-    }
-    function renderDrawing(opts, drawing, context) {
-      // if (opts === undefined) opts = {};
-
-      if (drawing.type === DRAWING_TYPES.circle) {
-        drawCircle(context, drawing.x, drawing.y, drawing.rad);
-      } else
-      if (drawing.type === DRAWING_TYPES.transf) {
-        renderTransf(opts,context,drawing)
-      } else
-      if (drawing.type === DRAWING_TYPES.style) {
-        renderStyle(opts,context,drawing)
-      } else
-      if (drawing.type === DRAWING_TYPES.ap) {
-          for (var i = 0, len = drawing.children.length; i < len; i++) {
-            renderDrawing(opts, drawing.children[i], context);
-          }
-      } else {
-        // throw ('renderDrawing: Unknown drawing type ' + drawing.type);
-      }
-    }
-
-    function replicate(n,x) {
-      return [...Array(n).keys()].map(ignored => x)
-    }
+// if(0) {
+//     //------------------------------
+//     var two = new Two({
+//       type: Two.Types.canvas,
+//       width: dims.x,
+//       height: dims.y
+//     }).appendTo(elem);
+//
+//     var group = two.makeGroup();
+//     var circles = [...Array(nElems).keys()].map(function(i) {
+//       var c = two.makeCircle(Math.floor(Math.random() * dims.x), Math.floor(Math.random() * dims.y), 15);
+//       // c.fill = ['red', 'green', 'blue'][Math.floor(Math.random() * 3)]
+//       c.fill = 'grey'
+//       c.noStroke()
+//       group.add(c)
+//       return c
+//     })
+//     circles.reverse() // Side-effects!
+//     console.log("reversed")
+//     two.update();
+//     // Bind a function to scale and rotate the group
+//     // to the animation loop.
+//     two.bind('update', function(frameCount) {
+//        if ((frameCount % 1) !== 0) return;
+//        for (var i = 0; i < Math.min(circles.length, nMoving); ++i) {
+//          var c = circles[i]
+//          c.fill = 'red'
+//          c.translation.y = (c.translation.y + 1) % dims.x
+//        }
+//     }).play(); // Finally, start the animation loop
+//     //------------------------------
+//
+// } else {
+//     // State
+//     var canvas = document.getElementById('canvas');
+//     var c = canvas.getContext('2d');
+//     // console.log(c)
+//
+//     function drawCircle(c,x,y,r) {
+//       c.beginPath();
+//       c.arc(x,y,r, 0, 2 * Math.PI, false);
+//       c.fill();
+//     }
+//
+//     const STYLE_TYPES  = {fillColor:1|0}
+//     const DRAWING_TYPES  = {circle:1|0, transf: 2|0, style: 3|0, ap: 4|0}
+//
+//     function renderStyle1(name, value, context) {
+//       switch (name) {
+//         case STYLE_TYPES.fillColor:
+//           context.fillStyle = value; // TODO opacity etc
+//           break;
+//         // default:
+//           // throw ('renderStyle: Unknown style ' + name);
+//       }
+//     }
+//     /*
+//     Render the given drawing object using the given context.
+//     Does NOT clear the rectangle beforehand.
+//     FIXME adjust co-ordinates based on opts.originPlacement, opts.dimensions (a la Drawing)
+//     */
+//     function renderTransf(opts,context,drawing) {
+//                 context.save()
+//                 let [a,b,c,d,e,f] = drawing.transf;
+//                 context.transform(a,b,c,d,e,f)
+//                 renderDrawing(opts, drawing.sub, context)
+//                 context.restore()
+//     }
+//     function renderStyle(opts,context,drawing) {
+//                 context.save()
+//                 renderStyle1(drawing.name, drawing.value, context)
+//                 renderDrawing(opts, drawing.sub, context)
+//                 context.restore()
+//     }
+//     function renderDrawing(opts, drawing, context) {
+//       // if (opts === undefined) opts = {};
+//
+//       if (drawing.type === DRAWING_TYPES.circle) {
+//         drawCircle(context, drawing.x, drawing.y, drawing.rad);
+//       } else
+//       if (drawing.type === DRAWING_TYPES.transf) {
+//         renderTransf(opts,context,drawing)
+//       } else
+//       if (drawing.type === DRAWING_TYPES.style) {
+//         renderStyle(opts,context,drawing)
+//       } else
+//       if (drawing.type === DRAWING_TYPES.ap) {
+//           for (var i = 0, len = drawing.children.length; i < len; i++) {
+//             renderDrawing(opts, drawing.children[i], context);
+//           }
+//       } else {
+//         // throw ('renderDrawing: Unknown drawing type ' + drawing.type);
+//       }
+//     }
+//
+//     function replicate(n,x) {
+//       return [...Array(n).keys()].map(ignored => x)
+//     }
     function enumFromZeroTo(n) {
       return [...Array(n).keys()]
     }
-
-    // const drawingDef = {type:DRAWING_TYPES.transf, transf:[2,0,0,1,0,0], sub:
-    //   {type:DRAWING_TYPES.style, name:'fillColor', value:'grey', sub:
-    //     {type:DRAWING_TYPES.ap, children:
-    //       replicate(nElems, {type: DRAWING_TYPES.circle, x:10, y:10, rad:10}
-    //       )
-    //       }
-    //   }
-    // };
-
-    // const drawingDef = {type:DRAWING_TYPES.transf, transf:[1,0,0,1,40,40], sub:
-    //   {type:DRAWING_TYPES.style, name:'fillColor', value:'grey', sub:
-    //     {type:DRAWING_TYPES.ap, children:
-    //       replicate(nElems, {type: DRAWING_TYPES.circle, x:0, y:0, rad:10}
-    //       )
-    //       }
-    //   }
-    // };
-    const nonMovingDef =
-      {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'blue', sub:
-        {type:DRAWING_TYPES.ap, children:
-          enumFromZeroTo(nElems-nMoving).map(function(_) {return {type: DRAWING_TYPES.circle, x:Math.floor(Math.random()*dims.x), y:Math.floor(Math.random()*dims.y), rad:15} } )
-        }
-      }
-    ;
-    var movingDef_positions = []; // [[x1,y1],[x2,y2]...]
-    function movingDef() {
-      var circles = []
-      for(var i = 0; i < nMoving; ++i) {
-        let [x, y] = (movingDef_positions[i] || [ Math.random()*dims.x, Math.random()*dims.y ]);
-        // Update position state (for next time)
-        movingDef_positions[i] = [(x + 1) % dims.x, (y + 1) % dims.y];
-        circles.push({type: DRAWING_TYPES.circle, x:x, y:y, rad:2})
-      }
-      return {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'red', sub: {type:DRAWING_TYPES.ap, children: circles}}
-    }
-    function drawingDef() {
-      let md = movingDef()
-      return {type:DRAWING_TYPES.ap, children: [nonMovingDef, md]}
-    }
-
-
-    function setup () {
-      // c.fillCircle(50,50,50,50)
-      // drawCircle(c, dims.x/2, dims.x/2, 5)
-
-      c.translate(0.5,0.5);
-    }
-    function drawFrame() {
-      c.clearRect(0, 0, dims.x, dims.y);
-      renderDrawing({},
-        drawingDef()
-        , c);
-      // c.save()
-      // c.fillStyle = 'green';
-      // for(var i = 0; i<nElems; ++i) {
-      //   drawCircle(c, dims.x * Math.random(), dims.x * Math.random(), 5)
-      // }
-      // c.restore()
-    }
-
-    function loop() {
-      drawFrame()
-      requestAnimationFrame(loop)
-    }
-    // setup()
-    // loop()
-}
-
-
+//
+//     // const drawingDef = {type:DRAWING_TYPES.transf, transf:[2,0,0,1,0,0], sub:
+//     //   {type:DRAWING_TYPES.style, name:'fillColor', value:'grey', sub:
+//     //     {type:DRAWING_TYPES.ap, children:
+//     //       replicate(nElems, {type: DRAWING_TYPES.circle, x:10, y:10, rad:10}
+//     //       )
+//     //       }
+//     //   }
+//     // };
+//
+//     // const drawingDef = {type:DRAWING_TYPES.transf, transf:[1,0,0,1,40,40], sub:
+//     //   {type:DRAWING_TYPES.style, name:'fillColor', value:'grey', sub:
+//     //     {type:DRAWING_TYPES.ap, children:
+//     //       replicate(nElems, {type: DRAWING_TYPES.circle, x:0, y:0, rad:10}
+//     //       )
+//     //       }
+//     //   }
+//     // };
+//     const nonMovingDef =
+//       {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'blue', sub:
+//         {type:DRAWING_TYPES.ap, children:
+//           enumFromZeroTo(nElems-nMoving).map(function(_) {return {type: DRAWING_TYPES.circle, x:Math.floor(Math.random()*dims.x), y:Math.floor(Math.random()*dims.y), rad:15} } )
+//         }
+//       }
+//     ;
+//     var movingDef_positions = []; // [[x1,y1],[x2,y2]...]
+//     function movingDef() {
+//       var circles = []
+//       for(var i = 0; i < nMoving; ++i) {
+//         let [x, y] = (movingDef_positions[i] || [ Math.random()*dims.x, Math.random()*dims.y ]);
+//         // Update position state (for next time)
+//         movingDef_positions[i] = [(x + 1) % dims.x, (y + 1) % dims.y];
+//         circles.push({type: DRAWING_TYPES.circle, x:x, y:y, rad:2})
+//       }
+//       return {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'red', sub: {type:DRAWING_TYPES.ap, children: circles}}
+//     }
+//     function drawingDef() {
+//       let md = movingDef()
+//       return {type:DRAWING_TYPES.ap, children: [nonMovingDef, md]}
+//     }
+//
+//
+//     function setup () {
+//       // c.fillCircle(50,50,50,50)
+//       // drawCircle(c, dims.x/2, dims.x/2, 5)
+//
+//       c.translate(0.5,0.5);
+//     }
+//     function drawFrame() {
+//       c.clearRect(0, 0, dims.x, dims.y);
+//       renderDrawing({},
+//         drawingDef()
+//         , c);
+//       // c.save()
+//       // c.fillStyle = 'green';
+//       // for(var i = 0; i<nElems; ++i) {
+//       //   drawCircle(c, dims.x * Math.random(), dims.x * Math.random(), 5)
+//       // }
+//       // c.restore()
+//     }
+//
+//     function loop() {
+//       drawFrame()
+//       requestAnimationFrame(loop)
+//     }
+//     // setup()
+//     // loop()
+// }
+//
+//
 
 
 
@@ -413,10 +413,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         a = +HEAPF32[(dr+(4<<2)) >> 2];
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
         // console.log("Rendering fill: ", r, g, b, a)
-        _save()
+        // _save()
         _fillStyleRGBA(r,g,b,a)
         render(opts,dr1)
-        _restore()
+        // _restore()
         break;
       case 32:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -488,20 +488,32 @@ function createRenderer(c2) {
         // FIXME
         // (r,g,b,a)=>console.log(r,g,b,a)
         function (r,g,b,a) {
-          // c.fillStyle = "".concat(
-          //     "rgba("
-          //   , Math.floor(256*r)
-          //   , ","
-          //   , Math.floor(256*g)
-          //   , ","
-          //   , Math.floor(256*b)
-          //   , ","
-          //   , +a
-          //   , ")")
+
+          // c.fillStyle = "red"
+          //
+          // c.fillStyle = "rgb(0,255,0)"
+          //
+          // c.fillStyle = "rgba(0,0,255,0.2)"
+
+          c.fillStyle = "".concat(
+              "rgba("
+            , Math.floor(256*r)
+            , ","
+            , Math.floor(256*g)
+            , ","
+            , Math.floor(256*b)
+            , ","
+            , +a
+            , ")")
         }
       , arc:
         // x=>console.log('arc')
-        function (x,y,r) { return c.arc(x,y,r, 0, 2 * Math.PI, false) }
+        function (x,y,r) {
+          x = +x
+          y = +y
+          r = +r
+          return c.arc(x,y,r, 0, 6.283185307179586, false)
+        }
       , save:
       // x=>console.log('x')
         x=>c.save()
@@ -510,15 +522,25 @@ function createRenderer(c2) {
         x=>c.restore()
       , transform:
       // x=>console.log('x')
-        function (a,b,c_,d,e,f) { c.transform(a,b,c_,d,e,f) }
+        function (a,b,c_,d,e,f) {
+          a = +a
+          b = +b
+          c_ = +c_
+          d = +d
+          e = +e
+          f = +f
+          c.transform(a,b,c_,d,e,f)
+        }
       , debug:
         x=>console.log(x)
       }, new ArrayBuffer( 0x100000)) // FIXME trim
   res.ap = function(xs) {
     var empty = r.primCircle(0,0,0) // TODO proper empty drawing
-    return xs.reduce(function (a,b) {
-      return r.primAp2(a,b)
+    var res = xs.reduce(function (a,b) {
+      return r.primAp2(b,a)
     }, empty)
+    console.log('Reduce done')
+    return res
   }
   return res
 }
@@ -527,7 +549,7 @@ function createRenderer(c2) {
 var fastDrawing = -1
 var fastRenderer = null
 var fastContext = null
-var fastTrans = 0
+var fastTrans = 0.0
 function setupFast () {
   console.log("Starting fast rendering")
   var canvas = document.getElementById('canvas');
@@ -538,14 +560,20 @@ function setupFast () {
   fastDrawing =
     r.ap(
      enumFromZeroTo(nElems).map(dummy =>
-        r.primFillColor(Math.random(),Math.random(),Math.random(),0.5
-          , r.primCircle(Math.random()*dims.x,Math.random()*dims.y,10)))
+        r.primFillColor(Math.random(),0.1,Math.random(),0.5,
+          r.primCircle(Math.random()*dims.x,Math.random()*dims.y,5)
+        )
+      )
      )
 }
 function loopFast () {
-    fastTrans = (fastTrans + 10) % 400
-    fastContext.clearRect(0, 0, dims.x, dims.y);
-    fastRenderer.render(0, fastRenderer.primTransf(1,0,0,1,fastTrans,0,fastDrawing))
+    fastTrans = (fastTrans + 10.0) //% 1900
+    fastContext.clearRect(0.0, 0, dims.x, dims.y);
+    fastRenderer.render(0,
+        fastRenderer.primTransf(1+fastTrans*-0.001,0*0.002,0,1,fastTrans,0,
+            fastDrawing
+          )
+      )
     requestAnimationFrame(loopFast)
 }
 setupFast()
