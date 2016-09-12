@@ -1,7 +1,7 @@
 
 var dims = {x:1600, y:800}
 var elem = document.getElementById('canvas-div');
-var nElems  = 1000
+var nElems  = 500
 var nMoving = 350
 
 
@@ -171,8 +171,8 @@ if(0) {
       drawFrame()
       requestAnimationFrame(loop)
     }
-    setup()
-    loop()
+    // setup()
+    // loop()
 }
 
 
@@ -239,7 +239,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _debug = foreign.debug;
   var _beginPath = foreign.beginPath;
   var _fill = foreign.fill;
-  var _fillStyle = foreign.fillStyle;
+  var _fillStyleRGBA = foreign.fillStyleRGBA;
   var _arc = foreign.arc;
   var _save = foreign.save;
   var _restore = foreign.restore;
@@ -327,6 +327,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAP32 [(p + (0<<2)) >> 2] = 128|0
     HEAP32 [(p + (1<<2)) >> 2] = dr1
     HEAP32 [(p + (2<<2)) >> 2] = dr2
+    // console.log("Creating ap2 drawing: ", dr1, dr2)
     return p|0
   }
   // Drawing* -> Drawing* -> Drawing*
@@ -378,6 +379,15 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var x = 0.
     var y = 0.
     var r = 0.
+    var a = 0.
+    var b = 0.
+    var c = 0.
+    var d = 0.
+    var e = 0.
+    var f = 0.
+    // var r = 0.
+    var g = 0.
+    // var b = 0.
     var dr1 = 0
     var dr2 = 0
 
@@ -387,23 +397,46 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     drType = HEAP32[(dr+(0<<2)) >> 2]|0;
     switch (drType|0) {
       case 0:
-          x = +HEAPF32[(dr+(1<<2)) >> 2];
-          y = +HEAPF32[(dr+(2<<2)) >> 2];
-          r = +HEAPF32[(dr+(3<<2)) >> 2];
-          drawCircle(x,y,r)
+        x = +HEAPF32[(dr+(1<<2)) >> 2];
+        y = +HEAPF32[(dr+(2<<2)) >> 2];
+        r = +HEAPF32[(dr+(3<<2)) >> 2];
+        drawCircle(x,y,r)
+        // console.log("Rendering circle: ", x, y, r)
         break;
       case 64:
+        r = +HEAPF32[(dr+(1<<2)) >> 2];
+        g = +HEAPF32[(dr+(2<<2)) >> 2];
+        b = +HEAPF32[(dr+(3<<2)) >> 2];
+        a = +HEAPF32[(dr+(4<<2)) >> 2];
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        // console.log("Rendering fill: ", r, g, b, a)
+        _save()
+        _fillStyleRGBA(r,g,b,a)
+        render(opts,dr1)
+        _restore()
         break;
       case 32:
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        d = +HEAPF32[(dr+(4<<2)) >> 2];
+        e = +HEAPF32[(dr+(5<<2)) >> 2];
+        f = +HEAPF32[(dr+(6<<2)) >> 2];
+        dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
+        // TODO render transf
+        _save()
+        _transform(a,b,c,d,e,f)
+        render(opts,dr1)
+        _restore()
         break;
       case 128:
-          dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
-          dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
-
-          render(opts,dr1)
-          render(opts,dr2)
-
-
+        dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        // _debug(1, dr1|0)
+        // _debug(1, dr2|0)
+        // console.log("Rendering ap2 drawing: ", dr1, dr2)
+        render(opts,dr1)
+        render(opts,dr2)
         break;
     }
 
@@ -431,47 +464,84 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     }
 }
 
-function createRenderer() {
+function createRenderer(c) {
   // TODO generate and link a proper drawing context
 
   // Renderer is linked here...
-  return new AsmDrawingRenderer(window,
+  var res = new AsmDrawingRenderer(window,
       { beginPath:
-        x=>null
+        (x)=>c.beginPath()
         // x=>console.log('beginPath')
       , fill:
         // x=>console.log('fill')
-        x=>null
-      , fillStyle:
+        x=>c.fill()
+      , fillStyleRGBA:
         // x=>console.log('fillStyle_')
-        x=>null
+        // FIXME
+        // (r,g,b,a)=>console.log(r,g,b,a)
+        function (r,g,b,a) {
+          c.fillStyle = "".concat(
+              "rgba("
+            , Math.floor(256*r)
+            , ","
+            , Math.floor(256*g)
+            , ","
+            , Math.floor(256*b)
+            , ","
+            , +a
+            , ")")
+        }
       , arc:
         // x=>console.log('arc')
-        x=>null
+        function (x,y,r) { return c.arc(x,y,r, 0, 2 * Math.PI, false) }
       , save:
       // x=>console.log('x')
-        x=>null
+        x=>c.save()
       , restore:
       // x=>console.log('x')
-        x=>null
+        x=>c.restore()
       , transform:
       // x=>console.log('x')
-        x=>null
+        function (a,b,c_,d,e,f) { c.transform(a,b,c_,d,e,f) }
       , debug:
         x=>console.log(x)
-      }, new ArrayBuffer( 0x10000))
+      }, new ArrayBuffer( 0x100000)) // FIXME trim
+  res.ap = function(xs) {
+    var empty = r.primCircle(0,0,0) // TODO proper empty drawing
+    return xs.reduce(function (a,b) {
+      return r.primAp2(a,b)
+    }, empty)
+  }
+  return res
 }
 
-function test () {
-  r = createRenderer()
 
-  r.render(0,
-     r.primAp2(r.primCircle(), r.primCircle())
-   )
+var fastDrawing = -1
+var fastRenderer = null
+var fastContext = null
+var fastTrans = 0
+function setupFast () {
+  console.log("Starting fast rendering")
+  var canvas = document.getElementById('canvas');
+  fastContext = canvas.getContext('2d');
+  fastRenderer = createRenderer(fastContext)
+
+  r = fastRenderer
+  fastDrawing =
+    r.ap(
+     enumFromZeroTo(nElems).map(dummy =>
+        r.primFillColor(Math.random(),Math.random(),Math.random(),0.5
+          , r.primCircle(Math.random()*dims.x,Math.random()*dims.y,10)))
+     )
 }
-
-// test()
-
+function loopFast () {
+    fastTrans = (fastTrans + 10) % 400
+    fastContext.clearRect(0, 0, dims.x, dims.y);
+    fastRenderer.render(0, fastRenderer.primTransf(1,0,0,1,fastTrans,0,fastDrawing))
+    requestAnimationFrame(loopFast)
+}
+setupFast()
+loopFast()
 
 
 
