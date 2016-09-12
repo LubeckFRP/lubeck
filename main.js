@@ -393,7 +393,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     //DEBUG see below
     var i = 0
+    var cont = 0
 
+    do {
+    cont = 0
     drType = HEAP32[(dr+(0<<2)) >> 2]|0;
     switch (drType|0) {
       case 0:
@@ -436,9 +439,14 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // _debug(1, dr2|0)
         // console.log("Rendering ap2 drawing: ", dr1, dr2)
         render(opts,dr1)
-        render(opts,dr2)
+        // render(opts,dr2)
+        opts = opts
+        dr = dr2
+        cont = 1
         break;
     }
+    }
+    while(cont);
 
     // if (drType == 0) {
     //   // drawCircle(context, drawing.x, drawing.y, drawing.rad);
