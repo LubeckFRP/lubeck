@@ -1,7 +1,7 @@
 
 var dims = {x:1600, y:800}
 var elem = document.getElementById('canvas-div');
-var nElems  = 500
+var nElems  = 5000
 var nMoving = 350
 
 
@@ -464,9 +464,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     }
 }
 
-function createRenderer(c) {
+function createRenderer(c2) {
   // TODO generate and link a proper drawing context
-
+  const c = c2
   // Renderer is linked here...
   var res = new AsmDrawingRenderer(window,
       { beginPath:
@@ -480,16 +480,16 @@ function createRenderer(c) {
         // FIXME
         // (r,g,b,a)=>console.log(r,g,b,a)
         function (r,g,b,a) {
-          c.fillStyle = "".concat(
-              "rgba("
-            , Math.floor(256*r)
-            , ","
-            , Math.floor(256*g)
-            , ","
-            , Math.floor(256*b)
-            , ","
-            , +a
-            , ")")
+          // c.fillStyle = "".concat(
+          //     "rgba("
+          //   , Math.floor(256*r)
+          //   , ","
+          //   , Math.floor(256*g)
+          //   , ","
+          //   , Math.floor(256*b)
+          //   , ","
+          //   , +a
+          //   , ")")
         }
       , arc:
         // x=>console.log('arc')
