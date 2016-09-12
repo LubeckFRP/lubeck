@@ -437,16 +437,26 @@ function createRenderer() {
   // Renderer is linked here...
   return new AsmDrawingRenderer(window,
       { beginPath:
-        x=>console.log('beginPath')
+        x=>null
+        // x=>console.log('beginPath')
       , fill:
-        x=>console.log('fill')
+        // x=>console.log('fill')
+        x=>null
       , fillStyle:
-        x=>console.log('fillStyle_')
+        // x=>console.log('fillStyle_')
+        x=>null
       , arc:
-        x=>console.log('arc')
-      , save: x=>console.log('x')
-      , restore: x=>console.log('x')
-      , transform: x=>console.log('x')
+        // x=>console.log('arc')
+        x=>null
+      , save:
+      // x=>console.log('x')
+        x=>null
+      , restore:
+      // x=>console.log('x')
+        x=>null
+      , transform:
+      // x=>console.log('x')
+        x=>null
       , debug:
         x=>console.log(x)
       }, new ArrayBuffer( 0x10000))
