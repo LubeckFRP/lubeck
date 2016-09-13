@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
-var nElems  = 5000
+var nElems  = 1500
 var nMoving = 35
 
 
@@ -493,18 +493,18 @@ function createRenderer(c2) {
           //
           // c.fillStyle = "rgb(0,255,0)"
           //
-          // c.fillStyle = "rgba(0,0,255,0.2)"
+          c.fillStyle = "rgba(0,0,255,0.2)"
 
-          c.fillStyle = "".concat(
-              "rgba("
-            , Math.floor(256*r)
-            , ","
-            , Math.floor(256*g)
-            , ","
-            , Math.floor(256*b)
-            , ","
-            , +a
-            , ")")
+          // c.fillStyle = "".concat(
+          //     "rgba("
+          //   , Math.floor(256*r)
+          //   , ","
+          //   , Math.floor(256*g)
+          //   , ","
+          //   , Math.floor(256*b)
+          //   , ","
+          //   , +a
+          //   , ")")
         }
       , arc:
         // x=>console.log('arc')
@@ -560,8 +560,8 @@ function setupFast () {
   fastDrawing =
     r.ap(
      enumFromZeroTo(nElems).map(dummy =>
-        r.primFillColor(Math.random(),0.1,Math.random(),0.5,
-          r.primCircle(Math.random()*dims.x,Math.random()*dims.y,5)
+        r.primFillColor(Math.random(),0.1,Math.random(),1,
+          r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),50)
         )
       )
      )
