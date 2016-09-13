@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
-var nElems  = 1500
+var nElems  = 850
 var nMoving = 35
 
 
@@ -241,6 +241,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _fill = foreign.fill;
   var _fillStyleRGBA = foreign.fillStyleRGBA;
   var _arc = foreign.arc;
+  var _rect = foreign.rect;
+  var _fillRect = foreign.fillRect;
   var _save = foreign.save;
   var _restore = foreign.restore;
   var _transform = foreign.transform;
@@ -272,6 +274,23 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAPF32[(p + (1<<2)) >> 2] = x
     HEAPF32[(p + (2<<2)) >> 2] = y
     HEAPF32[(p + (3<<2)) >> 2] = rad
+    return p|0
+  }
+  // Double ^ 4 -> Drawing*
+  function primRect(x, y, w, h) {
+    x = +x;
+    y = +y;
+    w = +w;
+    h = +h;
+
+    var p = 0
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = 1|0
+    HEAPF32[(p + (1<<2)) >> 2] = x
+    HEAPF32[(p + (2<<2)) >> 2] = y
+    HEAPF32[(p + (3<<2)) >> 2] = w
+    HEAPF32[(p + (4<<2)) >> 2] = h
     return p|0
   }
   // Double ^ 4 -> Drawing*
@@ -341,11 +360,18 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     x=+x
     y=+y
     r=+r
-    var bp = 0;
-
     _beginPath();
     _arc(x,y,r,0, 6.283185307179586,0/*false*/);
     _fill();
+  }
+  function drawRect(x,y,w,h) {
+    x=+x
+    y=+y
+    w=+w
+    h=+h
+    // _rect(x,y,w,h);
+    // _fill();
+    _fillRect(x,y,w,h);
   }
 
   // function renderFillColor(r, g, b, a) {
@@ -378,6 +404,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var drType = 0
     var x = 0.
     var y = 0.
+    var w = 0.
+    var h = 0.
     var r = 0.
     var a = 0.
     var b = 0.
@@ -404,6 +432,14 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         y = +HEAPF32[(dr+(2<<2)) >> 2];
         r = +HEAPF32[(dr+(3<<2)) >> 2];
         drawCircle(x,y,r)
+        // console.log("Rendering circle: ", x, y, r)
+        break;
+      case 1:
+        x = +HEAPF32[(dr+(1<<2)) >> 2];
+        y = +HEAPF32[(dr+(2<<2)) >> 2];
+        w = +HEAPF32[(dr+(3<<2)) >> 2];
+        h = +HEAPF32[(dr+(4<<2)) >> 2];
+        drawRect(x,y,w,h)
         // console.log("Rendering circle: ", x, y, r)
         break;
       case 64:
@@ -466,6 +502,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   // etc
   return { render : render
       , primCircle : primCircle
+      , primRect : primRect
       , primFillColor : primFillColor
       , primTransf : primTransf
       , primAp2 : primAp2
@@ -493,26 +530,45 @@ function createRenderer(c2) {
           //
           // c.fillStyle = "rgb(0,255,0)"
           //
-          c.fillStyle = "rgba(0,0,255,0.2)"
+          // c.fillStyle = "rgba(0,0,255,0.2)"
 
-          // c.fillStyle = "".concat(
-          //     "rgba("
-          //   , Math.floor(256*r)
-          //   , ","
-          //   , Math.floor(256*g)
-          //   , ","
-          //   , Math.floor(256*b)
-          //   , ","
-          //   , +a
-          //   , ")")
+          c.fillStyle = "".concat(
+              "rgba("
+            , Math.floor(256*r)
+            , ","
+            , Math.floor(256*g)
+            , ","
+            , Math.floor(256*b)
+            , ","
+            , +a
+            , ")")
         }
       , arc:
         // x=>console.log('arc')
+        // TODO is bind() faster than this closure wrapping?
         function (x,y,r) {
           x = +x
           y = +y
           r = +r
-          return c.arc(x,y,r, 0, 6.283185307179586, false)
+          c.arc(x,y,r, 0, 6.283185307179586, false)
+        }
+      // , rect:
+      // // x=>console.log('x')
+      //   function (x,y,w,h) {
+      //     x = +x
+      //     y = +y
+      //     w = +w
+      //     h = +h
+      //     c.rect(x,y,w,h)
+      //   }
+      , fillRect:
+      // x=>console.log('x')
+        function (x,y,w,h) {
+          x = +x
+          y = +y
+          w = +w
+          h = +h
+          c.fillRect(x,y,w,h)
         }
       , save:
       // x=>console.log('x')
@@ -529,7 +585,10 @@ function createRenderer(c2) {
           d = +d
           e = +e
           f = +f
+
           c.transform(a,b,c_,d,e,f)
+          // c.scale(a,d)
+          // c.translate(e,f)
         }
       , debug:
         x=>console.log(x)
@@ -553,15 +612,20 @@ var fastTrans = 0.0
 function setupFast () {
   console.log("Starting fast rendering")
   var canvas = document.getElementById('canvas');
+
   fastContext = canvas.getContext('2d');
+  // WebGL2D.enable(canvas);
+  // fastContext = canvas.getContext('webgl-2d');
+
   fastRenderer = createRenderer(fastContext)
 
   r = fastRenderer
   fastDrawing =
     r.ap(
      enumFromZeroTo(nElems).map(dummy =>
-        r.primFillColor(Math.random(),0.1,Math.random(),1,
-          r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),50)
+        r.primFillColor(Math.random(),0.1,Math.random(),0.2,
+          // r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),50)
+          r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),90,90)
         )
       )
      )
