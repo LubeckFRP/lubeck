@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
-var nElems  = 500
+var nElems  = 5000
 var nMoving = 35
 
 
@@ -494,14 +494,14 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
         // console.log("Rendering fill: ", r, g, b, a)
         // FIXME selective version of save/restore
-        // _save()
+        _save()
 
         // _fillStyleRGBA(r,g,b,a)
         writeRGBAStringToBuffer(r,g,b,a)
         _fillStyleRGBAFromStringBuffer()
 
         render(opts,dr1)
-        // _restore()
+        _restore()
         break;
       case 32:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
