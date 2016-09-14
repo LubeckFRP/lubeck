@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
-var nElems  = 5000
+var nElems  = 500
 var nMoving = 35
 
 
@@ -574,11 +574,11 @@ function createRenderer(c2) {
 
   var res = new AsmDrawingRenderer(window,
       { beginPath:
-        (x)=>c.beginPath()
+        function (x) { c.beginPath() }
         // x=>console.log('beginPath')
       , fill:
         // x=>console.log('fill')
-        x=>c.fill()
+        function (x) { c.fill() }
       , fillStyleRGBAFromStringBuffer:
         function () {
 
@@ -642,10 +642,10 @@ function createRenderer(c2) {
         }
       , save:
       // x=>console.log('x')
-        x=>c.save()
+        function (x) { c.save() }
       , restore:
       // x=>console.log('x')
-        x=>c.restore()
+        function (x) { c.restore() }
       , transform:
       // x=>console.log('x')
         function (a,b,c_,d,e,f) {
@@ -661,7 +661,7 @@ function createRenderer(c2) {
           // c.translate(e,f)
         }
       , debug:
-        x=>console.log(x)
+        function (x) { console.log(x) }
       }, heap) // FIXME trim
   res.ap = function(xs) {
     var empty = r.primCircle(0,0,0) // TODO proper empty drawing
@@ -698,13 +698,14 @@ function setupFast () {
   r = fastRenderer
   fastDrawing =
     r.ap(
-     enumFromZeroTo(nElems).map(dummy =>
-        r.primFillColor(Math.random(),0.1,Math.random(),0.8,
+     enumFromZeroTo(nElems).map(function (dummy) {
+        return r.primFillColor(Math.random(),0.1,Math.random(),0.8,
          r.scale(1,1,
-           r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
+           r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30)
           //  r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
           )
         )
+      }
       )
      )
 }
@@ -716,6 +717,7 @@ function loopFast () {
             fastDrawing
           )
       )
+    // console.log('Frame')
     requestAnimationFrame(loopFast)
 }
 setupFast()
