@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
-var nElems  = 50
+var nElems  = 500
 var nMoving = 35
 
 
@@ -230,7 +230,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   // var HEAP16 = new stdlib.Int16Array(heap);
   var HEAP32 = new stdlib.Int32Array(heap);
-  // var HEAPU8 = new stdlib.Uint8Array(heap);
+  var HEAPU8 = new stdlib.Uint8Array(heap);
   // var HEAPU16 = new stdlib.Uint16Array(heap);
   // var HEAPU32 = new stdlib.Uint32Array(heap);
   var HEAPF32 = new stdlib.Float32Array(heap);
@@ -240,6 +240,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _beginPath = foreign.beginPath;
   var _fill = foreign.fill;
   var _fillStyleRGBA = foreign.fillStyleRGBA;
+  var _fillStyleRGBAFromStringBuffer = foreign.fillStyleRGBAFromStringBuffer
   var _arc = foreign.arc;
   // var _rect = foreign.rect;
   var _fillRect = foreign.fillRect;
@@ -247,8 +248,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _restore = foreign.restore;
   var _transform = foreign.transform;
 
-
-  var tuplesCreated = 0
+  // Start at so we can use the first tuple position (32 bytes)
+  // as a string buffer (TODO clarify all this)
+  var tuplesCreated = 1
 
   // Return pointer to the first slot as a pointer (byte offset)
   // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
@@ -260,6 +262,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     // return (next * 4)|0
     return ((next * 8) << 2)|0
   }
+  // Return offset of the string buffer as a pointer (byte offset)
+  function getStringBufferOffset() {
+    return 0
+  }
+
 
   // Double ^ 3 -> Drawing*
   function primCircle(x, y, rad) {
@@ -384,6 +391,43 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   //     _restore()
   // }
 
+  // Write the given RGBA as a Canvas API style color string to the string buffer
+  // FIXME actually write the given color instead of the hardcorded pink below...
+  // Double ^ 4 -> ()
+  function writeRGBAStringToBuffer(r,g,b,a) {
+    r=+r
+    g=+g
+    b=+b
+    a=+a
+
+    // Prelude Data.Bits> fmap fromEnum "rgba(255,  0,  0,0.50)"
+    // [114,103,98,97,40,50,53,53, 44,32,32,48,44,32,32,48,44,48,46,53,48,41]
+
+    // Zero is the string buffer offset (see above)
+    HEAPU8 [(0 + (0<<0)) >> 0] = 114 // 'r'
+    HEAPU8 [(0 + (1<<0)) >> 0] = 103 // 'g'
+    HEAPU8 [(0 + (2<<0)) >> 0] = 98 // 'b'
+    HEAPU8 [(0 + (3<<0)) >> 0] = 97 // 'a'
+    HEAPU8 [(0 + (4<<0)) >> 0] = 40 // '('
+    HEAPU8 [(0 + (5<<0)) >> 0] = 50 // 'X'
+    HEAPU8 [(0 + (6<<0)) >> 0] = 53 // 'X'
+    HEAPU8 [(0 + (7<<0)) >> 0] = 53 // 'X'
+    HEAPU8 [(0 + (8<<0)) >> 0] = 44 // ','
+    HEAPU8 [(0 + (9<<0)) >> 0] = 32 // 'X'
+    HEAPU8 [(0 + (10<<0)) >> 0] = 32 // 'X'
+    HEAPU8 [(0 + (11<<0)) >> 0] = 48 // 'X'
+    HEAPU8 [(0 + (12<<0)) >> 0] = 44 // ','
+    HEAPU8 [(0 + (13<<0)) >> 0] = 32 // 'X'
+    HEAPU8 [(0 + (14<<0)) >> 0] = 32 // 'X'
+    HEAPU8 [(0 + (15<<0)) >> 0] = 48 // 'X'
+    HEAPU8 [(0 + (16<<0)) >> 0] = 44 // ','
+    HEAPU8 [(0 + (17<<0)) >> 0] = 48 // 'X'
+    HEAPU8 [(0 + (18<<0)) >> 0] = 46 // '.'
+    HEAPU8 [(0 + (19<<0)) >> 0] = 53 // 'X'
+    HEAPU8 [(0 + (20<<0)) >> 0] = 48 // 'X'
+    HEAPU8 [(0 + (21<<0)) >> 0] = 41 // ')'
+
+  }
 
   // Opts* -> Drawing* -> ()
   function render(opts,dr) {
@@ -451,7 +495,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // console.log("Rendering fill: ", r, g, b, a)
         // FIXME selective version of save/restore
         // _save()
-        _fillStyleRGBA(r,g,b,a)
+
+        // _fillStyleRGBA(r,g,b,a)
+        writeRGBAStringToBuffer(r,g,b,a)
+        _fillStyleRGBAFromStringBuffer()
+
         render(opts,dr1)
         // _restore()
         break;
@@ -513,10 +561,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     }
 }
 
+var globalHepRef = {}
+
 function createRenderer(c2) {
   // TODO generate and link a proper drawing context
   const c = c2
   // Renderer is linked here...
+
+  var heap = new ArrayBuffer( 0x1000000)
+  globalHepRef = heap // TODO debug
+  var HEAPU8 = new Uint8Array(heap);
+
   var res = new AsmDrawingRenderer(window,
       { beginPath:
         (x)=>c.beginPath()
@@ -524,6 +579,17 @@ function createRenderer(c2) {
       , fill:
         // x=>console.log('fill')
         x=>c.fill()
+      , fillStyleRGBAFromStringBuffer:
+        function () {
+
+          var str = "";
+          for (var i = 0; i < 22; i++) {
+          	str += String.fromCharCode(HEAPU8[i]);
+          }
+          c.fillStyle = str
+          // console.log(str)
+          // FIXME test without allocation (write to c.fillStyle)
+        }
       , fillStyleRGBA:
         // x=>console.log('fillStyle_')
         // FIXME
@@ -534,7 +600,7 @@ function createRenderer(c2) {
           //
           // c.fillStyle = "rgb(0,255,0)"
           //
-          // c.fillStyle = "rgba(0,0,255,0.2)"
+          // c.fillStyle = "rgba(0,0,255,0.20)"
 
           c.fillStyle = "".concat(
               "rgba("
@@ -596,7 +662,7 @@ function createRenderer(c2) {
         }
       , debug:
         x=>console.log(x)
-      }, new ArrayBuffer( 0x1000000)) // FIXME trim
+      }, heap) // FIXME trim
   res.ap = function(xs) {
     var empty = r.primCircle(0,0,0) // TODO proper empty drawing
     var res = xs.reduce(function (a,b) {
@@ -635,8 +701,8 @@ function setupFast () {
      enumFromZeroTo(nElems).map(dummy =>
         r.primFillColor(Math.random(),0.1,Math.random(),0.8,
          r.scale(1,1,
-          //  r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30)
-           r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
+           r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
+          //  r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
           )
         )
       )
