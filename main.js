@@ -225,6 +225,25 @@ Alternative crazy idea:
 
 */
 
+#define NODE_TYPE_CIRCLE          0
+#define NODE_TYPE_RECT            1
+
+#define NODE_TYPE_TRANSF          32
+
+#define NODE_TYPE_FILL_COLOR      64
+#define NODE_TYPE_STROKE_COLOR    65
+#define NODE_TYPE_LINE_WIDTH      66
+#define NODE_TYPE_LINE_CAP        67
+#define NODE_TYPE_LINE_JOIN       68
+#define NODE_TYPE_LINE_DASH       69
+#define NODE_TYPE_GRADIENT_LINEAR 70
+// TODO text, embedded bitmaps, composites/masks
+
+#define NODE_TYPE_AP2              128
+#define NODE_TYPE_AP3              129
+#define NODE_TYPE_AP4              130
+
+
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
 
@@ -277,7 +296,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var p = 0
 
     p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = 0|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_CIRCLE|0
     HEAPF32[(p + (1<<2)) >> 2] = x
     HEAPF32[(p + (2<<2)) >> 2] = y
     HEAPF32[(p + (3<<2)) >> 2] = rad
@@ -293,7 +312,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var p = 0
 
     p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = 1|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_RECT|0
     HEAPF32[(p + (1<<2)) >> 2] = x
     HEAPF32[(p + (2<<2)) >> 2] = y
     HEAPF32[(p + (3<<2)) >> 2] = w
@@ -311,7 +330,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var p = 0
 
     p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = 64|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_FILL_COLOR|0
     HEAPF32[(p + (1<<2)) >> 2] = r
     HEAPF32[(p + (2<<2)) >> 2] = g
     HEAPF32[(p + (3<<2)) >> 2] = b
@@ -332,7 +351,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var p = 0
 
     p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = 32|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TRANSF|0
     HEAPF32[(p + (1<<2)) >> 2] = a
     HEAPF32[(p + (2<<2)) >> 2] = b
     HEAPF32[(p + (3<<2)) >> 2] = c
@@ -350,7 +369,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var p = 0
 
     p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = 128|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_AP2|0
     HEAP32 [(p + (1<<2)) >> 2] = dr1
     HEAP32 [(p + (2<<2)) >> 2] = dr2
     // console.log("Creating ap2 drawing: ", dr1, dr2)
@@ -470,15 +489,18 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     do {
     cont = 0
     drType = HEAP32[(dr+(0<<2)) >> 2]|0;
+
     switch (drType|0) {
-      case 0:
+
+      case NODE_TYPE_CIRCLE:
         x = +HEAPF32[(dr+(1<<2)) >> 2];
         y = +HEAPF32[(dr+(2<<2)) >> 2];
         r = +HEAPF32[(dr+(3<<2)) >> 2];
         drawCircle(x,y,r)
         // console.log("Rendering circle: ", x, y, r)
         break;
-      case 1:
+
+      case NODE_TYPE_RECT:
         x = +HEAPF32[(dr+(1<<2)) >> 2];
         y = +HEAPF32[(dr+(2<<2)) >> 2];
         w = +HEAPF32[(dr+(3<<2)) >> 2];
@@ -486,7 +508,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         drawRect(x,y,w,h)
         // console.log("Rendering circle: ", x, y, r)
         break;
-      case 64:
+
+      case NODE_TYPE_FILL_COLOR:
         r = +HEAPF32[(dr+(1<<2)) >> 2];
         g = +HEAPF32[(dr+(2<<2)) >> 2];
         b = +HEAPF32[(dr+(3<<2)) >> 2];
@@ -503,7 +526,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         render(opts,dr1)
         _restore()
         break;
-      case 32:
+
+      case NODE_TYPE_TRANSF:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
         b = +HEAPF32[(dr+(2<<2)) >> 2];
         c = +HEAPF32[(dr+(3<<2)) >> 2];
@@ -520,7 +544,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         render(opts,dr1)
         _restore()
         break;
-      case 128:
+
+      case NODE_TYPE_AP2:
         dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
         // _debug(1, dr1|0)
