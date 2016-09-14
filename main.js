@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
-var nElems  = 500
+var nElems  = 5000
 var nMoving = 35
 
 
@@ -701,7 +701,7 @@ function setupFast () {
      enumFromZeroTo(nElems).map(function (dummy) {
         return r.primFillColor(Math.random(),0.1,Math.random(),0.8,
          r.scale(1,1,
-           r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30)
+           r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
           //  r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
           )
         )
