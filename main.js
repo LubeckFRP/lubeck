@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var elem = document.getElementById('canvas-div');
-var nElems  = 850
+var nElems  = 5000
 var nMoving = 35
 
 
@@ -241,7 +241,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _fill = foreign.fill;
   var _fillStyleRGBA = foreign.fillStyleRGBA;
   var _arc = foreign.arc;
-  var _rect = foreign.rect;
+  // var _rect = foreign.rect;
   var _fillRect = foreign.fillRect;
   var _save = foreign.save;
   var _restore = foreign.restore;
@@ -449,6 +449,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         a = +HEAPF32[(dr+(4<<2)) >> 2];
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
         // console.log("Rendering fill: ", r, g, b, a)
+        // FIXME selective version of save/restore
         // _save()
         _fillStyleRGBA(r,g,b,a)
         render(opts,dr1)
@@ -463,6 +464,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         f = +HEAPF32[(dr+(6<<2)) >> 2];
         dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
         // TODO render transf
+
+        // FIXME selective version of save/restore
+        // Or simply apply inverted matrix when done http://stackoverflow.com/a/18504573
         _save()
         _transform(a,b,c,d,e,f)
         render(opts,dr1)
@@ -592,7 +596,7 @@ function createRenderer(c2) {
         }
       , debug:
         x=>console.log(x)
-      }, new ArrayBuffer( 0x100000)) // FIXME trim
+      }, new ArrayBuffer( 0x1000000)) // FIXME trim
   res.ap = function(xs) {
     var empty = r.primCircle(0,0,0) // TODO proper empty drawing
     var res = xs.reduce(function (a,b) {
@@ -600,6 +604,12 @@ function createRenderer(c2) {
     }, empty)
     console.log('Reduce done')
     return res
+  }
+  res.scale = function (x,y,dr) {
+    return res.primTransf(x,0,0,y,0,0,dr)
+  }
+  res.translate = function (a,b,dr) {
+    return res.primTransf(1,0,0,1,a,b,dr)
   }
   return res
 }
@@ -623,9 +633,11 @@ function setupFast () {
   fastDrawing =
     r.ap(
      enumFromZeroTo(nElems).map(dummy =>
-        r.primFillColor(Math.random(),0.1,Math.random(),0.2,
-          // r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),50)
-          r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),90,90)
+        r.primFillColor(Math.random(),0.1,Math.random(),0.8,
+         r.scale(1,1,
+          //  r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30)
+           r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
+          )
         )
       )
      )
