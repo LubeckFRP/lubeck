@@ -535,19 +535,47 @@ function createRenderer(c2) {
       , debug:
         function (x) { console.log(x) }
       }, heap) // FIXME trim
+
+  // Some helpers
+
   res.ap = function(xs) {
+    // TODO better to balance this tree?
+    // Or use n-ary nodes where n > 2 (?)
     var empty = r.primCircle(0,0,0) // TODO proper empty drawing
     var res = xs.reduce(function (a,b) {
       return r.primAp2(b,a)
     }, empty)
-    console.log('Reduce done')
     return res
   }
-  res.scale = function (x,y,dr) {
+  res.scale = function (a,dr) {
+    return res.primTransf(a,0,0,a,0,0,dr)
+  }
+  res.scaleXY = function (x,y,dr) {
     return res.primTransf(x,0,0,y,0,0,dr)
   }
   res.translate = function (a,b,dr) {
     return res.primTransf(1,0,0,1,a,b,dr)
+  }
+  res.translateX = function (a,dr) {
+    return res.primTransf(1,0,0,1,a,0,dr)
+  }
+  res.translateY = function (b,dr) {
+    return res.primTransf(1,0,0,1,0,b,dr)
+  }
+  res.red = function (dr) {
+    return res.primFillColor(1,0,0,1,dr)
+  }
+  res.blue = function (dr) {
+    return res.primFillColor(0,0,1,1,dr)
+  }
+  res.randCol = function (dr) {
+    return res.primFillColor(Math.random(),Math.random(),Math.random(),1,dr)
+  }
+  res.randPosRect = function() {
+    return res.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,30)
+  }
+  res.randPosCircle = function() {
+    return res.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30)
   }
   return res
 }
@@ -573,18 +601,35 @@ function setupFast () {
 
   fastRenderer = createRenderer(fastContext)
 
+// > writeFile "/tmp/lubeck/test1.svg" $ unpackStr $ toSvgStr mempty
+// $ fillColor C.blue $ mconcat [translateX 200 $ scale 100 circle, fillColor C.red $ scale 200 circle]
+
   r = fastRenderer
   fastDrawing =
-    r.ap(
-     enumFromZeroTo(nElems).map(function (n) {
-        return r.primFillColor(Math.random(),0.3,Math.random()*0.5,0.8,
-         r.scale(1,1,
-          //  r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
-           r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
-          )
-        )
-      })
-     )
+    r.blue(r.ap(
+        [ r.translateX(0,r.scale(1,r.randPosRect()))
+        , r.red(r.scale(1,r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.randCol(r.scale(2,r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosRect()))
+        ]))
+
+  // r.primFillColor(Math.random()*0.8+0.2,0.2,0.2,1.3,
+  //   r.ap(
+  //    enumFromZeroTo(nElems).map(function (n) {
+  //       return
+  //        r.scale(20,1,
+  //         //  r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
+  //          r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
+  //         )
+  //     })
+  //   ))
 }
 function loopFast () {
     fastTrans = (fastTrans + 10.0) % 1900
