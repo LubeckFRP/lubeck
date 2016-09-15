@@ -2,53 +2,81 @@
 var dims = {x:1900, y:1500}
 var nElems  = 1000
 var nMaxFrames = 60*1
-
+var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 
 
 /*
-Alternative crazy idea:
-  Instead of letting core functions allocate JS obejcts we will
-    - Let core function call into asm.js functions that returns "pointers" (i.e. numbers indexing objects in their local heap)
-    - At render time, pass such as pointer (representing a drawing tree) to an asm function
-    - Expose functions to "free" these pointers/drawings (need to hook into HS garbage collector with Foreign.ForeignPtr
- for this to work)
+  A renderer wraps a Canvas API drawing context which may render to an on-screen canvas or an
+  off-screen buffer.
 
- How to generate heap HEAP8 = new Int8Array(buffer);
-   HEAP16 = new Int16Array(buffer);
-    [i>>1]
-   HEAP32 = new Int32Array(buffer);
-    [i>>2]
-   HEAPU8 = new Uint8Array(buffer);
-    [i>>0]
+  Each renderer renders drawings, represented as a tree stored on the renderer's heap.
 
-   HEAPU16 = new Uint16Array(buffer);
-    [i>>1]
-   HEAPU32 = new Uint32Array(buffer);
-    [i>>2]
+  Create a renderer using createRenderer(canvasApiContext).
 
-   HEAPF32 = new Float32Array(buffer);
-    [i>>2]
-   HEAPF64 = new Float64Array(buffer);
-    [i>>3]
+  Each renderer exposes commands to create new drawings and a function render(options,drawing),
+  which immediatly renders the given drawing to the underlying drawing context.
+
+  You can have multiple renderers, but drawings can not be shared between renderers.
 
 
+  IMPLEMENTATION NOTES
 
- Validator
-  http://anvaka.github.io/asmalidator/
+  NOTE Memory management
 
- Each "drawing" is a tuople stored on the heap a tuple of 32 bytes (i.e.8 fields of I32, U32, F32)
- First fields is a type id, the rest is parameters depending on type
+  TBD
 
-    Name        ID(I32) Params
-    (offset:)   0       1       2       3       4       5       6      7
-    circle      0       x:f32   y:f32   rad:f32
-    transf      32      a:f32   b:f32   c:f32   d:f32   e:f32   f:f32 dr:i32
-    fillColor   64      r       g       b       a
-    ap2         128     dr1:i32 dr2:i32
+  NOTE Heap layout
 
+  The renderer heap is broken into regions, delimited by the HEAP_N constants below.
+
+  These values are all asmjs style pointers and represent an offset into the heap
+  buffer, in bytes. The main part of the heap is used to store "tuples", which are simply
+  32-byte regions stored at values > HEAP_TUPLES_OFFSET.
+
+  By convention, each tuple represent 8 values of 4 bytes each. They are used to store one
+  of the following:
+    - Pointers to other tuples
+    - 32 bit signed ints
+    - 32 bit floats
+
+  We refer to these as "slots" indexed [0..7]. The 0-th slot of each tuple is a type tag which
+  is one of the NODE_TYPE_N values.
+
+  Each node in the drawing tree is represented as a tuple. For the exact values of
+  the slot see the corresponding constructor function (i.e. search for NODE_TYPE_RECT to
+  verify that RECT nodes contain for floating point-values, representing, x, y, width and height).
 
 */
 
+// This buffer is used to return color values to the underlying context (as UTF8 strings).
+#define HEAP_COLOR_BUFFER_OFFSET 0
+// This region is not currently used
+#define HEAP_UNUSED_OFFSET       36
+// This region stores the tuples. Its size is (heap size - HEAP_TUPLES_OFFSET).
+#define HEAP_TUPLES_OFFSET       0x1000 // 4096
+
+
+// Primitives
+#define NODE_TYPE_CIRCLE          0
+#define NODE_TYPE_RECT            1
+
+// Styles
+#define NODE_TYPE_FILL_COLOR      64
+#define NODE_TYPE_STROKE_COLOR    65
+#define NODE_TYPE_LINE_WIDTH      66
+#define NODE_TYPE_LINE_CAP        67
+#define NODE_TYPE_LINE_JOIN       68
+#define NODE_TYPE_LINE_DASH       69
+#define NODE_TYPE_GRADIENT_LINEAR 70
+// TODO text, embedded bitmaps, composites/masks
+
+// Affine transformations
+#define NODE_TYPE_TRANSF          127
+
+// Groups (named for the verb "append")
+#define NODE_TYPE_AP2             128
+#define NODE_TYPE_AP3             129
+#define NODE_TYPE_AP4             130
 
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
@@ -65,7 +93,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _beginPath = foreign.beginPath;
   var _fill = foreign.fill;
   var _fillStyleRGBA = foreign.fillStyleRGBA;
-  var _fillStyleRGBAFromStringBuffer = foreign.fillStyleRGBAFromStringBuffer
+  var _fillStyleFromColorBuffer = foreign.fillStyleFromColorBuffer
   var _arc = foreign.arc;
   // var _rect = foreign.rect;
   var _fillRect = foreign.fillRect;
@@ -77,9 +105,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _max = stdlib.Math.max;
   var _min = stdlib.Math.min;
 
-  // Start at so we can use the first tuple position (32 bytes)
-  // as a string buffer (TODO clarify all this)
-  var tuplesCreated = 1
+  var tuplesCreated = 0
 
   // Return pointer to the first slot as a pointer (byte offset)
   // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
@@ -89,8 +115,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     next = tuplesCreated
     tuplesCreated = tuplesCreated + 1|0
     // return (next * 4)|0
-    return ((next * 8) << 2)|0
+    return ((next * 8) << 2) + HEAP_TUPLES_OFFSET|0
   }
+
   // Return offset of the string buffer as a pointer (byte offset)
   function getStringBufferOffset() {
     return 0
@@ -200,24 +227,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAPU8 [(0 + (21<<0)) >> 0] = 41 // ')'
 
   }
-
-#define NODE_TYPE_CIRCLE          0
-#define NODE_TYPE_RECT            1
-
-#define NODE_TYPE_TRANSF          32
-
-#define NODE_TYPE_FILL_COLOR      64
-#define NODE_TYPE_STROKE_COLOR    65
-#define NODE_TYPE_LINE_WIDTH      66
-#define NODE_TYPE_LINE_CAP        67
-#define NODE_TYPE_LINE_JOIN       68
-#define NODE_TYPE_LINE_DASH       69
-#define NODE_TYPE_GRADIENT_LINEAR 70
-// TODO text, embedded bitmaps, composites/masks
-
-#define NODE_TYPE_AP2              128
-#define NODE_TYPE_AP3              129
-#define NODE_TYPE_AP4              130
 
   // Double ^ 3 -> Drawing*
   function primCircle(x, y, rad) {
@@ -388,11 +397,12 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         // _fillStyleRGBA(r,g,b,a)
         writeRGBAStringToBuffer(r,g,b,a)
-        _fillStyleRGBAFromStringBuffer()
+        _fillStyleFromColorBuffer()
 
         render(opts,dr1)
         _restore()
         break;
+
 
       case NODE_TYPE_TRANSF:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -447,10 +457,10 @@ function createRenderer(c2) {
   const c = c2
   // Renderer is linked here...
 
-  var heap = new ArrayBuffer( 0x1000000)
+  var heap = new ArrayBuffer(nHeapSize)
   globalHepRef = heap // TODO debug
   var HEAPU8 = new Uint8Array(heap);
-  var textBuffer = new Uint8Array(heap, 0, 22);
+  var colorBuffer = new Uint8Array(heap, HEAP_COLOR_BUFFER_OFFSET, 22);
   var utf8d = new TextDecoder("utf-8");
 
   var res = new AsmDrawingRenderer(window,
@@ -460,9 +470,9 @@ function createRenderer(c2) {
       , fill:
         // x=>console.log('fill')
         function (x) { c.fill() }
-      , fillStyleRGBAFromStringBuffer:
+      , fillStyleFromColorBuffer:
         function () {
-          c.fillStyle = utf8d.decode(textBuffer)
+          c.fillStyle = utf8d.decode(colorBuffer)
         }
       , fillStyleRGBA:
         // x=>console.log('fillStyle_')
