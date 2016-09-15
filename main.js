@@ -77,6 +77,19 @@ var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 #define NODE_TYPE_AP2             128
 #define NODE_TYPE_AP3             129
 #define NODE_TYPE_AP4             130
+// Largest possible node value
+// Also serves as mask for node values, so we can reuse remaining bits for GC tags etc
+#define NODE_MAX_VALUE            0xfff // 4095
+
+// Misc
+#define STYLE_LINE_CAP_BUTT        0
+#define STYLE_LINE_CAP_ROUND       1
+#define STYLE_LINE_CAP_SQUARE      2
+#define STYLE_LINE_CAP_BEVEL       0
+#define STYLE_LINE_CAP_ROUND       1
+#define STYLE_LINE_CAP_METER       2
+
+#define ERROR_TYPE_UNKNOWN        0
 
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
@@ -403,6 +416,70 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _restore()
         break;
 
+      case NODE_TYPE_STROKE_COLOR:
+        r = +HEAPF32[(dr+(1<<2)) >> 2];
+        g = +HEAPF32[(dr+(2<<2)) >> 2];
+        b = +HEAPF32[(dr+(3<<2)) >> 2];
+        a = +HEAPF32[(dr+(4<<2)) >> 2];
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        // console.log("Rendering fill: ", r, g, b, a)
+        // FIXME selective version of save/restore
+        _save()
+
+        // _fillStyleRGBA(r,g,b,a)
+        writeRGBAStringToBuffer(r,g,b,a)
+        _strokeStyleFromColorBuffer()
+
+        render(opts,dr1)
+        _restore()
+        break;
+
+      case NODE_TYPE_LINE_WIDTH:
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        _save()
+        _lineWidth(a);
+        render(opts,dr1)
+        _restore()
+        break;
+
+      case NODE_TYPE_LINE_CAP:
+        a = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        _save()
+        _linCap(a);
+        render(opts,dr1)
+        _restore()
+        break;
+
+      case NODE_TYPE_LINE_JOIN:
+        a = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        _save()
+        _lineJoin(a);
+        render(opts,dr1)
+        _restore()
+        break;
+
+      case NODE_TYPE_LINE_DASH:
+        a = HEAP32[(dr+(1<<2)) >> 2]|0; // Number of slots used
+        b = +HEAPF32[(dr+(2<<2)) >> 2]; // Slots 2-6 store the actual values
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        d = +HEAPF32[(dr+(4<<2)) >> 2];
+        e = +HEAPF32[(dr+(5<<2)) >> 2];
+        f = +HEAPF32[(dr+(6<<2)) >> 2];
+        dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
+        _save()
+        _lineDash(a,b,c,d,e,f);
+        render(opts,dr1)
+        _restore()
+        break;
+
+      // TODO figure out a good heap repr for linear gradients
+      // I.e. one tuple for (x0, y0, x1, y1, stops, dr)
+      // The stops is some kind of list of colors (percent,r,g,b,a)
+
+
 
       case NODE_TYPE_TRANSF:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -428,12 +505,16 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         render(opts,dr1)
 
-        render(opts,dr2)
-        // Manual tail-call opt: Instead of calling 'render(opts,dr2)', we update the parameters and set 'cont = 1'
-        // opts = opts
-        // dr = dr2
-        // cont = 1
+        // render(opts,dr2)
+        // Manual tail-call opt: Instead of calling 'render(opts,dr2)', we update the parameters to render() and set 'cont = 1'
+        opts = opts
+        dr   = dr2
+        cont = 1
 
+        break;
+
+      default:
+        _debug(ERROR_TYPE_UNKNOWN);
         break;
     }
     }
@@ -614,6 +695,10 @@ function replicateM(n,x) {
 
 
 
+
+
+// Example code
+
 var fastDrawing = -1
 var fastRenderer = null
 var fastContext = null
@@ -634,19 +719,19 @@ function setupFast () {
 
   r = fastRenderer
   fastDrawing =
-    r.ap(replicateM(100,_ =>
+    r.ap(replicateM(300,_ =>
     r.blue(r.ap(
         [ r.translateX(0,r.scale(1,r.randPosRect()))
         , r.red(r.scale(1,r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(0.2+0.2*Math.random(),r.randPosRect()))
         , r.randCol(r.scale(2,r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosCircle()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosCircle()))
+        , r.randCol(r.scale(0.2+0.2*Math.random(),r.randPosRect()))
+        , r.randCol(r.scale(0.2+0.2*Math.random(),r.randPosRect()))
+        , r.red(r.scale(0.2+0.2*Math.random(),r.randPosCircle()))
+        , r.randCol(r.scale(0.8+0.2*Math.random(),r.randPosRect()))
+        , r.red(r.scale(0.2+0.2*Math.random(),r.randPosRect()))
+        , r.randCol(r.scale(0.8+0.2*Math.random(),r.randPosRect()))
+        , r.red(r.scale(0.8+0.2*Math.random(),r.randPosCircle()))
       ]))))
 
   // r.primFillColor(Math.random()*0.8+0.2,0.2,0.2,1.3,
@@ -677,51 +762,3 @@ function loopFast () {
 }
 setupFast()
 loopFast()
-
-
-
-
-
-//
-//
-// type CanvasName = String
-// renderFirst :: CanvasName -> Drawing -> IO ()
-// renderSubsequent :: CanvasName -> Drawing -> IO ()
-//
-//
-// type FrameRate = Double
-// animate :: FrameRate -> Behavior (Drawing a) -> IO (IO ())
-//
-//
-//
-//
-// // Render opts
-// {dimensions:[200,400], originPlacement:"center",...}
-//
-// // Drawing
-// // NOTE all co-ordinates here uses Drawing/Math conventions, convert to Canvas conventions by pushing a matrix before starting to render
-// // NOTE the rendering phase will be a simple traversal of this tree
-//
-// "circle"
-// "rect"
-// "line"
-// ["lines",true,0.5,0,3.2,-2.1}
-// ["text","Hello!"]
-// ["mask",d1,d2]
-// ["transf",[1,0,0,1,0,0], d1]
-// ["style",{N:V,...}, d1]
-  // NOTE whenever we travel down one of these, we will use save()/restore()
-  // If the styles we render are not handled by save/restore, we have to use a separate stack (hope not!)
-//   "fillColor"
-//   "fillColorA"
-//   "strokeColor"
-//   "strokeColorA"
-//   "strokeWidth"
-//   "dashing"
-//   // TODO text, gradients
-// ["ap",d1...]
-// []
-
-
-// TODO ignore hanlers, SVG embed, CircleSector, RectRounded, text, mask, special styles/gradients
-// Provide binary and list monoid (for faster mconcat)
