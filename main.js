@@ -1,182 +1,6 @@
 
 var dims = {x:1900, y:1500}
-var elem = document.getElementById('canvas-div');
-var nElems  = 5000
-var nMoving = 35
-
-
-// if(0) {
-//     //------------------------------
-//     var two = new Two({
-//       type: Two.Types.canvas,
-//       width: dims.x,
-//       height: dims.y
-//     }).appendTo(elem);
-//
-//     var group = two.makeGroup();
-//     var circles = [...Array(nElems).keys()].map(function(i) {
-//       var c = two.makeCircle(Math.floor(Math.random() * dims.x), Math.floor(Math.random() * dims.y), 15);
-//       // c.fill = ['red', 'green', 'blue'][Math.floor(Math.random() * 3)]
-//       c.fill = 'grey'
-//       c.noStroke()
-//       group.add(c)
-//       return c
-//     })
-//     circles.reverse() // Side-effects!
-//     console.log("reversed")
-//     two.update();
-//     // Bind a function to scale and rotate the group
-//     // to the animation loop.
-//     two.bind('update', function(frameCount) {
-//        if ((frameCount % 1) !== 0) return;
-//        for (var i = 0; i < Math.min(circles.length, nMoving); ++i) {
-//          var c = circles[i]
-//          c.fill = 'red'
-//          c.translation.y = (c.translation.y + 1) % dims.x
-//        }
-//     }).play(); // Finally, start the animation loop
-//     //------------------------------
-//
-// } else {
-//     // State
-//     var canvas = document.getElementById('canvas');
-//     var c = canvas.getContext('2d');
-//     // console.log(c)
-//
-//     function drawCircle(c,x,y,r) {
-//       c.beginPath();
-//       c.arc(x,y,r, 0, 2 * Math.PI, false);
-//       c.fill();
-//     }
-//
-//     const STYLE_TYPES  = {fillColor:1|0}
-//     const DRAWING_TYPES  = {circle:1|0, transf: 2|0, style: 3|0, ap: 4|0}
-//
-//     function renderStyle1(name, value, context) {
-//       switch (name) {
-//         case STYLE_TYPES.fillColor:
-//           context.fillStyle = value; // TODO opacity etc
-//           break;
-//         // default:
-//           // throw ('renderStyle: Unknown style ' + name);
-//       }
-//     }
-//     /*
-//     Render the given drawing object using the given context.
-//     Does NOT clear the rectangle beforehand.
-//     FIXME adjust co-ordinates based on opts.originPlacement, opts.dimensions (a la Drawing)
-//     */
-//     function renderTransf(opts,context,drawing) {
-//                 context.save()
-//                 let [a,b,c,d,e,f] = drawing.transf;
-//                 context.transform(a,b,c,d,e,f)
-//                 renderDrawing(opts, drawing.sub, context)
-//                 context.restore()
-//     }
-//     function renderStyle(opts,context,drawing) {
-//                 context.save()
-//                 renderStyle1(drawing.name, drawing.value, context)
-//                 renderDrawing(opts, drawing.sub, context)
-//                 context.restore()
-//     }
-//     function renderDrawing(opts, drawing, context) {
-//       // if (opts === undefined) opts = {};
-//
-//       if (drawing.type === DRAWING_TYPES.circle) {
-//         drawCircle(context, drawing.x, drawing.y, drawing.rad);
-//       } else
-//       if (drawing.type === DRAWING_TYPES.transf) {
-//         renderTransf(opts,context,drawing)
-//       } else
-//       if (drawing.type === DRAWING_TYPES.style) {
-//         renderStyle(opts,context,drawing)
-//       } else
-//       if (drawing.type === DRAWING_TYPES.ap) {
-//           for (var i = 0, len = drawing.children.length; i < len; i++) {
-//             renderDrawing(opts, drawing.children[i], context);
-//           }
-//       } else {
-//         // throw ('renderDrawing: Unknown drawing type ' + drawing.type);
-//       }
-//     }
-//
-//     function replicate(n,x) {
-//       return [...Array(n).keys()].map(ignored => x)
-//     }
-    function enumFromZeroTo(n) {
-      return [...Array(n).keys()]
-    }
-//
-//     // const drawingDef = {type:DRAWING_TYPES.transf, transf:[2,0,0,1,0,0], sub:
-//     //   {type:DRAWING_TYPES.style, name:'fillColor', value:'grey', sub:
-//     //     {type:DRAWING_TYPES.ap, children:
-//     //       replicate(nElems, {type: DRAWING_TYPES.circle, x:10, y:10, rad:10}
-//     //       )
-//     //       }
-//     //   }
-//     // };
-//
-//     // const drawingDef = {type:DRAWING_TYPES.transf, transf:[1,0,0,1,40,40], sub:
-//     //   {type:DRAWING_TYPES.style, name:'fillColor', value:'grey', sub:
-//     //     {type:DRAWING_TYPES.ap, children:
-//     //       replicate(nElems, {type: DRAWING_TYPES.circle, x:0, y:0, rad:10}
-//     //       )
-//     //       }
-//     //   }
-//     // };
-//     const nonMovingDef =
-//       {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'blue', sub:
-//         {type:DRAWING_TYPES.ap, children:
-//           enumFromZeroTo(nElems-nMoving).map(function(_) {return {type: DRAWING_TYPES.circle, x:Math.floor(Math.random()*dims.x), y:Math.floor(Math.random()*dims.y), rad:15} } )
-//         }
-//       }
-//     ;
-//     var movingDef_positions = []; // [[x1,y1],[x2,y2]...]
-//     function movingDef() {
-//       var circles = []
-//       for(var i = 0; i < nMoving; ++i) {
-//         let [x, y] = (movingDef_positions[i] || [ Math.random()*dims.x, Math.random()*dims.y ]);
-//         // Update position state (for next time)
-//         movingDef_positions[i] = [(x + 1) % dims.x, (y + 1) % dims.y];
-//         circles.push({type: DRAWING_TYPES.circle, x:x, y:y, rad:2})
-//       }
-//       return {type:DRAWING_TYPES.style, name:STYLE_TYPES.fillColor, value:'red', sub: {type:DRAWING_TYPES.ap, children: circles}}
-//     }
-//     function drawingDef() {
-//       let md = movingDef()
-//       return {type:DRAWING_TYPES.ap, children: [nonMovingDef, md]}
-//     }
-//
-//
-//     function setup () {
-//       // c.fillCircle(50,50,50,50)
-//       // drawCircle(c, dims.x/2, dims.x/2, 5)
-//
-//       c.translate(0.5,0.5);
-//     }
-//     function drawFrame() {
-//       c.clearRect(0, 0, dims.x, dims.y);
-//       renderDrawing({},
-//         drawingDef()
-//         , c);
-//       // c.save()
-//       // c.fillStyle = 'green';
-//       // for(var i = 0; i<nElems; ++i) {
-//       //   drawCircle(c, dims.x * Math.random(), dims.x * Math.random(), 5)
-//       // }
-//       // c.restore()
-//     }
-//
-//     function loop() {
-//       drawFrame()
-//       requestAnimationFrame(loop)
-//     }
-//     // setup()
-//     // loop()
-// }
-//
-//
-
+var nElems  = 1000
 
 
 
@@ -225,24 +49,6 @@ Alternative crazy idea:
 
 */
 
-#define NODE_TYPE_CIRCLE          0
-#define NODE_TYPE_RECT            1
-
-#define NODE_TYPE_TRANSF          32
-
-#define NODE_TYPE_FILL_COLOR      64
-#define NODE_TYPE_STROKE_COLOR    65
-#define NODE_TYPE_LINE_WIDTH      66
-#define NODE_TYPE_LINE_CAP        67
-#define NODE_TYPE_LINE_JOIN       68
-#define NODE_TYPE_LINE_DASH       69
-#define NODE_TYPE_GRADIENT_LINEAR 70
-// TODO text, embedded bitmaps, composites/masks
-
-#define NODE_TYPE_AP2              128
-#define NODE_TYPE_AP3              129
-#define NODE_TYPE_AP4              130
-
 
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
@@ -266,6 +72,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _save = foreign.save;
   var _restore = foreign.restore;
   var _transform = foreign.transform;
+  var _floor = stdlib.Math.floor;
+  var _imul = stdlib.Math.imul;
+  var _max = stdlib.Math.max;
+  var _min = stdlib.Math.min;
 
   // Start at so we can use the first tuple position (32 bytes)
   // as a string buffer (TODO clarify all this)
@@ -286,6 +96,128 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return 0
   }
 
+
+  function drawCircle(x,y,r) {
+    x=+x
+    y=+y
+    r=+r
+    _beginPath();
+    _arc(x,y,r,0, 6.283185307179586,0/*false*/);
+    _fill();
+  }
+  function drawRect(x,y,w,h) {
+    x=+x
+    y=+y
+    w=+w
+    h=+h
+    // _rect(x,y,w,h);
+    // _fill();
+    _fillRect(x,y,w,h);
+  }
+
+  // function renderFillColor(r, g, b, a) {
+  //   _fillStyle_(r, g, b, a)
+  // }
+  // function renderTransf(opts,a,b,c,d,e,f,sub) {
+  //     _save()
+  //     _transform(a,b,c,d,e,f)
+  //     render(opts, sub)
+  //     _restore()
+  // }
+
+
+  // Writes a string such as '123' or '255' to the given pointer based
+  // on the given value in [0..1].
+  function writeColorString(ptr,n) {
+    ptr = ptr|0
+    n = +n
+    // First multiply float by 256 and floor
+    var n2 = 0
+    var d1 = 0
+    var d2 = 0
+    var d3 = 0
+
+
+
+    n2 = ~~_floor(
+      _max(0.,_min(n,1.))
+        * 256.0)|0 // n2 :: signed
+
+    // Then calculate digits (div by 10 and 100)
+    d1 = (((n2|0) / (100|0))|0) % (10|0) | 0 // (n2 / 100) % 10
+    d2 = (((n2|0) / (10 |0))|0) % (10|0) | 0 // (n2 / 10 ) % 10
+    d3 = (((n2|0) / (1  |0))|0) % (10|0) | 0 // (n2 / 1  ) % 10
+
+    // Then convert digits to char codes and write to ptr
+    HEAPU8[(ptr + 0) >> 0] = 48 + d1
+    HEAPU8[(ptr + 1) >> 0] = 48 + d2
+    HEAPU8[(ptr + 2) >> 0] = 48 + d3
+  }
+
+  // Writes a string such as '0.25' to the given pointer based
+  // on the given value in [0..1].
+  function writeAlphaString(ptr,col) {
+    ptr = ptr|0
+    col = +col
+
+    // Filter out numbers outside [0..1]
+    // Then multiply float by 100 and floor
+    // Then calculate digits (div by 10 and 100)
+    // Then convert digits to char codes and write to ptr (with the dot)
+    // FIXME
+  }
+
+  // Write the given RGBA as a Canvas API style color string to the string buffer
+  // Double ^ 4 -> ()
+  function writeRGBAStringToBuffer(r,g,b,a) {
+    r=+r
+    g=+g
+    b=+b
+    a=+a
+
+    // Prelude Data.Bits> fmap fromEnum "rgba(255,  0,  0,0.50)"
+    // [114,103,98,97,40,50,53,53, 44,32,32,48,44,32,32,48,44,48,46,53,48,41]
+
+   // FIXME write opacity
+   // FIXME do not repeatedly write "rgba" etc (just once before 1st render)
+
+    // Zero is the string buffer offset (see above)
+    HEAPU8 [(0 + (0<<0)) >> 0] = 114 // 'r'
+    HEAPU8 [(0 + (1<<0)) >> 0] = 103 // 'g'
+    HEAPU8 [(0 + (2<<0)) >> 0] = 98 // 'b'
+    HEAPU8 [(0 + (3<<0)) >> 0] = 97 // 'a'
+    HEAPU8 [(0 + (4<<0)) >> 0] = 40 // '('
+    writeColorString(5, r)
+    HEAPU8 [(0 + (8<<0)) >> 0] = 44 // ','
+    writeColorString(9, g)
+    HEAPU8 [(0 + (12<<0)) >> 0] = 44 // ','
+    writeColorString(13, b)
+    HEAPU8 [(0 + (16<<0)) >> 0] = 44 // ','
+    HEAPU8 [(0 + (17<<0)) >> 0] = 48 // 'X'
+    HEAPU8 [(0 + (18<<0)) >> 0] = 46 // '.'
+    HEAPU8 [(0 + (19<<0)) >> 0] = 53 // 'X'
+    HEAPU8 [(0 + (20<<0)) >> 0] = 48 // 'X'
+    HEAPU8 [(0 + (21<<0)) >> 0] = 41 // ')'
+
+  }
+
+#define NODE_TYPE_CIRCLE          0
+#define NODE_TYPE_RECT            1
+
+#define NODE_TYPE_TRANSF          32
+
+#define NODE_TYPE_FILL_COLOR      64
+#define NODE_TYPE_STROKE_COLOR    65
+#define NODE_TYPE_LINE_WIDTH      66
+#define NODE_TYPE_LINE_CAP        67
+#define NODE_TYPE_LINE_JOIN       68
+#define NODE_TYPE_LINE_DASH       69
+#define NODE_TYPE_GRADIENT_LINEAR 70
+// TODO text, embedded bitmaps, composites/masks
+
+#define NODE_TYPE_AP2              128
+#define NODE_TYPE_AP3              129
+#define NODE_TYPE_AP4              130
 
   // Double ^ 3 -> Drawing*
   function primCircle(x, y, rad) {
@@ -382,71 +314,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   // }
 
 
-  function drawCircle(x,y,r) {
-    x=+x
-    y=+y
-    r=+r
-    _beginPath();
-    _arc(x,y,r,0, 6.283185307179586,0/*false*/);
-    _fill();
-  }
-  function drawRect(x,y,w,h) {
-    x=+x
-    y=+y
-    w=+w
-    h=+h
-    // _rect(x,y,w,h);
-    // _fill();
-    _fillRect(x,y,w,h);
-  }
-
-  // function renderFillColor(r, g, b, a) {
-  //   _fillStyle_(r, g, b, a)
-  // }
-  // function renderTransf(opts,a,b,c,d,e,f,sub) {
-  //     _save()
-  //     _transform(a,b,c,d,e,f)
-  //     render(opts, sub)
-  //     _restore()
-  // }
-
-  // Write the given RGBA as a Canvas API style color string to the string buffer
-  // FIXME actually write the given color instead of the hardcorded pink below...
-  // Double ^ 4 -> ()
-  function writeRGBAStringToBuffer(r,g,b,a) {
-    r=+r
-    g=+g
-    b=+b
-    a=+a
-
-    // Prelude Data.Bits> fmap fromEnum "rgba(255,  0,  0,0.50)"
-    // [114,103,98,97,40,50,53,53, 44,32,32,48,44,32,32,48,44,48,46,53,48,41]
-
-    // Zero is the string buffer offset (see above)
-    HEAPU8 [(0 + (0<<0)) >> 0] = 114 // 'r'
-    HEAPU8 [(0 + (1<<0)) >> 0] = 103 // 'g'
-    HEAPU8 [(0 + (2<<0)) >> 0] = 98 // 'b'
-    HEAPU8 [(0 + (3<<0)) >> 0] = 97 // 'a'
-    HEAPU8 [(0 + (4<<0)) >> 0] = 40 // '('
-    HEAPU8 [(0 + (5<<0)) >> 0] = 50 // 'X'
-    HEAPU8 [(0 + (6<<0)) >> 0] = 53 // 'X'
-    HEAPU8 [(0 + (7<<0)) >> 0] = 53 // 'X'
-    HEAPU8 [(0 + (8<<0)) >> 0] = 44 // ','
-    HEAPU8 [(0 + (9<<0)) >> 0] = 32 // 'X'
-    HEAPU8 [(0 + (10<<0)) >> 0] = 32 // 'X'
-    HEAPU8 [(0 + (11<<0)) >> 0] = 48 // 'X'
-    HEAPU8 [(0 + (12<<0)) >> 0] = 44 // ','
-    HEAPU8 [(0 + (13<<0)) >> 0] = 32 // 'X'
-    HEAPU8 [(0 + (14<<0)) >> 0] = 32 // 'X'
-    HEAPU8 [(0 + (15<<0)) >> 0] = 48 // 'X'
-    HEAPU8 [(0 + (16<<0)) >> 0] = 44 // ','
-    HEAPU8 [(0 + (17<<0)) >> 0] = 48 // 'X'
-    HEAPU8 [(0 + (18<<0)) >> 0] = 46 // '.'
-    HEAPU8 [(0 + (19<<0)) >> 0] = 53 // 'X'
-    HEAPU8 [(0 + (20<<0)) >> 0] = 48 // 'X'
-    HEAPU8 [(0 + (21<<0)) >> 0] = 41 // ')'
-
-  }
 
   // Opts* -> Drawing* -> ()
   function render(opts,dr) {
@@ -548,34 +415,19 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       case NODE_TYPE_AP2:
         dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
-        // _debug(1, dr1|0)
-        // _debug(1, dr2|0)
-        // console.log("Rendering ap2 drawing: ", dr1, dr2)
+
         render(opts,dr1)
-        // render(opts,dr2)
+        // Manual tail-call opt: Instead of calling 'render(opts,dr2)', we update the parameters and set 'cont = 1'
         opts = opts
         dr = dr2
         cont = 1
+
         break;
     }
     }
     while(cont);
-
-    // if (drType == 0) {
-    //   // drawCircle(context, drawing.x, drawing.y, drawing.rad);
-    // } else
-    // if (drType == 32) {
-    // //   // renderTransf(opts,context,drawing)
-    // } else
-    // if (drType == 64) {
-    // //   // renderStyle(opts,context,drawing)
-    // } else
-    // if (drType == 128) {
-    // //   // for (var i = 0, len = drawing.children.length; i < len; i++) {
-    // //     // render(opts, drawing.children[i]);
-    //   }
-    // }
   }
+
   // etc
   return { render : render
       , primCircle : primCircle
@@ -596,6 +448,8 @@ function createRenderer(c2) {
   var heap = new ArrayBuffer( 0x1000000)
   globalHepRef = heap // TODO debug
   var HEAPU8 = new Uint8Array(heap);
+  var textBuffer = new Uint8Array(heap, 0, 22);
+  var utf8d = new TextDecoder("utf-8");
 
   var res = new AsmDrawingRenderer(window,
       { beginPath:
@@ -606,14 +460,7 @@ function createRenderer(c2) {
         function (x) { c.fill() }
       , fillStyleRGBAFromStringBuffer:
         function () {
-
-          var str = "";
-          for (var i = 0; i < 22; i++) {
-          	str += String.fromCharCode(HEAPU8[i]);
-          }
-          c.fillStyle = str
-          // console.log(str)
-          // FIXME test without allocation (write to c.fillStyle)
+          c.fillStyle = utf8d.decode(textBuffer)
         }
       , fillStyleRGBA:
         // x=>console.log('fillStyle_')
@@ -705,6 +552,12 @@ function createRenderer(c2) {
   return res
 }
 
+function enumFromZeroTo(n) {
+  return [...Array(n).keys()]
+}
+
+
+
 
 var fastDrawing = -1
 var fastRenderer = null
@@ -723,19 +576,19 @@ function setupFast () {
   r = fastRenderer
   fastDrawing =
     r.ap(
-     enumFromZeroTo(nElems).map(function (dummy) {
-        return r.primFillColor(Math.random(),0.1,Math.random(),0.8,
+     enumFromZeroTo(nElems).map(function (n) {
+        return r.primFillColor(Math.random(),0.3,Math.random()*0.5,0.8,
          r.scale(1,1,
-           r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
-          //  r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
+          //  r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
+           r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
           )
         )
-      }
-      )
+      })
      )
 }
 function loopFast () {
-    fastTrans = (fastTrans + 10.0) //% 1900
+    fastTrans = (fastTrans + 10.0) % 1900
+
     fastContext.clearRect(0.0, 0, dims.x, dims.y);
     fastRenderer.render(0,
         fastRenderer.primTransf(1+fastTrans*-0.001,0*0.002,0,1,fastTrans,0,
