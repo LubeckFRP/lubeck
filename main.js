@@ -417,10 +417,12 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
 
         render(opts,dr1)
+
+        render(opts,dr2)
         // Manual tail-call opt: Instead of calling 'render(opts,dr2)', we update the parameters and set 'cont = 1'
-        opts = opts
-        dr = dr2
-        cont = 1
+        // opts = opts
+        // dr = dr2
+        // cont = 1
 
         break;
     }
@@ -583,6 +585,13 @@ function createRenderer(c2) {
 function enumFromZeroTo(n) {
   return [...Array(n).keys()]
 }
+function replicate(n,x) {
+  return enumFromZeroTo(n).map(d => x)
+}
+function replicateM(n,x) {
+  return enumFromZeroTo(n).map(d => x())
+}
+
 
 
 
@@ -606,6 +615,7 @@ function setupFast () {
 
   r = fastRenderer
   fastDrawing =
+    r.ap(replicateM(50,_ =>
     r.blue(r.ap(
         [ r.translateX(0,r.scale(1,r.randPosRect()))
         , r.red(r.scale(1,r.randPosRect()))
@@ -613,12 +623,12 @@ function setupFast () {
         , r.randCol(r.scale(2,r.randPosRect()))
         , r.red(r.scale(Math.random(),r.randPosRect()))
         , r.red(r.scale(Math.random(),r.randPosRect()))
+        , r.red(r.scale(Math.random(),r.randPosCircle()))
         , r.red(r.scale(Math.random(),r.randPosRect()))
         , r.red(r.scale(Math.random(),r.randPosRect()))
         , r.red(r.scale(Math.random(),r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
-        , r.red(r.scale(Math.random(),r.randPosRect()))
-        ]))
+        , r.red(r.scale(Math.random(),r.randPosCircle()))
+      ]))))
 
   // r.primFillColor(Math.random()*0.8+0.2,0.2,0.2,1.3,
   //   r.ap(
