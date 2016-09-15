@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
 var nElems  = 1000
-
+var nMaxFrames = 60*1
 
 
 
@@ -570,6 +570,14 @@ function createRenderer(c2) {
   res.blue = function (dr) {
     return res.primFillColor(0,0,1,1,dr)
   }
+  // In radians
+  res.rotate = function(a,dr) {
+    return res.primTransf(Math.cos(a), 0 - Math.sin(a), Math.sin(a), Math.cos(a), 0, 0, dr)
+  }
+  // In radians
+  res.rotateT = function(r,dr) {
+    return res.rotate(r * Math.PI*2, dr)
+  }
   res.randCol = function (dr) {
     return res.primFillColor(Math.random(),Math.random(),Math.random(),1,dr)
   }
@@ -600,6 +608,7 @@ var fastDrawing = -1
 var fastRenderer = null
 var fastContext = null
 var fastTrans = 0.0
+var fastFrames = 0
 function setupFast () {
   console.log("Starting fast rendering")
   var canvas = document.getElementById('canvas');
@@ -615,7 +624,7 @@ function setupFast () {
 
   r = fastRenderer
   fastDrawing =
-    r.ap(replicateM(50,_ =>
+    r.ap(replicateM(100,_ =>
     r.blue(r.ap(
         [ r.translateX(0,r.scale(1,r.randPosRect()))
         , r.red(r.scale(1,r.randPosRect()))
@@ -642,15 +651,18 @@ function setupFast () {
   //   ))
 }
 function loopFast () {
-    fastTrans = (fastTrans + 10.0) % 1900
+    fastTrans = fastFrames * 2/60
 
     fastContext.clearRect(0.0, 0, dims.x, dims.y);
     fastRenderer.render(0,
-        fastRenderer.primTransf(1+fastTrans*-0.001,0*0.002,0,1,fastTrans,0,
-            fastDrawing
+      fastRenderer.translate(dims.x/2, dims.y/2,
+        fastRenderer.rotateT(fastTrans,
+            fastRenderer.translate(-dims.x/2, -dims.y/2, fastDrawing)
           )
+        )
       )
     // console.log('Frame')
+    if (fastFrames++ < nMaxFrames)
     requestAnimationFrame(loopFast)
 }
 setupFast()
