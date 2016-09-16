@@ -80,7 +80,7 @@ var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 #define NODE_TYPE_AP4             130
 // Largest possible node value
 // Also serves as mask for node values, so we can reuse remaining bits for GC tags etc
-#define NODE_MAX_VALUE            0xfff // 4095
+#define NODE_TYPE_MAX_VALUE       0xfff // 4095
 
 // Misc
 #define STYLE_LINE_CAP_BUTT        0
