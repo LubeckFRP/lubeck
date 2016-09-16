@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
-var nElems  = 10
-var nMaxFrames = 60*1000
+var nElems  = 3000
+var nMaxFrames = 60*1
 var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 
 
