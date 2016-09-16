@@ -1,7 +1,7 @@
 
 var dims = {x:1900, y:1500}
-var nElems  = 1000
-var nMaxFrames = 60*1
+var nElems  = 10
+var nMaxFrames = 60*1000
 var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 
 
@@ -53,7 +53,8 @@ var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 // This region is not currently used
 #define HEAP_UNUSED_OFFSET       36
 // This region stores the tuples. Its size is (heap size - HEAP_TUPLES_OFFSET).
-#define HEAP_TUPLES_OFFSET       0x1000 // 4096
+#define HEAP_TUPLES_OFFSET       0x1000
+// 4096
 
 
 // Primitives
@@ -107,6 +108,12 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _fill = foreign.fill;
   var _fillStyleRGBA = foreign.fillStyleRGBA;
   var _fillStyleFromColorBuffer = foreign.fillStyleFromColorBuffer
+  var _strokeStyleFromColorBuffer = foreign.strokeStyleFromColorBuffer
+  var _lineWidth = foreign.lineWidth
+  var _lineCap = foreign.lineCap
+  var _lineJoin = foreign.lineJoin
+  var _lineDash = foreign.lineDash
+
   var _arc = foreign.arc;
   // var _rect = foreign.rect;
   var _fillRect = foreign.fillRect;
@@ -118,6 +125,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _max = stdlib.Math.max;
   var _min = stdlib.Math.min;
 
+
   var tuplesCreated = 0
 
   // Return pointer to the first slot as a pointer (byte offset)
@@ -128,8 +136,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     next = tuplesCreated
     tuplesCreated = tuplesCreated + 1|0
     // return (next * 4)|0
-    return ((next * 8) << 2) + HEAP_TUPLES_OFFSET|0
+    return (((next * 8) << 2) + HEAP_TUPLES_OFFSET) |0
   }
+    // TODO fix this and remaining warnings, push
+    // TODO solve preprocessor line offset (so we can still use FF for validation)
+    // TODO add remaining styles + test
+    // TODO add remaining shapes + test
+    // TODO text (probably best if this is never transmitted into the render (i.e. use external map and let
+    // text nodes include indices))
+    // TODO test with Lubeck
+    // TODO basic GC
+    // TODO event detection (tag single node and map position to that)
 
   // Return offset of the string buffer as a pointer (byte offset)
   function getStringBufferOffset() {
@@ -354,6 +371,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     // drawCircle(1.,2.,3.)
 
     var drType = 0
+    var ai = 0
     var x = 0.
     var y = 0.
     var w = 0.
@@ -416,64 +434,64 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _restore()
         break;
 
-      case NODE_TYPE_STROKE_COLOR:
-        r = +HEAPF32[(dr+(1<<2)) >> 2];
-        g = +HEAPF32[(dr+(2<<2)) >> 2];
-        b = +HEAPF32[(dr+(3<<2)) >> 2];
-        a = +HEAPF32[(dr+(4<<2)) >> 2];
-        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
-        // console.log("Rendering fill: ", r, g, b, a)
-        // FIXME selective version of save/restore
-        _save()
-
-        // _fillStyleRGBA(r,g,b,a)
-        writeRGBAStringToBuffer(r,g,b,a)
-        _strokeStyleFromColorBuffer()
-
-        render(opts,dr1)
-        _restore()
-        break;
-
-      case NODE_TYPE_LINE_WIDTH:
-        a = +HEAPF32[(dr+(1<<2)) >> 2];
-        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
-        _save()
-        _lineWidth(a);
-        render(opts,dr1)
-        _restore()
-        break;
-
-      case NODE_TYPE_LINE_CAP:
-        a = HEAP32[(dr+(1<<2)) >> 2]|0;
-        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
-        _save()
-        _linCap(a);
-        render(opts,dr1)
-        _restore()
-        break;
-
-      case NODE_TYPE_LINE_JOIN:
-        a = HEAP32[(dr+(1<<2)) >> 2]|0;
-        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
-        _save()
-        _lineJoin(a);
-        render(opts,dr1)
-        _restore()
-        break;
-
-      case NODE_TYPE_LINE_DASH:
-        a = HEAP32[(dr+(1<<2)) >> 2]|0; // Number of slots used
-        b = +HEAPF32[(dr+(2<<2)) >> 2]; // Slots 2-6 store the actual values
-        c = +HEAPF32[(dr+(3<<2)) >> 2];
-        d = +HEAPF32[(dr+(4<<2)) >> 2];
-        e = +HEAPF32[(dr+(5<<2)) >> 2];
-        f = +HEAPF32[(dr+(6<<2)) >> 2];
-        dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
-        _save()
-        _lineDash(a,b,c,d,e,f);
-        render(opts,dr1)
-        _restore()
-        break;
+      // case NODE_TYPE_STROKE_COLOR:
+      //   r = +HEAPF32[(dr+(1<<2)) >> 2];
+      //   g = +HEAPF32[(dr+(2<<2)) >> 2];
+      //   b = +HEAPF32[(dr+(3<<2)) >> 2];
+      //   a = +HEAPF32[(dr+(4<<2)) >> 2];
+      //   dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+      //   // console.log("Rendering fill: ", r, g, b, a)
+      //   // FIXME selective version of save/restore
+      //   _save()
+      //
+      //   // _fillStyleRGBA(r,g,b,a)
+      //   writeRGBAStringToBuffer(r,g,b,a)
+      //   _strokeStyleFromColorBuffer()
+      //
+      //   render(opts,dr1)
+      //   _restore()
+      //   break;
+      //
+      // case NODE_TYPE_LINE_WIDTH:
+      //   a = +HEAPF32[(dr+(1<<2)) >> 2];
+      //   dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+      //   _save()
+      //   _lineWidth(a);
+      //   render(opts,dr1)
+      //   _restore()
+      //   break;
+      //
+      // case NODE_TYPE_LINE_CAP:
+      //   a = +HEAPF32[(dr+(1<<2)) >> 2];
+      //   dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+      //   _save()
+      //   _lineCap(a);
+      //   render(opts,dr1)
+      //   _restore()
+      //   break;
+      //
+      // case NODE_TYPE_LINE_JOIN:
+      //   a = +HEAPF32[(dr+(1<<2)) >> 2];
+      //   dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+      //   _save()
+      //   _lineJoin(a);
+      //   render(opts,dr1)
+      //   _restore()
+      //   break;
+      //
+      // case NODE_TYPE_LINE_DASH:
+      //   ai = HEAP32[(dr+(1<<2)) >> 2]|0; // Number of slots used
+      //   b = +HEAPF32[(dr+(2<<2)) >> 2]; // Slots 2-6 store the actual values
+      //   c = +HEAPF32[(dr+(3<<2)) >> 2];
+      //   d = +HEAPF32[(dr+(4<<2)) >> 2];
+      //   e = +HEAPF32[(dr+(5<<2)) >> 2];
+      //   f = +HEAPF32[(dr+(6<<2)) >> 2];
+      //   dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
+      //   _save()
+      //   _lineDash(a,b,c,d,e,f);
+      //   render(opts,dr1)
+      //   _restore()
+      //   break;
 
       // TODO figure out a good heap repr for linear gradients
       // I.e. one tuple for (x0, y0, x1, y1, stops, dr)
@@ -555,6 +573,27 @@ function createRenderer(c2) {
         function () {
           c.fillStyle = utf8d.decode(colorBuffer)
         }
+      , strokeStyleFromColorBuffer:
+      function () {
+        c.strokeStyle = utf8d.decode(colorBuffer)
+      }
+      , lineWidth:
+      function (x) {
+        c.lineWidth = x
+      }
+      , lineCap:
+      function (x) {
+        c.lineCap = 0 // FIXME
+      }
+      , lineJoin:
+      function (x) {
+        c.lineJoin = 0 // FIXME
+      }
+      , lineDash:
+      function (x) {
+        c.lineDash = 0 // FIXME
+      }
+
       , fillStyleRGBA:
         // x=>console.log('fillStyle_')
         // FIXME
@@ -719,7 +758,7 @@ function setupFast () {
 
   r = fastRenderer
   fastDrawing =
-    r.ap(replicateM(300,_ =>
+    r.ap(replicateM(Math.floor(nElems/12),_ =>
     r.blue(r.ap(
         [ r.translateX(0,r.scale(1,r.randPosRect()))
         , r.red(r.scale(1,r.randPosRect()))
