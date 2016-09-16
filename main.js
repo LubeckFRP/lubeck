@@ -603,16 +603,14 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 var globalHepRef = {}
 
 function createRenderer(c2) {
-  // TODO generate and link a proper drawing context
   const c = c2
-  // Renderer is linked here...
 
-  var heap = new ArrayBuffer(nHeapSize)
-  globalHepRef = heap // TODO debug
-  var HEAPU8 = new Uint8Array(heap);
+  var heap        = new ArrayBuffer(nHeapSize)
+
   var colorBuffer = new Uint8Array(heap, HEAP_COLOR_BUFFER_OFFSET, 22);
-  var utf8d = new TextDecoder("utf-8");
+  var utf8d       = new TextDecoder("utf-8");
 
+  // ASM module is linked here...
   var res = new AsmDrawingRenderer(window,
       { beginPath:
         function (x) { c.beginPath() }
@@ -801,6 +799,10 @@ function createRenderer(c2) {
   return res
 }
 
+
+
+// Example code
+
 function enumFromZeroTo(n) {
   return [...Array(n).keys()]
 }
@@ -810,14 +812,6 @@ function replicate(n,x) {
 function replicateM(n,x) {
   return enumFromZeroTo(n).map(d => x())
 }
-
-
-
-
-
-
-
-// Example code
 
 var fastDrawing = -1
 var fastRenderer = null
