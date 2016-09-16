@@ -1,6 +1,6 @@
 
 var dims = {x:1900, y:1500}
-var nElems  = 5000
+var nElems  = 1000
 var nMaxFrames = 60*10
 var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 
@@ -889,12 +889,18 @@ function loopFast () {
     fastTrans = fastFrames * 2/60
 
     fastContext.clearRect(0.0, 0, dims.x, dims.y);
+    var r = fastRenderer
+    var dr = r.ap(replicateM(100, dummy =>
+        r.red(r.randPosRect())
+      ))
     fastRenderer.render(0,
-      fastRenderer.translate(dims.x/2, dims.y/2,
-        fastRenderer.rotateT(fastTrans,
-            fastRenderer.translate(-dims.x/2, -dims.y/2, fastDrawing)
-          )
-        )
+      dr
+
+      // fastRenderer.translate(dims.x/2, dims.y/2,
+      //   fastRenderer.rotateT(fastTrans,
+      //       fastRenderer.translate(-dims.x/2, -dims.y/2, fastDrawing)
+      //     )
+      //   )
       )
     // console.log('Frame')
     if (fastFrames++ < nMaxFrames)
