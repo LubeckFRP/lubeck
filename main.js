@@ -1,6 +1,6 @@
 
 var dims = {x:1900, y:1500}
-var nElems  = 1000
+var nElems  = 5000
 var nMaxFrames = 60*10
 var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 
@@ -843,13 +843,13 @@ function setupFast () {
   fastDrawing =
     r.ap(
       [ r.empty()
-      , r.ap(replicateM(Math.floor(nElems/12),_ =>
+      , r.ap(replicateM(Math.floor(nElems/2),_ =>
           r.blue(r.ap(
               [ r.empty()
-              , r.primLineWidth(10, r.primStrokeColor(0,0,0,0, r.red(r.scale(1*(0.8+0.2*Math.random()),r.randPosCircle()))))
+              , r.primLineWidth(10, r.primStrokeColor(0,0,0,0, r.red(r.scale(0.5*(0.8+0.2*Math.random()),r.randPosRect()))))
               // , r.randCol(r.scale(0.8+0.2*Math.random(),r.randPosRect()))
             ]))))
-      , r.ap(replicateM(Math.floor(nElems/12),_ =>
+      , r.ap(replicateM(Math.floor(nElems/2),_ =>
           r.blue(r.ap(
               [ r.empty()
               // , r.primLineWidth(10, r.primStrokeColor(0,0,0,1, r.red(r.scale(2*(0.8+0.2*Math.random()),r.randPosCircle()))))
