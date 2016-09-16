@@ -129,6 +129,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
 
   var tuplesCreated = 0
+  var renderingStateSetupDone = 0
 
   // Return pointer to the first slot as a pointer (byte offset)
   // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
@@ -242,6 +243,22 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAPU8[(ptr + 3) >> 0] = 48 + d3
   }
 
+  function setupColorBuffer() {
+    HEAPU8 [(0 + (0<<0)) >> 0] = 114 // 'r'
+    HEAPU8 [(0 + (1<<0)) >> 0] = 103 // 'g'
+    HEAPU8 [(0 + (2<<0)) >> 0] = 98 // 'b'
+    HEAPU8 [(0 + (3<<0)) >> 0] = 97 // 'a'
+    HEAPU8 [(0 + (4<<0)) >> 0] = 40 // '('
+    // writeColorString(5, r)
+    HEAPU8 [(0 + (8<<0)) >> 0] = 44 // ','
+    // writeColorString(9, g)
+    HEAPU8 [(0 + (12<<0)) >> 0] = 44 // ','
+    // writeColorString(13, b)
+    HEAPU8 [(0 + (16<<0)) >> 0] = 44 // ','
+    // writeAlphaString(17, a)
+    HEAPU8 [(0 + (21<<0)) >> 0] = 41 // ')'
+  }
+
   // Write the given RGBA as a Canvas API style color string to the string buffer
   // Double ^ 4 -> ()
   function writeRGBAStringToBuffer(r,g,b,a) {
@@ -257,19 +274,19 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
    // FIXME do not repeatedly write "rgba" etc (just once before 1st render)
 
     // Zero is the string buffer offset (see above)
-    HEAPU8 [(0 + (0<<0)) >> 0] = 114 // 'r'
-    HEAPU8 [(0 + (1<<0)) >> 0] = 103 // 'g'
-    HEAPU8 [(0 + (2<<0)) >> 0] = 98 // 'b'
-    HEAPU8 [(0 + (3<<0)) >> 0] = 97 // 'a'
-    HEAPU8 [(0 + (4<<0)) >> 0] = 40 // '('
+    // HEAPU8 [(0 + (0<<0)) >> 0] = 114 // 'r'
+    // HEAPU8 [(0 + (1<<0)) >> 0] = 103 // 'g'
+    // HEAPU8 [(0 + (2<<0)) >> 0] = 98 // 'b'
+    // HEAPU8 [(0 + (3<<0)) >> 0] = 97 // 'a'
+    // HEAPU8 [(0 + (4<<0)) >> 0] = 40 // '('
     writeColorString(5, r)
-    HEAPU8 [(0 + (8<<0)) >> 0] = 44 // ','
+    // HEAPU8 [(0 + (8<<0)) >> 0] = 44 // ','
     writeColorString(9, g)
-    HEAPU8 [(0 + (12<<0)) >> 0] = 44 // ','
+    // HEAPU8 [(0 + (12<<0)) >> 0] = 44 // ','
     writeColorString(13, b)
-    HEAPU8 [(0 + (16<<0)) >> 0] = 44 // ','
+    // HEAPU8 [(0 + (16<<0)) >> 0] = 44 // ','
     writeAlphaString(17, a)
-    HEAPU8 [(0 + (21<<0)) >> 0] = 41 // ')'
+    // HEAPU8 [(0 + (21<<0)) >> 0] = 41 // ')'
 
   }
 
@@ -403,21 +420,15 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
 
 
+  function setupRenderingState() {
+    setupColorBuffer()
+  }
+
+  // Render without checking that setupRenderingState has been called
   // Opts* -> Drawing* -> ()
-  function render(opts,dr) {
+  function renderWithoutCheck(opts,dr) {
     opts = opts|0;
     dr = dr|0;
-    // var drType = 0|0;
-
-    // var t = 0
-    // t = (newTuple()|0)
-    // _debug(t|0)
-    // t = (newTuple()|0)
-    // _debug(t|0)
-    // t = (newTuple()|0)
-    // _debug(t|0)
-    //
-    // drawCircle(1.,2.,3.)
 
     var drType = 0
     var ai = 0
@@ -438,8 +449,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var dr1 = 0
     var dr2 = 0
 
-    //DEBUG see below
-    var i = 0
+    // var i = 0
     var cont = 0
 
     do {
@@ -479,7 +489,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         writeRGBAStringToBuffer(r,g,b,a)
         _fillStyleFromColorBuffer()
 
-        render(opts,dr1)
+        renderWithoutCheck(opts,dr1)
         _restore()
         break;
 
@@ -497,7 +507,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         writeRGBAStringToBuffer(r,g,b,a)
         _strokeStyleFromColorBuffer()
 
-        render(opts,dr1)
+        renderWithoutCheck(opts,dr1)
         _restore()
         break;
 
@@ -506,7 +516,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
         _save()
         _lineWidth(a);
-        render(opts,dr1)
+        renderWithoutCheck(opts,dr1)
         _restore()
         break;
       //
@@ -515,7 +525,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       //   dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
       //   _save()
       //   _lineCap(a);
-      //   render(opts,dr1)
+      //   renderWithoutCheck(opts,dr1)
       //   _restore()
       //   break;
       //
@@ -524,7 +534,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       //   dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
       //   _save()
       //   _lineJoin(a);
-      //   render(opts,dr1)
+      //   renderWithoutCheck(opts,dr1)
       //   _restore()
       //   break;
       //
@@ -562,7 +572,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // Or simply apply inverted matrix when done http://stackoverflow.com/a/18504573
         _save()
         _transform(a,b,c,d,e,f)
-        render(opts,dr1)
+        renderWithoutCheck(opts,dr1)
         _restore()
         break;
 
@@ -570,10 +580,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
 
-        render(opts,dr1)
+        renderWithoutCheck(opts,dr1)
 
         // render(opts,dr2)
-        // Manual tail-call opt: Instead of calling 'render(opts,dr2)', we update the parameters to render() and set 'cont = 1'
+        // Manual tail-call opt: Instead of calling this function again, we update the parameters and set cont to true
         opts = opts
         dr   = dr2
         cont = 1
@@ -586,6 +596,19 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     }
     }
     while(cont);
+  }
+
+
+  // Opts* -> Drawing* -> ()
+  function render(opts,dr) {
+    opts = opts|0;
+    dr = dr|0;
+
+    if (!renderingStateSetupDone) {
+      setupRenderingState()
+      renderingStateSetupDone = 1
+    }
+    renderWithoutCheck(opts,dr)
   }
 
   // etc
@@ -823,7 +846,7 @@ function setupFast () {
   var canvas = document.getElementById('canvas');
 
   fastContext = canvas.getContext('2d');
-  fastContext.fillStyle = "rgba(0,0,0,0)"
+  fastContext.fillStyle   = "rgba(0,0,0,0)"
   fastContext.strokeStyle = "rgba(0,0,0,0)"
   // WebGL2D.enable(canvas);
   // fastContext = canvas.getContext('webgl-2d');
