@@ -265,12 +265,12 @@ renderPicture r p = render r $ getPicture p r
 --   performMajorGC
 
 dr :: Rand StdGen Picture
-dr = mconcat <$> replicateM 2000 g
+dr = red <$> mconcat <$> replicateM 1000 g
   where
     g = do
       x <- getRandom
       y <- getRandom
-      pure $ red $ rect (400*x) (400*y) 20 20
+      pure $ rect (400*x) (400*y) 5 5
 
 -- dr :: IO Picture
 -- dr = mconcat <$> replicateM 200 g
@@ -324,7 +324,7 @@ main = do
           modifyIORef' rotation (+ 0.002)
 
           -- FIXME commented out gives us a double free
-          render r $ ({-fmap (fin_ r) .-} translate' 200 200 =<< {-fmap (fin_ r) .-}  rotate' (n*pi*2) =<< pure dr_) r
+          render r $ ({-fmap (fin_ r) .-} translate' 400 400 =<< {-fmap (fin_ r) .-}  rotate' (n*pi*2) =<< pure dr_) r
           -- renderPicture r (translate 800 800 $ rotate (n*pi*2) dr')
 
 
