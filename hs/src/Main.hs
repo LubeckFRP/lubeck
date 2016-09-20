@@ -111,8 +111,8 @@ newtype Picture = Picture { getPicture :: R Drawing }
 rect :: Double -> Double -> Double -> Double -> Picture
 rect x y w h = Picture $ rect' x y w h
 
-rect :: Double -> Double -> Double -> Picture
-rect x y r = Picture $ rect' x y r
+circle :: Double -> Double -> Double -> Picture
+circle x y r = Picture $ circle' x y r
 
 red :: Picture -> Picture
 red (Picture rdr) = Picture $ do
