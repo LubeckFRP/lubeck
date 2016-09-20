@@ -96,9 +96,11 @@
 // 4096
 
 
+// Indicates that a slot is free and can be re-used by the allocator
+#define NODE_TYPE_FREE            0
 // Primitives
-#define NODE_TYPE_CIRCLE          0
-#define NODE_TYPE_RECT            1
+#define NODE_TYPE_CIRCLE          1
+#define NODE_TYPE_RECT            2
 
 // Styles
 #define NODE_TYPE_FILL_COLOR      64
@@ -130,7 +132,8 @@
 #define STYLE_LINE_CAP_ROUND       1
 #define STYLE_LINE_CAP_METER       2
 
-#define ERROR_TYPE_UNKNOWN        0
+#define ERROR_TYPE_UNKNOWN         0
+#define ERROR_OUT_OF_MEMORY        1
 
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
@@ -169,12 +172,30 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
 
   var tuplesCreated = 0
-  var maxTuples = 0
   var renderingStateSetupDone = 0
+
+  function slotIndexToPtr(i) {
+    i = i|0
+    return (((i * 8) << 2) + HEAP_TUPLES_OFFSET) |0
+  }
 
   // Return pointer to the first slot as a pointer (byte offset)
   // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
   function newTuple() {
+    // TODO this one just allocates till we run out of memory
+    // Switch to scanning allocater when needed
+    var max = 0
+    max = getMaxNumberOfTuples()|0;
+    if ((tuplesCreated|0) < (max|0)) {
+      return allocateTupleInitPhase()|0
+    } else {
+      return allocateTupleScanning()|0
+    }
+    // Never happens:
+    return 0|0
+  }
+
+  function allocateTupleInitPhase() {
     // Treet first 8 bytes in
     var next = 0;
     next = tuplesCreated
@@ -182,6 +203,25 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     // return (next * 4)|0
     return (((next * 8) << 2) + HEAP_TUPLES_OFFSET) |0
   }
+
+  function allocateTupleScanning() {
+    var max = 0
+    var i = 0
+    var ptr = 0
+    max = getMaxNumberOfTuples()|0
+    while ( (i|0) < (max|0)) {
+      // Check that slot is free
+      ptr = slotIndexToPtr(i)|0
+      if ( ((HEAP32[ptr >> 2])|0) == NODE_TYPE_FREE ) {
+        return ptr|0
+      }
+      i = (i + 1)|0
+    }
+    _debug(ERROR_OUT_OF_MEMORY)
+    return 0xffffffff|0
+  }
+
+
 
   function getCurrentTuples() {
     return tuplesCreated|0;
@@ -192,15 +232,59 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return ((tupleBytes|0)/(32|0))|0;
   }
 
+  function getPtrType(ptr) {
+    ptr = ptr|0
+    var slot1 = 0
+    slot1 = HEAP32[(ptr+(0<<2)) >> 2]|0
+    return (slot1 & NODE_TYPE_MAX_VALUE)|0
+  }
+
   function addToRefCount(ptr,val) {
     ptr = ptr|0
+    val = val|0 // TODO verify this works for signed things
+
+    var rc = 0
+    rc = getRefCount(ptr)|0
+    setRefCount(ptr, (rc + val)|0 )
+    return
+  }
+  function setRefCount(ptr,val) {
+    ptr = ptr|0
     val = val|0
+
+    var type = 0
+    type = getPtrType(ptr)|0;
+    HEAP32[(ptr+(0<<2)) >> 2] = ((val << 12) | type);
+
     // TODO
+    // ptr|0xfff
+    return
   }
   function getRefCount(ptr) {
     ptr = ptr|0
+
+    var slot1 = 0
+    slot1 = HEAP32[(ptr+(0<<2)) >> 2]|0
+
     // TODO
-    return 1|0;
+    // ptr|0xfff
+    return (slot1 >> 12)|0;
+  }
+
+  function claim(ptr) {
+    ptr = ptr|0
+    addToRefCount(ptr, 1)
+    return
+  }
+
+  function release(ptr) {
+    ptr = ptr|0
+    addToRefCount(ptr, -1)
+
+    // FIXME need to release sub-nodes here (depends on type)
+    // Mark the slot as free
+      HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
+    return
   }
 
     // TODO fix this and remaining warnings, push
@@ -516,7 +600,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     do {
     cont = 0
-    drType = HEAP32[(dr+(0<<2)) >> 2]|0;
+    drType = getPtrType(dr)|0;
 
     switch (drType|0) {
 
@@ -684,6 +768,16 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           , primAp2 : primAp2
           , getMaxNumberOfTuples : getMaxNumberOfTuples
           , getCurrentTuples : getCurrentTuples
+
+          , getPtrType : getPtrType
+          , addToRefCount : addToRefCount
+          , getRefCount : getRefCount
+
+          , allocateTupleInitPhase : allocateTupleInitPhase
+          , allocateTupleScanning : allocateTupleScanning
+
+          , claim : claim
+          , release : release
           }
 }
 
@@ -816,6 +910,9 @@ function createRenderer(c2) {
           switch (msg) {
             case ERROR_TYPE_UNKNOWN:
               console.log("Error: ", "Unknown node type")
+              break;
+            case ERROR_OUT_OF_MEMORY:
+              console.log("Error: ", "Out of memory")
               break;
             default:
               console.log("Error: ", "(unknown)")
