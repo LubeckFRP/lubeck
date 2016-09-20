@@ -1,8 +1,11 @@
 
-# CPP := cpp -P -undef -Wundef -std=c99 -nostdinc -Wtrigraphs -fdollars-in-identifiers -C
 CPP := stack build/cpp.hs
-JSMIN := jsmin
 
+.PHONY: hs
 .PHONY: main.out.js
+
+hs: main.out.js
+	(cd hs && stack build)
+
 main.out.js:
 	$(CPP) main.js main.out.js
