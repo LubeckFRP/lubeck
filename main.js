@@ -173,6 +173,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   var tuplesCreated = 0
   var renderingStateSetupDone = 0
+  var outOfMemoryReported = 0
 
   function slotIndexToPtr(i) {
     i = i|0
@@ -213,11 +214,18 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       // Check that slot is free
       ptr = slotIndexToPtr(i)|0
       if ( ((HEAP32[ptr >> 2])|0) == NODE_TYPE_FREE ) {
+        // We succeeded, so reset this state to report next time we
+        // run out of memory
+        outOfMemoryReported = 0
         return ptr|0
       }
       i = (i + 1)|0
     }
-    _debug(ERROR_OUT_OF_MEMORY)
+    // Handle out of memory state
+    if (!outOfMemoryReported) {
+      _debug(ERROR_OUT_OF_MEMORY)
+      outOfMemoryReported = 1
+    }
     return 0xffffffff|0
   }
 
@@ -271,19 +279,39 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return (slot1 >> 12)|0;
   }
 
+  // Note that new nodes have a refcount of 0
+
+  // We take this to mean EXTERNAL references, so nodes are reclaimed
+  // if release() is called when their ref count is 0
+
+  // That means, no need to call claim on NEW nodes, but it must be called
+  // on every argument to a node constructor.
+
   function claim(ptr) {
     ptr = ptr|0
     addToRefCount(ptr, 1)
     return
   }
 
+  function releaseChildren(ptr) {
+    ptr = ptr|0
+    // TODO
+    retur
+  }
+
   function release(ptr) {
     ptr = ptr|0
-    addToRefCount(ptr, -1)
+    rc = 0
+    rc = getRefCount(ptr)|0
+    if (rc == 0) {
+        // FIXME need to release sub-nodes here (depends on type)
+        releaseChildren(ptr)
+        // Mark the slot as free
+        HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
+    } else {
+      addToRefCount(ptr, -1)
+    }
 
-    // FIXME need to release sub-nodes here (depends on type)
-    // Mark the slot as free
-      HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
     return
   }
 
@@ -773,6 +801,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           , addToRefCount : addToRefCount
           , getRefCount : getRefCount
 
+          , newTuple : newTuple
           , allocateTupleInitPhase : allocateTupleInitPhase
           , allocateTupleScanning : allocateTupleScanning
 
