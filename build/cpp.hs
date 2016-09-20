@@ -74,7 +74,7 @@ parseAnyOtherLine = do
 -- Hacking, returns all lines with defines removed and resulting environemnt
 parseFile :: Parser ([String], Environment)
 parseFile = do
-  inp <- many $ P.try parseDefineLine <|> parseAnyOtherLine
+  inp <- many $ {-P.try-} parseDefineLine <|> parseAnyOtherLine
   st <- Parsec.getState
   pure (inp, st)
 
