@@ -169,7 +169,7 @@ dr = mconcat <$> replicateM 100 g
     g = do
       x <- getRandom
       y <- getRandom
-      pure $ mconcat [redA $ rect (1000*x) (1000*y) 10 10]
+      pure $ mconcat [blueA $ rect (1000*x) (1000*y) 10 10]
 
 main = do
   -- print "Without"
