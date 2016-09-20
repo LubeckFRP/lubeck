@@ -85,14 +85,15 @@
 
 */
 
-// #define HEAP_SIZE        0x1000000
-#define HEAP_SIZE        0x100000
+#define HEAP_SIZE        0x1000000
+// #define HEAP_SIZE        0x100000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
 // This region is not currently used
 #define HEAP_UNUSED_OFFSET       36
 // This region stores the tuples. Its size is (heap size - HEAP_TUPLES_OFFSET).
-#define HEAP_TUPLES_OFFSET       0x1000
+#define HEAP_TUPLES_OFFSET       36
+// 0x1000
 // 4096
 
 
@@ -101,6 +102,7 @@
 // Primitives
 #define NODE_TYPE_CIRCLE          1
 #define NODE_TYPE_RECT            2
+
 
 // Styles
 #define NODE_TYPE_FILL_COLOR      64
@@ -133,7 +135,9 @@
 #define STYLE_LINE_CAP_METER       2
 
 #define ERROR_TYPE_UNKNOWN         0
+#define ERROR_TYPE_UNKNOWN_RELEASE 2
 #define ERROR_OUT_OF_MEMORY        1
+#define ERROR_TYPE_FREE_PASSED_TO_RENDER 3
 
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
@@ -208,15 +212,18 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   function allocateTupleScanning() {
     var max = 0
     var i = 0
+    // var j = 0
     var ptr = 0
     max = getMaxNumberOfTuples()|0
     while ( (i|0) < (max|0)) {
+      // j = i
       // Check that slot is free
       ptr = slotIndexToPtr(i)|0
       if ( ((HEAP32[ptr >> 2])|0) == NODE_TYPE_FREE ) {
         // We succeeded, so reset this state to report next time we
         // run out of memory
         outOfMemoryReported = 0
+        // lastFoundTupleSlot = j // Start searching here next time
         return ptr|0
       }
       i = (i + 1)|0
@@ -316,16 +323,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var dr2 = 0
 
 
-    do {
     drType = getPtrType(dr)|0;
 
     switch (drType|0) {
 
+      case NODE_TYPE_FREE:
+        // FIXME should we really run into free nodes here?
+        break;
       case NODE_TYPE_CIRCLE:
         break;
       case NODE_TYPE_RECT:
         break;
-
       case NODE_TYPE_FILL_COLOR:
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
         release(dr1);
@@ -342,6 +350,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
       case NODE_TYPE_TRANSF:
         dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
+        // FIXME this line breaks tests
         release(dr1);
         break;
 
@@ -353,11 +362,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       default:
-        _debug(ERROR_TYPE_UNKNOWN);
+        _debug(ERROR_TYPE_UNKNOWN_RELEASE);
         break;
     }
-    }
-    while(0);
   }
 
   function release(ptr) {
@@ -365,10 +372,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var rc = 0
     rc = getRefCount(ptr)|0
     if ((rc|0) == 0) {
-        // FIXME need to release sub-nodes here (depends on type)
+        // Release sub-nodes here (depends on type)
         releaseChildren(ptr)
         // Mark the slot as free
-        HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
+        // FIXME this seems to cause bugs
+        // HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
     } else {
       addToRefCount(ptr, -1)
     }
@@ -836,6 +844,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         break;
 
+      case NODE_TYPE_AP2:
+        _debug(ERROR_TYPE_FREE_PASSED_TO_RENDER);
+        break;
       default:
         _debug(ERROR_TYPE_UNKNOWN);
         break;
@@ -1012,8 +1023,14 @@ function createRenderer(c2) {
             case ERROR_TYPE_UNKNOWN:
               console.log("Error: ", "Unknown node type")
               break;
+            case ERROR_TYPE_UNKNOWN_RELEASE:
+              console.log("Error: ", "Unknown node type (release)")
+              break;
             case ERROR_OUT_OF_MEMORY:
               console.log("Error: ", "Out of memory")
+              break;
+            case ERROR_TYPE_FREE_PASSED_TO_RENDER:
+              console.log("Error: ", "Free slot passed to render")
               break;
             default:
               console.log("Error: ", "(unknown)")

@@ -1,5 +1,5 @@
 
-{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, NoImplicitPrelude #-}
 
 module Main where
 
@@ -50,7 +50,7 @@ newtype Drawing = Drawing JSVal
 --
 
 foreign import javascript unsafe
-  "var n = document.createElement('canvas'); n.id = 'canvas'; n.width = 1900; n.height = 1500; document.getElementsByTagName('body')[0].appendChild(n)"
+  "var n = document.createElement('canvas'); n.id = 'canvas'; n.width = 800; n.height = 800; document.getElementsByTagName('body')[0].appendChild(n)"
   createCanvasNode :: IO ()
 foreign import javascript unsafe
   "var loop = function() { update(); requestAnimationFrame(loop) } ; loop()"
@@ -147,6 +147,10 @@ foreign import javascript unsafe "window.update = $1"
 
 fin :: R Drawing -> R Drawing
 fin !rd !r = let (d :: Drawing) = rd r in unsafePerformIO (addFinalizer d (release r d) >> pure d)
+
+
+fin_ :: Renderer -> Drawing -> Drawing
+fin_ !r !d= unsafePerformIO (addFinalizer d (release r d) >> pure d)
 -- fin = Prelude.id
 
 newtype Picture = Picture { getPicture :: R Drawing }
@@ -261,12 +265,12 @@ renderPicture r p = render r $ getPicture p r
 --   performMajorGC
 
 dr :: Rand StdGen Picture
-dr = mconcat <$> replicateM 200 g
+dr = mconcat <$> replicateM 2000 g
   where
     g = do
       x <- getRandom
       y <- getRandom
-      pure $ red $ strokeColor 0 0 0 0 $ rect (1000*x) (1000*y) 10 10
+      pure $ red $ rect (400*x) (400*y) 20 20
 
 -- dr :: IO Picture
 -- dr = mconcat <$> replicateM 200 g
@@ -305,20 +309,25 @@ main = do
 
 
   dr' <- evalRandIO dr
+  let !dr_ = fin_ r $ getPicture dr' r
   rotation <- newIORef 0
 
   let update = do
           -- print "Updating..."
           -- print " Clearing"
-          clearRect ct 0 0 4000 4000
+          clearRect ct 0 0 800 800
           -- dr' <- evalRandIO dr
           -- dr' <- dr
           -- let dr' = dr
           -- print " Rendering"
           n <- readIORef rotation
-          modifyIORef rotation (+ 0.001)
+          modifyIORef' rotation (+ 0.002)
 
-          renderPicture r (translate 800 800 $ rotate (n*pi*2) dr')
+          -- FIXME commented out gives us a double free
+          render r $ ({-fmap (fin_ r) .-} translate' 200 200 =<< {-fmap (fin_ r) .-}  rotate' (n*pi*2) =<< pure dr_) r
+          -- renderPicture r (translate 800 800 $ rotate (n*pi*2) dr')
+
+
           -- print " Rendering 2 (exacly the same)"
           -- renderPicture r dr'
           -- print " Rendering 3 (slightly transformed)"
@@ -330,4 +339,4 @@ main = do
 
   startLoop
 
-  print "Hello again 9021"
+  print "Hello again 0129"
