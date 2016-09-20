@@ -85,8 +85,8 @@
 
 */
 
-// #define DEFAULT_HEAP_SIZE        0x1000000
-#define DEFAULT_HEAP_SIZE        0x100000
+// #define HEAP_SIZE        0x1000000
+#define HEAP_SIZE        0x100000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
 // This region is not currently used
@@ -169,6 +169,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
 
   var tuplesCreated = 0
+  var maxTuples = 0
   var renderingStateSetupDone = 0
 
   // Return pointer to the first slot as a pointer (byte offset)
@@ -181,6 +182,27 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     // return (next * 4)|0
     return (((next * 8) << 2) + HEAP_TUPLES_OFFSET) |0
   }
+
+  function getCurrentTuples() {
+    return tuplesCreated|0;
+  }
+  function getMaxNumberOfTuples() {
+    var tupleBytes = 0
+    tupleBytes = (HEAP_SIZE - HEAP_TUPLES_OFFSET)|0;
+    return ((tupleBytes|0)/(32|0))|0;
+  }
+
+  function addToRefCount(ptr,val) {
+    ptr = ptr|0
+    val = val|0
+    // TODO
+  }
+  function getRefCount(ptr) {
+    ptr = ptr|0
+    // TODO
+    return 1|0;
+  }
+
     // TODO fix this and remaining warnings, push
     // TODO solve preprocessor line offset (so we can still use FF for validation)
     // TODO add remaining styles + test
@@ -652,21 +674,23 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   }
 
   // etc
-  return { render : render
-      , primCircle : primCircle
-      , primRect : primRect
-      , primFillColor : primFillColor
-      , primStrokeColor : primStrokeColor
-      , primLineWidth : primLineWidth
-      , primTransf : primTransf
-      , primAp2 : primAp2
-    }
+  return  { render : render
+          , primCircle : primCircle
+          , primRect : primRect
+          , primFillColor : primFillColor
+          , primStrokeColor : primStrokeColor
+          , primLineWidth : primLineWidth
+          , primTransf : primTransf
+          , primAp2 : primAp2
+          , getMaxNumberOfTuples : getMaxNumberOfTuples
+          , getCurrentTuples : getCurrentTuples
+          }
 }
 
 function createRenderer(c2) {
   const c = c2
 
-  var heap        = new ArrayBuffer(DEFAULT_HEAP_SIZE)
+  var heap        = new ArrayBuffer(HEAP_SIZE)
 
   var colorBuffer = new Uint8Array(heap, HEAP_COLOR_BUFFER_OFFSET, 22);
   var utf8d       = new TextDecoder("utf-8");
@@ -851,5 +875,8 @@ function createRenderer(c2) {
   res.randCol = function (dr) {
     return res.primFillColor(Math.random(),Math.random(),Math.random(),1,dr)
   }
+
+  // TODO debug
+  window.globalRenderer = res
   return res
 }

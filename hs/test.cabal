@@ -36,7 +36,7 @@ cabal-version:       >=1.10
 executable test
   hs-source-dirs:      src
   -- js-sources:          jsbits/renderer.js
-  js-sources:          ../main.out.js
+  -- js-sources:          ../main.out.js
   main-is:             Main.hs
   ghc-options:         -Wall
   build-depends:       base
