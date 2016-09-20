@@ -131,14 +131,19 @@ blueA (Picture rdr) = Picture $ do
 
 
 -- blueA :: Picture -> Picture
+fillColor :: Double
+                 -> Double -> Double -> Double -> Picture -> Picture
 fillColor r g b a (Picture rdr) = Picture $ do
   dr <- rdr
   fillColor' r g b a dr
 
+strokeColor :: Double
+                 -> Double -> Double -> Double -> Picture -> Picture
 strokeColor r g b a (Picture rdr) = Picture $ do
   dr <- rdr
   strokeColor' r g b a dr
 
+lineWidth :: Double -> Picture -> Picture
 lineWidth w (Picture rdr) = Picture $ do
   dr <- rdr
   lineWidth' w dr
@@ -170,6 +175,8 @@ instance Monoid Picture where
   mappend = ap2
   mempty = empty
 
+renderPicture :: Renderer -> Picture -> IO ()
+renderPicture r p = render r $ getPicture p r
 
 -- -- TODO is it faster to use a single global renderer?
 --
@@ -222,9 +229,9 @@ main = do
           clearRect ct 0 0 4000 4000
           dr' <- evalRandIO dr
           print " Rendering"
-          render r $ getPicture dr' r
+          renderPicture r dr'
           print " Rendering 2"
-          render r $ getPicture (scaleXY 2 2 dr') r
+          renderPicture r $ scaleXY 2 2 dr'
           print " Done"
   update
   updateCB <- CB.syncCallback CB.ThrowWouldBlock update
