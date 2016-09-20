@@ -194,7 +194,7 @@ dr = mconcat <$> replicateM 34000 g
     g = do
       x <- getRandom
       y <- getRandom
-      pure $ mconcat [blueA $ rect (1000*x) (1000*y) 10 10]
+      pure $ mconcat [blueA $ strokeColor 1 0 0 1 $ lineWidth 5 $ rect (1000*x) (1000*y) 10 10]
 
 main = do
   -- print "Without"
