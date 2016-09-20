@@ -3,23 +3,66 @@
   A renderer wraps a Canvas API drawing context which may render to an on-screen canvas or an
   off-screen buffer.
 
-  Each renderer renders drawings, represented as a tree stored on the renderer's heap.
-
   Create a renderer using createRenderer(canvasApiContext).
+
+  Each renderer renders drawings, which are immutable trees (i.e. other primitive shapes
+  or branches referencing other drawings)
 
   Each renderer exposes commands to create new drawings and a function render(options,drawing),
   which immediatly renders the given drawing to the underlying drawing context.
 
   You can have multiple renderers, but drawings can not be shared between renderers.
 
+  ## Memory management
 
-  IMPLEMENTATION NOTES
+  - Drawings can be claimed and released with the methods 'claim' and 'release'
 
-  NOTE Memory management
+      renderer.claim(drawing)
+      renderer.release(drawing)
 
-  TBD
+  - All drawins returned from functions are claimed for the called.
 
-  NOTE Heap layout
+      RIGHT
+        var r = renderer.rectangle(...)
+        renderer.release(r)
+
+      RIGHT
+        var r = renderer.rectangle(...)
+        renderer.claim(r)
+        renderer.release(r)
+        renderer.release(r)
+
+      WRONG
+        var r = renderer.rectangle(...)
+        renderer.claim(r)
+        renderer.release(r)
+
+      WRONG
+        var r = renderer.rectangle(...)
+        // no release
+
+  - All functions that takes drawings as arguments implicitly claim the arguments.
+
+      RIGHT
+        var r = renderer.rectangle(...)
+        var t = renderer.rotate(..., r)
+        renderer.release(r)
+        renderer.release(t)
+
+      WRONG
+        var r = renderer.rectangle(...
+        var t = renderer.rotate(..., r)
+        renderer.release(t)
+
+      WRONG
+        var r = renderer.rectangle(...
+        renderer.claim(r)
+        var t = renderer.rotate(..., r)
+        renderer.release(r)
+        renderer.release(t)
+
+
+  ## Heap layout
 
   The renderer heap is broken into regions, delimited by the HEAP_N constants below.
 
