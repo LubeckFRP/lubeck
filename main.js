@@ -1,10 +1,4 @@
 
-var dims = {x:1900, y:1500}
-var nElems  = 5000
-var nMaxFrames = 60*10
-var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
-
-
 /*
   A renderer wraps a Canvas API drawing context which may render to an on-screen canvas or an
   off-screen buffer.
@@ -48,6 +42,7 @@ var nHeapSize = 0x1000000 // 2^24 == 16,777,216 B
 
 */
 
+#define DEFAULT_HEAP_SIZE        0x1000000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
 // This region is not currently used
@@ -623,12 +618,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     }
 }
 
-var globalHepRef = {}
-
 function createRenderer(c2) {
   const c = c2
 
-  var heap        = new ArrayBuffer(nHeapSize)
+  var heap        = new ArrayBuffer(DEFAULT_HEAP_SIZE)
 
   var colorBuffer = new Uint8Array(heap, HEAP_COLOR_BUFFER_OFFSET, 22);
   var utf8d       = new TextDecoder("utf-8");
@@ -813,92 +806,5 @@ function createRenderer(c2) {
   res.randCol = function (dr) {
     return res.primFillColor(Math.random(),Math.random(),Math.random(),1,dr)
   }
-  res.randPosRect = function() {
-    return res.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,30)
-  }
-  res.randPosCircle = function() {
-    return res.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30)
-  }
   return res
 }
-
-
-
-// Example code
-
-function enumFromZeroTo(n) {
-  return [...Array(n).keys()]
-}
-function replicate(n,x) {
-  return enumFromZeroTo(n).map(d => x)
-}
-function replicateM(n,x) {
-  return enumFromZeroTo(n).map(d => x())
-}
-
-var fastDrawing = -1
-var fastRenderer = null
-var fastContext = null
-var fastTrans = 0.0
-var fastFrames = 0
-function setupFast () {
-  console.log("Starting fast rendering")
-  var canvas = document.getElementById('canvas');
-
-  fastContext = canvas.getContext('2d');
-  fastContext.fillStyle   = "rgba(0,0,0,0)"
-  fastContext.strokeStyle = "rgba(0,0,0,0)"
-  // WebGL2D.enable(canvas);
-  // fastContext = canvas.getContext('webgl-2d');
-
-  fastRenderer = createRenderer(fastContext)
-
-// > writeFile "/tmp/lubeck/test1.svg" $ unpackStr $ toSvgStr mempty
-// $ fillColor C.blue $ mconcat [translateX 200 $ scale 100 circle, fillColor C.red $ scale 200 circle]
-
-  r = fastRenderer
-  fastDrawing =
-    r.ap(
-      [ r.empty()
-      , r.ap(replicateM(Math.floor(nElems/2),_ =>
-          r.blue(r.ap(
-              [ r.empty()
-              , r.primLineWidth(10, r.primStrokeColor(0,0,0,0, r.red(r.scale(0.5*(0.8+0.2*Math.random()),r.randPosRect()))))
-              // , r.randCol(r.scale(0.8+0.2*Math.random(),r.randPosRect()))
-            ]))))
-      , r.ap(replicateM(Math.floor(nElems/2),_ =>
-          r.blue(r.ap(
-              [ r.empty()
-              // , r.primLineWidth(10, r.primStrokeColor(0,0,0,1, r.red(r.scale(2*(0.8+0.2*Math.random()),r.randPosCircle()))))
-              , r.randCol(r.scale(0.8+0.2*Math.random(),r.randPosRect()))
-            ]))))
-
-    ])
-  // r.primFillColor(Math.random()*0.8+0.2,0.2,0.2,1.3,
-  //   r.ap(
-  //    enumFromZeroTo(nElems).map(function (n) {
-  //       return
-  //        r.scale(20,1,
-  //         //  r.primCircle(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),3)
-  //          r.primRect(Math.floor(Math.random()*dims.x),Math.floor(Math.random()*dims.y),30,40)
-  //         )
-  //     })
-  //   ))
-}
-function loopFast () {
-    fastTrans = fastFrames * 2/60
-
-    fastContext.clearRect(0.0, 0, dims.x, dims.y);
-    fastRenderer.render(0,
-      fastRenderer.translate(dims.x/2, dims.y/2,
-        fastRenderer.rotateT(fastTrans,
-            fastRenderer.translate(-dims.x/2, -dims.y/2, fastDrawing)
-          )
-        )
-      )
-    // console.log('Frame')
-    if (fastFrames++ < nMaxFrames)
-    requestAnimationFrame(loopFast)
-}
-setupFast()
-loopFast()
