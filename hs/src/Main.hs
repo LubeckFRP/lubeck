@@ -1,4 +1,6 @@
 
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
 import Control.Monad
@@ -66,6 +68,10 @@ foreign import javascript unsafe "console.log($1)"
 
 foreign import javascript unsafe "$1.render(0,$2)"
   render :: Renderer -> Drawing -> IO ()
+foreign import javascript unsafe "$1.claim($2)"
+  claim :: Renderer -> Drawing -> IO ()
+foreign import javascript unsafe "$1.release($2)"
+  release :: Renderer -> Drawing -> IO ()
 
 type R a = Renderer -> a
 foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
@@ -105,27 +111,29 @@ empty' = rect' 0 0 0 0 -- FIXME
 foreign import javascript unsafe "window.update = $1"
   setUpdateCB :: (Callback (IO ())) -> IO ()
 
+fin :: R Drawing -> R Drawing
+fin rd r = let (d :: Drawing) = rd r in unsafePerformIO (addFinalizer d (release r d) >> pure d)
 
 newtype Picture = Picture { getPicture :: R Drawing }
 
 rect :: Double -> Double -> Double -> Double -> Picture
-rect x y w h = Picture $ rect' x y w h
+rect x y w h = Picture $ fin $ rect' x y w h
 
 circle :: Double -> Double -> Double -> Picture
-circle x y r = Picture $ circle' x y r
+circle x y r = Picture $ fin $ circle' x y r
 
 red :: Picture -> Picture
-red (Picture rdr) = Picture $ do
+red (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   red' dr
 
 redA :: Picture -> Picture
-redA (Picture rdr) = Picture $ do
+redA (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   redA' dr
 
 blueA :: Picture -> Picture
-blueA (Picture rdr) = Picture $ do
+blueA (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   blueA' dr
 
@@ -133,43 +141,43 @@ blueA (Picture rdr) = Picture $ do
 -- blueA :: Picture -> Picture
 fillColor :: Double
                  -> Double -> Double -> Double -> Picture -> Picture
-fillColor r g b a (Picture rdr) = Picture $ do
+fillColor r g b a (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   fillColor' r g b a dr
 
 strokeColor :: Double
                  -> Double -> Double -> Double -> Picture -> Picture
-strokeColor r g b a (Picture rdr) = Picture $ do
+strokeColor r g b a (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   strokeColor' r g b a dr
 
 lineWidth :: Double -> Picture -> Picture
-lineWidth w (Picture rdr) = Picture $ do
+lineWidth w (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   lineWidth' w dr
 
 transf :: Double -> Double -> Double -> Double -> Double -> Double -> Picture -> Picture
-transf a b c d e f (Picture rdr) = Picture $ do
+transf a b c d e f (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   transf' a b c d e f dr
 
 scaleXY :: Double -> Double -> Picture -> Picture
-scaleXY a b (Picture rdr) = Picture $ do
+scaleXY a b (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   scaleXY' a b dr
 translate :: Double -> Double -> Picture -> Picture
-translate a b (Picture rdr) = Picture $ do
+translate a b (Picture rdr) = Picture $ fin $ do
   dr <- rdr
   translate' a b dr
 
 ap2 :: Picture -> Picture -> Picture
-ap2 (Picture rdr1) (Picture rdr2) = Picture $ do
+ap2 (Picture rdr1) (Picture rdr2) = Picture $ fin $ do
   dr1 <- rdr1
   dr2 <- rdr2
   ap2' dr1 dr2
 
 empty :: Picture
-empty = Picture $ empty'
+empty = Picture $ fin $ empty'
 
 instance Monoid Picture where
   mappend = ap2
@@ -196,7 +204,7 @@ renderPicture r p = render r $ getPicture p r
 
 -- dr :: Picture
 dr :: Rand StdGen Picture
-dr = mconcat <$> replicateM 2000 g
+dr = mconcat <$> replicateM 20 g
   where
     g = do
       x <- getRandom

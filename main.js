@@ -293,17 +293,78 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return
   }
 
-  function releaseChildren(ptr) {
-    ptr = ptr|0
-    // TODO
-    retur
+  function releaseChildren(dr) {
+    dr = dr|0
+
+    var drType = 0
+    // var ai = 0
+    // var x = 0.
+    // var y = 0.
+    // var w = 0.
+    // var h = 0.
+    // var r = 0.
+    // var a = 0.
+    // var b = 0.
+    // var c = 0.
+    // var d = 0.
+    // var e = 0.
+    // var f = 0.
+    // // var r = 0.
+    // var g = 0.
+    // // var b = 0.
+    var dr1 = 0
+    var dr2 = 0
+
+
+    do {
+    drType = getPtrType(dr)|0;
+
+    switch (drType|0) {
+
+      case NODE_TYPE_CIRCLE:
+        break;
+      case NODE_TYPE_RECT:
+        break;
+
+      case NODE_TYPE_FILL_COLOR:
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        release(dr1);
+        break;
+
+      case NODE_TYPE_STROKE_COLOR:
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        release(dr1);
+        break;
+
+      case NODE_TYPE_LINE_WIDTH:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_TRANSF:
+        dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
+        release(dr1);
+        break;
+
+      case NODE_TYPE_AP2:
+        dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        release(dr2);
+        break;
+
+      default:
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
+    }
+    }
+    while(0);
   }
 
   function release(ptr) {
     ptr = ptr|0
-    rc = 0
+    var rc = 0
     rc = getRefCount(ptr)|0
-    if (rc == 0) {
+    if ((rc|0) == 0) {
         // FIXME need to release sub-nodes here (depends on type)
         releaseChildren(ptr)
         // Mark the slot as free
@@ -506,6 +567,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     var p = 0
 
+    claim(dr)
+
     p = (newTuple())|0
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_FILL_COLOR|0
     HEAPF32[(p + (1<<2)) >> 2] = r
@@ -525,6 +588,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     var p = 0
 
+    claim(dr)
+
     p = (newTuple())|0
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_STROKE_COLOR|0
     HEAPF32[(p + (1<<2)) >> 2] = r
@@ -540,6 +605,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     dr = dr|0;
 
     var p = 0
+
+    claim(dr)
 
     p = (newTuple())|0
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_LINE_WIDTH|0
@@ -558,6 +625,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     dr = dr|0;
 
     var p = 0
+
+    claim(dr)
 
     p = (newTuple())|0
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TRANSF|0
@@ -578,6 +647,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     dr2 = dr2|0;
 
     var p = 0
+
+    claim(dr1)
+    claim(dr2)
 
     p = (newTuple())|0
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_AP2|0
