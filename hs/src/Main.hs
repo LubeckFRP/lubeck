@@ -196,7 +196,7 @@ renderPicture r p = render r $ getPicture p r
 
 -- dr :: Picture
 dr :: Rand StdGen Picture
-dr = mconcat <$> replicateM 34000 g
+dr = mconcat <$> replicateM 2000 g
   where
     g = do
       x <- getRandom
@@ -230,7 +230,9 @@ main = do
           dr' <- evalRandIO dr
           print " Rendering"
           renderPicture r dr'
-          print " Rendering 2"
+          print " Rendering 2 (exacly the same)"
+          renderPicture r dr'
+          print " Rendering 3 (slightly transformed)"
           renderPicture r $ scaleXY 2 2 dr'
           print " Done"
   update

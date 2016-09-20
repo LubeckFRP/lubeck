@@ -85,7 +85,8 @@
 
 */
 
-#define DEFAULT_HEAP_SIZE        0x1000000
+// #define DEFAULT_HEAP_SIZE        0x1000000
+#define DEFAULT_HEAP_SIZE        0x100000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
 // This region is not currently used
