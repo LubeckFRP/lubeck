@@ -68,12 +68,11 @@ foreign import javascript unsafe "$1.render(0,$2)"
   render :: Renderer -> Drawing -> IO ()
 
 type R a = Renderer -> a
--- foreign import javascript unsafe "$1.randPosCircle()"
---   randPosCircle :: Renderer -> IO Drawing
--- foreign import javascript unsafe "$1.randPosRect()"
---   randPosRect :: Renderer -> IO Drawing
 foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
   rect' :: Double -> Double -> Double -> Double -> R Drawing
+foreign import javascript unsafe "$4.primCircle($1,$2,$3)"
+  circle' :: Double -> Double -> Double -> R Drawing
+
 -- Styles
 foreign import javascript unsafe "$2.red($1)"
   red' :: Drawing -> R Drawing
@@ -81,6 +80,14 @@ foreign import javascript unsafe "$2.redA($1)"
   redA' :: Drawing -> R Drawing
 foreign import javascript unsafe "$2.blueA($1)"
   blueA' :: Drawing -> R Drawing
+foreign import javascript unsafe "$6.primFillColor($1,$2,$3,$4,$5)"
+  fillColor' :: Double -> Double -> Double -> Double -> Drawing -> R Drawing
+foreign import javascript unsafe "$6.primStrokeColor($1,$2,$3,$4,$5)"
+  strokeColor' :: Double -> Double -> Double -> Double -> Drawing -> R Drawing
+foreign import javascript unsafe "$3.primLineWidth($1,$2)"
+  lineWidth' :: Double -> Drawing -> R Drawing
+
+
 -- Transformation
 foreign import javascript unsafe "$8.primTransf($1,$2,$3,$4,$5,$6,$7)"
   transf' :: Double -> Double -> Double -> Double -> Double -> Double -> Drawing -> R Drawing
@@ -100,8 +107,12 @@ foreign import javascript unsafe "window.update = $1"
 
 
 newtype Picture = Picture { getPicture :: R Drawing }
+
 rect :: Double -> Double -> Double -> Double -> Picture
 rect x y w h = Picture $ rect' x y w h
+
+rect :: Double -> Double -> Double -> Picture
+rect x y r = Picture $ rect' x y r
 
 red :: Picture -> Picture
 red (Picture rdr) = Picture $ do
@@ -117,6 +128,20 @@ blueA :: Picture -> Picture
 blueA (Picture rdr) = Picture $ do
   dr <- rdr
   blueA' dr
+
+
+-- blueA :: Picture -> Picture
+fillColor r g b a (Picture rdr) = Picture $ do
+  dr <- rdr
+  fillColor' r g b a dr
+
+strokeColor r g b a (Picture rdr) = Picture $ do
+  dr <- rdr
+  strokeColor' r g b a dr
+
+lineWidth w (Picture rdr) = Picture $ do
+  dr <- rdr
+  lineWidth' w dr
 
 transf :: Double -> Double -> Double -> Double -> Double -> Double -> Picture -> Picture
 transf a b c d e f (Picture rdr) = Picture $ do
@@ -164,7 +189,7 @@ instance Monoid Picture where
 
 -- dr :: Picture
 dr :: Rand StdGen Picture
-dr = mconcat <$> replicateM 100 g
+dr = mconcat <$> replicateM 34000 g
   where
     g = do
       x <- getRandom
