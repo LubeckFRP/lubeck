@@ -43,7 +43,14 @@ newtype CanvasElement = DOMCanvasElement JSVal
 newtype Context = Context JSVal
 newtype Renderer = Renderer JSVal
 newtype Drawing = Drawing JSVal
+
+
 --
+
+foreign import javascript unsafe
+  "var n = document.createElement('canvas'); n.id = 'canvas'; n.width = 1900; n.height = 1500; document.getElementsByTagName('body')[0].appendChild(n)"
+  createCanvasNode :: IO ()
+
 foreign import javascript unsafe "document.getElementById('canvas')"
   getCanvas :: IO CanvasElement
 foreign import javascript unsafe "$1.getContext('2d')"
@@ -157,7 +164,7 @@ instance Monoid Picture where
 
 -- dr :: Picture
 dr :: Rand StdGen Picture
-dr = mconcat <$> replicateM 1000 g
+dr = mconcat <$> replicateM 100 g
   where
     g = do
       x <- getRandom
@@ -178,6 +185,7 @@ main = do
   -- -- makeAThingAndAddF
   -- performMajorGC
 
+  createCanvasNode
   e <- getCanvas
   ct <- get2DContext e
   r <- createRenderer ct
@@ -197,4 +205,4 @@ main = do
   updateCB <- CB.syncCallback CB.ThrowWouldBlock update
   setUpdateCB updateCB
 
-  print "Hello again 38"
+  print "Hello again 812"
