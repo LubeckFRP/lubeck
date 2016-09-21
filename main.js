@@ -85,7 +85,7 @@
 
 */
 
-#define HEAP_SIZE        0x10000
+#define HEAP_SIZE         16384
 // #define HEAP_SIZE        0x1000000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
@@ -193,13 +193,13 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   function newTuple() {
     // TODO this one just allocates till we run out of memory
     // Switch to scanning allocater when needed
-    var max = 0
-    max = getMaxNumberOfTuples()|0;
-    if ((tuplesCreated|0) < (max|0)) {
-      return allocateTupleInitPhase()|0
-    } else {
+    // var max = 0
+    // max = getMaxNumberOfTuples()|0;
+    // if ((tuplesCreated|0) < (max|0)) {
+      // return allocateTupleInitPhase()|0
+    // } else {
       return allocateTupleScanning()|0
-    }
+    // }
     // Never happens:
     return 0|0
   }
@@ -210,7 +210,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     next = tuplesCreated
     tuplesCreated = tuplesCreated + 1|0
     // return (next * 4)|0
-    return (((next * 8) << 2) + HEAP_TUPLES_OFFSET) |0
+    return slotIndexToPtr(next)|0
   }
 
   function allocateTupleScanning() {
@@ -260,7 +260,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   function addToRefCount(ptr,val) {
     ptr = ptr|0
-    val = val|0 // TODO verify this works for signed things
+    val = val|0
 
     var rc = 0
     rc = getRefCount(ptr)|0
@@ -308,21 +308,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     dr = dr|0
 
     var drType = 0
-    // var ai = 0
-    // var x = 0.
-    // var y = 0.
-    // var w = 0.
-    // var h = 0.
-    // var r = 0.
-    // var a = 0.
-    // var b = 0.
-    // var c = 0.
-    // var d = 0.
-    // var e = 0.
-    // var f = 0.
-    // // var r = 0.
-    // var g = 0.
-    // // var b = 0.
     var dr1 = 0
     var dr2 = 0
 
@@ -380,11 +365,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         releaseChildren(ptr)
         // Mark the slot as free
         // FIXME this seems to cause bugs
-        // HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
+        HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
     } else {
       addToRefCount(ptr, -1)
     }
-
     return
   }
 

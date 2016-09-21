@@ -1,6 +1,11 @@
 
 {-# LANGUAGE ScopedTypeVariables, BangPatterns, NoImplicitPrelude #-}
 
+{-# OPTIONS_GHC
+  -fno-cse
+  -fno-full-laziness
+  #-}
+
 module Main where
 
 import Control.Monad
@@ -25,13 +30,6 @@ foreign import javascript unsafe "console.log($1)"
 foreign import javascript unsafe "console.log($1,'dead')"
   finalizeThing :: Thing -> IO ()
 
--- foreign import javascript unsafe "{value:Math.random()}"
-  -- makeThing2' :: Thing
-makeThing2 :: Int -> Thing
-makeThing2 n = unsafePerformIO $ do
-  t <- makeThing n
-  addFinalizer t (finalizeThing t)
-  pure t
 
 
 -- makeThing' :: IO (Ptr Thing)
@@ -126,7 +124,6 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 {-# INLINABLE scaleXY' #-}
 {-# INLINABLE rotate' #-}
 {-# INLINABLE translate' #-}
-{-# INLINABLE fin #-}
 
 {-# INLINABLE rect #-}
 {-# INLINABLE circle #-}
@@ -147,10 +144,11 @@ foreign import javascript unsafe "window.update = $1"
 
 fin :: R Drawing -> R Drawing
 fin !rd !r = let (d :: Drawing) = rd r in unsafePerformIO (addFinalizer d (release r d) >> pure d)
-
+{-# NOINLINE fin #-}
 
 fin_ :: Renderer -> Drawing -> Drawing
 fin_ !r !d= unsafePerformIO (addFinalizer d (release r d) >> pure d)
+{-# NOINLINE fin_ #-}
 -- fin = Prelude.id
 
 newtype Picture = Picture { getPicture :: R Drawing }
@@ -222,7 +220,8 @@ ap2 (Picture rdr1) (Picture rdr2) = Picture $ fin $ do
   ap2' dr1 dr2
 
 empty :: Picture
-empty = Picture $ fin $ empty'
+empty = rect 0 0 0 0
+-- empty = Picture $ fin $ empty'
 
 instance Monoid Picture where
   mappend = ap2
@@ -311,9 +310,20 @@ main = do
 
 
 
-  dr' <- evalRandIO dr
-  let !dr_ = fin_ r $ getPicture dr' r
+
   rotation <- newIORef 0
+
+  dr' <- evalRandIO dr
+  -- NOT OK
+  let !dr1 = getPicture dr' r
+  -- OK
+  let !dr21 = fin_ r $ empty' r
+  -- OK
+  let !dr22 = fin_ r $ rect' 10 10 10 10 r
+  -- OK
+  let !dr2 = (fin_ r $ fillColor' 0 1 0 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ empty' r) r) r)
+  -- OK
+  let !dr3 = (fin_ r $ fillColor' 0 0 1 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ circle' 150 150 30 r) r) r)
 
   let update = do
           -- print "Updating..."
@@ -328,7 +338,8 @@ main = do
           modifyIORef' rotation (+ 0.02)
 
           -- FIXME commented out gives us a double free
-          render r $ ({-fmap (fin_ r) .-} translate' 400 400 =<< {-fmap (fin_ r) .-}  rotate' (n*pi*2) =<< pure dr_) r
+          render r $ ({-fin . translate' 400 400 =<< -}fin . rotate' (n*pi*2) =<< pure {-dr_-}
+            dr3) r
           -- renderPicture r (translate 800 800 $ rotate (n*pi*2) dr')
 
 
