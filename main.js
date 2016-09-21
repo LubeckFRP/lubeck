@@ -400,28 +400,39 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   }
 
 
-  function drawCircle(x,y,r) {
+  function drawCircle(x,y,r,hasFill,hasStroke) {
     x=+x
     y=+y
     r=+r
+    hasFill = hasFill|0;
+    hasStroke = hasStroke|0;
 
     // TODO optimize away fill/stroke if the appropriate color is not set
     _beginPath();
     _arc(x,y,r,0, 6.283185307179586,0/*false*/);
-    _fill();
-    _stroke();
+    if (hasFill) {
+      _fill();
+    }
+    if (hasStroke) {
+      _stroke();
+    }
   }
-  function drawRect(x,y,w,h) {
+  function drawRect(x,y,w,h,hasFill,hasStroke) {
     x=+x
     y=+y
     w=+w
     h=+h
+    hasFill = hasFill|0;
+    hasStroke = hasStroke|0;
     // _rect(x,y,w,h);
     // _fill();
 
-    // TODO optimize away fill/stroke if the appropriate color is not set
-    _fillRect(x,y,w,h);
-    _strokeRect(x,y,w,h);
+    if (hasFill) {
+      _fillRect(x,y,w,h);
+    }
+    if (hasStroke) {
+      _strokeRect(x,y,w,h);
+    }
   }
 
   // function renderFillColor(r, g, b, a) {
@@ -680,9 +691,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   // Render without checking that setupRenderingState has been called
   // Opts* -> Drawing* -> ()
-  function renderWithoutCheck(opts,dr) {
+  function renderWithoutCheck(opts,dr,hasFill,hasStroke) {
     opts = opts|0;
     dr = dr|0;
+    hasFill = hasFill|0;
+    hasStroke = hasStroke|0;
 
     var drType = 0
     // var ai = 0
@@ -730,7 +743,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         a = +HEAPF32[(dr+(1<<2)) >> 2];
         b = +HEAPF32[(dr+(2<<2)) >> 2];
         c = +HEAPF32[(dr+(3<<2)) >> 2];
-        drawCircle(a,b,c)
+        drawCircle(a,b,c,hasFill,hasStroke)
         // console.log("Rendering circle: ", x, y, r)
         break;
 
@@ -739,7 +752,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         b = +HEAPF32[(dr+(2<<2)) >> 2];
         c = +HEAPF32[(dr+(3<<2)) >> 2];
         d = +HEAPF32[(dr+(4<<2)) >> 2];
-        drawRect(a,b,c,d)
+        drawRect(a,b,c,d,hasFill,hasStroke)
         // console.log("Rendering circle: ", x, y, r)
         break;
 
@@ -757,7 +770,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         writeRGBAStringToBuffer(a,b,c,d)
         _fillStyleFromColorBuffer()
 
-        renderWithoutCheck(opts,dr1)
+        renderWithoutCheck(opts,dr1,1,hasStroke) // render with hasFill set
         _restore()
         break;
 
@@ -775,7 +788,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         writeRGBAStringToBuffer(a,b,c,d)
         _strokeStyleFromColorBuffer()
 
-        renderWithoutCheck(opts,dr1)
+        renderWithoutCheck(opts,dr1,hasFill,1) // render with hasStroke set
         _restore()
         break;
 
@@ -784,7 +797,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
         _save()
         _lineWidth(a);
-        renderWithoutCheck(opts,dr1)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke)
         _restore()
         break;
       //
@@ -840,7 +853,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // Or simply apply inverted matrix when done http://stackoverflow.com/a/18504573
         _save()
         _transform(a,b,c,d,e,f)
-        renderWithoutCheck(opts,dr1)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke)
         _restore()
         break;
 
@@ -848,7 +861,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
 
-        renderWithoutCheck(opts,dr1)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke)
 
         // render(opts,dr2)
         // Manual tail-call opt: Instead of calling this function again, we update the parameters and set cont to true
@@ -879,7 +892,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       setupRenderingState()
       renderingStateSetupDone = 1
     }
-    renderWithoutCheck(opts,dr)
+    renderWithoutCheck(opts,dr,0,0)
   }
 
   // etc
