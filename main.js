@@ -85,8 +85,8 @@
 
 */
 
-#define HEAP_SIZE        0x1000000
-// #define HEAP_SIZE        0x100000
+#define HEAP_SIZE        0x10000
+// #define HEAP_SIZE        0x1000000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
 // This region is not currently used
@@ -103,6 +103,10 @@
 #define NODE_TYPE_CIRCLE          1
 #define NODE_TYPE_RECT            2
 
+// Fill/stroke the text stored in the given text buffer slot
+#define NODE_TYPE_TEXT            4
+// Draw the image stored in the given image buffer slot
+#define NODE_TYPE_IMAGE           5
 
 // Styles
 #define NODE_TYPE_FILL_COLOR      64
@@ -907,6 +911,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           , getMaxNumberOfTuples : getMaxNumberOfTuples
           , getCurrentTuples : getCurrentTuples
 
+          , slotIndexToPtr : slotIndexToPtr
           , getPtrType : getPtrType
           , addToRefCount : addToRefCount
           , getRefCount : getRefCount
@@ -1116,6 +1121,26 @@ function createRenderer(c2) {
   }
   res.randCol = function (dr) {
     return res.primFillColor(Math.random(),Math.random(),Math.random(),1,dr)
+  }
+
+  // TODO this could also be triggered by a special node in the drawing tree
+  res.dumpHeap = function () {
+    console.log("Heap size:", HEAP_SIZE)
+    console.log("Max tuples:", res.getMaxNumberOfTuples())
+    console.log("Current tuples:", res.getCurrentTuples())
+    console.log("Dumping heap below...")
+    console.log("")
+    console.log("Color buffer:", utf8d.decode(colorBuffer))
+    res.dumpTuples()
+  }
+  res.dumpTuples = function () {
+    var n = res.getMaxNumberOfTuples()
+    for (var i = 0; i < n; ++i) {
+      var ptr = res.slotIndexToPtr(i)
+      console.log("Tuple at address", ptr)
+      console.log("  ", "Type:", res.getPtrType(ptr))
+      console.log("  ", "(External) references:", res.getRefCount(ptr))
+    }
   }
 
   // TODO debug
