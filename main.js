@@ -685,12 +685,13 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     dr = dr|0;
 
     var drType = 0
-    var ai = 0
-    var x = 0.
-    var y = 0.
-    var w = 0.
-    var h = 0.
-    var r = 0.
+    // var ai = 0
+    // var x = 0.
+    // var y = 0.
+    // var w = 0.
+    // var h = 0.
+    // var r = 0.
+
     var a = 0.
     var b = 0.
     var c = 0.
@@ -698,7 +699,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var e = 0.
     var f = 0.
     // var r = 0.
-    var g = 0.
+    // var g = 0.
     // var b = 0.
     var dr1 = 0
     var dr2 = 0
@@ -710,37 +711,50 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     cont = 0
     drType = getPtrType(dr)|0;
 
+    /*
+    Invariant:
+      Each call to renderWithoutCheck() that returns normally MUST leave the state of the underlying
+      drawing context exactly as it found it. As this function may call itself recursively, this
+      means that states have to be stored in a stack somewhere.
+
+      Options include
+        - Using the drawing context stack, i.e. calling save(), doing anything it wants and then call restore()
+        - Using a custom stack structure on the renderer heap, similar to the save()/restore() option above
+        - Using the call stack, i.e. storing the previous value in a variable, updating drawing context, drawing, then restoring
+          the drawing context from the variable.
+
+    */
     switch (drType|0) {
 
       case NODE_TYPE_CIRCLE:
-        x = +HEAPF32[(dr+(1<<2)) >> 2];
-        y = +HEAPF32[(dr+(2<<2)) >> 2];
-        r = +HEAPF32[(dr+(3<<2)) >> 2];
-        drawCircle(x,y,r)
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        drawCircle(a,b,c)
         // console.log("Rendering circle: ", x, y, r)
         break;
 
       case NODE_TYPE_RECT:
-        x = +HEAPF32[(dr+(1<<2)) >> 2];
-        y = +HEAPF32[(dr+(2<<2)) >> 2];
-        w = +HEAPF32[(dr+(3<<2)) >> 2];
-        h = +HEAPF32[(dr+(4<<2)) >> 2];
-        drawRect(x,y,w,h)
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        d = +HEAPF32[(dr+(4<<2)) >> 2];
+        drawRect(a,b,c,d)
         // console.log("Rendering circle: ", x, y, r)
         break;
 
       case NODE_TYPE_FILL_COLOR:
-        r = +HEAPF32[(dr+(1<<2)) >> 2];
-        g = +HEAPF32[(dr+(2<<2)) >> 2];
-        b = +HEAPF32[(dr+(3<<2)) >> 2];
-        a = +HEAPF32[(dr+(4<<2)) >> 2];
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        d = +HEAPF32[(dr+(4<<2)) >> 2];
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
         // console.log("Rendering fill: ", r, g, b, a)
         // FIXME selective version of save/restore
         _save()
 
         // _fillStyleRGBA(r,g,b,a)
-        writeRGBAStringToBuffer(r,g,b,a)
+        writeRGBAStringToBuffer(a,b,c,d)
         _fillStyleFromColorBuffer()
 
         renderWithoutCheck(opts,dr1)
@@ -748,17 +762,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       case NODE_TYPE_STROKE_COLOR:
-        r = +HEAPF32[(dr+(1<<2)) >> 2];
-        g = +HEAPF32[(dr+(2<<2)) >> 2];
-        b = +HEAPF32[(dr+(3<<2)) >> 2];
-        a = +HEAPF32[(dr+(4<<2)) >> 2];
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        d = +HEAPF32[(dr+(4<<2)) >> 2];
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
         // console.log("Rendering fill: ", r, g, b, a)
         // FIXME selective version of save/restore
         _save()
 
         // _fillStyleRGBA(r,g,b,a)
-        writeRGBAStringToBuffer(r,g,b,a)
+        writeRGBAStringToBuffer(a,b,c,d)
         _strokeStyleFromColorBuffer()
 
         renderWithoutCheck(opts,dr1)
@@ -844,7 +858,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         break;
 
-      case NODE_TYPE_AP2:
+      case NODE_TYPE_FREE:
         _debug(ERROR_TYPE_FREE_PASSED_TO_RENDER);
         break;
       default:
