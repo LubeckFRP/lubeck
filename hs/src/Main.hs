@@ -265,12 +265,14 @@ renderPicture r p = render r $ getPicture p r
 --   performMajorGC
 
 dr :: Rand StdGen Picture
-dr = red <$> mconcat <$> replicateM 1000 g
+dr = blueA <$> mconcat <$> replicateM 1 g
   where
     g = do
       x <- getRandom
       y <- getRandom
-      pure $ rect (400*x) (400*y) 5 5
+      shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
+      pure $ shape (400*x) (400*y) 500
+    square x y r = rect x y r r
 
 -- dr :: IO Picture
 -- dr = mconcat <$> replicateM 200 g
@@ -308,6 +310,7 @@ main = do
   showRenderer r
 
 
+
   dr' <- evalRandIO dr
   let !dr_ = fin_ r $ getPicture dr' r
   rotation <- newIORef 0
@@ -315,13 +318,14 @@ main = do
   let update = do
           -- print "Updating..."
           -- print " Clearing"
+
           clearRect ct 0 0 800 800
           -- dr' <- evalRandIO dr
           -- dr' <- dr
           -- let dr' = dr
           -- print " Rendering"
           n <- readIORef rotation
-          modifyIORef' rotation (+ 0.002)
+          modifyIORef' rotation (+ 0.02)
 
           -- FIXME commented out gives us a double free
           render r $ ({-fmap (fin_ r) .-} translate' 400 400 =<< {-fmap (fin_ r) .-}  rotate' (n*pi*2) =<< pure dr_) r
