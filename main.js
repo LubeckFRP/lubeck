@@ -85,8 +85,8 @@
 
 */
 
-#define HEAP_SIZE         33554432
-// #define HEAP_SIZE        0x1000000
+// #define HEAP_SIZE         1048576
+#define HEAP_SIZE        0x1000000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
 // This region is not currently used
@@ -177,6 +177,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _imul = stdlib.Math.imul;
   var _max = stdlib.Math.max;
   var _min = stdlib.Math.min;
+  var _random = stdlib.Math.random;
 
 
   var tuplesCreated = 0
@@ -218,11 +219,15 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var i = 0
     // var j = 0
     var ptr = 0
+    var j = 0
+    var startingPoint = 0
     max = getMaxNumberOfTuples()|0
+    startingPoint = _floor(_random()*max) % max // Random position in [0..max]
     while ( (i|0) < (max|0)) {
+      j = (i + startingPoint) % max
       // j = i
       // Check that slot is free
-      ptr = slotIndexToPtr(i)|0
+      ptr = slotIndexToPtr(j)|0
       if ( ((HEAP32[ptr >> 2])|0) == NODE_TYPE_FREE ) {
         // We succeeded, so reset this state to report next time we
         // run out of memory
