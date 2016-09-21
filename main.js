@@ -85,7 +85,7 @@
 
 */
 
-#define HEAP_SIZE         16384
+#define HEAP_SIZE         33554432
 // #define HEAP_SIZE        0x1000000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
@@ -1046,7 +1046,7 @@ function createRenderer(c2) {
               console.log("Error: ", "Out of memory")
               break;
             case ERROR_TYPE_FREE_PASSED_TO_RENDER:
-              console.log("Error: ", "Free slot passed to render")
+              console.log("Error: ", "Strange value passed to render, probably caused by a bad deallocation")
               break;
             default:
               console.log("Error: ", "(unknown)")
@@ -1111,11 +1111,23 @@ function createRenderer(c2) {
   res.dumpHeap = function () {
     console.log("Heap size:", HEAP_SIZE)
     console.log("Max tuples:", res.getMaxNumberOfTuples())
-    console.log("Current tuples:", res.getCurrentTuples())
+    console.log("Fast-allocated tuples:", res.getCurrentTuples())
+    res.dumpHeapUsage()
     console.log("Dumping heap below...")
     console.log("")
     console.log("Color buffer:", utf8d.decode(colorBuffer))
     res.dumpTuples()
+  }
+  res.dumpHeapUsage = function () {
+    var n = res.getMaxNumberOfTuples()
+    var usedTuples = 0;
+    for (var i = 0; i < n; ++i) {
+      var ptr = res.slotIndexToPtr(i)
+      if (res.getPtrType(ptr) === NODE_TYPE_FREE) {
+        ++usedTuples;
+      }
+    }
+    console.log("Heap usage", Math.floor((n-usedTuples)*100/n), "%")
   }
   res.dumpTuples = function () {
     var n = res.getMaxNumberOfTuples()
