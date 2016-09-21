@@ -17,7 +17,6 @@ import GHCJS.Types(JSVal)
 import BasePrelude hiding (empty, rotate)
 import System.Mem.Weak(addFinalizer)
 import System.Mem
-import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random
 import Control.Monad.Random.Class
 import GHCJS.Foreign.Callback as CB
@@ -194,10 +193,6 @@ ap2 (Picture rd1) (Picture rd2) = Picture $ do
 empty :: Picture
 empty = rect 0 0 0 0
 
-instance Monoid Picture where
-  mempty = empty
-  mappend = ap2
-
 foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
   rect'' :: Double -> Double -> Double -> Double -> R2 Drawing
 foreign import javascript unsafe "$4.primCircle($1,$2,$3)"
@@ -233,157 +228,58 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 {-# INLINABLE rotate'' #-}
 {-# INLINABLE translate'' #-}
 {-# INLINABLE ap2'' #-}
--- {-# INLINABLE rect #-}
--- {-# INLINABLE circle #-}
+{-# INLINABLE rect #-}
+{-# INLINABLE circle #-}
 -- {-# INLINABLE red #-}
 -- {-# INLINABLE redA #-}
--- {-# INLINABLE strokeColor #-}
---
--- {-# INLINABLE transf #-}
--- {-# INLINABLE scaleXY #-}
--- {-# INLINABLE rotate #-}
--- {-# INLINABLE translate #-}
--- foreign import javascript unsafe "$1.EMPTY_DRAWING"
-  -- empty' :: R Drawing
-empty' = rect' 0 0 0 0 -- FIXME
+{-# INLINABLE strokeColor #-}
+
+{-# INLINABLE transf #-}
+{-# INLINABLE scaleXY #-}
+{-# INLINABLE rotate #-}
+{-# INLINABLE translate #-}
 
 foreign import javascript unsafe "window.update = $1"
   setUpdateCB :: (Callback (IO ())) -> IO ()
 
-fin :: (Renderer -> Drawing) -> Renderer -> Drawing
-fin !rd !r = let (d :: Drawing) = rd r in unsafePerformIO (addFinalizer d (release r d) >> pure d)
-{-# NOINLINE fin #-}
-
-fin_ :: Renderer -> Drawing -> Drawing
-fin_ !r !d = unsafePerformIO (addFinalizer d (release r d) >> pure d)
-{-# NOINLINE fin_ #-}
-
 finIO :: Renderer -> Drawing -> IO Drawing
 finIO !r !d = addFinalizer d (release r d) >> pure d
--- fin = Prelude.id
 
 finR3 :: Drawing -> R3 Drawing
 finR3 !d = ReaderT $ \r -> addFinalizer d (release r d) >> pure d
--- finR3 :: Drawing -> R3 Drawing
--- finR3 = ReaderT (flip finIO)
 
+instance Monoid Picture where
+  mappend = ap2
+  mempty = empty
+  mconcat = foldi mappend mempty
 
--- newtype Picture = Picture { getPicture :: R Drawing }
---
--- rect :: Double -> Double -> Double -> Double -> Picture
--- rect !x !y !w !h = Picture $ fin $ rect' x y w h
---
--- circle :: Double -> Double -> Double -> Picture
--- circle !x !y !r = Picture $ fin $ circle' x y r
---
--- red :: Picture -> Picture
--- red !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   red' dr
---
--- redA :: Picture -> Picture
--- redA !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   redA' dr
---
--- blueA :: Picture -> Picture
--- blueA !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   blueA' dr
---
---
--- -- blueA :: Picture -> Picture
--- fillColor :: Double
---                  -> Double -> Double -> Double -> Picture -> Picture
--- fillColor !r !g !b !a !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   fillColor' r g b a dr
---
--- strokeColor :: Double
---                  -> Double -> Double -> Double -> Picture -> Picture
--- strokeColor !r !g !b !a !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   strokeColor' r g b a dr
---
--- lineWidth :: Double -> Picture -> Picture
--- lineWidth !w !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   lineWidth' w dr
---
--- transf :: Double -> Double -> Double -> Double -> Double -> Double -> Picture -> Picture
--- transf !a !b !c !d !e !f !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   transf' a b c d e f dr
---
--- scaleXY :: Double -> Double -> Picture -> Picture
--- scaleXY !a !b !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   scaleXY' a b dr
---
--- translate :: Double -> Double -> Picture -> Picture
--- translate !a b (Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   translate' a b dr
---
--- rotate :: Double -> Picture -> Picture
--- rotate !a !(Picture rdr) = Picture $ fin $ do
---   !dr <- rdr
---   rotate' a dr
---
--- ap2 :: Picture -> Picture -> Picture
--- ap2 (Picture rdr1) (Picture rdr2) = Picture $ fin $ do
---   !dr1 <- rdr1
---   !dr2 <- rdr2
---   ap2' dr1 dr2
---
--- empty :: Picture
--- empty = rect 0 0 0 0
--- -- empty = Picture $ fin $ empty'
---
--- instance Monoid Picture where
---   mappend = ap2
---   mempty = empty
---   mconcat = foldi mappend mempty
---
--- foldt            :: (Picture -> Picture -> Picture) -> Picture -> [Picture] -> Picture
--- foldt f z []     = z
--- foldt f z [x]    = x
--- foldt f z xs     = foldt f z (pairs f xs)
---
--- foldi            :: (Picture -> Picture -> Picture) -> Picture -> [Picture] -> Picture
--- foldi f z []     = z
--- foldi f z (x:xs) = f x (foldi f z (pairs f xs))
---
--- pairs            :: (Picture -> Picture -> Picture) -> [Picture] -> [Picture]
--- pairs f (x:y:t)  = f x y : pairs f t
--- pairs f t        = t
--- {-# INLINABLE pairs #-}
--- {-# INLINABLE foldt #-}
--- {-# INLINABLE foldi #-}
---
+foldt            :: (Picture -> Picture -> Picture) -> Picture -> [Picture] -> Picture
+foldt f z []     = z
+foldt f z [x]    = x
+foldt f z xs     = foldt f z (pairs f xs)
+
+foldi            :: (Picture -> Picture -> Picture) -> Picture -> [Picture] -> Picture
+foldi f z []     = z
+foldi f z (x:xs) = f x (foldi f z (pairs f xs))
+
+pairs            :: (Picture -> Picture -> Picture) -> [Picture] -> [Picture]
+pairs f (x:y:t)  = f x y : pairs f t
+pairs f t        = t
+{-# INLINABLE pairs #-}
+{-# INLINABLE foldt #-}
+{-# INLINABLE foldi #-}
+
 renderPicture :: Renderer -> Picture -> IO ()
 renderPicture r p = do
   d <- runPicture p r
   render r d
 
--- -- TODO is it faster to use a single global renderer?
---
--- foreign import javascript unsafe "r.render(0,$1)"
---   render :: Renderer -> Drawing -> IO ()
 
--- r.render(0,r.redA(r.randPosCircle()))
 
-  -- var canvas = document.getElementById('canvas');
-  -- var context = ;
+-- Testing
 
--- makeAThingAndAddF = do
---   t1 <- makeThing
---   showThing t1
---   addFinalizer t1 $ finalizeThing t1
---   performMajorGC
-
-randPict :: Int -> Rand StdGen Picture
-randPict n = fillColor 0 0 1 0.5 <$> mconcat <$> replicateM n g
+randPict :: Bool -> Int -> Rand StdGen Picture
+randPict col n = (if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.5) <$> mconcat <$> replicateM n g
   where
     g = do
       x <- getRandom
@@ -393,86 +289,42 @@ randPict n = fillColor 0 0 1 0.5 <$> mconcat <$> replicateM n g
     square x y r = rect x y r r
 
 
--- dr :: IO Picture
--- dr = mconcat <$> replicateM 200 g
---   where
---     g = do
---       x <- randomIO
---       y <- randomIO
---       pure $ red $ strokeColor 0 0 0 0 $ rect (1000*x) (1000*y) 10 10
-
--- dr :: Picture
--- dr = mconcat $ replicate 2 g
---   where
---     g = mconcat [blueA $ strokeColor 1 0 0 1 $ lineWidth 5 $ rect (1000*x) (1000*y) 10 10]
---     x = 0
---     y = 0
-
 main = do
-  -- print "Without"
-  -- replicateM_ 100000 $ makeThing
-  -- print "With"
-  -- replicateM_ 100000 $ fmap (\t -> addFinalizer t (print "F")) makeThing
-  -- print "Done"
-
-  -- forM_ [1,2,3,4,5,6,7,1,1] $ \n -> do
-  --   let t = makeThing2 n
-  --   showThing t
-  --
-  -- -- makeAThingAndAddF
-  -- performMajorGC
-
   createCanvasNode
   e <- getCanvas
   ct <- get2DContext e
   r <- createRenderer ct
   showRenderer r
 
-
-
-
   rotation <- newIORef 0
 
-  (pict :: Picture) <- evalRandIO $ randPict 20
+  (pict :: Picture) <- evalRandIO $ randPict False 40
   -- NOT OK
   -- let !dr1 = getPicture dr' r
   -- OK
-  let !dr21 = fin_ r $ empty' r
-  -- OK
-  let !dr22 = fin_ r $ fillColor' 1 0 0 1 (fin_ r $ rect' 10 10 10 10 r) r
-  -- OK
-  let !dr2 = (fin_ r $ fillColor' 0 1 0 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ empty' r) r) r)
-  -- OK
-  let !dr3 = (fin_ r $ fillColor' 0 0 1 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ circle' 150 150 30 r) r) r)
+  -- let !dr21 = fin_ r $ empty' r
+  -- -- OK
+  -- let !dr22 = fin_ r $ fillColor' 1 0 0 1 (fin_ r $ rect' 10 10 10 10 r) r
+  -- -- OK
+  -- let !dr2 = (fin_ r $ fillColor' 0 1 0 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ empty' r) r) r)
+  -- -- OK
+  -- let !dr3 = (fin_ r $ fillColor' 0 0 1 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ circle' 150 150 30 r) r) r)
 
   let update = do
           -- print "Updating..."
           -- print " Clearing"
-
           clearRect ct 0 0 800 800
-          -- dr' <- evalRandIO dr
-          -- dr' <- dr
-          -- let dr' = dr
-          -- print " Rendering"
+
           n <- readIORef rotation
           modifyIORef' rotation (+ 0.02)
 
-          (pict2 :: Picture) <- evalRandIO $ randPict 20
+          (pict2 :: Picture) <- evalRandIO $ randPict True 40
 
           renderPicture r (mconcat [translate 400 400 $ rotate (n*1.003*pi*2) pict, pict2])
 
-          -- FIXME commented out gives us a double free
-          render r $ (fin . translate' 400 400 =<< fin . rotate' (n*pi*2) =<< pure {-dr_-}
-            dr22) r
+          -- render r $ (fin . translate' 400 400 =<< fin . rotate' (n*pi*2) =<< pure {-dr_-}
+          --   dr22) r
 
-          -- renderPicture r (translate 800 800 $ rotate (n*pi*2) dr')
-
-
-          -- print " Rendering 2 (exacly the same)"
-          -- renderPicture r dr'
-          -- print " Rendering 3 (slightly transformed)"
-          -- renderPicture r $ scaleXY 2 2 dr'
-          -- print " Done"
   update
   updateCB <- CB.syncCallback CB.ThrowWouldBlock update
   setUpdateCB updateCB
