@@ -2,8 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns, NoImplicitPrelude, GeneralizedNewtypeDeriving #-}
 
 {-# OPTIONS_GHC
-  -fno-cse
-  -fno-full-laziness
+  -O3
   #-}
 
 module Main where
@@ -54,6 +53,8 @@ foreign import javascript unsafe
 foreign import javascript unsafe
   "var loop = function() { update(); requestAnimationFrame(loop) } ; loop()"
   startLoop :: IO ()
+foreign import javascript unsafe "window.update = $1"
+  setUpdateCB :: (Callback (IO ())) -> IO ()
 
 
 
@@ -239,9 +240,6 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 {-# INLINABLE rotate #-}
 {-# INLINABLE translate #-}
 
-foreign import javascript unsafe "window.update = $1"
-  setUpdateCB :: (Callback (IO ())) -> IO ()
-
 finIO :: Renderer -> Drawing -> IO Drawing
 finIO !r !d = addFinalizer d (release r d) >> pure d
 
@@ -286,7 +284,7 @@ randPict col n = (if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.5) <$> 
       y <- getRandom
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
       pure $ shape (400*x) (400*y) 5
-    square x y r = rect x y r r
+    square x y r = rect x y (r*2) (r*2)
 
 
 main = do
@@ -294,11 +292,16 @@ main = do
   e <- getCanvas
   ct <- get2DContext e
   r <- createRenderer ct
+  r2 <- createRenderer ct
   showRenderer r
 
   rotation <- newIORef 0
 
-  (pict :: Picture) <- evalRandIO $ randPict False 40
+  (pict :: Picture) <- evalRandIO $ randPict False 100
+  (pict2 :: Picture) <- evalRandIO $ randPict True 100
+  (_ :: Drawing) <- runPicture pict r2
+  (_ :: Drawing) <- runPicture pict2 r2
+
   -- NOT OK
   -- let !dr1 = getPicture dr' r
   -- OK
@@ -318,15 +321,18 @@ main = do
           n <- readIORef rotation
           modifyIORef' rotation (+ 0.02)
 
-          (pict2 :: Picture) <- evalRandIO $ randPict True 40
 
           renderPicture r (mconcat [translate 400 400 $ rotate (n*1.003*pi*2) pict, pict2])
+          performMajorGC
+
+          -- render r drawing2
 
           -- render r $ (fin . translate' 400 400 =<< fin . rotate' (n*pi*2) =<< pure {-dr_-}
           --   dr22) r
 
   update
-  updateCB <- CB.syncCallback CB.ThrowWouldBlock update
+  -- updateCB <- CB.syncCallback CB.ThrowWouldBlock update
+  updateCB <- CB.asyncCallback update
   setUpdateCB updateCB
 
   startLoop
