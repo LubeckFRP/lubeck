@@ -292,26 +292,14 @@ main = do
   e <- getCanvas
   ct <- get2DContext e
   r <- createRenderer ct
-  r2 <- createRenderer ct
   showRenderer r
 
   rotation <- newIORef 0
 
-  (pict :: Picture) <- evalRandIO $ randPict False 100
-  (pict2 :: Picture) <- evalRandIO $ randPict True 100
-  (_ :: Drawing) <- runPicture pict r2
-  (_ :: Drawing) <- runPicture pict2 r2
-
-  -- NOT OK
-  -- let !dr1 = getPicture dr' r
-  -- OK
-  -- let !dr21 = fin_ r $ empty' r
-  -- -- OK
-  -- let !dr22 = fin_ r $ fillColor' 1 0 0 1 (fin_ r $ rect' 10 10 10 10 r) r
-  -- -- OK
-  -- let !dr2 = (fin_ r $ fillColor' 0 1 0 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ empty' r) r) r)
-  -- -- OK
-  -- let !dr3 = (fin_ r $ fillColor' 0 0 1 1 (fin_ r $ ap2' (fin_ r $ rect' 100 100 50 50 r) (fin_ r $ circle' 150 150 30 r) r) r)
+  (pict :: Picture) <- evalRandIO $ randPict False 500
+  (pict2 :: Picture) <- evalRandIO $ randPict True 500
+  (d1 :: Drawing) <- runPicture pict r
+  (d2 :: Drawing) <- runPicture pict2 r
 
   let update = do
           -- print "Updating..."
@@ -324,6 +312,7 @@ main = do
 
           renderPicture r (mconcat [translate 400 400 $ rotate (n*1.003*pi*2) pict, pict2])
           performMajorGC
+          -- seq d1 (seq d2 (return ()))
 
           -- render r drawing2
 
