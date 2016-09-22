@@ -177,7 +177,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _imul = stdlib.Math.imul;
   var _max = stdlib.Math.max;
   var _min = stdlib.Math.min;
-  var _random = stdlib.Math.random;
+  var _random = foreign.random;
 
 
   var tuplesCreated = 0
@@ -216,15 +216,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   function allocateTupleScanning() {
     var max = 0
+    var maxF = 0.0
     var i = 0
     // var j = 0
     var ptr = 0
     var j = 0
     var startingPoint = 0
     max = getMaxNumberOfTuples()|0
-    startingPoint = _floor(_random()*max) % max // Random position in [0..max]
+    maxF = +(max|0)
+    startingPoint = ((~~_floor((+_random()) * (+maxF))) % (max|0))|0 // Random position in [0..max]
     while ( (i|0) < (max|0)) {
-      j = (i + startingPoint) % max
+      j = (((i + startingPoint)|0) % (max|0))|0
       // j = i
       // Check that slot is free
       ptr = slotIndexToPtr(j)|0
@@ -924,7 +926,8 @@ function createRenderer(c2) {
 
   // ASM module is linked here...
   var res = new AsmDrawingRenderer(window,
-      { beginPath:
+      { random : Math.random
+      , beginPath:
         function (x) { c.beginPath() }
         // x=>console.log('beginPath')
       , fill:
