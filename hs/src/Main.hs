@@ -43,6 +43,15 @@ newtype CanvasElement = DOMCanvasElement JSVal
 newtype Context = Context JSVal
 newtype Renderer = Renderer JSVal
 newtype Drawing = Drawing JSVal
+newtype MouseEvent = MouseEvent JSVal
+foreign import javascript unsafe "$1.movementX"
+  movementX :: MouseEvent -> Double
+foreign import javascript unsafe "$1.movementY"
+  movementY :: MouseEvent -> Double
+foreign import javascript unsafe "$1.screenX"
+  screenX :: MouseEvent -> Double
+foreign import javascript unsafe "$1.screenY"
+  screenY :: MouseEvent -> Double
 
 
 --
@@ -55,7 +64,9 @@ foreign import javascript unsafe
   startLoop :: IO ()
 foreign import javascript unsafe "window.update = $1"
   setUpdateCB :: (Callback (IO ())) -> IO ()
-
+foreign import javascript unsafe "$1.onmousemove = $2"
+  setHandlerCB :: CanvasElement -> (Callback (JSVal -> IO ())) -> IO ()
+-- FIXME variants of asyncCallback et al to allow arbitrary newtype wrappers
 
 
 foreign import javascript unsafe "document.getElementById('canvas')"
@@ -283,7 +294,7 @@ randPict col n = (if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.5) <$> 
       x <- getRandom
       y <- getRandom
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
-      pure $ shape (400*x) (400*y) 5
+      pure $ shape (400*x) (400*y) 25
     square x y r = rect x y (r*2) (r*2)
 
 
@@ -296,23 +307,24 @@ main = do
 
   rotation <- newIORef 0
 
-  (pict :: Picture) <- evalRandIO $ randPict False 500
-  (pict2 :: Picture) <- evalRandIO $ randPict True 500
+  (pict :: Picture) <- evalRandIO $ randPict False 50
+  (pict2 :: Picture) <- evalRandIO $ randPict True 50
   (d1 :: Drawing) <- runPicture pict r
   (d2 :: Drawing) <- runPicture pict2 r
 
+  let handler e = do
+          writeIORef rotation (screenX (MouseEvent e)/400)
   let update = do
           -- print "Updating..."
           -- print " Clearing"
           clearRect ct 0 0 800 800
 
           n <- readIORef rotation
-          modifyIORef' rotation (+ 0.02)
+          -- modifyIORef' rotation (+ 0.02)
 
 
           renderPicture r (mconcat [translate 400 400 $ rotate (n*1.003*pi*2) pict, pict2])
           performMajorGC
-          -- seq d1 (seq d2 (return ()))
 
           -- render r drawing2
 
@@ -323,6 +335,8 @@ main = do
   -- updateCB <- CB.syncCallback CB.ThrowWouldBlock update
   updateCB <- CB.asyncCallback update
   setUpdateCB updateCB
+  handlerCB <- CB.asyncCallback1 handler
+  setHandlerCB e handlerCB
 
   startLoop
 

@@ -44,8 +44,7 @@ That is `GHCJS.Foreign.Callback`. This is much faster than `syncCallback`.
 
 *Very important*
 
-This may seem counter-intuitive, but it prevents building up of large data-structures on the GHCJS heap, leading to fully
-stops in the animation while the garbage-collector runs. Effectively we amortize memory management.
+This may seem counter-intuitive, but it prevents building up of large data-structures on the GHCJS heap, typically leading to glitches in the animation while the garbage-collector runs. By running the collector more often we amortize memory management.
 
 ## Profiling
 
