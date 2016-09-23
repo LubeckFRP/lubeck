@@ -111,13 +111,15 @@
 
 // Styles
 #define NODE_TYPE_FILL_COLOR      64
+#define NODE_TYPE_FILL_GRADIENT   70
+#define NODE_TYPE_FILL_PATTERN    71
 #define NODE_TYPE_STROKE_COLOR    65
 #define NODE_TYPE_LINE_WIDTH      66
 #define NODE_TYPE_LINE_CAP        67
 #define NODE_TYPE_LINE_JOIN       68
-#define NODE_TYPE_LINE_DASH       69
-#define NODE_TYPE_FILL_GRADIENT   70
-#define NODE_TYPE_FILL_PATTERN    71
+#define NODE_TYPE_TEXT_FONT       68
+#define NODE_TYPE_TEXT_ALIGNMENT  68
+#define NODE_TYPE_TEXT_BASELINE   68
 
 #define NODE_TYPE_TAG             127
 
@@ -209,10 +211,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     // if ((tuplesCreated|0) < (max|0)) {
       // return allocateTupleInitPhase()|0
     // } else {
-      return allocateTupleScanning()|0
+    return allocateTupleScanning()|0
     // }
-    // Never happens:
-    return 0|0
   }
 
   function allocateTupleInitPhase() {
@@ -722,7 +722,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   }
 
   // Int -> Drawing* - >Drawing*
-  function primTextAlign(a,dr) {
+  function primTextAlignment(a,dr) {
     a = a|0;
     dr = dr|0;
 
@@ -731,7 +731,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     claim(dr)
 
     p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT_ALIGN|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT_ALIGNMENT|0
     HEAP32 [(p + (1<<2)) >> 2] = a
     HEAP32 [(p + (2<<2)) >> 2] = dr
     return p|0
@@ -752,7 +752,35 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAP32 [(p + (2<<2)) >> 2] = dr
     return p|0
   }
-  // TODO TextFont, TextAlign, TextBaseline
+
+  function primFillGradient(a, dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_FILL_GRADIENT|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
+  function primFillPattern(a, dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_FILL_PATTERN|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
 
 
   // Int -> Drawing* - >Drawing*
@@ -812,15 +840,26 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_AP2|0
     HEAP32 [(p + (1<<2)) >> 2] = dr1
     HEAP32 [(p + (2<<2)) >> 2] = dr2
-    // console.log("Creating ap2 drawing: ", dr1, dr2)
+
     return p|0
   }
-  // Drawing* -> Drawing* -> Drawing*
-  // function primAp3(dr1,dr2) {
-  //   dr1 = dr1|0;
-  //   dr2 = dr2|0;
-  // }
 
+  function primClip(dr1, dr2) {
+    dr1 = dr1|0;
+    dr2 = dr2|0;
+
+    var p = 0
+
+    claim(dr1)
+    claim(dr2)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_CLIP|0
+    HEAP32 [(p + (1<<2)) >> 2] = dr1
+    HEAP32 [(p + (2<<2)) >> 2] = dr2
+
+    return p|0
+  }
 
 
   function setupRenderingState() {
@@ -836,12 +875,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     hasStroke = hasStroke|0;
 
     var drType = 0
-    // var ai = 0
-    // var x = 0.
-    // var y = 0.
-    // var w = 0.
-    // var h = 0.
-    // var r = 0.
 
     var a = 0.
     var b = 0.
@@ -849,13 +882,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var d = 0.
     var e = 0.
     var f = 0.
-    // var r = 0.
-    // var g = 0.
-    // var b = 0.
+
     var dr1 = 0
     var dr2 = 0
 
-    // var i = 0
     var cont = 0
 
     do {
@@ -1035,6 +1065,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   // Opts* -> Drawing* -> P2 -> Int
   function getPointTag(opts,dr,x,y) {
+    opts = opts|0;
+    dr = dr|0;
+    x = +x;
+    y = +y;
     // TODO
     return -1;
   }
@@ -1051,12 +1085,14 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           , primTransf : primTransf
 
           , primFillColor : primFillColor
+          , primFillGradient : primFillGradient
+          , primFillPattern : primFillPattern
           , primStrokeColor : primStrokeColor
           , primLineWidth : primLineWidth
           , primLineCap : primLineCap
           , primLineJoin : primLineJoin
           , primTextFont : primTextFont
-          , primTextAlign : primTextAlign
+          , primTextAlignment : primTextAlignment
           , primTextBaseline : primTextBaseline
 
           , primTag : primTag

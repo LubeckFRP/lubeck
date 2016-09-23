@@ -49,8 +49,8 @@ data Drawing
     | LineCap LineCap Drawing
     | LineJoin lineJoin Drawing
     -- | LineDash LineDash Drawing -- TODO
-  -- | FillGradient (GradientRef) -- TODO
-  -- | FillPattern (GradientRef) -- TODO
+  | FillGradient (GradientRef) Drawing -- TODO
+  | FillPattern (GradientRef) Drawing-- TODO
     | TextFont TextRef Drawing
     | TextAlign TextAlign Drawing
     | TextBaseline TextBaseline Drawing
@@ -65,4 +65,4 @@ data Drawing
   -- Any shapes in arg2 is used to clip arg1
   -- or equivalently: "draw arg1, then clip it using arg2"
   -- We don't support
-  | Clip2 Drawing Drawing
+  | Clip Drawing Drawing
