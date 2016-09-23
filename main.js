@@ -204,25 +204,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   // Return pointer to the first slot as a pointer (byte offset)
   // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
   function newTuple() {
-    // TODO this one just allocates till we run out of memory
-    // Switch to scanning allocater when needed
-    // var max = 0
-    // max = getMaxNumberOfTuples()|0;
-    // if ((tuplesCreated|0) < (max|0)) {
-      // return allocateTupleInitPhase()|0
-    // } else {
     return allocateTupleScanning()|0
-    // }
   }
 
-  function allocateTupleInitPhase() {
-    // Treet first 8 bytes in
-    var next = 0;
-    next = tuplesCreated
-    tuplesCreated = tuplesCreated + 1|0
-    // return (next * 4)|0
-    return slotIndexToPtr(next)|0
-  }
+  // function allocateTupleInitPhase() {
+  //   // Treet first 8 bytes in
+  //   var next = 0;
+  //   next = tuplesCreated
+  //   tuplesCreated = tuplesCreated + 1|0
+  //   // return (next * 4)|0
+  //   return slotIndexToPtr(next)|0
+  // }
 
   function allocateTupleScanning() {
     var max = 0
