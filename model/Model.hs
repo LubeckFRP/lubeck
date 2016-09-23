@@ -43,14 +43,14 @@ data Drawing
   -- semantically (Env -> 2DPos -> AlphaColor)
   -- the non-drawing part is semantically (Env -> Env)
   | FillColor RGBA Drawing   -- Causes paths in the nested drawing to be filled with that color (global env has transparent)
+  | FillGradient (GradientRef) Drawing -- TODO
+  | FillPattern (GradientRef) Drawing-- TODO
   | StrokeColor RGBA Drawing -- Causes paths in the nested drawing to be stroked with that color (global env has transparent)
     -- affects stroking
     | LineWidth Double Drawing
     | LineCap LineCap Drawing
     | LineJoin lineJoin Drawing
     -- | LineDash LineDash Drawing -- TODO
-  | FillGradient (GradientRef) Drawing -- TODO
-  | FillPattern (GradientRef) Drawing-- TODO
     | TextFont TextRef Drawing
     | TextAlign TextAlign Drawing
     | TextBaseline TextBaseline Drawing

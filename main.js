@@ -111,15 +111,15 @@
 
 // Styles
 #define NODE_TYPE_FILL_COLOR      64
-#define NODE_TYPE_FILL_GRADIENT   70
-#define NODE_TYPE_FILL_PATTERN    71
-#define NODE_TYPE_STROKE_COLOR    65
-#define NODE_TYPE_LINE_WIDTH      66
-#define NODE_TYPE_LINE_CAP        67
-#define NODE_TYPE_LINE_JOIN       68
-#define NODE_TYPE_TEXT_FONT       68
-#define NODE_TYPE_TEXT_ALIGNMENT  68
-#define NODE_TYPE_TEXT_BASELINE   68
+#define NODE_TYPE_FILL_GRADIENT   65
+#define NODE_TYPE_FILL_PATTERN    66
+#define NODE_TYPE_STROKE_COLOR    67
+#define NODE_TYPE_LINE_WIDTH      68
+#define NODE_TYPE_LINE_CAP        69
+#define NODE_TYPE_LINE_JOIN       70
+#define NODE_TYPE_TEXT_FONT       71
+#define NODE_TYPE_TEXT_ALIGNMENT  72
+#define NODE_TYPE_TEXT_BASELINE   73
 
 #define NODE_TYPE_TAG             127
 
@@ -328,31 +328,76 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       case NODE_TYPE_FREE:
         // FIXME should we really run into free nodes here?
         break;
+
       case NODE_TYPE_CIRCLE:
         break;
       case NODE_TYPE_RECT:
         break;
-      case NODE_TYPE_FILL_COLOR:
-        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
-        release(dr1);
+      case NODE_TYPE_TEXT:
+        break;
+      case NODE_TYPE_PATH:
         break;
 
-      case NODE_TYPE_STROKE_COLOR:
-        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
-        release(dr1);
-        break;
-
-      case NODE_TYPE_LINE_WIDTH:
-        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
-        release(dr1);
-        break;
       case NODE_TYPE_TRANSF:
         dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
         // FIXME this line breaks tests
         release(dr1);
         break;
 
+
+      case NODE_TYPE_FILL_COLOR:
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_FILL_GRADIENT:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_FILL_PATTERN:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_STROKE_COLOR:
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_LINE_WIDTH:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_LINE_CAP:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_LINE_JOIN:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_TEXT_FONT:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_TEXT_ALIGNMENT:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+      case NODE_TYPE_TEXT_BASELINE:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+
+      case NODE_TYPE_TAG:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        break;
+
       case NODE_TYPE_AP2:
+        dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        release(dr1);
+        release(dr2);
+        break;
+      case NODE_TYPE_CLIP:
         dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
         release(dr1);
@@ -899,6 +944,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     */
     switch (drType|0) {
 
+      case NODE_TYPE_FREE:
+        _debug(ERROR_TYPE_FREE_PASSED_TO_RENDER);
+        break;
+
       case NODE_TYPE_CIRCLE:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
         b = +HEAPF32[(dr+(2<<2)) >> 2];
@@ -914,6 +963,16 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         d = +HEAPF32[(dr+(4<<2)) >> 2];
         drawRect(a,b,c,d,hasFill,hasStroke)
         // console.log("Rendering circle: ", x, y, r)
+        break;
+
+      case NODE_TYPE_TEXT:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
+
+      case NODE_TYPE_PATH:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
         break;
 
       case NODE_TYPE_FILL_COLOR:
@@ -952,6 +1011,16 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _restore()
         break;
 
+      case NODE_TYPE_FILL_GRADIENT:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
+
+      case NODE_TYPE_FILL_PATTERN:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
+
       case NODE_TYPE_LINE_WIDTH:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
@@ -960,44 +1029,36 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         renderWithoutCheck(opts,dr1,hasFill,hasStroke)
         _restore()
         break;
-      //
-      // case NODE_TYPE_LINE_CAP:
-      //   a = +HEAPF32[(dr+(1<<2)) >> 2];
-      //   dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
-      //   _save()
-      //   _lineCap(a);
-      //   renderWithoutCheck(opts,dr1)
-      //   _restore()
-      //   break;
-      //
-      // case NODE_TYPE_LINE_JOIN:
-      //   a = +HEAPF32[(dr+(1<<2)) >> 2];
-      //   dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
-      //   _save()
-      //   _lineJoin(a);
-      //   renderWithoutCheck(opts,dr1)
-      //   _restore()
-      //   break;
-      //
-      // case NODE_TYPE_LINE_DASH:
-      //   ai = HEAP32[(dr+(1<<2)) >> 2]|0; // Number of slots used
-      //   b = +HEAPF32[(dr+(2<<2)) >> 2]; // Slots 2-6 store the actual values
-      //   c = +HEAPF32[(dr+(3<<2)) >> 2];
-      //   d = +HEAPF32[(dr+(4<<2)) >> 2];
-      //   e = +HEAPF32[(dr+(5<<2)) >> 2];
-      //   f = +HEAPF32[(dr+(6<<2)) >> 2];
-      //   dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
-      //   _save()
-      //   _lineDash(a,b,c,d,e,f);
-      //   render(opts,dr1)
-      //   _restore()
-      //   break;
 
-      // TODO figure out a good heap repr for linear gradients
-      // I.e. one tuple for (x0, y0, x1, y1, stops, dr)
-      // The stops is some kind of list of colors (percent,r,g,b,a)
+      case NODE_TYPE_LINE_CAP:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
 
+      case NODE_TYPE_LINE_JOIN:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
 
+      case NODE_TYPE_TEXT_FONT:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
+
+      case NODE_TYPE_TEXT_ALIGNMENT:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
+
+      case NODE_TYPE_TEXT_BASELINE:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
+
+      case NODE_TYPE_TAG:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
+        break;
 
       case NODE_TYPE_TRANSF:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -1031,9 +1092,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         break;
 
-      case NODE_TYPE_FREE:
-        _debug(ERROR_TYPE_FREE_PASSED_TO_RENDER);
+      case NODE_TYPE_CLIP:
+        // TODO
+        _debug(ERROR_TYPE_UNKNOWN);
         break;
+
       default:
         _debug(ERROR_TYPE_UNKNOWN);
         break;
@@ -1102,7 +1165,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           , addToRefCount : addToRefCount
           , getRefCount : getRefCount
           , newTuple : newTuple
-          , allocateTupleInitPhase : allocateTupleInitPhase
+          // , allocateTupleInitPhase : allocateTupleInitPhase
           , allocateTupleScanning : allocateTupleScanning
           }
 }
