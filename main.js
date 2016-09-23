@@ -442,12 +442,13 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   }
 
 
-  function drawCircle(x,y,r,hasFill,hasStroke) {
+  function drawCircle(x,y,r,hasFill,hasStroke,hasClip) {
     x=+x
     y=+y
     r=+r
     hasFill = hasFill|0;
     hasStroke = hasStroke|0;
+    hasClip = hasClip|0
 
     // TODO optimize away fill/stroke if the appropriate color is not set
     _beginPath();
@@ -459,13 +460,14 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       _stroke();
     }
   }
-  function drawRect(x,y,w,h,hasFill,hasStroke) {
+  function drawRect(x,y,w,h,hasFill,hasStroke,hasClip) {
     x=+x
     y=+y
     w=+w
     h=+h
     hasFill = hasFill|0;
     hasStroke = hasStroke|0;
+    hasClip = hasClip|0
     // _rect(x,y,w,h);
     // _fill();
 
@@ -905,11 +907,12 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   // Render without checking that setupRenderingState has been called
   // Opts* -> Drawing* -> ()
-  function renderWithoutCheck(opts,dr,hasFill,hasStroke) {
+  function renderWithoutCheck(opts,dr,hasFill,hasStroke,hasClip) {
     opts = opts|0;
     dr = dr|0;
     hasFill = hasFill|0;
     hasStroke = hasStroke|0;
+    hasClip = hasClip|0
 
     var drType = 0
 
@@ -952,7 +955,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         a = +HEAPF32[(dr+(1<<2)) >> 2];
         b = +HEAPF32[(dr+(2<<2)) >> 2];
         c = +HEAPF32[(dr+(3<<2)) >> 2];
-        drawCircle(a,b,c,hasFill,hasStroke)
+        drawCircle(a,b,c,hasFill,hasStroke,hasClip)
         // console.log("Rendering circle: ", x, y, r)
         break;
 
@@ -961,7 +964,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         b = +HEAPF32[(dr+(2<<2)) >> 2];
         c = +HEAPF32[(dr+(3<<2)) >> 2];
         d = +HEAPF32[(dr+(4<<2)) >> 2];
-        drawRect(a,b,c,d,hasFill,hasStroke)
+        drawRect(a,b,c,d,hasFill,hasStroke,hasClip)
         // console.log("Rendering circle: ", x, y, r)
         break;
 
@@ -989,7 +992,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         writeRGBAStringToBuffer(a,b,c,d)
         _fillStyleFromColorBuffer()
 
-        renderWithoutCheck(opts,dr1,1,hasStroke) // render with hasFill set
+        renderWithoutCheck(opts,dr1,1,hasStroke,hasClip) // render with hasFill set
         _restore()
         break;
 
@@ -1007,7 +1010,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         writeRGBAStringToBuffer(a,b,c,d)
         _strokeStyleFromColorBuffer()
 
-        renderWithoutCheck(opts,dr1,hasFill,1) // render with hasStroke set
+        renderWithoutCheck(opts,dr1,hasFill,1,hasClip) // render with hasStroke set
         _restore()
         break;
 
@@ -1026,7 +1029,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
         _save()
         _lineWidth(a);
-        renderWithoutCheck(opts,dr1,hasFill,hasStroke)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
 
@@ -1074,7 +1077,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // Or simply apply inverted matrix when done http://stackoverflow.com/a/18504573
         _save()
         _transform(a,b,c,d,e,f)
-        renderWithoutCheck(opts,dr1,hasFill,hasStroke)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
 
@@ -1082,7 +1085,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
 
-        renderWithoutCheck(opts,dr1,hasFill,hasStroke)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
 
         // render(opts,dr2)
         // Manual tail-call opt: Instead of calling this function again, we update the parameters and set cont to true
@@ -1093,8 +1096,13 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       case NODE_TYPE_CLIP:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
+        dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
+
+        _save()
+        renderWithoutCheck(opts,dr2,0,0,1) // No fill or stroke, but clip!
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
         break;
 
       default:
@@ -1115,7 +1123,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       setupRenderingState()
       renderingStateSetupDone = 1
     }
-    renderWithoutCheck(opts,dr,0,0)
+    renderWithoutCheck(opts,dr,0,0,0)
   }
 
   // Opts* -> Drawing* -> P2 -> Int
