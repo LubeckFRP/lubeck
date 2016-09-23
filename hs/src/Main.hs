@@ -288,7 +288,7 @@ renderPicture r p = do
 -- Testing
 
 randPict :: Bool -> Int -> Rand StdGen Picture
-randPict col n = (if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.5) <$> mconcat <$> replicateM n g
+randPict col n = setCol col <$> mconcat <$> replicateM n g
   where
     g = do
       x <- getRandom
@@ -296,7 +296,18 @@ randPict col n = (if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.5) <$> 
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
       pure $ shape (400*x) (400*y) 25
     square x y r = rect x y (r*2) (r*2)
+    setCol col = if col then strokeColor 0 0 1 0.5 else fillColor 1 0 0 0.5
 
+randPictWithTags :: Bool -> Int -> Rand StdGen (Picture)
+randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
+  where
+    g = do
+      x <- getRandom
+      y <- getRandom
+      shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
+      pure $ shape (400*x) (400*y) 25
+    square x y r = rect x y (r*2) (r*2)
+    setCol col = if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.5
 
 main = do
   createCanvasNode

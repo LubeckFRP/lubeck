@@ -83,6 +83,14 @@
   the slot see the corresponding constructor function (i.e. search for NODE_TYPE_RECT to
   verify that RECT nodes contain for floating point-values, representing, x, y, width and height).
 
+  TODO nodes for external images (_IMAGE), stored in JS ext buffer
+  TODO nodes for text (_TEXT) ,stored in JS ext buffer
+  TODO nodes for composition/clipping
+  TODO nodes for paths
+  TODO nodes for event tagging/regions
+  TODO basic example with composed renderers (maybe running in different threads)
+  TODO RenderingOptions support (if needed at this level)
+
 */
 
 // #define HEAP_SIZE         1048576
@@ -105,8 +113,12 @@
 
 // Fill/stroke the text stored in the given text buffer slot
 #define NODE_TYPE_TEXT            4
+// [type,text,x,y]
+
+
+
 // Draw the image stored in the given image buffer slot
-#define NODE_TYPE_IMAGE           5
+#define NODE_TYPE_IMAGE           6
 
 // Styles
 #define NODE_TYPE_FILL_COLOR      64
@@ -115,6 +127,9 @@
 #define NODE_TYPE_LINE_CAP        67
 #define NODE_TYPE_LINE_JOIN       68
 #define NODE_TYPE_LINE_DASH       69
+
+
+
 #define NODE_TYPE_GRADIENT_LINEAR 70
 // TODO text, embedded bitmaps, composites/masks
 
@@ -1062,6 +1077,9 @@ function createRenderer(c2) {
           }
          }
       }, heap) // FIXME trim
+
+  // Store a reference to the context (mainly for debugging)
+  res.context = c
 
   // Some helpers
 
