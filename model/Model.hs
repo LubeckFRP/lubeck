@@ -14,8 +14,8 @@ type P2 = (# Double, Double #)
 type V2 = (# Double, Double #)
 data LineCap = ... -- enum
 data LineDash = ... -- enum
-type Ref Text = Int -- stored externally
-type Ref Image = Int -- stored externally
+type TextRef = Int -- stored externally
+type ImageRef = Int -- stored externally
 
 
 data Segment
@@ -32,7 +32,7 @@ data Drawing
   = Free -- Used for GC etc, never rendered
   | Circle P2 Double
   | Rect P2 Double Double
-  | Text P2 RefText -- TODO
+  | Text P2 TextRef -- TODO
   -- All above is just an optimized form of Path...
   | Path P2 Segment -- TODO
 
@@ -49,9 +49,9 @@ data Drawing
     | LineCap LineCap Drawing
     | LineJoin lineJoin Drawing
     -- | LineDash LineDash Drawing -- TODO
-  -- | FillGradient (Ref Gradient) -- TODO
-  -- | FillPattern (Ref Gradient) -- TODO
-    | TextFont (Ref String) Drawing
+  -- | FillGradient (GradientRef) -- TODO
+  -- | FillPattern (GradientRef) -- TODO
+    | TextFont TextRef Drawing
     | TextAlign TextAlign Drawing
     | TextBaseline TextBaseline Drawing
 

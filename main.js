@@ -564,6 +564,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAPF32[(p + (3<<2)) >> 2] = rad
     return p|0
   }
+
   // Double ^ 4 -> Drawing*
   function primRect(x, y, w, h) {
     x = +x;
@@ -581,6 +582,39 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAPF32[(p + (4<<2)) >> 2] = h
     return p|0
   }
+
+  // P2 -> TextRef -> Drawing*
+  function primText(x, y, txt) {
+    x = +x;
+    y = +y;
+    txt = txt|0;
+
+    var p = 0
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT|0
+    HEAPF32[(p + (1<<2)) >> 2] = x
+    HEAPF32[(p + (2<<2)) >> 2] = y
+    HEAP32 [(p + (3<<2)) >> 2] = txt
+    return p|0
+  }
+
+  // P2 -> Segment* -> Drawing*
+  function primPath(x, y, path) {
+    x = +x;
+    y = +y;
+    path = path|0;
+
+    var p = 0
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT|0
+    HEAPF32[(p + (1<<2)) >> 2] = x
+    HEAPF32[(p + (2<<2)) >> 2] = y
+    HEAP32 [(p + (3<<2)) >> 2] = path
+    return p|0
+  }
+
   // Double ^ 4 -> Drawing*
   function primFillColor(r,g,b,a,dr) {
     r = +r;
@@ -623,7 +657,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAP32 [(p + (5<<2)) >> 2] = dr
     return p|0
   }
-  // Double ^ 4 -> Drawing*
+  // Double -> Drawing*
   function primLineWidth(a,dr) {
     a = +a;
     dr = dr|0;
@@ -638,6 +672,105 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAP32 [(p + (2<<2)) >> 2] = dr
     return p|0
   }
+
+  // Int -> Drawing* - >Drawing*
+  function primLineCap(a,dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_LINE_CAP|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
+
+  // Int -> Drawing* - >Drawing*
+  function primLineJoin(a,dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_LINE_JOIN|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
+
+  // Int -> Drawing* - >Drawing*
+  function primTextFont(a,dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT_FONT|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
+
+  // Int -> Drawing* - >Drawing*
+  function primTextAlign(a,dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT_ALIGN|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
+
+  // Int -> Drawing* - >Drawing*
+  function primTextBaseline(a,dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT_BASELINE|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
+  // TODO TextFont, TextAlign, TextBaseline
+
+
+  // Int -> Drawing* - >Drawing*
+  function primTag(a,dr) {
+    a = a|0;
+    dr = dr|0;
+
+    var p = 0
+
+    claim(dr)
+
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TAG|0
+    HEAP32 [(p + (1<<2)) >> 2] = a
+    HEAP32 [(p + (2<<2)) >> 2] = dr
+    return p|0
+  }
+
   // Double ^ 6 -> Drawing*
   function primTransf(a,b,c,d,e,f,dr) {
     a = +a;
@@ -900,29 +1033,49 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     renderWithoutCheck(opts,dr,0,0)
   }
 
+  // Opts* -> Drawing* -> P2 -> Int
+  function getPointTag(opts,dr,x,y) {
+    // TODO
+    return -1;
+  }
+
   // etc
   return  { render : render
+          , getPointTag : getPointTag
+
           , primCircle : primCircle
           , primRect : primRect
+          , primText : primText
+          , primPath : primPath
+
+          , primTransf : primTransf
+
           , primFillColor : primFillColor
           , primStrokeColor : primStrokeColor
           , primLineWidth : primLineWidth
-          , primTransf : primTransf
+          , primLineCap : primLineCap
+          , primLineJoin : primLineJoin
+          , primTextFont : primTextFont
+          , primTextAlign : primTextAlign
+          , primTextBaseline : primTextBaseline
+
+          , primTag : primTag
+
           , primAp2 : primAp2
+          , primClip : primClip
+
+          , claim : claim
+          , release : release
+
           , getMaxNumberOfTuples : getMaxNumberOfTuples
           , getCurrentTuples : getCurrentTuples
-
           , slotIndexToPtr : slotIndexToPtr
           , getPtrType : getPtrType
           , addToRefCount : addToRefCount
           , getRefCount : getRefCount
-
           , newTuple : newTuple
           , allocateTupleInitPhase : allocateTupleInitPhase
           , allocateTupleScanning : allocateTupleScanning
-
-          , claim : claim
-          , release : release
           }
 }
 
