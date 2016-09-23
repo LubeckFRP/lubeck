@@ -83,42 +83,31 @@
   the slot see the corresponding constructor function (i.e. search for NODE_TYPE_RECT to
   verify that RECT nodes contain for floating point-values, representing, x, y, width and height).
 
-  TODO nodes for external images (_IMAGE), stored in JS ext buffer
-  TODO nodes for text (_TEXT) ,stored in JS ext buffer
-  TODO nodes for composition/clipping
-  TODO nodes for paths
-  TODO nodes for event tagging/regions
-  TODO basic example with composed renderers (maybe running in different threads)
-  TODO RenderingOptions support (if needed at this level)
-
 */
 
-// #define HEAP_SIZE         1048576
-#define HEAP_SIZE        0x1000000
+// Heap bounds
+
+#define HEAP_SIZE                0x1000000
 // This buffer is used to return color values to the underlying context (as UTF8 strings).
 #define HEAP_COLOR_BUFFER_OFFSET 0
 // This region is not currently used
 #define HEAP_UNUSED_OFFSET       36
 // This region stores the tuples. Its size is (heap size - HEAP_TUPLES_OFFSET).
 #define HEAP_TUPLES_OFFSET       36
-// 0x1000
-// 4096
 
+
+// Node types
 
 // Indicates that a slot is free and can be re-used by the allocator
 #define NODE_TYPE_FREE            0
 // Primitives
 #define NODE_TYPE_CIRCLE          1
 #define NODE_TYPE_RECT            2
+#define NODE_TYPE_TEXT            3
+#define NODE_TYPE_PATH            4
 
-// Fill/stroke the text stored in the given text buffer slot
-#define NODE_TYPE_TEXT            4
-// [type,text,x,y]
-
-
-
-// Draw the image stored in the given image buffer slot
-#define NODE_TYPE_IMAGE           6
+// Affine transformations
+#define NODE_TYPE_TRANSF          63
 
 // Styles
 #define NODE_TYPE_FILL_COLOR      64
@@ -127,25 +116,31 @@
 #define NODE_TYPE_LINE_CAP        67
 #define NODE_TYPE_LINE_JOIN       68
 #define NODE_TYPE_LINE_DASH       69
+#define NODE_TYPE_FILL_GRADIENT   70
+#define NODE_TYPE_FILL_PATTERN    71
 
-
-
-#define NODE_TYPE_GRADIENT_LINEAR 70
-// TODO text, embedded bitmaps, composites/masks
-
-// Affine transformations
-#define NODE_TYPE_TRANSF          127
+#define NODE_TYPE_TAG             127
 
 // Groups (named for the verb "append")
 #define NODE_TYPE_AP2             128
 #define NODE_TYPE_AP3             129
 #define NODE_TYPE_AP4             130
+#define NODE_TYPE_CLIP            131
+
+// Segments
+#define NODE_TYPE_SEGMENT         256
+#define NODE_TYPE_SEGMENT2        257
+#define NODE_TYPE_SEGMENT3        258
+#define NODE_TYPE_ARC             259
+#define NODE_TYPE_END             260
+
 // Largest possible node value
 // Also serves as mask for node values, so we can reuse remaining bits for GC tags etc
 #define NODE_TYPE_MAX_VALUE       0xfff
-// 4095
 
-// Misc
+
+// Enumerations
+
 #define STYLE_LINE_CAP_BUTT        0
 #define STYLE_LINE_CAP_ROUND       1
 #define STYLE_LINE_CAP_SQUARE      2

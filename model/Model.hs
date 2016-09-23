@@ -7,42 +7,57 @@
 -- Slot types are pointers, Int, Double, and "unboxed" things as per above
 
 -- These things are
-type RGBA = (# Double,Double,Double,Double #)
-type Matrix = (# Double,Double,Double,Double,Double,Double #)
+type RGBA = (# Double,Double,Double,Double #) -- 4
+type Matrix = (# Double,Double,Double,Double,Double,Double #) -- 6
 type Tag = #Int
+type P2 = (# Double, Double #)
+type V2 = (# Double, Double #)
 data LineCap = ... -- enum
 data LineDash = ... -- enum
+type Ref Text = Int -- stored externally
+type Ref Image = Int -- stored externally
+
+
+data Segment
+  = Segment P2 Segment -- line
+  | Segment2 P2 P2 Segment -- quadratic bezier
+  | Segment3 P2 P2 P2 Segment-- cubic bezier (7 slots!)
+  | Arc P2 P2 Double Segment -- 2 control points, radius
+  | End Bool -- true to close the segment
 
 data Drawing
   -- These are
   -- structurally collections of points
   -- semantially (Env -> 2DPos -> AlphaColor)
-  = Circle Double Double Double
-  | Rect Double Double Double Double
-  | Text -- TODO
+  = Free -- Used for GC etc, never rendered
+  | Circle P2 Double
+  | Rect P2 Double Double
+  | Text P2 RefText -- TODO
   -- All above is just an optimized form of Path...
-  | Path -- TODO
+  | Path P2 Segment -- TODO
+
+  -- semantically (2DPos -> 2DPos)
+  -- Transforms all points/shapes in the nested drawing
+  | Transf Matrix Drawing
 
   -- semantically (Env -> 2DPos -> AlphaColor)
   -- the non-drawing part is semantically (Env -> Env)
-  | FillColor RGBA Drawing
-  | StrokeColor RGBA Drawing
-  -- Semantically
-  -- This could be thought of as generating a new mask for each tag (in addition to the fill/stroke/clip masks)
+  | FillColor RGBA Drawing   -- Causes paths in the nested drawing to be filled with that color (global env has transparent)
+  | StrokeColor RGBA Drawing -- Causes paths in the nested drawing to be stroked with that color (global env has transparent)
+    -- affects stroking
+    | LineWidth Double Drawing
+    | LineCap LineCap Drawing
+    | LineJoin lineJoin Drawing
+    -- | LineDash LineDash Drawing -- TODO
+  -- | FillGradient (Ref Gradient) -- TODO
+  -- | FillPattern (Ref Gradient) -- TODO
+    | TextFont (Ref String) Drawing
+    | TextAlign TextAlign Drawing
+    | TextBaseline TextBaseline Drawing
+
+  -- Tag the "filled" part of the drawing
+  -- This can be seen as defining an arbitrary number of binary masks (in addition to standard stroke/fill)
   | Tag Tag Drawing
-
-  | LineWidth Double Drawing
-  | LineCap LineCap Drawing
-  | LineJoin lineJoin Drawing
-  | LineDash LineDash Drawing -- TODO
-
-  -- semantically (2DPos -> 2DPos)
-  | Transf Matrix Drawing
-
-  -- A specific rasterized dataset (could be viewed as an optimization for lots of small rects)
-  | Image -- TODO
-
-
 
   -- Put arg2 on top of arg1
   -- or equivalently: "draw arg1, then draw arg2"
