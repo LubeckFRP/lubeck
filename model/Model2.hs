@@ -55,7 +55,7 @@ data Drawing
   = Free -- Used for GC etc, never rendered
   | Circle P2 Double
   | Rect P2 Double Double
-  | Text P2 TextRef -- TODO
+  | Text P2 TextRef
   -- All above is just an optimized form of Path...
   | Path P2 Segment -- TODO
   -- beginPath, moveTo
@@ -71,17 +71,17 @@ data Drawing
   | FillPattern (GradientRef) Drawing-- TODO
   | StrokeColor RGBA Drawing -- Causes paths in the nested drawing to be stroked with that color (global env has transparent)
     -- affects stroking
-    | LineWidth Double Drawing
-    | LineCap LineCap Drawing
-    | LineJoin lineJoin Drawing
+    | LineWidth Double Drawing -- TODO
+    | LineCap LineCap Drawing -- TODO
+    | LineJoin lineJoin Drawing -- TODO
     -- | LineDash LineDash Drawing -- TODO
     | TextFont TextRef Drawing
-    | TextAlign TextAlign Drawing
-    | TextBaseline TextBaseline Drawing
+    | TextAlign TextAlign Drawing -- TODO
+    | TextBaseline TextBaseline Drawing -- TODO
 
   -- Tag the "filled" part of the drawing
   -- This can be seen as defining an arbitrary number of binary masks (in addition to standard stroke/fill)
-  | Tag Tag Drawing
+  | Tag Tag Drawing -- TODO
 
   -- Put arg2 on top of arg1
   -- or equivalently: "draw arg1, then draw arg2"
@@ -89,4 +89,4 @@ data Drawing
   -- Any shapes in arg2 is used to clip arg1
   -- or equivalently: "draw arg1, then clip it using arg2"
   -- We don't support
-  | Clip Drawing Segments
+  | Clip Drawing Segments -- TODO

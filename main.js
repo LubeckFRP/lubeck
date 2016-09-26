@@ -135,6 +135,7 @@
 #define NODE_TYPE_SEGMENT3        258
 #define NODE_TYPE_ARC             259
 #define NODE_TYPE_END             260
+#define NODE_TYPE_SUBPATH         261
 
 // Largest possible node value
 // Also serves as mask for node values, so we can reuse remaining bits for GC tags etc
@@ -143,12 +144,26 @@
 
 // Enumerations
 
+#define STYLE_TEXT_ALIGN_START      0
+#define STYLE_TEXT_ALIGN_END        1
+#define STYLE_TEXT_ALIGN_LEFT       2
+#define STYLE_TEXT_ALIGN_RIGHT      3
+#define STYLE_TEXT_ALIGN_CENTER     4
+
+#define STYLE_TEXT_BASELINE_TOP           0
+#define STYLE_TEXT_BASELINE_HANGING       1
+#define STYLE_TEXT_BASELINE_MIDDLE        2
+#define STYLE_TEXT_BASELINE_ALPHABETIC    3
+#define STYLE_TEXT_BASELINE_IDEOGRAPHIC   4
+#define STYLE_TEXT_BASELINE_BOTTOM        5
+
 #define STYLE_LINE_CAP_BUTT        0
 #define STYLE_LINE_CAP_ROUND       1
 #define STYLE_LINE_CAP_SQUARE      2
-#define STYLE_LINE_CAP_BEVEL       0
-#define STYLE_LINE_CAP_ROUND       1
-#define STYLE_LINE_CAP_METER       2
+
+#define STYLE_LINE_JOIN_BEVEL      0
+#define STYLE_LINE_JOIN_ROUND      1
+#define STYLE_LINE_JOIN_MITER      2
 
 #define ERROR_TYPE_UNKNOWN         0
 #define ERROR_TYPE_UNKNOWN_RELEASE 2
@@ -178,6 +193,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _fillStyleFromColorBuffer = foreign.fillStyleFromColorBuffer
   var _strokeStyleFromColorBuffer = foreign.strokeStyleFromColorBuffer
   var _font = foreign.font
+  var _textAlign = foreign.textAlign
+  var _textBaseline = foreign.textBaseline
   var _lineWidth = foreign.lineWidth
   var _lineCap = foreign.lineCap
   var _lineJoin = foreign.lineJoin
@@ -1085,7 +1102,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       //   break;
       //
       case NODE_TYPE_TEXT_FONT:
-        // TODO
         txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // txt
         dr1 =  HEAP32 [(dr+(2<<2)) >> 2]|0 // txt
         _save()
@@ -1093,16 +1109,25 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
-      //
-      // case NODE_TYPE_TEXT_ALIGNMENT:
-      //   // TODO
-      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
-      //   break;
-      //
-      // case NODE_TYPE_TEXT_BASELINE:
-      //   // TODO
-      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
-      //   break;
+
+      case NODE_TYPE_TEXT_ALIGNMENT:
+        txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // val
+        dr1 =  HEAP32 [(dr+(2<<2)) >> 2]|0 // txt
+        _save()
+        _textAlign(txt|0)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
+        break;
+
+      case NODE_TYPE_TEXT_BASELINE:
+        txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // val
+        dr1 =  HEAP32 [(dr+(2<<2)) >> 2]|0 // txt
+        _save()
+        _textBaseline(txt|0)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
+        break;
+
       //
       // case NODE_TYPE_TAG:
       //   // TODO
@@ -1295,7 +1320,49 @@ function createRenderer(c2) {
       function (ref) {
         c.font = fetchExternal(ref)
       }
-
+      , textAlign:
+      function (x) {
+        switch (x) {
+          case STYLE_TEXT_ALIGN_END:
+            c.textAlign = "end"
+            break
+          case STYLE_TEXT_ALIGN_LEFT:
+            c.textAlign = "left"
+            break
+          case STYLE_TEXT_ALIGN_RIGHT:
+            c.textAlign = "right"
+            break
+          case STYLE_TEXT_ALIGN_START:
+            c.textAlign = "start"
+            break
+          case STYLE_TEXT_ALIGN_CENTER:
+            c.textAlign = "center"
+            break
+        }
+      }
+      , textBaseline:
+      function (x) {
+        switch (x) {
+          case STYLE_TEXT_BASELINE_TOP:
+            c.textBaseline = "top"
+            break
+          case STYLE_TEXT_BASELINE_BOTTOM:
+            c.textBaseline = "bottom"
+            break
+          case STYLE_TEXT_BASELINE_MIDDLE:
+            c.textBaseline = "middle"
+            break
+          case STYLE_TEXT_BASELINE_HANGING:
+            c.textBaseline = "hanging"
+            break
+          case STYLE_TEXT_BASELINE_ALPHABETIC:
+            c.textBaseline = "alphabetic"
+            break
+          case STYLE_TEXT_BASELINE_IDEOGRAPHIC:
+            c.textBaseline = "ideographic"
+            break
+        }
+      }
       , fillStyleRGBA:
         // x=>console.log('fillStyle_')
         // FIXME

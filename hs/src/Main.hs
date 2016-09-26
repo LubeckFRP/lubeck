@@ -211,6 +211,25 @@ textFont !font (Picture rd1) = Picture $ do
   res <- (ReaderT $ \r -> textFont'' font d1 r)
   finR3 res
 
+data TextAlign = TextAlignStart | TextAlignEnd | TextAlignLeft | TextAlignRight | TextAlignCenter -- TODO
+  deriving (Eq, Ord, Enum, Show)
+data TextBaseline
+  = TextBaselineTop | TextBaselineHanging | TextBaselineMiddle
+  | TextBaselineAlphabetic | TextBaselineIdeographic | TextBaselineBottom -- TODO
+  deriving (Eq, Ord, Enum, Show)
+
+textAlign :: TextAlign -> Picture -> Picture
+textAlign !x (Picture rd1) = Picture $ do
+  d1 <- rd1
+  res <- (ReaderT $ \r -> textAlign'' (fromEnum x) d1 r)
+  finR3 res
+
+textBaseline :: TextBaseline -> Picture -> Picture
+textBaseline !x (Picture rd1) = Picture $ do
+  d1 <- rd1
+  res <- (ReaderT $ \r -> textBaseline'' (fromEnum x) d1 r)
+  finR3 res
+
 
 ap2 :: Picture -> Picture -> Picture
 ap2 (Picture rd1) (Picture rd2) = Picture $ do
@@ -229,6 +248,11 @@ foreign import javascript unsafe "$4.text($1,$2,$3)"
   text'' :: Double -> Double -> JSString -> R2 Drawing
 foreign import javascript unsafe "$3.textFont($1,$2)"
   textFont'' :: JSString -> Drawing -> R2 Drawing
+
+foreign import javascript unsafe "$3.primTextAlignment($1,$2)"
+  textAlign'' :: Int -> Drawing -> R2 Drawing
+foreign import javascript unsafe "$3.primTextBaseline($1,$2)"
+  textBaseline'' :: Int -> Drawing -> R2 Drawing
 
 
 -- Styles
@@ -361,8 +385,18 @@ main = do
           renderPicture r (mconcat
             [ mempty
             -- , fillColor 1 0 1 1 $ circle 200 200 20
-            , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
-            , translate 400 400 $ rotate (n*1.003*pi*2) pict
+            , translate 200 200 $ scaleXY 4 4 $ mconcat
+              [ mempty
+
+              , fillColor 1 0 0 0.2 $ rect 0 0 20 20
+              , fillColor 0 0 0 1 $ textFont "10px Arial, sans-serif" $ text 0 0 "H"
+              , fillColor 0 1 0 1 $ textAlign TextAlignCenter $ textBaseline TextBaselineTop $ textFont "10px Arial, sans-serif" $ text 0 0 "H"
+
+              ]
+
+
+            -- , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
+            -- , translate 400 400 $ rotate (n*1.003*pi*2) pict
             -- , pict2
             ])
           performMajorGC
