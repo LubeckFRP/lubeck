@@ -84,8 +84,10 @@ foreign import javascript unsafe "console.log($1)"
   showRenderer :: Renderer -> IO ()
 
 foreign import javascript unsafe "$1.render(0,$2)"
-  render :: Renderer -> Drawing -> IO ()
-{-# INLINABLE render #-}
+  renderDrawing :: Renderer -> Drawing -> IO ()
+{-# INLINABLE renderDrawing #-}
+
+-- Never call these from high-level API, should be managed by addFinalizer
 foreign import javascript unsafe "$1.claim($2)"
   claim :: Renderer -> Drawing -> IO ()
 {-# INLINABLE claim #-}
@@ -93,56 +95,55 @@ foreign import javascript unsafe "$1.release($2)"
   release :: Renderer -> Drawing -> IO ()
 {-# INLINABLE release #-}
 
-type R a = Renderer -> a
-foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
-  rect' :: Double -> Double -> Double -> Double -> R Drawing
-foreign import javascript unsafe "$4.primCircle($1,$2,$3)"
-  circle' :: Double -> Double -> Double -> R Drawing
--- foreign import javascript unsafe "$4.text($1,$2,$3)"
-  -- text' :: Double -> Double -> JSString -> R Drawing
-
-
--- Styles
-foreign import javascript unsafe "$2.red($1)"
-  red' :: Drawing -> R Drawing
-foreign import javascript unsafe "$2.redA($1)"
-  redA' :: Drawing -> R Drawing
-foreign import javascript unsafe "$2.blueA($1)"
-  blueA' :: Drawing -> R Drawing
-foreign import javascript unsafe "$6.primFillColor($1,$2,$3,$4,$5)"
-  fillColor' :: Double -> Double -> Double -> Double -> Drawing -> R Drawing
-foreign import javascript unsafe "$6.primStrokeColor($1,$2,$3,$4,$5)"
-  strokeColor' :: Double -> Double -> Double -> Double -> Drawing -> R Drawing
-foreign import javascript unsafe "$3.primLineWidth($1,$2)"
-  lineWidth' :: Double -> Drawing -> R Drawing
-
-
--- Transformation
-foreign import javascript unsafe "$8.primTransf($1,$2,$3,$4,$5,$6,$7)"
-  transf' :: Double -> Double -> Double -> Double -> Double -> Double -> Drawing -> R Drawing
-foreign import javascript unsafe "$4.scaleXY($1,$2,$3)"
-  scaleXY' :: Double -> Double -> Drawing -> R Drawing
-foreign import javascript unsafe "$3.rotate($1,$2)"
-  rotate' :: Double -> Drawing -> R Drawing
-foreign import javascript unsafe "$4.translate($1,$2,$3)"
-  translate' :: Double -> Double -> Drawing -> R Drawing
--- Composition
-foreign import javascript unsafe "$3.primAp2($1,$2)"
-  ap2' :: Drawing -> Drawing -> R Drawing
-
--- {-# INLINABLE text' #-}
-{-# INLINABLE rect' #-}
-{-# INLINABLE circle' #-}
-{-# INLINABLE red' #-}
-{-# INLINABLE redA' #-}
-{-# INLINABLE strokeColor' #-}
-
-{-# INLINABLE transf' #-}
-{-# INLINABLE scaleXY' #-}
-{-# INLINABLE rotate' #-}
-{-# INLINABLE translate' #-}
-
-
+-- type R a = Renderer -> a
+-- foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
+--   rect' :: Double -> Double -> Double -> Double -> R Drawing
+-- foreign import javascript unsafe "$4.primCircle($1,$2,$3)"
+--   circle' :: Double -> Double -> Double -> R Drawing
+-- -- foreign import javascript unsafe "$4.text($1,$2,$3)"
+--   -- text' :: Double -> Double -> JSString -> R Drawing
+--
+--
+-- -- Styles
+-- foreign import javascript unsafe "$2.red($1)"
+--   red' :: Drawing -> R Drawing
+-- foreign import javascript unsafe "$2.redA($1)"
+--   redA' :: Drawing -> R Drawing
+-- foreign import javascript unsafe "$2.blueA($1)"
+--   blueA' :: Drawing -> R Drawing
+-- foreign import javascript unsafe "$6.primFillColor($1,$2,$3,$4,$5)"
+--   fillColor' :: Double -> Double -> Double -> Double -> Drawing -> R Drawing
+-- foreign import javascript unsafe "$6.primStrokeColor($1,$2,$3,$4,$5)"
+--   strokeColor' :: Double -> Double -> Double -> Double -> Drawing -> R Drawing
+-- foreign import javascript unsafe "$3.primLineWidth($1,$2)"
+--   lineWidth' :: Double -> Drawing -> R Drawing
+--
+--
+-- -- Transformation
+-- foreign import javascript unsafe "$8.primTransf($1,$2,$3,$4,$5,$6,$7)"
+--   transf' :: Double -> Double -> Double -> Double -> Double -> Double -> Drawing -> R Drawing
+-- foreign import javascript unsafe "$4.scaleXY($1,$2,$3)"
+--   scaleXY' :: Double -> Double -> Drawing -> R Drawing
+-- foreign import javascript unsafe "$3.rotate($1,$2)"
+--   rotate' :: Double -> Drawing -> R Drawing
+-- foreign import javascript unsafe "$4.translate($1,$2,$3)"
+--   translate' :: Double -> Double -> Drawing -> R Drawing
+-- -- Composition
+-- foreign import javascript unsafe "$3.primAp2($1,$2)"
+--   ap2' :: Drawing -> Drawing -> R Drawing
+--
+-- -- {-# INLINABLE text' #-}
+-- {-# INLINABLE rect' #-}
+-- {-# INLINABLE circle' #-}
+-- {-# INLINABLE red' #-}
+-- {-# INLINABLE redA' #-}
+-- {-# INLINABLE strokeColor' #-}
+--
+-- {-# INLINABLE transf' #-}
+-- {-# INLINABLE scaleXY' #-}
+-- {-# INLINABLE rotate' #-}
+-- {-# INLINABLE translate' #-}
+--
 
 
 
@@ -151,9 +152,6 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 type R2 a = Renderer -> IO a
 type R3 a = ReaderT Renderer IO a
 newtype Picture = Picture { getPicture :: R3 Drawing }
-
-runPicture :: Picture -> Renderer -> IO Drawing
-runPicture p re = runReaderT (getPicture p) re
 
 rect :: Double -> Double -> Double -> Double -> Picture
 rect !x !y !w !h = Picture $ (ReaderT $ \r -> rect'' x y w h r) >>= finR3
@@ -297,8 +295,8 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 {-# INLINABLE rotate #-}
 {-# INLINABLE translate #-}
 
-finIO :: Renderer -> Drawing -> IO Drawing
-finIO !r !d = addFinalizer d (release r d) >> pure d
+-- finIO :: Renderer -> Drawing -> IO Drawing
+-- finIO !r !d = addFinalizer d (release r d) >> pure d
 
 finR3 :: Drawing -> R3 Drawing
 finR3 !d = ReaderT $ \r -> addFinalizer d (release r d) >> pure d
@@ -324,10 +322,21 @@ pairs f t        = t
 {-# INLINABLE foldt #-}
 {-# INLINABLE foldi #-}
 
+{-
+NOTE behavior is undefined if the result of calling prerender is passed to
+renderDrawing using a different renderer (including if it is passed to usePrerendered
+and the result of that is passed to renderPicture).
+-}
+prerender :: Picture -> Renderer -> IO Drawing
+prerender p re = runReaderT (getPicture p) re
+
+usePrerendered :: Drawing -> Picture
+usePrerendered d = Picture $ pure d
+
 renderPicture :: Renderer -> Picture -> IO ()
 renderPicture r p = do
-  d <- runPicture p r
-  render r d
+  d <- prerender p r
+  renderDrawing r d
 
 
 
@@ -355,7 +364,7 @@ randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
       pure $ shape (400*x) (400*y) 25
     square x y r = rect x y (r*2) (r*2)
-    setCol col = if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.5
+    setCol col = if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.1
 
 main = do
   createCanvasNode
@@ -366,10 +375,10 @@ main = do
 
   rotation <- newIORef 0
 
-  (pict :: Picture) <- evalRandIO $ randPict False 50
+  (pict :: Picture) <- evalRandIO $ randPict False 500
   (pict2 :: Picture) <- evalRandIO $ randPict True 50
-  (d1 :: Drawing) <- runPicture pict r
-  (d2 :: Drawing) <- runPicture pict2 r
+  (d1 :: Drawing) <- prerender pict r
+  (d2 :: Drawing) <- prerender pict2 r
 
   let handler e = do
           writeIORef rotation (screenX (MouseEvent e)/400)
@@ -396,7 +405,10 @@ main = do
 
 
             -- , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
-            -- , translate 400 400 $ rotate (n*1.003*pi*2) pict
+
+            -- Compare (pict) and (usePrerendered d1)
+            , translate 400 400 $ rotate (n*1.003*pi*2) $ usePrerendered d1
+            , usePrerendered d2
             -- , pict2
             ])
           performMajorGC

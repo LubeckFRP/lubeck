@@ -74,10 +74,9 @@ data Drawing
     | LineWidth Double Drawing -- TODO
     | LineCap LineCap Drawing -- TODO
     | LineJoin lineJoin Drawing -- TODO
-    -- | LineDash LineDash Drawing -- TODO
     | TextFont TextRef Drawing
-    | TextAlign TextAlign Drawing -- TODO
-    | TextBaseline TextBaseline Drawing -- TODO
+    | TextAlign TextAlign Drawing
+    | TextBaseline TextBaseline Drawing
 
   -- Tag the "filled" part of the drawing
   -- This can be seen as defining an arbitrary number of binary masks (in addition to standard stroke/fill)
