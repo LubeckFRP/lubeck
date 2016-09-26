@@ -1,5 +1,5 @@
 
-{-# LANGUAGE ScopedTypeVariables, BangPatterns, NoImplicitPrelude, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, OverloadedStrings, NoImplicitPrelude, GeneralizedNewtypeDeriving #-}
 
 {-# OPTIONS_GHC
   -O3
@@ -8,7 +8,8 @@
 module Main where
 
 import Control.Monad
-import GHCJS.Types(JSVal)
+import GHCJS.Types(JSVal, JSString)
+import Data.JSString(pack)
 -- import Foreign.Ptr
 -- import Foreign.ForeignPtr
 -- import Unsafe.Coerce(unsafeCoerce)
@@ -97,6 +98,8 @@ foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
   rect' :: Double -> Double -> Double -> Double -> R Drawing
 foreign import javascript unsafe "$4.primCircle($1,$2,$3)"
   circle' :: Double -> Double -> Double -> R Drawing
+-- foreign import javascript unsafe "$4.text($1,$2,$3)"
+  -- text' :: Double -> Double -> JSString -> R Drawing
 
 
 -- Styles
@@ -127,6 +130,7 @@ foreign import javascript unsafe "$4.translate($1,$2,$3)"
 foreign import javascript unsafe "$3.primAp2($1,$2)"
   ap2' :: Drawing -> Drawing -> R Drawing
 
+-- {-# INLINABLE text' #-}
 {-# INLINABLE rect' #-}
 {-# INLINABLE circle' #-}
 {-# INLINABLE red' #-}
@@ -153,6 +157,10 @@ runPicture p re = runReaderT (getPicture p) re
 
 rect :: Double -> Double -> Double -> Double -> Picture
 rect !x !y !w !h = Picture $ (ReaderT $ \r -> rect'' x y w h r) >>= finR3
+
+text :: Double -> Double -> JSString -> Picture
+text !x !y !txt = Picture $ (ReaderT $ \r -> text'' x y txt r) >>= finR3
+
 circle :: Double -> Double -> Double -> Picture
 circle !x !y !rad = Picture $ (ReaderT $ \r -> circle'' x y rad r) >>= finR3
 fillColor :: Double
@@ -209,6 +217,8 @@ foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
   rect'' :: Double -> Double -> Double -> Double -> R2 Drawing
 foreign import javascript unsafe "$4.primCircle($1,$2,$3)"
   circle'' :: Double -> Double -> Double -> R2 Drawing
+foreign import javascript unsafe "$4.text($1,$2,$3)"
+  text'' :: Double -> Double -> JSString -> R2 Drawing
 
 
 -- Styles
@@ -233,6 +243,7 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 
 {-# INLINABLE rect'' #-}
 {-# INLINABLE circle'' #-}
+{-# INLINABLE text'' #-}
 {-# INLINABLE fillColor'' #-}
 {-# INLINABLE strokeColor'' #-}
 {-# INLINABLE transf'' #-}
@@ -334,7 +345,13 @@ main = do
           -- modifyIORef' rotation (+ 0.02)
 
 
-          renderPicture r (mconcat [translate 400 400 $ rotate (n*1.003*pi*2) pict, pict2])
+          renderPicture r (mconcat
+            [ mempty
+            -- , fillColor 1 0 1 1 $ circle 200 200 20
+            , translate 200 200 $ scaleXY (n*4) (n*4) $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
+            -- , translate 400 400 $ rotate (n*1.003*pi*2) pict
+            -- , pict2
+            ])
           performMajorGC
 
           -- render r drawing2

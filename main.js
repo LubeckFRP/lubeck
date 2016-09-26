@@ -172,6 +172,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _stroke = foreign.stroke;
   var _fillRect = foreign.fillRect;
   var _strokeRect = foreign.strokeRect;
+  var _fillText = foreign.fillText
   var _fillStyleRGBA = foreign.fillStyleRGBA;
   var _fillStyleFromColorBuffer = foreign.fillStyleFromColorBuffer
   var _strokeStyleFromColorBuffer = foreign.strokeStyleFromColorBuffer
@@ -258,7 +259,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     }
     // Handle out of memory state
     if (!outOfMemoryReported) {
-      _debug(ERROR_OUT_OF_MEMORY)
+      _debug(ERROR_OUT_OF_MEMORY, 0)
       outOfMemoryReported = 1
     }
     return 0xffffffff|0
@@ -423,7 +424,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       default:
-        _debug(ERROR_TYPE_UNKNOWN_RELEASE);
+        _debug(ERROR_TYPE_UNKNOWN_RELEASE, drType|0);
         break;
     }
   }
@@ -495,6 +496,18 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     }
     if (hasStroke) {
       _strokeRect(x,y,w,h);
+    }
+  }
+
+  function drawText(x,y,txt,hasFill,hasStroke) {
+    x=+x
+    y=+y
+    txt=txt|0
+    hasFill = hasFill|0;
+    hasStroke = hasStroke|0;
+    // Don't support stroke
+    if (hasFill) {
+      _fillText(x,y,txt|0)
     }
   }
 
@@ -944,6 +957,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     var dr1 = 0
     var dr2 = 0
+    var txt = 0
 
     var cont = 0
 
@@ -967,7 +981,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     switch (drType|0) {
 
       case NODE_TYPE_FREE:
-        _debug(ERROR_TYPE_FREE_PASSED_TO_RENDER);
+        _debug(ERROR_TYPE_FREE_PASSED_TO_RENDER, 0);
         break;
 
       case NODE_TYPE_CIRCLE:
@@ -988,13 +1002,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       case NODE_TYPE_TEXT:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
+        a   = +HEAPF32[(dr + (1<<2)) >> 2]
+        b   = +HEAPF32[(dr + (2<<2)) >> 2]
+        txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // txt
+
+        // We don't support text for clipping paths
+        drawText(a,b,txt,hasFill,hasStroke)
         break;
 
       case NODE_TYPE_PATH:
         // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
+        _debug(ERROR_TYPE_UNKNOWN, drType|0);
         break;
 
       case NODE_TYPE_FILL_COLOR:
@@ -1035,12 +1053,12 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
       case NODE_TYPE_FILL_GRADIENT:
         // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
+        _debug(ERROR_TYPE_UNKNOWN, drType|0);
         break;
 
       case NODE_TYPE_FILL_PATTERN:
         // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
+        _debug(ERROR_TYPE_UNKNOWN, drType|0);
         break;
 
       case NODE_TYPE_LINE_WIDTH:
@@ -1052,35 +1070,35 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _restore()
         break;
 
-      case NODE_TYPE_LINE_CAP:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
-        break;
-
-      case NODE_TYPE_LINE_JOIN:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
-        break;
-
-      case NODE_TYPE_TEXT_FONT:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
-        break;
-
-      case NODE_TYPE_TEXT_ALIGNMENT:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
-        break;
-
-      case NODE_TYPE_TEXT_BASELINE:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
-        break;
-
-      case NODE_TYPE_TAG:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN);
-        break;
+      // case NODE_TYPE_LINE_CAP:
+      //   // TODO
+      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
+      //   break;
+      //
+      // case NODE_TYPE_LINE_JOIN:
+      //   // TODO
+      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
+      //   break;
+      //
+      // case NODE_TYPE_TEXT_FONT:
+      //   // TODO
+      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
+      //   break;
+      //
+      // case NODE_TYPE_TEXT_ALIGNMENT:
+      //   // TODO
+      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
+      //   break;
+      //
+      // case NODE_TYPE_TEXT_BASELINE:
+      //   // TODO
+      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
+      //   break;
+      //
+      // case NODE_TYPE_TAG:
+      //   // TODO
+      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
+      //   break;
 
       case NODE_TYPE_TRANSF:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -1125,7 +1143,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       default:
-        _debug(ERROR_TYPE_UNKNOWN);
+        _debug(ERROR_TYPE_UNKNOWN, drType|0);
         break;
     }
     }
@@ -1324,6 +1342,10 @@ function createRenderer(c2) {
           h = +h
           c.strokeRect(x,y,w,h)
         }
+      , fillText:
+        function (x,y,txtRef) {
+          c.fillText(fetchExternal(txtRef), x, y)
+        }
       , save:
       // x=>console.log('x')
         function (x) { c.save() }
@@ -1345,11 +1367,11 @@ function createRenderer(c2) {
           // c.translate(e,f)
         }
       , debug:
-        function (msg) {
+        function (msg, arg) {
           // FIXME stop rendering somehow
           switch (msg) {
             case ERROR_TYPE_UNKNOWN:
-              console.log("Error: ", "Unknown node type")
+              console.log("Error: ", "Unknown node type", arg)
               break;
             case ERROR_TYPE_UNKNOWN_RELEASE:
               console.log("Error: ", "Unknown node type (release)")
