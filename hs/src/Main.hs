@@ -261,6 +261,8 @@ ap2 (Picture rd1) (Picture rd2) = Picture $ do
 empty :: Picture
 empty = rect 0 0 0 0
 
+-- TODO for path/segment interface, use something like http://stackoverflow.com/questions/17055527/lifting-foldr-to-monad
+
 foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
   rect'' :: Double -> Double -> Double -> Double -> R2 Drawing
 foreign import javascript unsafe "$4.primCircle($1,$2,$3)"

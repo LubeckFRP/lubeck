@@ -133,9 +133,9 @@
 #define NODE_TYPE_SEGMENT         256
 #define NODE_TYPE_SEGMENT2        257
 #define NODE_TYPE_SEGMENT3        258
-#define NODE_TYPE_ARC             259
-#define NODE_TYPE_END             260
-#define NODE_TYPE_SUBPATH         261
+#define NODE_TYPE_SEGMENT_ARC     259
+#define NODE_TYPE_SEGMENT_END     260
+#define NODE_TYPE_SEGMENT_SUBPATH 261
 
 // Largest possible node value
 // Also serves as mask for node values, so we can reuse remaining bits for GC tags etc
@@ -441,6 +441,29 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
         release(dr1);
         release(dr2);
+        break;
+
+      case NODE_TYPE_SEGMENT:
+        dr1 = HEAP32[(dr+(3<<2)) >> 2]|0; // segs
+        release(dr1);
+        break;
+      case NODE_TYPE_SEGMENT2:
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0; // segs
+        release(dr1);
+        break;
+      case NODE_TYPE_SEGMENT3:
+        dr1 = HEAP32[(dr+(7<<2)) >> 2]|0; // segs
+        release(dr1);
+        break;
+      case NODE_TYPE_SEGMENT_ARC:
+        dr1 = HEAP32[(dr+(6<<2)) >> 2]|0; // segs
+        release(dr1);
+        break;
+      case NODE_TYPE_SEGMENT_END:
+        break;
+      case NODE_TYPE_SEGMENT_SUBPATH:
+        dr1 = HEAP32[(dr+(4<<2)) >> 2]|0; // segs
+        release(dr1);
         break;
 
       default:
@@ -952,6 +975,82 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return p|0
   }
 
+  function primSegment(x, y, segs) {
+    x = +x;
+    y = +y;
+    segs = segs|0;
+    var p = 0;
+    claim(segs)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT|0
+    // TODO slots
+    return p|0
+  }
+  function primSegment2(x1, y1, x2, y2, segs) {
+    x1 = +x1;
+    y1 = +y1;
+    x2 = +x2;
+    y2 = +y2;
+    segs = segs|0;
+    var p = 0;
+    claim(segs)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT2|0
+    // TODO slots
+    return p|0
+  }
+  function primSegment3(x1, y1, x2, y2, x3, y3, segs) {
+    x1 = +x1;
+    y1 = +y1;
+    x2 = +x2;
+    y2 = +y2;
+    x3 = +x3;
+    y3 = +y3;
+    segs = segs|0;
+    var p = 0;
+    claim(segs)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT3|0
+    // TODO slots
+    return p|0
+  }
+  function primSegmentArc(x1, y1, x2, y2, rad, segs) {
+    x1 = +x1;
+    y1 = +y1;
+    x2 = +x2;
+    y2 = +y2;
+    rad = +rad;
+    segs = segs|0;
+    var p = 0;
+    claim(segs)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_ARC|0
+    // TODO slots
+    return p|0
+  }
+  function primSegmentEnd(close, segs) {
+    close = close|0;
+    segs = segs|0;
+    var p = 0;
+    claim(segs)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_END|0
+    // TODO slots
+    return p|0
+  }
+  function SegmentSubpath(close, x, y, segs) {
+    close = close|0;
+    x = +x;
+    y = +y;
+    segs = segs|0;
+    var p = 0;
+    claim(segs)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_SUBPATH|0
+    // TODO slots
+    return p|0
+  }
+
 
   function setupRenderingState() {
     setupColorBuffer()
@@ -1175,9 +1274,24 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _restore()
         break;
 
+      case NODE_TYPE_SEGMENT:
+        // TODO lineTo
+      case NODE_TYPE_SEGMENT2:
+        // TODO quadraticCurveTo
+      case NODE_TYPE_SEGMENT3:
+        // TODO bezierCurveTo
+      case NODE_TYPE_SEGMENT_ARC:
+        // TODO arcTo
+      case NODE_TYPE_SEGMENT_END:
+        // TODO optional closePath
+      case NODE_TYPE_SEGMENT_SUBPATH:
+        // TODO optional closePath, then moveTo
+
       default:
         _debug(ERROR_TYPE_UNKNOWN, drType|0);
         break;
+
+
     }
     }
     while(cont);

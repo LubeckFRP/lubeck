@@ -46,12 +46,13 @@ data Segments
   -- quadraticCurveTo
   | Segment3 P2 P2 P2 Segments-- cubic bezier (7 slots!)
   --  bezierCurveTo
-  | Arc P2 P2 Double Segments -- 2 control points, radius
+  | SegmentArc P2 P2 Double Segments -- 2 control points, radius
   -- arcTo
-  | End Bool -- true to close the segment
+  | SegmentEnd Bool -- true to close the segment
   --  optional closePath, then moveTo
 
-  | Subpath Bool P2 Segments -- true to close the segment, then move and start new segment
+  -- TODO is this strictly necessary?
+  | SegmentSubpath Bool P2 Segments -- true to close the segment, then move and start new segment
   --  optional closePath, then moveTo
 
 -- data Paths
@@ -81,9 +82,9 @@ data Drawing
   | FillPattern (GradientRef) Drawing-- TODO
   | StrokeColor RGBA Drawing -- Causes paths in the nested drawing to be stroked with that color (global env has transparent)
     -- affects stroking
-    | LineWidth Double Drawing -- TODO
-    | LineCap LineCap Drawing -- TODO
-    | LineJoin LineJoin Drawing -- TODO
+    | LineWidth Double Drawing
+    | LineCap LineCap Drawing
+    | LineJoin LineJoin Drawing
     | TextFont TextRef Drawing
     | TextAlign TextAlign Drawing
     | TextBaseline TextBaseline Drawing
