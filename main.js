@@ -193,6 +193,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
 
   var tuplesCreated = 0
+  var allocationsPerformed = 0
+  var deallocationsPerformed = 0
   var renderingStateSetupDone = 0
   var outOfMemoryReported = 0
 
@@ -201,9 +203,19 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return (((i * 8) << 2) + HEAP_TUPLES_OFFSET) |0
   }
 
+  function getAllocationInfo(type) {
+    type = type|0
+    if (type) {
+      return allocationsPerformed
+    } else {
+      return deallocationsPerformed
+    }
+  }
+
   // Return pointer to the first slot as a pointer (byte offset)
   // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
   function newTuple() {
+    allocationsPerformed = allocationsPerformed + 1
     return allocateTupleScanning()|0
   }
 
@@ -417,8 +429,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     if ((rc|0) == 0) {
         // Release sub-nodes here (depends on type)
         releaseChildren(ptr)
+        // Notify deallocation succeeded
+        deallocationsPerformed = deallocationsPerformed + 1
         // Mark the slot as free
-        // FIXME this seems to cause bugs
         HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
     } else {
       addToRefCount(ptr, -1)
@@ -1175,6 +1188,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           , newTuple : newTuple
           // , allocateTupleInitPhase : allocateTupleInitPhase
           , allocateTupleScanning : allocateTupleScanning
+          , getAllocationInfo : getAllocationInfo
           }
 }
 
@@ -1382,9 +1396,6 @@ function createRenderer(c2) {
 
   // TODO this could also be triggered by a special node in the drawing tree
   res.dumpHeap = function () {
-    console.log("Heap size:", HEAP_SIZE)
-    console.log("Max tuples:", res.getMaxNumberOfTuples())
-    console.log("Fast-allocated tuples:", res.getCurrentTuples())
     res.dumpHeapUsage()
     console.log("Dumping heap below...")
     console.log("")
@@ -1393,22 +1404,34 @@ function createRenderer(c2) {
   }
   res.dumpHeapUsage = function () {
     var n = res.getMaxNumberOfTuples()
-    var usedTuples = 0;
+    var unusedTuples = 0;
     for (var i = 0; i < n; ++i) {
       var ptr = res.slotIndexToPtr(i)
       if (res.getPtrType(ptr) === NODE_TYPE_FREE) {
-        ++usedTuples;
+        ++unusedTuples;
       }
     }
-    console.log("Heap usage", Math.floor((n-usedTuples)*100/n), "%")
+    var usedTuples = n - unusedTuples;
+    var [allocs,deallocs] = [res.getAllocationInfo(1), res.getAllocationInfo(0)]
+    console.log("Heap size:", HEAP_SIZE)
+    console.log("Max tuples:", res.getMaxNumberOfTuples())
+    console.log("Number of tuples allocated:", allocs)
+    console.log("Number of tuples deallocated:", deallocs)
+    console.log("Number of tuples leaked:", allocs - (deallocs + usedTuples))
+    console.log("Current number of tuples:", usedTuples)
+    console.log("Current heap usage", Math.floor(usedTuples*100/n), "%")
   }
   res.dumpTuples = function () {
     var n = res.getMaxNumberOfTuples()
-    for (var i = 0; i < n; ++i) {
-      var ptr = res.slotIndexToPtr(i)
-      console.log("Tuple at address", ptr)
-      console.log("  ", "Type:", res.getPtrType(ptr))
-      console.log("  ", "(External) references:", res.getRefCount(ptr))
+    if (n > 512) {
+      console.log("Refusing to dump more than ", 512, " tuples")
+    } else {
+      for (var i = 0; i < n; ++i) {
+        var ptr = res.slotIndexToPtr(i)
+        console.log("Tuple at address", ptr)
+        console.log("  ", "Type:", res.getPtrType(ptr))
+        console.log("  ", "(External) references:", res.getRefCount(ptr))
+      }
     }
   }
 
