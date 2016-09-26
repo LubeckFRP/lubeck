@@ -17,13 +17,36 @@ data LineDash = ... -- enum
 type TextRef = Int -- stored externally
 type ImageRef = Int -- stored externally
 
+{-
+(from Canvas Spec)
 
-data Segment
-  = Segment P2 Segment -- line
-  | Segment2 P2 P2 Segment -- quadratic bezier
-  | Segment3 P2 P2 P2 Segment-- cubic bezier (7 slots!)
-  | Arc P2 P2 Double Segment -- 2 control points, radius
+A path has a list of zero or more subpaths. Each subpath consists of a list
+of one or more points, connected by straight or curved lines, and a flag
+indicating whether the subpath is closed or not. A closed subpath is one
+where the last point of the subpath is connected to the first point of the
+subpath by a straight line.
+
+Subpaths with fewer than two points are ignored when painting the path.
+-}
+
+data Segments
+  = Segment P2 Segments -- line
+  -- lineTo
+  | Segment2 P2 P2 Segments -- quadratic bezier
+  -- quadraticCurveTo
+  | Segment3 P2 P2 P2 Segments-- cubic bezier (7 slots!)
+  --  bezierCurveTo
+  | Arc P2 P2 Double Segments -- 2 control points, radius
+  -- arcTo
   | End Bool -- true to close the segment
+  --  optional closePath, then moveTo
+
+  | Subpath Bool P2 Segments -- true to close the segment, then move and start new segment
+  --  optional closePath, then moveTo
+
+-- data Paths
+  -- = Paths1 P2 Segments
+  -- | Paths1 ()
 
 data Drawing
   -- These are
@@ -35,6 +58,7 @@ data Drawing
   | Text P2 TextRef -- TODO
   -- All above is just an optimized form of Path...
   | Path P2 Segment -- TODO
+  -- beginPath, moveTo
 
   -- semantically (2DPos -> 2DPos)
   -- Transforms all points/shapes in the nested drawing
@@ -65,4 +89,4 @@ data Drawing
   -- Any shapes in arg2 is used to clip arg1
   -- or equivalently: "draw arg1, then clip it using arg2"
   -- We don't support
-  | Clip Drawing Drawing
+  | Clip Drawing Segments

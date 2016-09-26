@@ -179,6 +179,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _lineCap = foreign.lineCap
   var _lineJoin = foreign.lineJoin
   var _lineDash = foreign.lineDash
+  var _releaseExternal = foreign.releaseExternal
 
   var _arc = foreign.arc;
   // var _rect = foreign.rect;
@@ -333,6 +334,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var drType = 0
     var dr1 = 0
     var dr2 = 0
+    var ext = 0
 
 
     drType = getPtrType(dr)|0;
@@ -348,6 +350,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       case NODE_TYPE_RECT:
         break;
       case NODE_TYPE_TEXT:
+        ext = HEAP32 [(dr + (3<<2)) >> 2]|0
+        _releaseExternal(ext|0)
         break;
       case NODE_TYPE_PATH:
         break;
@@ -1202,9 +1206,31 @@ function createRenderer(c2) {
   var colorBuffer = new Uint8Array(heap, HEAP_COLOR_BUFFER_OFFSET, 22);
   var utf8d       = new TextDecoder("utf-8");
 
+  // Externals
+  var externals   = {}
+  var externalCount = 0
+
+  // Passing arguments (strins/images) to renderer will store object here and transfer
+  // ownership to renderer node. When the node is deallocated, object disappears from here.
+  // object|string -> Int
+  function storeExternal(obj) {
+    var n = externalCount++
+    externals[n] = obj
+    return n
+  }
+  // Int -> object|string|undefined
+  function fetchExternal(n) {
+    return externals[n]
+  }
+  // Int -> undefined (called by asm)
+  function releaseExternal(n) {
+    externals[n] = undefined
+  }
+
   // ASM module is linked here...
   var res = new AsmDrawingRenderer(window,
       { random : Math.random
+      , releaseExternal : releaseExternal
       , beginPath:
         function (x) { c.beginPath() }
         // x=>console.log('beginPath')
@@ -1345,6 +1371,13 @@ function createRenderer(c2) {
   res.context = c
 
   // Some helpers
+  res.text = function(x, y, text) {
+    var textRef = storeExternal(text)
+    return res.primText(x, y, textRef)
+  }
+  res.dumpExternals = function() {
+    Object.keys(externals).forEach(k => console.log("  ", k, fetchExternal(k)))
+  }
 
   res.ap = function(xs) {
     // TODO primitive empty drawing
@@ -1428,16 +1461,25 @@ function createRenderer(c2) {
     console.log("Current number of tuples:", usedTuples)
     console.log("Current heap usage", Math.floor(usedTuples*100/n), "%")
   }
+
+  res.dumpTuple = function (ptr, includeSlots) {
+    console.log("Tuple at address", ptr)
+    console.log("  ", "Type:", res.getPtrType(ptr))
+    console.log("  ", "(External) references:", res.getRefCount(ptr))
+    if (includeSlots) {
+      // Actually tricky, as we have no type tags
+    }
+  }
+
   res.dumpTuples = function () {
     var n = res.getMaxNumberOfTuples()
-    if (n > 512) {
-      console.log("Refusing to dump more than ", 512, " tuples")
+    var maxDump = 1000
+    if (n > maxDump) {
+      console.log("Error: Refusing to dump more than ", maxDump, " tuples")
     } else {
       for (var i = 0; i < n; ++i) {
         var ptr = res.slotIndexToPtr(i)
-        console.log("Tuple at address", ptr)
-        console.log("  ", "Type:", res.getPtrType(ptr))
-        console.log("  ", "(External) references:", res.getRefCount(ptr))
+        res.dumpTuple(ptr, false)
       }
     }
   }
