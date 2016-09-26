@@ -228,6 +228,28 @@ textBaseline !x (Picture rd1) = Picture $ do
   res <- (ReaderT $ \r -> textBaseline'' (fromEnum x) d1 r)
   finR3 res
 
+data LineCap = LineCapButt | LineCapRound | LineCapSquare
+  deriving (Eq, Ord, Enum, Show)
+data LineJoin = LineJoinBevel | LineJoinRound | LineJoinMiter
+  deriving (Eq, Ord, Enum, Show)
+
+lineWidth :: Double -> Picture -> Picture
+lineWidth !x (Picture rd1) = Picture $ do
+  d1 <- rd1
+  res <- (ReaderT $ \r -> lineWidth'' x d1 r)
+  finR3 res
+
+lineCap :: LineCap -> Picture -> Picture
+lineCap !x (Picture rd1) = Picture $ do
+  d1 <- rd1
+  res <- (ReaderT $ \r -> lineCap'' (fromEnum x) d1 r)
+  finR3 res
+
+lineJoin :: LineJoin -> Picture -> Picture
+lineJoin !x (Picture rd1) = Picture $ do
+  d1 <- rd1
+  res <- (ReaderT $ \r -> lineJoin'' (fromEnum x) d1 r)
+  finR3 res
 
 ap2 :: Picture -> Picture -> Picture
 ap2 (Picture rd1) (Picture rd2) = Picture $ do
@@ -235,6 +257,7 @@ ap2 (Picture rd1) (Picture rd2) = Picture $ do
   d2 <- rd2
   res <- (ReaderT $ \re -> ap2'' d1 d2 re)
   finR3 res
+
 empty :: Picture
 empty = rect 0 0 0 0
 
@@ -247,19 +270,24 @@ foreign import javascript unsafe "$4.text($1,$2,$3)"
 foreign import javascript unsafe "$3.textFont($1,$2)"
   textFont'' :: JSString -> Drawing -> R2 Drawing
 
-foreign import javascript unsafe "$3.primTextAlignment($1,$2)"
-  textAlign'' :: Int -> Drawing -> R2 Drawing
-foreign import javascript unsafe "$3.primTextBaseline($1,$2)"
-  textBaseline'' :: Int -> Drawing -> R2 Drawing
-
 
 -- Styles
 foreign import javascript unsafe "$6.primFillColor($1,$2,$3,$4,$5)"
   fillColor'' :: Double -> Double -> Double -> Double -> Drawing -> R2 Drawing
 foreign import javascript unsafe "$6.primStrokeColor($1,$2,$3,$4,$5)"
   strokeColor'' :: Double -> Double -> Double -> Double -> Drawing -> R2 Drawing
+
 foreign import javascript unsafe "$3.primLineWidth($1,$2)"
   lineWidth'' :: Double -> Drawing -> R2 Drawing
+foreign import javascript unsafe "$3.primLineCap($1,$2)"
+  lineCap'' :: Int -> Drawing -> R2 Drawing
+foreign import javascript unsafe "$3.primLineJoin($1,$2)"
+  lineJoin'' :: Int -> Drawing -> R2 Drawing
+foreign import javascript unsafe "$3.primTextAlignment($1,$2)"
+  textAlign'' :: Int -> Drawing -> R2 Drawing
+foreign import javascript unsafe "$3.primTextBaseline($1,$2)"
+  textBaseline'' :: Int -> Drawing -> R2 Drawing
+
 -- Transformation
 foreign import javascript unsafe "$8.primTransf($1,$2,$3,$4,$5,$6,$7)"
   transf'' :: Double -> Double -> Double -> Double -> Double -> Double -> Drawing -> R2 Drawing
@@ -350,8 +378,8 @@ randPict col n = setCol col <$> mconcat <$> replicateM n g
       y <- getRandom
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
       pure $ shape (400*x) (400*y) 25
-    -- square x y r = rect x y (r*2) (r*2)
-    square x y r = translate x y $ scale r $ text 0 0 "H"
+    square x y r = rect x y (r*2) (r*2)
+    -- square x y r = translate x y $ scale r $ text 0 0 "H"
     scale x = scaleXY x x
     setCol col = if col then strokeColor 0 0 1 0.5 else fillColor 1 0 0 0.5
 
@@ -364,7 +392,7 @@ randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
       pure $ shape (400*x) (400*y) 25
     square x y r = rect x y (r*2) (r*2)
-    setCol col = if col then fillColor 0 0 1 0.5 else fillColor 1 0 0 0.1
+    setCol col = if col then fillColor 0 0 1 0.05 else fillColor 1 0 0 0.05
 
 main = do
   createCanvasNode
@@ -376,7 +404,7 @@ main = do
   rotation <- newIORef 0
 
   (pict :: Picture) <- evalRandIO $ randPict False 500
-  (pict2 :: Picture) <- evalRandIO $ randPict True 50
+  (pict2 :: Picture) <- evalRandIO $ fmap (lineWidth 5) $ fmap (lineWidth 2) $ randPict True 50
   (d1 :: Drawing) <- prerender pict r
   (d2 :: Drawing) <- prerender pict2 r
 
@@ -404,12 +432,12 @@ main = do
               ]
 
 
-            -- , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
 
             -- Compare (pict) and (usePrerendered d1)
             , translate 400 400 $ rotate (n*1.003*pi*2) $ usePrerendered d1
             , usePrerendered d2
             -- , pict2
+            , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
             ])
           performMajorGC
 

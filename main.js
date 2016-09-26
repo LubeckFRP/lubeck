@@ -198,7 +198,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _lineWidth = foreign.lineWidth
   var _lineCap = foreign.lineCap
   var _lineJoin = foreign.lineJoin
-  var _lineDash = foreign.lineDash
   var _releaseExternal = foreign.releaseExternal
 
   var _arc = foreign.arc;
@@ -1306,15 +1305,31 @@ function createRenderer(c2) {
       }
       , lineCap:
       function (x) {
-        c.lineCap = 0 // FIXME
+        switch (x) {
+          case STYLE_LINE_CAP_BUTT:
+            c.textAlign = "butt"
+            break
+          case STYLE_LINE_CAP_ROUND:
+            c.textAlign = "round"
+            break
+          case STYLE_LINE_CAP_SQUARE:
+            c.textAlign = "square"
+            break
+        }
       }
       , lineJoin:
       function (x) {
-        c.lineJoin = 0 // FIXME
-      }
-      , lineDash:
-      function (x) {
-        c.lineDash = 0 // FIXME
+        switch (x) {
+          case STYLE_LINE_JOIN_BEVEL:
+            c.textAlign = "bevel"
+            break
+          case STYLE_LINE_JOIN_ROUND:
+            c.textAlign = "round"
+            break
+          case STYLE_LINE_JOIN_MITER:
+            c.textAlign = "miter"
+            break
+        }
       }
       , font:
       function (ref) {

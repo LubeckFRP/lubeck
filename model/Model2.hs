@@ -28,6 +28,16 @@ subpath by a straight line.
 
 Subpaths with fewer than two points are ignored when painting the path.
 -}
+data TextAlign = TextAlignStart | TextAlignEnd | TextAlignLeft | TextAlignRight | TextAlignCenter -- TODO
+  deriving (Eq, Ord, Enum, Show)
+data TextBaseline
+  = TextBaselineTop | TextBaselineHanging | TextBaselineMiddle
+  | TextBaselineAlphabetic | TextBaselineIdeographic | TextBaselineBottom -- TODO
+  deriving (Eq, Ord, Enum, Show)
+data LineCap = LineCapButt | LineCapRound | LineCapSquare
+  deriving (Eq, Ord, Enum, Show)
+data LineJoin = LineJoinBevel | LineJoinRound | LineJoinMiter
+  deriving (Eq, Ord, Enum, Show)
 
 data Segments
   = Segment P2 Segments -- line
@@ -73,7 +83,7 @@ data Drawing
     -- affects stroking
     | LineWidth Double Drawing -- TODO
     | LineCap LineCap Drawing -- TODO
-    | LineJoin lineJoin Drawing -- TODO
+    | LineJoin LineJoin Drawing -- TODO
     | TextFont TextRef Drawing
     | TextAlign TextAlign Drawing
     | TextBaseline TextBaseline Drawing
