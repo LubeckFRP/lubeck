@@ -206,16 +206,18 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   function getAllocationInfo(type) {
     type = type|0
     if (type) {
-      return allocationsPerformed
+      return allocationsPerformed|0
     } else {
-      return deallocationsPerformed
+      return deallocationsPerformed|0
     }
+    // Unreachable
+    return 0|0
   }
 
   // Return pointer to the first slot as a pointer (byte offset)
   // Add slot count to this, so for slot n in pointer p, use [(p + (n<<2)) >> 2]
   function newTuple() {
-    allocationsPerformed = allocationsPerformed + 1
+    allocationsPerformed = (allocationsPerformed + 1)|0
     return allocateTupleScanning()|0
   }
 
@@ -430,7 +432,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // Release sub-nodes here (depends on type)
         releaseChildren(ptr)
         // Notify deallocation succeeded
-        deallocationsPerformed = deallocationsPerformed + 1
+        deallocationsPerformed = (deallocationsPerformed + 1)|0
         // Mark the slot as free
         HEAP32[(ptr+(0<<2)) >> 2] = NODE_TYPE_FREE
     } else {
@@ -1417,7 +1419,12 @@ function createRenderer(c2) {
     console.log("Max tuples:", res.getMaxNumberOfTuples())
     console.log("Number of tuples allocated:", allocs)
     console.log("Number of tuples deallocated:", deallocs)
-    console.log("Number of tuples leaked:", allocs - (deallocs + usedTuples))
+
+    // Difference between allocs/deallocs vs current number of tuples on
+    // the heap (as per scaning types). This should be zero or there is a bug
+    // in the allocator.
+    console.log("Lost tuples:", allocs - (deallocs + usedTuples))
+
     console.log("Current number of tuples:", usedTuples)
     console.log("Current heap usage", Math.floor(usedTuples*100/n), "%")
   }
