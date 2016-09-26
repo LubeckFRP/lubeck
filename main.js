@@ -173,9 +173,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _fillRect = foreign.fillRect;
   var _strokeRect = foreign.strokeRect;
   var _fillText = foreign.fillText
+
   var _fillStyleRGBA = foreign.fillStyleRGBA;
   var _fillStyleFromColorBuffer = foreign.fillStyleFromColorBuffer
   var _strokeStyleFromColorBuffer = foreign.strokeStyleFromColorBuffer
+  var _font = foreign.font
   var _lineWidth = foreign.lineWidth
   var _lineCap = foreign.lineCap
   var _lineJoin = foreign.lineJoin
@@ -393,7 +395,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         release(dr1);
         break;
       case NODE_TYPE_TEXT_FONT:
-        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        ext = HEAP32 [(dr + (1<<2)) >> 2]|0
+        dr1 = HEAP32 [(dr + (2<<2)) >> 2]|0;
+        _releaseExternal(ext|0)
         release(dr1);
         break;
       case NODE_TYPE_TEXT_ALIGNMENT:
@@ -1080,10 +1084,15 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
       //   break;
       //
-      // case NODE_TYPE_TEXT_FONT:
-      //   // TODO
-      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
-      //   break;
+      case NODE_TYPE_TEXT_FONT:
+        // TODO
+        txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // txt
+        dr1 =  HEAP32 [(dr+(2<<2)) >> 2]|0 // txt
+        _save()
+        _font(txt|0)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
+        break;
       //
       // case NODE_TYPE_TEXT_ALIGNMENT:
       //   // TODO
@@ -1282,6 +1291,10 @@ function createRenderer(c2) {
       function (x) {
         c.lineDash = 0 // FIXME
       }
+      , font:
+      function (ref) {
+        c.font = fetchExternal(ref)
+      }
 
       , fillStyleRGBA:
         // x=>console.log('fillStyle_')
@@ -1392,10 +1405,16 @@ function createRenderer(c2) {
   // Store a reference to the context (mainly for debugging)
   res.context = c
 
-  // Some helpers
+  // Wrappers / Helpers
+  res.rect = res.primRect
+
   res.text = function(x, y, text) {
     var textRef = storeExternal(text)
     return res.primText(x, y, textRef)
+  }
+  res.textFont = function(font, dr) {
+    var fontRef = storeExternal(font)
+    return res.primTextFont(fontRef, dr)
   }
   res.dumpExternals = function() {
     Object.keys(externals).forEach(k => console.log("  ", k, fetchExternal(k)))

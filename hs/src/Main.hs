@@ -204,6 +204,14 @@ rotate !a (Picture rd1) = Picture $ do
   d1 <- rd1
   res <- (ReaderT $ \re -> rotate'' a d1 re)
   finR3 res
+
+textFont :: JSString -> Picture -> Picture
+textFont !font (Picture rd1) = Picture $ do
+  d1 <- rd1
+  res <- (ReaderT $ \r -> textFont'' font d1 r)
+  finR3 res
+
+
 ap2 :: Picture -> Picture -> Picture
 ap2 (Picture rd1) (Picture rd2) = Picture $ do
   d1 <- rd1
@@ -219,6 +227,8 @@ foreign import javascript unsafe "$4.primCircle($1,$2,$3)"
   circle'' :: Double -> Double -> Double -> R2 Drawing
 foreign import javascript unsafe "$4.text($1,$2,$3)"
   text'' :: Double -> Double -> JSString -> R2 Drawing
+foreign import javascript unsafe "$3.textFont($1,$2)"
+  textFont'' :: JSString -> Drawing -> R2 Drawing
 
 
 -- Styles
@@ -244,6 +254,7 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 {-# INLINABLE rect'' #-}
 {-# INLINABLE circle'' #-}
 {-# INLINABLE text'' #-}
+{-# INLINABLE textFont'' #-}
 {-# INLINABLE fillColor'' #-}
 {-# INLINABLE strokeColor'' #-}
 {-# INLINABLE transf'' #-}
@@ -306,7 +317,9 @@ randPict col n = setCol col <$> mconcat <$> replicateM n g
       y <- getRandom
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
       pure $ shape (400*x) (400*y) 25
-    square x y r = rect x y (r*2) (r*2)
+    -- square x y r = rect x y (r*2) (r*2)
+    square x y r = translate x y $ scale r $ text 0 0 "H"
+    scale x = scaleXY x x
     setCol col = if col then strokeColor 0 0 1 0.5 else fillColor 1 0 0 0.5
 
 randPictWithTags :: Bool -> Int -> Rand StdGen (Picture)
@@ -348,8 +361,8 @@ main = do
           renderPicture r (mconcat
             [ mempty
             -- , fillColor 1 0 1 1 $ circle 200 200 20
-            , translate 200 200 $ scaleXY (n*4) (n*4) $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
-            -- , translate 400 400 $ rotate (n*1.003*pi*2) pict
+            , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
+            , translate 400 400 $ rotate (n*1.003*pi*2) pict
             -- , pict2
             ])
           performMajorGC
