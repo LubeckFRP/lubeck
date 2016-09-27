@@ -82,6 +82,8 @@ foreign import javascript unsafe "$1.clearRect($2,$3,$4,$5);"
 
 foreign import javascript unsafe "console.log($1)"
   showRenderer :: Renderer -> IO ()
+foreign import javascript unsafe "console.log($1)"
+  showDrawing :: Drawing -> IO ()
 
 foreign import javascript unsafe "$1.render(0,$2)"
   renderDrawing :: Renderer -> Drawing -> IO ()
@@ -379,11 +381,11 @@ randPict col n = setCol col <$> mconcat <$> replicateM n g
       x <- getRandom
       y <- getRandom
       shape <- fmap (\x -> if x > (0.5::Double) then circle else square) getRandom
-      pure $ shape (400*x) (400*y) 25
+      pure $ shape (400*x) (400*y) 1
     square x y r = rect x y (r*2) (r*2)
     -- square x y r = translate x y $ scale r $ text 0 0 "H"
     scale x = scaleXY x x
-    setCol col = if col then strokeColor 0 0 1 0.5 else fillColor 1 0 0 0.5
+    setCol col = if col then strokeColor 0 0 1 1 else fillColor 1 0 0 1
 
 randPictWithTags :: Bool -> Int -> Rand StdGen (Picture)
 randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
@@ -405,9 +407,10 @@ main = do
 
   rotation <- newIORef 0
 
-  (pict :: Picture) <- evalRandIO $ randPict False 500
+  (pict :: Picture) <- evalRandIO $ randPict False 150
   (pict2 :: Picture) <- evalRandIO $ fmap (lineWidth 5) $ fmap (lineWidth 2) $ randPict True 50
   (d1 :: Drawing) <- prerender pict r
+  (d1_copy :: Drawing) <- prerender pict r
   (d2 :: Drawing) <- prerender pict2 r
 
   let handler e = do
@@ -436,12 +439,19 @@ main = do
 
 
             -- Compare (pict) and (usePrerendered d1)
-            , translate 400 400 $ rotate (n*1.003*pi*2) $ usePrerendered d1
+            , translate 400 400 $ rotate (n*1.003*pi*2)
+                -- pict
+                -- mempty
+                $ usePrerendered d1
             , usePrerendered d2
             -- , pict2
-            , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
+            , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ scaleXY 5 5 $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
             ])
           performMajorGC
+
+          -- Keep d1_copy alive
+          r :: Double <- evalRandIO $ getRandom
+          when (r > 2) $ showDrawing $ d1_copy
 
           -- render r drawing2
 
