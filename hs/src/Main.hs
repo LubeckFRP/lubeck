@@ -43,7 +43,8 @@ foreign import javascript unsafe "console.log($1,'dead')"
 newtype CanvasElement = DOMCanvasElement JSVal
 newtype Context = Context JSVal
 newtype Renderer = Renderer JSVal
-newtype Drawing = Drawing JSVal
+newtype Segment = Drawing JSVal
+newtype Drawing = Segment JSVal
 newtype MouseEvent = MouseEvent JSVal
 foreign import javascript unsafe "$1.movementX"
   movementX :: MouseEvent -> Double
@@ -91,11 +92,14 @@ foreign import javascript unsafe "$1.render(0,$2)"
 
 -- Never call these from high-level API, should be managed by addFinalizer
 foreign import javascript unsafe "$1.claim($2)"
-  claim :: Renderer -> Drawing -> IO ()
-{-# INLINABLE claim #-}
+  claimD :: Renderer -> Drawing -> IO ()
+{-# INLINABLE claimD #-}
 foreign import javascript unsafe "$1.release($2)"
-  release :: Renderer -> Drawing -> IO ()
-{-# INLINABLE release #-}
+  releaseD :: Renderer -> Drawing -> IO ()
+{-# INLINABLE releaseD #-}
+foreign import javascript unsafe "$1.release($2)"
+  releaseS :: Renderer -> Segment -> IO ()
+{-# INLINABLE releaseS #-}
 
 -- type R a = Renderer -> a
 -- foreign import javascript unsafe "$5.primRect($1,$2,$3,$4)"
@@ -154,12 +158,42 @@ foreign import javascript unsafe "$1.release($2)"
 type R2 a = Renderer -> IO a
 type R3 a = ReaderT Renderer IO a
 newtype Picture = Picture { getPicture :: R3 Drawing }
+newtype Spline = Spline { getSpline :: R3 Segment }
 
 rect :: Double -> Double -> Double -> Double -> Picture
 rect !x !y !w !h = Picture $ (ReaderT $ \r -> rect'' x y w h r) >>= finR3
 
 text :: Double -> Double -> JSString -> Picture
 text !x !y !txt = Picture $ (ReaderT $ \r -> text'' x y txt r) >>= finR3
+
+segment :: Double -> Double -> Spline -> Spline
+segment !x !y (Spline rtail) = Spline $ do
+  tail <- rtail
+  res <- (ReaderT $ \re -> segment'' x y tail re)
+  finR3_S res
+
+segment3 :: Double -> Double -> Double -> Double -> Double -> Double -> Spline -> Spline
+segment3 !x1 !y1 !x2 !y2 !x3 !y3 (Spline rtail) = Spline $ do
+  tail <- rtail
+  res <- (ReaderT $ \re -> segment3'' x1 y1 x2 y2 x3 y3 tail re)
+  finR3_S res
+
+-- Absolute co-ordinates, open/close
+linePath :: Foldable t => Bool -> t (Double, Double) -> Spline
+linePath close = foldr (\(x,y) r -> segment x y r) (segmentEnd close)
+
+path :: Double -> Double -> Spline -> Picture
+path !x !y (Spline rpath) = Picture $ do
+  path <- rpath
+  res <- (ReaderT $ \re -> path'' x y path re)
+  finR3 res
+
+segmentEnd :: Bool -> Spline
+segmentEnd !close = Spline $ do
+  res <- (ReaderT $ \re -> segmentEnd'' close re)
+  finR3_S res
+
+-- segmentSubpath :: Bool -> Double -> Double -> Segment -> Segment
 
 circle :: Double -> Double -> Double -> Picture
 circle !x !y !rad = Picture $ (ReaderT $ \r -> circle'' x y rad r) >>= finR3
@@ -305,6 +339,18 @@ foreign import javascript unsafe "$4.translate($1,$2,$3)"
 foreign import javascript unsafe "$3.primAp2($1,$2)"
   ap2'' :: Drawing -> Drawing -> R2 Drawing
 
+foreign import javascript unsafe "$4.primSegment($1,$2,$3)"
+  segment'' :: Double -> Double -> Segment -> R2 Segment
+foreign import javascript unsafe "$8.primSegment($1,$2,$3,$4,$5,$6,$7)"
+  segment3'' :: Double -> Double -> Double -> Double -> Double -> Double -> Segment -> R2 Segment
+foreign import javascript unsafe "$4.primPath($1,$2,$3)"
+  path'' :: Double -> Double -> Segment -> R2 Drawing
+foreign import javascript unsafe "$2.primSegmentEnd($1)"
+  segmentEnd'' :: Bool -> R2 Segment
+foreign import javascript unsafe "$5.primSegmentSubpath($1,$2,$3,$4)"
+  segmentSubpath'' :: Bool -> Double -> Double -> Segment -> R2 Segment
+
+
 {-# INLINABLE rect'' #-}
 {-# INLINABLE circle'' #-}
 {-# INLINABLE text'' #-}
@@ -331,7 +377,10 @@ foreign import javascript unsafe "$3.primAp2($1,$2)"
 -- finIO !r !d = addFinalizer d (release r d) >> pure d
 
 finR3 :: Drawing -> R3 Drawing
-finR3 !d = ReaderT $ \r -> addFinalizer d (release r d) >> pure d
+finR3 !d = ReaderT $ \r -> addFinalizer d (releaseD r d) >> pure d
+
+finR3_S :: Segment -> R3 Segment
+finR3_S !d = ReaderT $ \r -> addFinalizer d (releaseS r d) >> pure d
 
 instance Monoid Picture where
   mappend = ap2
@@ -374,6 +423,16 @@ renderPicture r p = do
 
 -- Testing
 
+-- Randomize a line with n points
+randLine :: Double -> Double -> Int -> Rand StdGen Picture
+randLine xDist ySpan n = g <$> replicateM n getRandom
+  where
+    g rands =
+      strokeColor 1 0 0 1 $
+      -- fillColor 1 0 0 1 $
+        path 0 0 $ linePath False $ zip [0,xDist..] (fmap (* ySpan) rands)
+
+
 randPict :: Bool -> Int -> Rand StdGen Picture
 randPict col n = setCol col <$> mconcat <$> replicateM n g
   where
@@ -408,9 +467,12 @@ main = do
   rotation <- newIORef 0
 
   (pict :: Picture) <- evalRandIO $ randPict False 150
-  (pict2 :: Picture) <- evalRandIO $ fmap (lineWidth 5) $ fmap (lineWidth 2) $ randPict True 50
+  -- (pict2 :: Picture) <- evalRandIO $ fmap (lineWidth 5) $ fmap (lineWidth 2) $ randPict True 50
+  -- (pict2 :: Picture) <- evalRandIO $ randLine 5 50 100
   (d1 :: Drawing) <- prerender pict r
   (d1_copy :: Drawing) <- prerender pict r
+
+  (pict2 :: Picture) <- evalRandIO $ randLine 5 150 500
   (d2 :: Drawing) <- prerender pict2 r
 
   let handler e = do

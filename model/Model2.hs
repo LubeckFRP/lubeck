@@ -122,7 +122,7 @@ data Drawing
   | Rect !P2 !Double !Double
   | Text !P2 TextRef
   -- All above is just an optimized form of Path...
-  | Path !P2 Segment -- TODO
+  | Path !P2 Segment
   -- beginPath, moveTo
 
   -- semantically (2DPos -> 2DPos)

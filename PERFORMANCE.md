@@ -26,15 +26,11 @@ and call `renderPicture :: Renderer -> Picture -> IO ()`.
 It is possible to use FRP combinators to provide the picture (structuring your view as a `Behavior Picture` or similar), but this is not the only way to do it.
 
 
-## Call runPicture on static parts of the image
+## Pre-render
 
 *Very important*
 
-Any part of a picture generated outside of the main loop should be pre-rendered using `runPicture :: Renderer -> Picture -> IO _`.
-This basically causes the Haskell data-structures in the `Picture` type to be fully evaluated, assuring that `render`
-runs as fast as possible.
-
-The return value of `runPicture` can be discarded (see example below).
+Any part of a picture generated outside of the main loop should be pre-rendered using `prerender`.
 
 ## Use asyncCallback to generate your Callback
 
