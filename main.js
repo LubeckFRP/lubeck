@@ -182,11 +182,21 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   // var HEAPF64 = new stdlib.Float64Array(heap);
 
   var _debug = foreign.debug;
-  var _beginPath = foreign.beginPath;
-  var _fill = foreign.fill;
-  var _stroke = foreign.stroke;
-  var _fillRect = foreign.fillRect;
-  var _strokeRect = foreign.strokeRect;
+
+  var _beginPath = foreign.beginPath
+  var _moveTo = foreign.moveTo
+  var _closePath = foreign.closePath
+  var _lineTo = foreign.lineTo
+  var _quadraticCurveTo = foreign.quadraticCurveTo
+  var _bezierCurveTo = foreign.bezierCurveTo
+  var _arcTo = foreign.arcTo
+  var _arc = foreign.arc
+  var _rect = foreign.rect
+
+  var _fill = foreign.fill
+  var _stroke = foreign.stroke
+  var _fillRect = foreign.fillRect
+  var _strokeRect = foreign.strokeRect
   var _fillText = foreign.fillText
 
   var _fillStyleRGBA = foreign.fillStyleRGBA;
@@ -202,11 +212,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _lineJoin = foreign.lineJoin
   var _releaseExternal = foreign.releaseExternal
 
-  var _arc = foreign.arc;
   // var _rect = foreign.rect;
   var _save = foreign.save;
   var _restore = foreign.restore;
   var _transform = foreign.transform;
+
   var _floor = stdlib.Math.floor;
   var _imul = stdlib.Math.imul;
   var _max = stdlib.Math.max;
@@ -734,12 +744,191 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var p = 0
 
     p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_TEXT|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_PATH|0
     HEAPF32[(p + (1<<2)) >> 2] = x
     HEAPF32[(p + (2<<2)) >> 2] = y
     HEAP32 [(p + (3<<2)) >> 2] = path
     return p|0
   }
+
+  function primSegment(x, y, tail) {
+    x = +x;
+    y = +y;
+    tail = tail|0;
+
+    var p = 0;
+    claim(tail)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT|0
+    HEAPF32[(p + (1<<2)) >> 2] = x
+    HEAPF32[(p + (2<<2)) >> 2] = y
+    HEAP32 [(p + (3<<2)) >> 2] = tail
+    return p|0
+  }
+  function primSegment2(x1, y1, x2, y2, tail) {
+    x1 = +x1;
+    y1 = +y1;
+    x2 = +x2;
+    y2 = +y2;
+    tail = tail|0;
+
+    var p = 0;
+    claim(tail)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT2|0
+    HEAPF32[(p + (1<<2)) >> 2] = x1
+    HEAPF32[(p + (2<<2)) >> 2] = y1
+    HEAPF32[(p + (3<<2)) >> 2] = x2
+    HEAPF32[(p + (4<<2)) >> 2] = y2
+    HEAP32 [(p + (5<<2)) >> 2] = tail
+    return p|0
+  }
+  function primSegment3(x1, y1, x2, y2, x3, y3, tail) {
+    x1 = +x1;
+    y1 = +y1;
+    x2 = +x2;
+    y2 = +y2;
+    x3 = +x3;
+    y3 = +y3;
+    tail = tail|0;
+
+    var p = 0;
+    claim(tail)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT3|0
+    HEAPF32[(p + (1<<2)) >> 2] = x1
+    HEAPF32[(p + (2<<2)) >> 2] = y1
+    HEAPF32[(p + (3<<2)) >> 2] = x2
+    HEAPF32[(p + (4<<2)) >> 2] = y2
+    HEAPF32[(p + (5<<2)) >> 2] = x3
+    HEAPF32[(p + (6<<2)) >> 2] = y3
+    HEAP32 [(p + (7<<2)) >> 2] = tail
+    return p|0
+  }
+  function primSegmentArc(x1, y1, x2, y2, rad, tail) {
+    x1 = +x1;
+    y1 = +y1;
+    x2 = +x2;
+    y2 = +y2;
+    rad = +rad;
+    tail = tail|0;
+    var p = 0;
+    claim(tail)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_ARC|0
+    // TODO slots
+    _debug(ERROR_TYPE_UNKNOWN,0)
+    return p|0
+  }
+  function primSegmentEnd(close) {
+    close = close|0;
+    var p = 0;
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_END|0
+    HEAP32 [(p + (1<<2)) >> 2] = close
+    return p|0
+  }
+  function primSegmentSubpath(close, x, y, tail) {
+    close = close|0;
+    x = +x;
+    y = +y;
+    tail = tail|0;
+    var p = 0;
+    claim(tail)
+    p = (newTuple())|0
+    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_SUBPATH|0
+    HEAP32 [(p + (1<<2)) >> 2] = close
+    HEAPF32[(p + (2<<2)) >> 2] = x
+    HEAPF32[(p + (3<<2)) >> 2] = y
+    HEAP32 [(p + (4<<2)) >> 2] = tail
+    return p|0
+  }
+  // function primSegment(x,y,tail) {
+  //   x = +x
+  //   y = +y
+  //   tail = tail|0
+  //
+  //   var p = 0
+  //
+  //   p = (newTuple())|0
+  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT|0
+  //   // TODO
+  //   return p|0
+  // }
+  //
+  // function primSegment2(x1,y1,x2,y2,tail) {
+  //   x1 = +x1
+  //   y1 = +y1
+  //   x2 = +x2
+  //   y2 = +y2
+  //   tail = tail|0
+  //
+  //   var p = 0
+  //
+  //   p = (newTuple())|0
+  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT2|0
+  //   // TODO
+  //   return p|0
+  // }
+  //
+  // function primSegment3(x1,y1,x2,y2,x3,y3,tail) {
+  //   x1 = +x1
+  //   y1 = +y1
+  //   x2 = +x2
+  //   y2 = +y2
+  //   x3 = +x3
+  //   y3 = +y3
+  //   tail = tail|0
+  //
+  //   var p = 0
+  //
+  //   p = (newTuple())|0
+  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT3|0
+  //   // TODO
+  //   return p|0
+  // }
+  //
+  // function primSegmentArc(x1,y1,x2,y2,rad,tail) {
+  //   x1 = +x1
+  //   y1 = +y1
+  //   x2 = +x2
+  //   y2 = +y2
+  //   rad = +rad
+  //   tail = tail|0
+  //
+  //   var p = 0
+  //
+  //   p = (newTuple())|0
+  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_ARC|0
+  //   // TODO
+  //   return p|0
+  // }
+  //
+  // function primSegmentEnd(closePath,tail) {
+  //   closePath = closePath|0
+  //   tail = tail|0
+  //
+  //   var p = 0
+  //
+  //   p = (newTuple())|0
+  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_END|0
+  //   // TODO
+  //   return p|0
+  // }
+  //
+  // function primSegmentSubpath(closePath,x,y,tail) {
+  //   closePath = closePath|0
+  //   x = +x
+  //   y = +y
+  //   tail = tail|0
+  //
+  //   var p = 0
+  //
+  //   p = (newTuple())|0
+  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_SUBPATH|0
+  //   // TODO
+  //   return p|0
+  // }
 
   // Double ^ 4 -> Drawing*
   function primFillColor(r,g,b,a,dr) {
@@ -987,81 +1176,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return p|0
   }
 
-  function primSegment(x, y, segs) {
-    x = +x;
-    y = +y;
-    segs = segs|0;
-    var p = 0;
-    claim(segs)
-    p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT|0
-    // TODO slots
-    return p|0
-  }
-  function primSegment2(x1, y1, x2, y2, segs) {
-    x1 = +x1;
-    y1 = +y1;
-    x2 = +x2;
-    y2 = +y2;
-    segs = segs|0;
-    var p = 0;
-    claim(segs)
-    p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT2|0
-    // TODO slots
-    return p|0
-  }
-  function primSegment3(x1, y1, x2, y2, x3, y3, segs) {
-    x1 = +x1;
-    y1 = +y1;
-    x2 = +x2;
-    y2 = +y2;
-    x3 = +x3;
-    y3 = +y3;
-    segs = segs|0;
-    var p = 0;
-    claim(segs)
-    p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT3|0
-    // TODO slots
-    return p|0
-  }
-  function primSegmentArc(x1, y1, x2, y2, rad, segs) {
-    x1 = +x1;
-    y1 = +y1;
-    x2 = +x2;
-    y2 = +y2;
-    rad = +rad;
-    segs = segs|0;
-    var p = 0;
-    claim(segs)
-    p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_ARC|0
-    // TODO slots
-    return p|0
-  }
-  function primSegmentEnd(close, segs) {
-    close = close|0;
-    segs = segs|0;
-    var p = 0;
-    claim(segs)
-    p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_END|0
-    // TODO slots
-    return p|0
-  }
-  function SegmentSubpath(close, x, y, segs) {
-    close = close|0;
-    x = +x;
-    y = +y;
-    segs = segs|0;
-    var p = 0;
-    claim(segs)
-    p = (newTuple())|0
-    HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_SUBPATH|0
-    // TODO slots
-    return p|0
-  }
 
 
   function setupRenderingState() {
@@ -1075,7 +1189,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     dr = dr|0;
     hasFill = hasFill|0;
     hasStroke = hasStroke|0;
-    hasClip = hasClip|0
+    hasClip = hasClip|0 // TODO not actually used
 
     var drType = 0
 
@@ -1143,7 +1257,66 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         a   = +HEAPF32[(dr + (1<<2)) >> 2] // x
         b   = +HEAPF32[(dr + (2<<2)) >> 2] // y
         txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // segments
-        drawPath(a,b,txt,hasFill,hasStroke)
+        // drawPath(a,b,txt,hasFill,hasStroke)
+
+        _beginPath()
+        _moveTo(a,b)
+        renderWithoutCheck(opts,txt,hasFill,hasStroke,hasClip)
+        // No need/way to restore, beginPath() is always called
+        // when a new path/subpath is started
+        break;
+
+      case NODE_TYPE_SEGMENT:
+        a   = +HEAPF32[(dr + (1<<2)) >> 2] // x
+        b   = +HEAPF32[(dr + (2<<2)) >> 2] // y
+        txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // tail
+
+        _lineTo(a,b)
+        renderWithoutCheck(opts,txt,hasFill,hasStroke,hasClip)
+        break;
+      case NODE_TYPE_SEGMENT2:
+        // TODO quadraticCurveTo
+        _debug(ERROR_TYPE_UNKNOWN,0)
+        break;
+      case NODE_TYPE_SEGMENT3:
+        a   = +HEAPF32[(dr + (1<<2)) >> 2] // x1
+        b   = +HEAPF32[(dr + (2<<2)) >> 2] // y1
+        c   = +HEAPF32[(dr + (3<<2)) >> 2] // x2
+        d   = +HEAPF32[(dr + (4<<2)) >> 2] // y2
+        e   = +HEAPF32[(dr + (5<<2)) >> 2] // x3
+        f   = +HEAPF32[(dr + (6<<2)) >> 2] // y3
+        txt =  HEAP32 [(dr + (7<<2)) >> 2]|0 // tail
+
+        _bezierCurveTo(a,b,c,d,e,f)
+        renderWithoutCheck(opts,txt,hasFill,hasStroke,hasClip)
+        break;
+      case NODE_TYPE_SEGMENT_ARC:
+        // TODO arcTo
+        _debug(ERROR_TYPE_UNKNOWN,0)
+        break;
+        break;
+      case NODE_TYPE_SEGMENT_END:
+        txt =  HEAP32 [(dr + (1<<2)) >> 2]|0 // closed
+        if (txt) {
+          _closePath()
+        }
+        if (hasStroke) {
+          _stroke()
+        }
+        if (hasFill) {
+          _fill()
+        }
+        break;
+      case NODE_TYPE_SEGMENT_SUBPATH:
+        txt =  HEAP32 [(dr + (1<<2)) >> 2]|0 // closed
+        a   = +HEAPF32[(dr + (2<<2)) >> 2] // x1
+        b   = +HEAPF32[(dr + (3<<2)) >> 2] // y1
+        dr1 =  HEAP32 [(dr + (4<<2)) >> 2]|0 // tail
+        if (txt) {
+          _closePath()
+        }
+        _moveTo(a,b)
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         break;
 
       case NODE_TYPE_CLIP:
@@ -1155,25 +1328,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
-
-      case NODE_TYPE_SEGMENT:
-        // TODO lineTo
-        break;
-      case NODE_TYPE_SEGMENT2:
-        // TODO quadraticCurveTo
-        break;
-      case NODE_TYPE_SEGMENT3:
-        // TODO bezierCurveTo
-        break;
-      case NODE_TYPE_SEGMENT_ARC:
-        // TODO arcTo
-        break;
-      case NODE_TYPE_SEGMENT_END:
-        // TODO optional closePath
-        break;
-      case NODE_TYPE_SEGMENT_SUBPATH:
-        // TODO optional closePath, then moveTo
-
 
 
       case NODE_TYPE_FILL_COLOR:
@@ -1364,6 +1518,12 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           , primRect : primRect
           , primText : primText
           , primPath : primPath
+          , primSegment : primSegment
+          , primSegment2 : primSegment2
+          , primSegment3 : primSegment3
+          , primSegmentArc : primSegmentArc
+          , primSegmentEnd : primSegmentEnd
+          , primSegmentSubpath : primSegmentSubpath
 
           , primTransf : primTransf
 
@@ -1432,8 +1592,17 @@ function createRenderer(c2) {
   var res = new AsmDrawingRenderer(window,
       { random : Math.random
       , releaseExternal : releaseExternal
-      , beginPath:
-        function (x) { c.beginPath() }
+
+      , beginPath: function () { c.beginPath() }
+      , moveTo: function (x,y) { c.moveTo(x,y) }
+      , closePath: function () { c.closePath() }
+      , lineTo: function (x,y) { c.lineTo(x,y) }
+      , quadraticCurveTo: function (cpx, cpy, x, y) { c.quadraticCurveTo(cpx, cpy, x, y) }
+      , bezierCurveTo: function (cp1x, cp1y, cp2x, cp2y, x, y) { c.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y) }
+      , arcTo: function (x1, y1, x2, y2, radius) { c.arcTo(x1, y1, x2, y2, radius) }
+      , arc: function (x, y, radius, startAngle, endAngle, anticlockwise) { c.arc(x, y, radius, startAngle, endAngle, anticlockwise) }
+      , rect: function (x, y, w, h) { c.rect(x, y, w, h) }
+
         // x=>console.log('beginPath')
       , fill:
         // x=>console.log('fill')
@@ -1559,15 +1728,15 @@ function createRenderer(c2) {
             , +a
             , ")")
         }
-      , arc:
-        // x=>console.log('arc')
-        // TODO is bind() faster than this closure wrapping?
-        function (x,y,r) {
-          x = +x
-          y = +y
-          r = +r
-          c.arc(x,y,r, 0, 6.283185307179586, false)
-        }
+      // , arc:
+      //   // x=>console.log('arc')
+      //   // TODO is bind() faster than this closure wrapping?
+      //   function (x,y,r) {
+      //     x = +x
+      //     y = +y
+      //     r = +r
+      //     c.arc(x,y,r, 0, 6.283185307179586, false)
+      //   }
       // , rect:
       // // x=>console.log('x')
       //   function (x,y,w,h) {
@@ -1767,5 +1936,6 @@ function createRenderer(c2) {
 
   // TODO debug
   window.globalRenderer = res
+  window.g = res
   return res
 }

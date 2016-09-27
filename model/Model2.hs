@@ -101,6 +101,15 @@ NOTE Drawing API consists of mutation of
 
     It transform the checked point using current transformation (CT) and then checks
     that it is inside the current path (presumably created using the same CT).
+
+    Instead of path-based detection we will have a function that returns the tag of
+    the top-most part of the image.
+      getTag :: P2 -> Renderer -> Drawing -> IO (Maybe Tag)
+
+    Implementation simply traverses drawing tree, applies transformations and calls
+    isPointInPath(), returning the current tag on the first hit.
+
+    Because this traversal is not rendering, hasStroke/hasFill will be set to false.
 -}
 
 
