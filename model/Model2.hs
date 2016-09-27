@@ -38,6 +38,8 @@ data LineCap = LineCapButt | LineCapRound | LineCapSquare
   deriving (Eq, Ord, Enum, Show)
 data LineJoin = LineJoinBevel | LineJoinRound | LineJoinMiter
   deriving (Eq, Ord, Enum, Show)
+data FillRule = FillRuleNonZero | FillRuleEvenOdd
+  deriving (Eq, Ord, Enum, Show)
 
 data Segments
   = Segment P2 Segments -- line
@@ -82,6 +84,7 @@ data Drawing
   | FillPattern (GradientRef) Drawing-- TODO
   | StrokeColor RGBA Drawing -- Causes paths in the nested drawing to be stroked with that color (global env has transparent)
     -- affects stroking
+  | FillRule FillRule -- TODO set fill rule for the nested drawing
     | LineWidth Double Drawing
     | LineCap LineCap Drawing
     | LineJoin LineJoin Drawing
@@ -99,4 +102,4 @@ data Drawing
   -- Any shapes in arg2 is used to clip arg1
   -- or equivalently: "draw arg1, then clip it using arg2"
   -- We don't support
-  | Clip Drawing Segments -- TODO
+  | Clip Drawing P2 Segments -- TODO
