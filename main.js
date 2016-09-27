@@ -192,6 +192,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _fillStyleRGBA = foreign.fillStyleRGBA;
   var _fillStyleFromColorBuffer = foreign.fillStyleFromColorBuffer
   var _strokeStyleFromColorBuffer = foreign.strokeStyleFromColorBuffer
+  var _fillGradient = foreign.fillGradient
+  var _fillPattern = foreign.fillPattern
   var _font = foreign.font
   var _textAlign = foreign.textAlign
   var _textBaseline = foreign.textBaseline
@@ -552,6 +554,16 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     if (hasFill) {
       _fillText(x,y,txt|0)
     }
+  }
+
+  function drawPath(x,y,segments,hasFill,hasStroke) {
+    x=+x
+    y=+y
+    segments=segments|0
+    hasFill = hasFill|0;
+    hasStroke = hasStroke|0;
+    // Don't support stroke
+    // TODO
   }
 
   // function renderFillColor(r, g, b, a) {
@@ -1204,7 +1216,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         txt = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
         _save()
-        _fillGradient(txt);
+        _fillGradient(txt|0);
         renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
@@ -1213,7 +1225,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         txt = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
         _save()
-        _fillPattern(txt);
+        _fillPattern(txt|0);
         renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
@@ -1231,7 +1243,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         txt = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
         _save()
-        _lineCap(txt);
+        _lineCap(txt|0);
         renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
@@ -1240,7 +1252,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         txt = HEAP32[(dr+(1<<2)) >> 2]|0;
         dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
         _save()
-        _lineJoin(txt);
+        _lineJoin(txt|0);
         renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         _restore()
         break;
@@ -1436,6 +1448,14 @@ function createRenderer(c2) {
       , strokeStyleFromColorBuffer:
       function () {
         c.strokeStyle = utf8d.decode(colorBuffer)
+      }
+      , fillGradient:
+      function (x) {
+        c.fillGradient = fetchExternal(ref)
+      }
+      , fillPattern:
+      function (x) {
+        c.fillPattern = fetchExternal(ref)
       }
       , lineWidth:
       function (x) {

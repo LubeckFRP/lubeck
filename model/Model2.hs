@@ -43,6 +43,11 @@ data FillRule = FillRuleNonZero | FillRuleEvenOdd
 
 data Segments
   = Segment !P2 Segments -- line
+
+  -- TODO optimize as follows
+  -- | SegmentX2 !P2 !P2 Segments -- SegmentX2 p1 p2 a == Segment p1 (Segment p2 a)
+  -- | SegmentX3 !P2 !P2 !P2 Segments -- SegmentX2 p1 p2 p3 a == Segment p1 (Segment p2 (Segment p3 a))
+
   -- lineTo
   | Segment2 !P2 !P2 Segments -- quadratic bezier
   -- quadraticCurveTo
@@ -69,6 +74,33 @@ point and runs event detection on the paths it encounter using the transformed p
 path as long as the point as been appropriatly transformed. For primitives (circle, rect) we can write our ownership
 detection or fake a path, for text event detection is not supported.
 
+
+TODO Segment vs Clip
+
+
+NOTE Drawing API consists of mutation of
+  - Current path
+  - Drawing state (transformation, clipping region, stroke/fill, misc styles such as line/text etc)
+  - Basic operation is to
+      Modify drawing state
+      Push path components (segments, closing or jumps)
+      Render (stroke/fill)
+
+  We represent a drawing as a tree that is traversed depth first, where leaves are path components and branches
+  modify the drawing state. Rendering happens automatically based on environment, so any leave that
+  has a stroke/fill style node above it will be stroked/filled.
+
+  For clipping we use a special clipping subtree that supports leaves (paths) and branches (intersection).
+  Note that we can use path concatenation to represent union of clipping regions.
+  TODO likely performance/simplicity trade-offs
+
+  NOTE Path detection
+    As per here
+      https://bugzilla.mozilla.org/show_bug.cgi?id=405300
+    The isPointInPath() funtion actually behaves sensibly
+
+    It transform the checked point using current transformation (CT) and then checks
+    that it is inside the current path (presumably created using the same CT).
 -}
 
 
