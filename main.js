@@ -1076,7 +1076,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     var dr1 = 0
     var dr2 = 0
-    var txt = 0
+    var txt = 0 // Bad name
 
     var cont = 0
 
@@ -1108,7 +1108,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         b = +HEAPF32[(dr+(2<<2)) >> 2];
         c = +HEAPF32[(dr+(3<<2)) >> 2];
         drawCircle(a,b,c,hasFill,hasStroke,hasClip)
-        // console.log("Rendering circle: ", x, y, r)
         break;
 
       case NODE_TYPE_RECT:
@@ -1117,7 +1116,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         c = +HEAPF32[(dr+(3<<2)) >> 2];
         d = +HEAPF32[(dr+(4<<2)) >> 2];
         drawRect(a,b,c,d,hasFill,hasStroke,hasClip)
-        // console.log("Rendering circle: ", x, y, r)
         break;
 
       case NODE_TYPE_TEXT:
@@ -1130,9 +1128,41 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       case NODE_TYPE_PATH:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN, drType|0);
+        a   = +HEAPF32[(dr + (1<<2)) >> 2] // x
+        b   = +HEAPF32[(dr + (2<<2)) >> 2] // y
+        txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // segments
+        drawPath(a,b,txt,hasFill,hasStroke)
         break;
+
+      case NODE_TYPE_CLIP:
+        dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
+
+        _save()
+        renderWithoutCheck(opts,dr2,0,0,1) // No fill or stroke, but clip!
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
+        break;
+
+      case NODE_TYPE_SEGMENT:
+        // TODO lineTo
+        break;
+      case NODE_TYPE_SEGMENT2:
+        // TODO quadraticCurveTo
+        break;
+      case NODE_TYPE_SEGMENT3:
+        // TODO bezierCurveTo
+        break;
+      case NODE_TYPE_SEGMENT_ARC:
+        // TODO arcTo
+        break;
+      case NODE_TYPE_SEGMENT_END:
+        // TODO optional closePath
+        break;
+      case NODE_TYPE_SEGMENT_SUBPATH:
+        // TODO optional closePath, then moveTo
+
+
 
       case NODE_TYPE_FILL_COLOR:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -1171,13 +1201,21 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       case NODE_TYPE_FILL_GRADIENT:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN, drType|0);
+        txt = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        _save()
+        _fillGradient(txt);
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
         break;
 
       case NODE_TYPE_FILL_PATTERN:
-        // TODO
-        _debug(ERROR_TYPE_UNKNOWN, drType|0);
+        txt = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        _save()
+        _fillPattern(txt);
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
         break;
 
       case NODE_TYPE_LINE_WIDTH:
@@ -1189,16 +1227,24 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _restore()
         break;
 
-      // case NODE_TYPE_LINE_CAP:
-      //   // TODO
-      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
-      //   break;
-      //
-      // case NODE_TYPE_LINE_JOIN:
-      //   // TODO
-      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
-      //   break;
-      //
+      case NODE_TYPE_LINE_CAP:
+        txt = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        _save()
+        _lineCap(txt);
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
+        break;
+
+      case NODE_TYPE_LINE_JOIN:
+        txt = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        _save()
+        _lineJoin(txt);
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        _restore()
+        break;
+
       case NODE_TYPE_TEXT_FONT:
         txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // txt
         dr1 =  HEAP32 [(dr+(2<<2)) >> 2]|0 // txt
@@ -1244,6 +1290,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         // FIXME selective version of save/restore
         // Or simply apply inverted matrix when done http://stackoverflow.com/a/18504573
+        // Or use currentTransform if supported
         _save()
         _transform(a,b,c,d,e,f)
         renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
@@ -1263,29 +1310,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         cont = 1
 
         break;
-
-      case NODE_TYPE_CLIP:
-        dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
-        dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
-
-        _save()
-        renderWithoutCheck(opts,dr2,0,0,1) // No fill or stroke, but clip!
-        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
-        _restore()
-        break;
-
-      case NODE_TYPE_SEGMENT:
-        // TODO lineTo
-      case NODE_TYPE_SEGMENT2:
-        // TODO quadraticCurveTo
-      case NODE_TYPE_SEGMENT3:
-        // TODO bezierCurveTo
-      case NODE_TYPE_SEGMENT_ARC:
-        // TODO arcTo
-      case NODE_TYPE_SEGMENT_END:
-        // TODO optional closePath
-      case NODE_TYPE_SEGMENT_SUBPATH:
-        // TODO optional closePath, then moveTo
 
       default:
         _debug(ERROR_TYPE_UNKNOWN, drType|0);

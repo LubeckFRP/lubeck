@@ -42,55 +42,66 @@ data FillRule = FillRuleNonZero | FillRuleEvenOdd
   deriving (Eq, Ord, Enum, Show)
 
 data Segments
-  = Segment P2 Segments -- line
+  = Segment !P2 Segments -- line
   -- lineTo
-  | Segment2 P2 P2 Segments -- quadratic bezier
+  | Segment2 !P2 !P2 Segments -- quadratic bezier
   -- quadraticCurveTo
-  | Segment3 P2 P2 P2 Segments-- cubic bezier (7 slots!)
+  | Segment3 !P2 !P2 !P2 Segments-- cubic bezier (7 slots!)
   --  bezierCurveTo
-  | SegmentArc P2 P2 Double Segments -- 2 control points, radius
+  | SegmentArc !P2 !P2 !Double Segments -- 2 control points, radius
   -- arcTo
-  | SegmentEnd Bool -- true to close the segment
+  | SegmentEnd !Bool -- true to close the segment
   --  optional closePath, then moveTo
 
   -- TODO is this strictly necessary?
-  | SegmentSubpath Bool P2 Segments -- true to close the segment, then move and start new segment
+  | SegmentSubpath !Bool P2 Segments -- true to close the segment, then move and start new segment
   --  optional closePath, then moveTo
 
 -- data Paths
   -- = Paths1 P2 Segments
   -- | Paths1 ()
 
+{-
+TODO understand paths vs event detection and clip
+
+Event detection will be a function that walks down the tree with a point, applies inverse transformations to the
+point and runs event detection on the paths it encounter using the transformed point. No need to transform the
+path as long as the point as been appropriatly transformed. For primitives (circle, rect) we can write our ownership
+detection or fake a path, for text event detection is not supported.
+
+-}
+
+
 data Drawing
   -- These are
   -- structurally collections of points
   -- semantially (Env -> 2DPos -> AlphaColor)
   = Free -- Used for GC etc, never rendered
-  | Circle P2 Double
-  | Rect P2 Double Double
-  | Text P2 TextRef
+  | Circle !P2 !Double
+  | Rect !P2 !Double !Double
+  | Text !P2 TextRef
   -- All above is just an optimized form of Path...
-  | Path P2 Segment -- TODO
+  | Path !P2 Segment -- TODO
   -- beginPath, moveTo
 
   -- semantically (2DPos -> 2DPos)
   -- Transforms all points/shapes in the nested drawing
-  | Transf Matrix Drawing
+  | Transf !Matrix Drawing
 
   -- semantically (Env -> 2DPos -> AlphaColor)
   -- the non-drawing part is semantically (Env -> Env)
-  | FillColor RGBA Drawing   -- Causes paths in the nested drawing to be filled with that color (global env has transparent)
-  | FillGradient (GradientRef) Drawing -- TODO
-  | FillPattern (GradientRef) Drawing-- TODO
-  | StrokeColor RGBA Drawing -- Causes paths in the nested drawing to be stroked with that color (global env has transparent)
+  | FillColor! RGBA Drawing   -- Causes paths in the nested drawing to be filled with that color (global env has transparent)
+  | FillGradient GradientRef Drawing
+  | FillPattern PatternRef Drawing
+  | StrokeColor !RGBA Drawing -- Causes paths in the nested drawing to be stroked with that color (global env has transparent)
     -- affects stroking
-  | FillRule FillRule -- TODO set fill rule for the nested drawing
-    | LineWidth Double Drawing
-    | LineCap LineCap Drawing
-    | LineJoin LineJoin Drawing
+  | FillRule !FillRule -- TODO set fill rule for the nested drawing
+    | LineWidth !Double Drawing
+    | LineCap !LineCap Drawing
+    | LineJoin !LineJoin Drawing
     | TextFont TextRef Drawing
-    | TextAlign TextAlign Drawing
-    | TextBaseline TextBaseline Drawing
+    | TextAlign !TextAlign Drawing
+    | TextBaseline !TextBaseline Drawing
 
   -- Tag the "filled" part of the drawing
   -- This can be seen as defining an arbitrary number of binary masks (in addition to standard stroke/fill)
