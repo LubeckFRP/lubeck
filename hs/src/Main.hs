@@ -608,18 +608,19 @@ main = do
           -- render r $ (fin . translate' 400 400 =<< fin . rotate' (n*pi*2) =<< pure {-dr_-}
           --   dr22) r
 
-  updateCB <- CB.syncCallback CB.ThrowWouldBlock update
-  -- updateCB <- CB.asyncCallback update
+  -- updateCB <- CB.syncCallback CB.ThrowWouldBlock update
+  updateCB <- CB.asyncCallback update
   setUpdateCB updateCB
 
   -- handlerCB <- CB.asyncCallback1 handler
-  setMousemoveCB e =<< (CB.syncCallback1 CB.ThrowWouldBlock $ handler False)
-  setMouseupCB e =<< (CB.syncCallback1 CB.ThrowWouldBlock $ handler False)
-  setMousedownCB e =<< (CB.syncCallback1 CB.ThrowWouldBlock $ handler True)
+  setMousemoveCB e =<< (CB.asyncCallback1 $ handler False)
+  setMouseupCB e =<< (CB.asyncCallback1  $ handler False)
+  setMousedownCB e =<< (CB.asyncCallback1 $ handler True)
 
   update
   startLoop
 
   print "Hello again 0129"
+
 
 tau = 2*pi
