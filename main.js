@@ -330,8 +330,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     type = getPtrType(ptr)|0;
     HEAP32[(ptr+(0<<2)) >> 2] = ((val << 12) | type);
 
-    // TODO
-    // ptr|0xfff
     return
   }
   function getRefCount(ptr) {
@@ -340,8 +338,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     var slot1 = 0
     slot1 = HEAP32[(ptr+(0<<2)) >> 2]|0
 
-    // TODO
-    // ptr|0xfff
     return (slot1 >> 12)|0;
   }
 
@@ -373,7 +369,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     switch (drType|0) {
 
       case NODE_TYPE_FREE:
-        // FIXME should we really run into free nodes here?
         break;
 
       case NODE_TYPE_CIRCLE:
@@ -389,7 +384,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
       case NODE_TYPE_TRANSF:
         dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
-        // FIXME this line breaks tests
         release(dr1);
         break;
 
@@ -501,16 +495,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     return
   }
 
-    // TODO fix this and remaining warnings, push
-    // TODO solve preprocessor line offset (so we can still use FF for validation)
-    // TODO add remaining styles + test
-    // TODO add remaining shapes + test
-    // TODO text (probably best if this is never transmitted into the render (i.e. use external map and let
-    // text nodes include indices))
-    // TODO test with Lubeck
-    // TODO basic GC
-    // TODO event detection (tag single node and map position to that)
-
   // Return offset of the string buffer as a pointer (byte offset)
   function getStringBufferOffset() {
     return 0
@@ -525,7 +509,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     hasStroke = hasStroke|0;
     hasClip = hasClip|0
 
-    // TODO optimize away fill/stroke if the appropriate color is not set
     _beginPath();
     _arc(x,y,r,0, 6.283185307179586,0/*false*/);
     if (hasFill) {
@@ -565,27 +548,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       _fillText(x,y,txt|0)
     }
   }
-
-  function drawPath(x,y,segments,hasFill,hasStroke) {
-    x=+x
-    y=+y
-    segments=segments|0
-    hasFill = hasFill|0;
-    hasStroke = hasStroke|0;
-    // Don't support stroke
-    // TODO
-  }
-
-  // function renderFillColor(r, g, b, a) {
-  //   _fillStyle_(r, g, b, a)
-  // }
-  // function renderTransf(opts,a,b,c,d,e,f,sub) {
-  //     _save()
-  //     _transform(a,b,c,d,e,f)
-  //     render(opts, sub)
-  //     _restore()
-  // }
-
 
   // Writes a string such as '123' or '255' to the given pointer based
   // on the given value in [0..1].
@@ -664,9 +626,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     // Prelude Data.Bits> fmap fromEnum "rgba(255,  0,  0,0.50)"
     // [114,103,98,97,40,50,53,53, 44,32,32,48,44,32,32,48,44,48,46,53,48,41]
-
-   // FIXME write opacity
-   // FIXME do not repeatedly write "rgba" etc (just once before 1st render)
 
     // Zero is the string buffer offset (see above)
     // HEAPU8 [(0 + (0<<0)) >> 0] = 114 // 'r'
@@ -817,7 +776,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     claim(tail)
     p = (newTuple())|0
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_ARC|0
-    // TODO slots
+    // TODO arc segment slots
     _debug(ERROR_TYPE_UNKNOWN,0)
     return p|0
   }
@@ -844,92 +803,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     HEAP32 [(p + (4<<2)) >> 2] = tail
     return p|0
   }
-  // function primSegment(x,y,tail) {
-  //   x = +x
-  //   y = +y
-  //   tail = tail|0
-  //
-  //   var p = 0
-  //
-  //   p = (newTuple())|0
-  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT|0
-  //   // TODO
-  //   return p|0
-  // }
-  //
-  // function primSegment2(x1,y1,x2,y2,tail) {
-  //   x1 = +x1
-  //   y1 = +y1
-  //   x2 = +x2
-  //   y2 = +y2
-  //   tail = tail|0
-  //
-  //   var p = 0
-  //
-  //   p = (newTuple())|0
-  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT2|0
-  //   // TODO
-  //   return p|0
-  // }
-  //
-  // function primSegment3(x1,y1,x2,y2,x3,y3,tail) {
-  //   x1 = +x1
-  //   y1 = +y1
-  //   x2 = +x2
-  //   y2 = +y2
-  //   x3 = +x3
-  //   y3 = +y3
-  //   tail = tail|0
-  //
-  //   var p = 0
-  //
-  //   p = (newTuple())|0
-  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT3|0
-  //   // TODO
-  //   return p|0
-  // }
-  //
-  // function primSegmentArc(x1,y1,x2,y2,rad,tail) {
-  //   x1 = +x1
-  //   y1 = +y1
-  //   x2 = +x2
-  //   y2 = +y2
-  //   rad = +rad
-  //   tail = tail|0
-  //
-  //   var p = 0
-  //
-  //   p = (newTuple())|0
-  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_ARC|0
-  //   // TODO
-  //   return p|0
-  // }
-  //
-  // function primSegmentEnd(closePath,tail) {
-  //   closePath = closePath|0
-  //   tail = tail|0
-  //
-  //   var p = 0
-  //
-  //   p = (newTuple())|0
-  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_END|0
-  //   // TODO
-  //   return p|0
-  // }
-  //
-  // function primSegmentSubpath(closePath,x,y,tail) {
-  //   closePath = closePath|0
-  //   x = +x
-  //   y = +y
-  //   tail = tail|0
-  //
-  //   var p = 0
-  //
-  //   p = (newTuple())|0
-  //   HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_SEGMENT_SUBPATH|0
-  //   // TODO
-  //   return p|0
-  // }
 
   // Double ^ 4 -> Drawing*
   function primFillColor(r,g,b,a,dr) {
@@ -1183,7 +1056,21 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     setupColorBuffer()
   }
 
-  // Render without checking that setupRenderingState has been called
+  /*
+  Render without checking that setupRenderingState has been called
+
+  Invariant:
+    Each call to renderWithoutCheck() that returns normally MUST leave the state of the underlying
+    drawing context exactly as it found it. As this function may call itself recursively, this
+    means that states have to be stored in a stack somewhere.
+
+    Options include
+      - Using the drawing context stack, i.e. calling save(), doing anything it wants and then call restore()
+      - Using a custom stack structure on the renderer heap, similar to the save()/restore() option above
+      - Using the call stack, i.e. storing the previous value in a variable, updating drawing context, drawing, then restoring
+        the drawing context from the variable.
+
+  */
   // Opts* -> Drawing* -> ()
   function renderWithoutCheck(opts,dr,hasFill,hasStroke,hasClip) {
     opts = opts|0;
@@ -1192,6 +1079,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     hasStroke = hasStroke|0;
     hasClip = hasClip|0 // TODO not actually used
 
+    /* Don't rely on these default values as manual TCO (see below) may caused
+      them to have a different value. */
     var drType = 0
 
     var a = 0.
@@ -1207,23 +1096,19 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
     var cont = 0
 
+    /*
+    This loops is here to allow us to fake tail-calls (to itself).
+
+    Convention is that instead of tail-calling renderWithoutCheck(newParams), you simply
+    set the parameters appropriatly, set 'cont' to truish and then break so control jumps
+    up back here, resetting 'cont' and then dispatching on the type of 'dr'.
+
+    Obviously don't try to do this with calls that are not in tail position.
+    */
     do {
     cont = 0
     drType = getPtrType(dr)|0;
 
-    /*
-    Invariant:
-      Each call to renderWithoutCheck() that returns normally MUST leave the state of the underlying
-      drawing context exactly as it found it. As this function may call itself recursively, this
-      means that states have to be stored in a stack somewhere.
-
-      Options include
-        - Using the drawing context stack, i.e. calling save(), doing anything it wants and then call restore()
-        - Using a custom stack structure on the renderer heap, similar to the save()/restore() option above
-        - Using the call stack, i.e. storing the previous value in a variable, updating drawing context, drawing, then restoring
-          the drawing context from the variable.
-
-    */
     switch (drType|0) {
 
       case NODE_TYPE_FREE:
@@ -1258,7 +1143,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         a   = +HEAPF32[(dr + (1<<2)) >> 2] // x
         b   = +HEAPF32[(dr + (2<<2)) >> 2] // y
         txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // segments
-        // drawPath(a,b,txt,hasFill,hasStroke)
 
         _beginPath()
         _moveTo(a,b)
@@ -1280,7 +1164,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         break;
       case NODE_TYPE_SEGMENT2:
-        // TODO quadraticCurveTo
+        // TODO cubic segment rendering, using quadraticCurveTo
         _debug(ERROR_TYPE_UNKNOWN,0)
         break;
 
@@ -1301,7 +1185,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         break;
 
       case NODE_TYPE_SEGMENT_ARC:
-        // TODO arcTo
+        // TODO arc segment rendering
         _debug(ERROR_TYPE_UNKNOWN,0)
         break;
         break;
@@ -1351,8 +1235,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         c = +HEAPF32[(dr+(3<<2)) >> 2];
         d = +HEAPF32[(dr+(4<<2)) >> 2];
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
-        // console.log("Rendering fill: ", r, g, b, a)
-        // FIXME selective version of save/restore
         _save()
 
         // _fillStyleRGBA(r,g,b,a)
@@ -1369,8 +1251,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         c = +HEAPF32[(dr+(3<<2)) >> 2];
         d = +HEAPF32[(dr+(4<<2)) >> 2];
         dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
-        // console.log("Rendering fill: ", r, g, b, a)
-        // FIXME selective version of save/restore
         _save()
 
         // _fillStyleRGBA(r,g,b,a)
@@ -1453,11 +1333,11 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _restore()
         break;
 
-      //
-      // case NODE_TYPE_TAG:
-      //   // TODO
-      //   _debug(ERROR_TYPE_UNKNOWN, drType|0);
-      //   break;
+
+      case NODE_TYPE_TAG:
+        // TODO events
+        _debug(ERROR_TYPE_UNKNOWN, drType|0);
+        break;
 
       case NODE_TYPE_TRANSF:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -1467,9 +1347,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         e = +HEAPF32[(dr+(5<<2)) >> 2];
         f = +HEAPF32[(dr+(6<<2)) >> 2];
         dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
-        // TODO render transf
 
-        // FIXME selective version of save/restore
+        // Could be optimized with selective version of save/restore
         // Or simply apply inverted matrix when done http://stackoverflow.com/a/18504573
         // Or use currentTransform if supported
         _save()
@@ -1521,7 +1400,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     dr = dr|0;
     x = +x;
     y = +y;
-    // TODO
+    // TODO events
     return -1;
   }
 
@@ -1721,17 +1600,7 @@ function createRenderer(c2) {
         }
       }
       , fillStyleRGBA:
-        // x=>console.log('fillStyle_')
-        // FIXME
-        // (r,g,b,a)=>console.log(r,g,b,a)
         function (r,g,b,a) {
-
-          // c.fillStyle = "red"
-          //
-          // c.fillStyle = "rgb(0,255,0)"
-          //
-          // c.fillStyle = "rgba(0,0,255,0.20)"
-
           c.fillStyle = "".concat(
               "rgba("
             , Math.floor(256*r)
@@ -1743,26 +1612,7 @@ function createRenderer(c2) {
             , +a
             , ")")
         }
-      // , arc:
-      //   // x=>console.log('arc')
-      //   // TODO is bind() faster than this closure wrapping?
-      //   function (x,y,r) {
-      //     x = +x
-      //     y = +y
-      //     r = +r
-      //     c.arc(x,y,r, 0, 6.283185307179586, false)
-      //   }
-      // , rect:
-      // // x=>console.log('x')
-      //   function (x,y,w,h) {
-      //     x = +x
-      //     y = +y
-      //     w = +w
-      //     h = +h
-      //     c.rect(x,y,w,h)
-      //   }
       , fillRect:
-      // x=>console.log('x')
         function (x,y,w,h) {
           x = +x
           y = +y
@@ -1771,7 +1621,6 @@ function createRenderer(c2) {
           c.fillRect(x,y,w,h)
         }
       , strokeRect:
-      // x=>console.log('x')
         function (x,y,w,h) {
           x = +x
           y = +y
@@ -1784,13 +1633,10 @@ function createRenderer(c2) {
           c.fillText(fetchExternal(txtRef), x, y)
         }
       , save:
-      // x=>console.log('x')
         function (x) { c.save() }
       , restore:
-      // x=>console.log('x')
         function (x) { c.restore() }
       , transform:
-      // x=>console.log('x')
         function (a,b,c_,d,e,f) {
           a = +a
           b = +b
@@ -1800,12 +1646,9 @@ function createRenderer(c2) {
           f = +f
 
           c.transform(a,b,c_,d,e,f)
-          // c.scale(a,d)
-          // c.translate(e,f)
         }
       , debug:
         function (msg, arg) {
-          // FIXME stop rendering somehow
           switch (msg) {
             case ERROR_TYPE_UNKNOWN:
               console.log("Error: ", "Unknown node type", arg)
@@ -1824,7 +1667,7 @@ function createRenderer(c2) {
               break;
           }
          }
-      }, heap) // FIXME trim
+      }, heap)
 
   // Store a reference to the context (mainly for debugging)
   res.context = c
@@ -1845,7 +1688,6 @@ function createRenderer(c2) {
   }
 
   res.ap = function(xs) {
-    // TODO primitive empty drawing
     var empty = r.primRect(0,0,0,0)
     var res = xs.reduce(function (a,b) {
       return r.primAp2(b,a) // Reverse order
@@ -1894,7 +1736,6 @@ function createRenderer(c2) {
     return res.primFillColor(Math.random(),Math.random(),Math.random(),1,dr)
   }
 
-  // TODO this could also be triggered by a special node in the drawing tree
   res.dumpHeap = function () {
     res.dumpHeapUsage()
     console.log("Dumping heap below...")
