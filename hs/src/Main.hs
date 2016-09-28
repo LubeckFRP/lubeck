@@ -54,9 +54,12 @@ foreign import javascript unsafe "$1.screenX"
   screenX :: MouseEvent -> Double
 foreign import javascript unsafe "$1.screenY"
   screenY :: MouseEvent -> Double
+foreign import javascript unsafe "$1.offsetX"
+  offsetX :: MouseEvent -> Double
+foreign import javascript unsafe "$1.offsetY"
+  offsetY :: MouseEvent -> Double
 
 
---
 
 foreign import javascript unsafe
   "var n = document.createElement('canvas'); n.id = 'canvas'; n.width = 800; n.height = 800; document.getElementsByTagName('body')[0].appendChild(n)"
@@ -67,7 +70,11 @@ foreign import javascript unsafe
 foreign import javascript unsafe "window.update = $1"
   setUpdateCB :: (Callback (IO ())) -> IO ()
 foreign import javascript unsafe "$1.onmousemove = $2"
-  setHandlerCB :: CanvasElement -> (Callback (JSVal -> IO ())) -> IO ()
+  setMousemoveCB :: CanvasElement -> (Callback (JSVal -> IO ())) -> IO ()
+foreign import javascript unsafe "$1.onmouseup = $2"
+  setMouseupCB :: CanvasElement -> (Callback (JSVal -> IO ())) -> IO ()
+foreign import javascript unsafe "$1.onmousedown = $2"
+  setMousedownCB :: CanvasElement -> (Callback (JSVal -> IO ())) -> IO ()
 -- FIXME variants of asyncCallback et al to allow arbitrary newtype wrappers
 
 
@@ -103,7 +110,7 @@ getPointTag !r !d !x !y = do
   case r of
     0 -> pure NoTag
     1 -> pure Outside
-    n -> pure $ Tag n
+    n -> pure $ Tag (n - 2)
 
 -- Never call these from high-level API, should be managed by addFinalizer
 foreign import javascript unsafe "$1.claim($2)"
@@ -310,9 +317,11 @@ ap2 (Picture rd1) (Picture rd2) = Picture $ do
   finR3 res
 
 tag :: Int -> Picture -> Picture
-tag !tag (Picture rd2) = Picture $ do
+tag !tag (Picture rd2)
+  | tag < 0   = error "tag: Tag must be positive"
+  | otherwise = Picture $ do
   d2 <- rd2
-  res <- (ReaderT $ \re -> tag'' tag d2 re)
+  res <- (ReaderT $ \re -> tag'' (abs tag + 2) d2 re)
   finR3 res
 
 empty :: Picture
@@ -487,12 +496,26 @@ randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
     square x y r = rect x y (r*2) (r*2)
     setCol col = if col then fillColor 0 0 1 0.05 else fillColor 1 0 0 0.05
 
-tagTest :: Picture
-tagTest = tag 555 $ mconcat $ fmap g [0..10]
+tagTest :: Bool -> Maybe Int -> Picture
+tagTest down cur = tag 555 $ mconcat $ fmap g [0..50]
   where
-    g n = strokeColor 0 0 1 1 $ (square (n*50) 0 50 <> text (n*50) 0 (pack $ show n))
+    g n = translate 100 100 $ scaleXY 10 10 $ rotate (-0.1*tau) $ tag n $ col n $ mconcat
+      [ square (fromIntegral n*5) 0 5
+      , textFont "Arial" $ text (fromIntegral n*5) 0 (pack $ show n)
+      ]
+    col n = case (down, Just n == cur) of
+      (True,  True) -> fillColor 0 0 1 1
+      (False, True) -> fillColor 0 1 1 1
+      (True,  False) -> fillColor 1 0 1 1
+      (False, False) -> fillColor 1 1 0 1
+    tau = 2*pi
     square :: Double -> Double -> Double -> Picture
     square x y s = path x y $ linePath True [(x+s,y), (x+s,y+s), (x,y+s)]
+-- tagTest = tag 555 $ g 0
+--   where
+--     g n = strokeColor 0 0 1 1 $ square (n*50) 0 50 -- <> text (n*50) 0 (pack $ show n)
+--     square :: Double -> Double -> Double -> Picture
+--     square x y s = path x y $ linePath True [(x+s,y), (x+s,y+s), (x,y+s)]
 
 main = do
   createCanvasNode
@@ -512,12 +535,21 @@ main = do
   (d2 :: Drawing) <- prerender pict2 r
 
   rotation <- newIORef 0
-  ttr <- prerender tagTest r
+  isDown <- newIORef False
+  current <- newIORef Nothing
+  ttr <- prerender (tagTest False Nothing) r
 
-  let handler e = do
-          let x = (screenX $ MouseEvent e)
-          let y = (screenY $ MouseEvent e)
-          print =<< getPointTag r ttr x y
+  let handler down e = do
+          let x = (offsetX $ MouseEvent e)
+          let y = (offsetY $ MouseEvent e)
+          tag <- getPointTag r ttr x y
+          writeIORef isDown down
+          -- print tag
+          case tag of
+            Tag n -> writeIORef current (Just n)
+            _     -> writeIORef current Nothing
+
+
           writeIORef rotation (screenX (MouseEvent e)/400)
   let update = do
           -- print "Updating..."
@@ -527,8 +559,10 @@ main = do
           n <- readIORef rotation
           -- modifyIORef' rotation (+ 0.02)
 
-
-          renderPicture r tagTest
+          c <- readIORef current
+          d <- readIORef isDown
+          -- print (c,d)
+          renderPicture r (tagTest d c)
           -- renderPicture r (mconcat
           --   [ mempty
           --   -- , fillColor 1 0 1 1 $ circle 200 200 20
@@ -564,13 +598,16 @@ main = do
           -- render r $ (fin . translate' 400 400 =<< fin . rotate' (n*pi*2) =<< pure {-dr_-}
           --   dr22) r
 
-  update
   updateCB <- CB.syncCallback CB.ThrowWouldBlock update
   -- updateCB <- CB.asyncCallback update
   setUpdateCB updateCB
-  handlerCB <- CB.asyncCallback1 handler
-  setHandlerCB e handlerCB
 
+  -- handlerCB <- CB.asyncCallback1 handler
+  setMousemoveCB e =<< (CB.syncCallback1 CB.ThrowWouldBlock $ handler False)
+  setMouseupCB e =<< (CB.syncCallback1 CB.ThrowWouldBlock $ handler False)
+  setMousedownCB e =<< (CB.syncCallback1 CB.ThrowWouldBlock $ handler True)
+
+  update
   startLoop
 
   print "Hello again 0129"

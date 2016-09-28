@@ -187,6 +187,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
   var _debug = foreign.debug;
 
+  var _printCurrentPath = foreign.printCurrentPath
   var _beginPath = foreign.beginPath
   var _moveTo = foreign.moveTo
   var _closePath = foreign.closePath
@@ -1466,7 +1467,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // drawCircle(a,b,c,hasFill,hasStroke,hasClip)
         // TODO
         return ERROR_POINT_OUTSIDE
-        break;
 
       case NODE_TYPE_RECT:
         a = +HEAPF32[(dr+(1<<2)) >> 2];
@@ -1476,7 +1476,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         // drawRect(a,b,c,d,hasFill,hasStroke,hasClip)
         // TODO
         return ERROR_POINT_OUTSIDE
-        break;
 
       case NODE_TYPE_TEXT:
         a   = +HEAPF32[(dr + (1<<2)) >> 2]
@@ -1485,7 +1484,6 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         // We don't support text for clipping paths
         return ERROR_POINT_OUTSIDE
-        break;
 
       case NODE_TYPE_PATH:
         a   = +HEAPF32[(dr + (1<<2)) >> 2] // x
@@ -1503,45 +1501,48 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
         _lineTo(a,b)
         // Manual TCO
-        dr = txt
-        cont = 1
-        // getPointTag(opts,txt,x,y,tag)
+        // dr = txt
+        // cont = 1
+        return getPointTag(opts,txt,x,y,tag)|0
 
-        break;
-      case NODE_TYPE_SEGMENT2:
-        // TODO cubic segment detection with quadraticCurveTo
-        _debug(ERROR_TYPE_UNKNOWN,0)
-        break;
+      // case NODE_TYPE_SEGMENT2:
+      //   // TODO cubic segment detection with quadraticCurveTo
+      //   _debug(ERROR_TYPE_UNKNOWN,0)
+      //   break;
+      //
+      // case NODE_TYPE_SEGMENT3:
+      //   a   = +HEAPF32[(dr + (1<<2)) >> 2] // x1
+      //   b   = +HEAPF32[(dr + (2<<2)) >> 2] // y1
+      //   c   = +HEAPF32[(dr + (3<<2)) >> 2] // x2
+      //   d   = +HEAPF32[(dr + (4<<2)) >> 2] // y2
+      //   e   = +HEAPF32[(dr + (5<<2)) >> 2] // x3
+      //   f   = +HEAPF32[(dr + (6<<2)) >> 2] // y3
+      //   txt =  HEAP32 [(dr + (7<<2)) >> 2]|0 // tail
+      //
+      //   _bezierCurveTo(a,b,c,d,e,f)
+      //   // Manual TCO
+      //   // dr   = txt
+      //   // cont = 1
+      //   return getPointTag(opts,txt,x,y,tag)|0
 
-      case NODE_TYPE_SEGMENT3:
-        a   = +HEAPF32[(dr + (1<<2)) >> 2] // x1
-        b   = +HEAPF32[(dr + (2<<2)) >> 2] // y1
-        c   = +HEAPF32[(dr + (3<<2)) >> 2] // x2
-        d   = +HEAPF32[(dr + (4<<2)) >> 2] // y2
-        e   = +HEAPF32[(dr + (5<<2)) >> 2] // x3
-        f   = +HEAPF32[(dr + (6<<2)) >> 2] // y3
-        txt =  HEAP32 [(dr + (7<<2)) >> 2]|0 // tail
-
-        _bezierCurveTo(a,b,c,d,e,f)
-        // Manual TCO
-        dr   = txt
-        cont = 1
-        // getPointTag(opts,txt,x,y,tag)
-        break;
-
-      case NODE_TYPE_SEGMENT_ARC:
+      // case NODE_TYPE_SEGMENT_ARC:
         // TODO arc segment detection
-        _debug(ERROR_TYPE_UNKNOWN,0)
-        break;
+        // _debug(ERROR_TYPE_UNKNOWN,0)
+        // break;
 
       case NODE_TYPE_SEGMENT_END:
         txt =  HEAP32 [(dr + (1<<2)) >> 2]|0 // closed
         if (txt) {
           _closePath()
         }
+        // console.log("FIXME testing", x, y)
+        // _printCurrentPath()
+        // console.log("  Current tag", tag)
         if (_isPointInPath(x, y)|0) {
+          // console.log("  -----> Yes", x, y)
           return tag|0
         } else {
+          // console.log("  No", x, y)
           return ERROR_POINT_OUTSIDE
         }
 
@@ -1555,10 +1556,9 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         }
         _moveTo(a,b)
         // Manual TCO
-        dr   = dr1
-        cont = 1
-        // getPointTag(opts,dr1,x,y,tag)
-        break;
+        // dr   = dr1
+        // cont = 1
+        return getPointTag(opts,dr1,x,y,tag)|0
 
       case NODE_TYPE_TAG:
         txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // tag name
@@ -1718,16 +1718,31 @@ function createRenderer(c2) {
     externals[n] = undefined
   }
 
+  var currentPath = ""
   // ASM module is linked here...
   var res = new AsmDrawingRenderer(window,
       { random : Math.random
       , releaseExternal : releaseExternal
 
-      , isPointInPath: function(x, y) { return c.isPointInPath(x,y) }
+      , isPointInPath: function(x, y) { if (c.isPointInPath(x,y))
+          {
+              // console.log("YES");
+              return 1 }
+          else
+          {
+              // console.log("NO");
+              return 0 } }
+
       , beginPath: function () { c.beginPath() }
       , moveTo: function (x,y) { c.moveTo(x,y) }
       , closePath: function () { c.closePath() }
       , lineTo: function (x,y) { c.lineTo(x,y) }
+      // , beginPath: function () { currentPath = ""; c.beginPath() }
+      // , moveTo: function (x,y) { currentPath += " M" + x + "," + y; c.moveTo(x,y) }
+      // , closePath: function () { currentPath += " C"; c.closePath() }
+      // , lineTo: function (x,y) { currentPath += " L" + x + "," + y; c.lineTo(x,y) }
+      , printCurrentPath: function () { console.log(currentPath) }
+
       , quadraticCurveTo: function (cpx, cpy, x, y) { c.quadraticCurveTo(cpx, cpy, x, y) }
       , bezierCurveTo: function (cp1x, cp1y, cp2x, cp2y, x, y) { c.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y) }
       , arcTo: function (x1, y1, x2, y2, radius) { c.arcTo(x1, y1, x2, y2, radius) }
