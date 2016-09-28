@@ -496,18 +496,21 @@ randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
     square x y r = rect x y (r*2) (r*2)
     setCol col = if col then fillColor 0 0 1 0.05 else fillColor 1 0 0 0.05
 
-tagTest :: Bool -> Maybe Int -> Picture
-tagTest down cur = tag 555 $ mconcat $ fmap g [0..50]
+tagTest d c = tagTest2 d c <> translate 0 50 (rotate (tau/12) $ scaleXY 2 2 $ tagTest2 d c)
+
+tagTest2 :: Bool -> Maybe Int -> Picture
+tagTest2 down cur = tag 555 $ mconcat $ fmap g [0..50]
   where
-    g n = translate 100 100 $ scaleXY 10 10 $ rotate (-0.1*tau) $ tag n $ col n $ mconcat
-      [ square (fromIntegral n*5) 0 5
-      , textFont "Arial" $ text (fromIntegral n*5) 0 (pack $ show n)
+    g n = translate 50 50 $ rotate (-0.1*tau) $ tag n $ col n $ mconcat
+      [ square (fromIntegral n*baseSize) 0 baseSize
+      , textFont "Arial 12px" $ text (fromIntegral n*baseSize) 0 (pack $ show n)
       ]
+    baseSize = 15
     col n = case (down, Just n == cur) of
-      (True,  True) -> fillColor 0 0 1 1
-      (False, True) -> fillColor 0 1 1 1
-      (True,  False) -> fillColor 1 0 1 1
-      (False, False) -> fillColor 1 1 0 1
+      (True,  True) -> fillColor  0.5 0 0.5 1
+      (False, True) -> fillColor  0 0.5 0.5 1
+      (True,  False) -> fillColor 0 0 1 1
+      (False, False) -> fillColor 1 0 0 1
     tau = 2*pi
     square :: Double -> Double -> Double -> Picture
     -- square x y s = rect x y s s
@@ -618,3 +621,5 @@ main = do
   startLoop
 
   print "Hello again 0129"
+
+tau = 2*pi
