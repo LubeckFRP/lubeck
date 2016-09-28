@@ -169,6 +169,10 @@
 #define ERROR_TYPE_UNKNOWN_RELEASE 2
 #define ERROR_OUT_OF_MEMORY        1
 #define ERROR_TYPE_FREE_PASSED_TO_RENDER 3
+#define ERROR_NO_TAG               0
+#define ERROR_POINT_OUTSIDE        1
+// Minimal value for tags
+#define TAG_OFFSET                 2
 
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
@@ -216,6 +220,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _save = foreign.save;
   var _restore = foreign.restore;
   var _transform = foreign.transform;
+
+  var _isPointInPath = foreign.isPointInPath
 
   var _floor = stdlib.Math.floor;
   var _imul = stdlib.Math.imul;
@@ -1071,7 +1077,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         the drawing context from the variable.
 
   */
-  // Opts* -> Drawing* -> ()
+  // Opts* -> Drawing* -> Bool -> Bool -> Bool -> ()
   function renderWithoutCheck(opts,dr,hasFill,hasStroke,hasClip) {
     opts = opts|0;
     dr = dr|0;
@@ -1335,8 +1341,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
 
 
       case NODE_TYPE_TAG:
-        // TODO events
-        _debug(ERROR_TYPE_UNKNOWN, drType|0);
+        txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // tag name
+        dr1 =  HEAP32 [(dr+(2<<2)) >> 2]|0 // drawing
+        // Ignore tags
+        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         break;
 
       case NODE_TYPE_TRANSF:
@@ -1394,19 +1402,247 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     renderWithoutCheck(opts,dr,0,0,0)
   }
 
-  // Opts* -> Drawing* -> P2 -> Int
-  function getPointTag(opts,dr,x,y) {
+  // Return the tag of the top-most part of the drawing at the given point or
+  //
+  //  ERROR_NO_TAG if the point is in a path that has no tag
+  //  ERROR_POINT_OUTSIDE is the point is outside the path of the given drawing.
+  //
+  // Opts* -> Drawing* -> P2 -> ( ERROR_NO_TAG | ERROR_POINT_OUTSIDE | Int)
+  function getPointTag_(opts,dr,x,y) {
     opts = opts|0;
     dr = dr|0;
     x = +x;
     y = +y;
-    // TODO events
-    return -1;
+    return getPointTag(opts,dr,x,y,ERROR_NO_TAG)|0;
+  }
+
+  function getPointTag(opts,dr,x,y,tag) {
+    opts = opts|0;
+    dr = dr|0;
+    x = +x;
+    y = +y;
+    tag = tag|0
+
+    // opts = opts|0;
+    // dr = dr|0;
+    // hasFill = hasFill|0;
+    // hasStroke = hasStroke|0;
+    // hasClip = hasClip|0 // TODO not actually used
+
+    /* Don't rely on these default values as manual TCO (see below) may caused
+      them to have a different value. */
+    var drType = 0
+
+    var a = 0.
+    var b = 0.
+    var c = 0.
+    var d = 0.
+    var e = 0.
+    var f = 0.
+
+    var dr1 = 0
+    var dr2 = 0
+    var txt = 0 // Bad name
+
+    var cont = 0
+
+    /*
+    Manual TCO, see comments in rendering functions above.
+    */
+    do {
+    cont = 0
+    drType = getPtrType(dr)|0;
+
+    switch (drType|0) {
+
+      case NODE_TYPE_FREE:
+        _debug(ERROR_TYPE_UNKNOWN, 0);
+        break;
+
+      case NODE_TYPE_CIRCLE:
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        // drawCircle(a,b,c,hasFill,hasStroke,hasClip)
+        // TODO
+        return ERROR_POINT_OUTSIDE
+        break;
+
+      case NODE_TYPE_RECT:
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        d = +HEAPF32[(dr+(4<<2)) >> 2];
+        // drawRect(a,b,c,d,hasFill,hasStroke,hasClip)
+        // TODO
+        return ERROR_POINT_OUTSIDE
+        break;
+
+      case NODE_TYPE_TEXT:
+        a   = +HEAPF32[(dr + (1<<2)) >> 2]
+        b   = +HEAPF32[(dr + (2<<2)) >> 2]
+        txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // txt
+
+        // We don't support text for clipping paths
+        return ERROR_POINT_OUTSIDE
+        break;
+
+      case NODE_TYPE_PATH:
+        a   = +HEAPF32[(dr + (1<<2)) >> 2] // x
+        b   = +HEAPF32[(dr + (2<<2)) >> 2] // y
+        txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // segments
+
+        _beginPath()
+        _moveTo(a,b)
+        return getPointTag(opts,txt,x,y,tag)|0
+
+      case NODE_TYPE_SEGMENT:
+        a   = +HEAPF32[(dr + (1<<2)) >> 2] // x
+        b   = +HEAPF32[(dr + (2<<2)) >> 2] // y
+        txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // tail
+
+        _lineTo(a,b)
+        // Manual TCO
+        dr = txt
+        cont = 1
+        // getPointTag(opts,txt,x,y,tag)
+
+        break;
+      case NODE_TYPE_SEGMENT2:
+        // TODO cubic segment detection with quadraticCurveTo
+        _debug(ERROR_TYPE_UNKNOWN,0)
+        break;
+
+      case NODE_TYPE_SEGMENT3:
+        a   = +HEAPF32[(dr + (1<<2)) >> 2] // x1
+        b   = +HEAPF32[(dr + (2<<2)) >> 2] // y1
+        c   = +HEAPF32[(dr + (3<<2)) >> 2] // x2
+        d   = +HEAPF32[(dr + (4<<2)) >> 2] // y2
+        e   = +HEAPF32[(dr + (5<<2)) >> 2] // x3
+        f   = +HEAPF32[(dr + (6<<2)) >> 2] // y3
+        txt =  HEAP32 [(dr + (7<<2)) >> 2]|0 // tail
+
+        _bezierCurveTo(a,b,c,d,e,f)
+        // Manual TCO
+        dr   = txt
+        cont = 1
+        // getPointTag(opts,txt,x,y,tag)
+        break;
+
+      case NODE_TYPE_SEGMENT_ARC:
+        // TODO arc segment detection
+        _debug(ERROR_TYPE_UNKNOWN,0)
+        break;
+
+      case NODE_TYPE_SEGMENT_END:
+        txt =  HEAP32 [(dr + (1<<2)) >> 2]|0 // closed
+        if (txt) {
+          _closePath()
+        }
+        if (_isPointInPath(x, y)|0) {
+          return tag|0
+        } else {
+          return ERROR_POINT_OUTSIDE
+        }
+
+      case NODE_TYPE_SEGMENT_SUBPATH:
+        txt =  HEAP32 [(dr + (1<<2)) >> 2]|0 // closed
+        a   = +HEAPF32[(dr + (2<<2)) >> 2] // x1
+        b   = +HEAPF32[(dr + (3<<2)) >> 2] // y1
+        dr1 =  HEAP32 [(dr + (4<<2)) >> 2]|0 // tail
+        if (txt) {
+          _closePath()
+        }
+        _moveTo(a,b)
+        // Manual TCO
+        dr   = dr1
+        cont = 1
+        // getPointTag(opts,dr1,x,y,tag)
+        break;
+
+      case NODE_TYPE_TAG:
+        txt =  HEAP32 [(dr+(1<<2)) >> 2]|0 // tag name
+        dr1 =  HEAP32 [(dr+(2<<2)) >> 2]|0 // drawing
+        return getPointTag(opts,dr1,x,y,txt)|0 // Use the declared tag ("txt")
+
+      case NODE_TYPE_TRANSF:
+        a = +HEAPF32[(dr+(1<<2)) >> 2];
+        b = +HEAPF32[(dr+(2<<2)) >> 2];
+        c = +HEAPF32[(dr+(3<<2)) >> 2];
+        d = +HEAPF32[(dr+(4<<2)) >> 2];
+        e = +HEAPF32[(dr+(5<<2)) >> 2];
+        f = +HEAPF32[(dr+(6<<2)) >> 2];
+        dr1 = HEAP32[(dr+(7<<2)) >> 2]|0;
+
+        // Could be optimized with selective version of save/restore
+        // Or simply apply inverted matrix when done http://stackoverflow.com/a/18504573
+        // Or use currentTransform if supported
+        _save()
+        _transform(a,b,c,d,e,f)
+        txt = getPointTag(opts,dr1,x,y,tag)|0
+        _restore()
+        return txt|0
+
+      case NODE_TYPE_AP2:
+        dr1 = HEAP32[(dr+(1<<2)) >> 2]|0;
+        dr2 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        // Use txt for results
+
+        txt = getPointTag(opts,dr1,x,y,tag)|0
+        if ((txt|0) != ERROR_POINT_OUTSIDE) {
+          return txt|0
+        } else {
+          return getPointTag(opts,dr2,x,y,tag)|0
+        }
+
+      case NODE_TYPE_CLIP:
+        _debug(ERROR_TYPE_UNKNOWN, drType|0);
+        break;
+
+      case NODE_TYPE_FILL_COLOR:
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_STROKE_COLOR:
+        dr1 = HEAP32[(dr+(5<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_FILL_GRADIENT:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_FILL_PATTERN:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_LINE_WIDTH:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_LINE_CAP:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_LINE_JOIN:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_TEXT_FONT:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_TEXT_ALIGNMENT:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+      case NODE_TYPE_TEXT_BASELINE:
+        dr1 = HEAP32[(dr+(2<<2)) >> 2]|0;
+        return getPointTag(opts,dr1,x,y,tag)|0
+
+      default:
+        _debug(ERROR_TYPE_UNKNOWN, drType|0);
+        break;
+    }
+    }
+    while(cont);
+
+    return ERROR_NO_TAG;
   }
 
   // etc
   return  { render : render
-          , getPointTag : getPointTag
+          , getPointTag_ : getPointTag_ // TODO fix names
 
           , primCircle : primCircle
           , primRect : primRect
@@ -1487,6 +1723,7 @@ function createRenderer(c2) {
       { random : Math.random
       , releaseExternal : releaseExternal
 
+      , isPointInPath: function(x, y) { return c.isPointInPath(x,y) }
       , beginPath: function () { c.beginPath() }
       , moveTo: function (x,y) { c.moveTo(x,y) }
       , closePath: function () { c.closePath() }

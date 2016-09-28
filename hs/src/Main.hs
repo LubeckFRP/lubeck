@@ -90,6 +90,21 @@ foreign import javascript unsafe "$1.render(0,$2)"
   renderDrawing :: Renderer -> Drawing -> IO ()
 {-# INLINABLE renderDrawing #-}
 
+foreign import javascript unsafe "$1.getPointTag_(0,$2,$3,$4)"
+  getPointTag' :: Renderer -> Drawing -> Double -> Double -> IO Int
+{-# INLINABLE getPointTag #-}
+
+data TagResult = Outside | NoTag | Tag Int
+  deriving (Eq, Ord, Show)
+
+getPointTag :: Renderer -> Drawing -> Double -> Double -> IO TagResult
+getPointTag !r !d !x !y = do
+  r <- getPointTag' r d x y
+  case r of
+    0 -> pure NoTag
+    1 -> pure Outside
+    n -> pure $ Tag n
+
 -- Never call these from high-level API, should be managed by addFinalizer
 foreign import javascript unsafe "$1.claim($2)"
   claimD :: Renderer -> Drawing -> IO ()
@@ -294,6 +309,12 @@ ap2 (Picture rd1) (Picture rd2) = Picture $ do
   res <- (ReaderT $ \re -> ap2'' d1 d2 re)
   finR3 res
 
+tag :: Int -> Picture -> Picture
+tag !tag (Picture rd2) = Picture $ do
+  d2 <- rd2
+  res <- (ReaderT $ \re -> tag'' tag d2 re)
+  finR3 res
+
 empty :: Picture
 empty = rect 0 0 0 0
 
@@ -339,6 +360,10 @@ foreign import javascript unsafe "$4.translate($1,$2,$3)"
 foreign import javascript unsafe "$3.primAp2($1,$2)"
   ap2'' :: Drawing -> Drawing -> R2 Drawing
 
+foreign import javascript unsafe "$3.primTag($1,$2)"
+  tag'' :: Int -> Drawing -> R2 Drawing
+
+
 foreign import javascript unsafe "$4.primSegment($1,$2,$3)"
   segment'' :: Double -> Double -> Segment -> R2 Segment
 foreign import javascript unsafe "$8.primSegment($1,$2,$3,$4,$5,$6,$7)"
@@ -362,6 +387,7 @@ foreign import javascript unsafe "$5.primSegmentSubpath($1,$2,$3,$4)"
 {-# INLINABLE rotate'' #-}
 {-# INLINABLE translate'' #-}
 {-# INLINABLE ap2'' #-}
+{-# INLINABLE tag'' #-}
 {-# INLINABLE rect #-}
 {-# INLINABLE circle #-}
 -- {-# INLINABLE red #-}
@@ -461,6 +487,13 @@ randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
     square x y r = rect x y (r*2) (r*2)
     setCol col = if col then fillColor 0 0 1 0.05 else fillColor 1 0 0 0.05
 
+tagTest :: Picture
+tagTest = tag 555 $ mconcat $ fmap g [0..10]
+  where
+    g n = strokeColor 0 0 1 1 $ (square (n*50) 0 50 <> text (n*50) 0 (pack $ show n))
+    square :: Double -> Double -> Double -> Picture
+    square x y s = path x y $ linePath True [(x+s,y), (x+s,y+s), (x,y+s)]
+
 main = do
   createCanvasNode
   e <- getCanvas
@@ -479,8 +512,12 @@ main = do
   (d2 :: Drawing) <- prerender pict2 r
 
   rotation <- newIORef 0
+  ttr <- prerender tagTest r
 
   let handler e = do
+          let x = (screenX $ MouseEvent e)
+          let y = (screenY $ MouseEvent e)
+          print =<< getPointTag r ttr x y
           writeIORef rotation (screenX (MouseEvent e)/400)
   let update = do
           -- print "Updating..."
@@ -491,29 +528,31 @@ main = do
           -- modifyIORef' rotation (+ 0.02)
 
 
-          renderPicture r (mconcat
-            [ mempty
-            -- , fillColor 1 0 1 1 $ circle 200 200 20
-            , translate 200 200 $ scaleXY 4 4 $ mconcat
-              [ mempty
+          renderPicture r tagTest
+          -- renderPicture r (mconcat
+          --   [ mempty
+          --   -- , fillColor 1 0 1 1 $ circle 200 200 20
+          --   , translate 200 200 $ scaleXY 4 4 $ mconcat
+          --     [ mempty
+          --
+          --     , fillColor 1 0 0 0.2 $ rect 0 0 20 20
+          --     , fillColor 0 0 0 1 $ textFont "10px Arial, sans-serif" $ text 0 0 "H"
+          --     , fillColor 0 1 0 1 $ textAlign TextAlignCenter $ textBaseline TextBaselineTop $ textFont "10px Arial, sans-serif" $ text 0 0 "H"
+          --
+          --     ]
+          --
+          --
+          --
+          --   -- Compare (pict) and (usePrerendered d1)
+          --   , translate 400 400 $ rotate (n*1.003*pi*2)
+          --       -- pict
+          --       -- mempty
+          --       $ usePrerendered d1
+          --   , usePrerendered d2
+          --   -- , pict2
+          --   , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ scaleXY 5 5 $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
+          --   ])
 
-              , fillColor 1 0 0 0.2 $ rect 0 0 20 20
-              , fillColor 0 0 0 1 $ textFont "10px Arial, sans-serif" $ text 0 0 "H"
-              , fillColor 0 1 0 1 $ textAlign TextAlignCenter $ textBaseline TextBaselineTop $ textFont "10px Arial, sans-serif" $ text 0 0 "H"
-
-              ]
-
-
-
-            -- Compare (pict) and (usePrerendered d1)
-            , translate 400 400 $ rotate (n*1.003*pi*2)
-                -- pict
-                -- mempty
-                $ usePrerendered d1
-            , usePrerendered d2
-            -- , pict2
-            , textFont "italic bold 10px Georgia, serif" $ translate 200 200 $ scaleXY n n $ scaleXY 5 5 $ fillColor 1 0 1 1 $ text 0 0 (pack $ show n)
-            ])
           performMajorGC
 
           -- Keep d1_copy alive
