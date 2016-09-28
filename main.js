@@ -742,6 +742,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     path = path|0;
 
     var p = 0
+    claim(path)
 
     p = (newTuple())|0
     HEAP32 [(p + (0<<2)) >> 2] = NODE_TYPE_PATH|0
@@ -1272,12 +1273,17 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         txt =  HEAP32 [(dr + (3<<2)) >> 2]|0 // tail
 
         _lineTo(a,b)
-        renderWithoutCheck(opts,txt,hasFill,hasStroke,hasClip)
+        // Manual TCo
+        dr = txt
+        cont = 1
+        // renderWithoutCheck(opts,txt,hasFill,hasStroke,hasClip)
+
         break;
       case NODE_TYPE_SEGMENT2:
         // TODO quadraticCurveTo
         _debug(ERROR_TYPE_UNKNOWN,0)
         break;
+
       case NODE_TYPE_SEGMENT3:
         a   = +HEAPF32[(dr + (1<<2)) >> 2] // x1
         b   = +HEAPF32[(dr + (2<<2)) >> 2] // y1
@@ -1288,13 +1294,18 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         txt =  HEAP32 [(dr + (7<<2)) >> 2]|0 // tail
 
         _bezierCurveTo(a,b,c,d,e,f)
-        renderWithoutCheck(opts,txt,hasFill,hasStroke,hasClip)
+        // Manual TCo
+        dr   = txt
+        cont = 1
+        // renderWithoutCheck(opts,txt,hasFill,hasStroke,hasClip)
         break;
+
       case NODE_TYPE_SEGMENT_ARC:
         // TODO arcTo
         _debug(ERROR_TYPE_UNKNOWN,0)
         break;
         break;
+
       case NODE_TYPE_SEGMENT_END:
         txt =  HEAP32 [(dr + (1<<2)) >> 2]|0 // closed
         if (txt) {
@@ -1307,6 +1318,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           _fill()
         }
         break;
+
       case NODE_TYPE_SEGMENT_SUBPATH:
         txt =  HEAP32 [(dr + (1<<2)) >> 2]|0 // closed
         a   = +HEAPF32[(dr + (2<<2)) >> 2] // x1
@@ -1316,7 +1328,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           _closePath()
         }
         _moveTo(a,b)
-        renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
+        // Manual TCo
+        dr   = dr1
+        cont = 1
+        // renderWithoutCheck(opts,dr1,hasFill,hasStroke,hasClip)
         break;
 
       case NODE_TYPE_CLIP:
