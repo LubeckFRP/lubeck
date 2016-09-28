@@ -43,8 +43,8 @@ foreign import javascript unsafe "console.log($1,'dead')"
 newtype CanvasElement = DOMCanvasElement JSVal
 newtype Context = Context JSVal
 newtype Renderer = Renderer JSVal
-newtype Segment = Drawing JSVal
-newtype Drawing = Segment JSVal
+newtype Segment = Segment JSVal
+newtype Drawing = Drawing JSVal
 newtype MouseEvent = MouseEvent JSVal
 foreign import javascript unsafe "$1.movementX"
   movementX :: MouseEvent -> Double
@@ -377,10 +377,14 @@ foreign import javascript unsafe "$5.primSegmentSubpath($1,$2,$3,$4)"
 -- finIO !r !d = addFinalizer d (release r d) >> pure d
 
 finR3 :: Drawing -> R3 Drawing
-finR3 !d = ReaderT $ \r -> addFinalizer d (releaseD r d) >> pure d
+finR3 !d = ReaderT $ \r -> do
+  addFinalizer d (releaseD r d)
+  pure d
 
 finR3_S :: Segment -> R3 Segment
-finR3_S !d = ReaderT $ \r -> addFinalizer d (releaseS r d) >> pure d
+finR3_S !d = ReaderT $ \r -> do
+  addFinalizer d (releaseS r d)
+  pure d
 
 instance Monoid Picture where
   mappend = ap2
@@ -464,7 +468,6 @@ main = do
   r <- createRenderer ct
   showRenderer r
 
-  rotation <- newIORef 0
 
   (pict :: Picture) <- evalRandIO $ randPict False 150
   -- (pict2 :: Picture) <- evalRandIO $ fmap (lineWidth 5) $ fmap (lineWidth 2) $ randPict True 50
@@ -472,8 +475,10 @@ main = do
   (d1 :: Drawing) <- prerender pict r
   (d1_copy :: Drawing) <- prerender pict r
 
-  (pict2 :: Picture) <- evalRandIO $ randLine 5 150 500
+  (pict2 :: Picture) <- evalRandIO $ randLine 0.2 550 5000
   (d2 :: Drawing) <- prerender pict2 r
+
+  rotation <- newIORef 0
 
   let handler e = do
           writeIORef rotation (screenX (MouseEvent e)/400)
@@ -521,8 +526,8 @@ main = do
           --   dr22) r
 
   update
-  -- updateCB <- CB.syncCallback CB.ThrowWouldBlock update
-  updateCB <- CB.asyncCallback update
+  updateCB <- CB.syncCallback CB.ThrowWouldBlock update
+  -- updateCB <- CB.asyncCallback update
   setUpdateCB updateCB
   handlerCB <- CB.asyncCallback1 handler
   setHandlerCB e handlerCB
