@@ -194,11 +194,11 @@ segment !x !y (Spline rtail) = Spline $ do
   res <- (ReaderT $ \re -> segment'' x y tail re)
   finR3_S res
 
-segment3 :: Double -> Double -> Double -> Double -> Double -> Double -> Spline -> Spline
-segment3 !x1 !y1 !x2 !y2 !x3 !y3 (Spline rtail) = Spline $ do
-  tail <- rtail
-  res <- (ReaderT $ \re -> segment3'' x1 y1 x2 y2 x3 y3 tail re)
-  finR3_S res
+-- segment3 :: Double -> Double -> Double -> Double -> Double -> Double -> Spline -> Spline
+-- segment3 !x1 !y1 !x2 !y2 !x3 !y3 (Spline rtail) = Spline $ do
+--   tail <- rtail
+--   res <- (ReaderT $ \re -> segment3'' x1 y1 x2 y2 x3 y3 tail re)
+--   finR3_S res
 
 -- Absolute co-ordinates, open/close
 linePath :: Foldable t => Bool -> t (Double, Double) -> Spline
@@ -510,7 +510,12 @@ tagTest down cur = tag 555 $ mconcat $ fmap g [0..50]
       (False, False) -> fillColor 1 1 0 1
     tau = 2*pi
     square :: Double -> Double -> Double -> Picture
-    square x y s = path x y $ linePath True [(x+s,y), (x+s,y+s), (x,y+s)]
+    -- square x y s = rect x y s s
+    square x y s = path x y $
+      linePath True [(x+s,y), (x+s,y+s), (x,y+s)]
+      -- linePath True []
+
+
 -- tagTest = tag 555 $ g 0
 --   where
 --     g n = strokeColor 0 0 1 1 $ square (n*50) 0 50 -- <> text (n*50) 0 (pack $ show n)
@@ -542,9 +547,10 @@ main = do
   let handler down e = do
           let x = (offsetX $ MouseEvent e)
           let y = (offsetY $ MouseEvent e)
-          tag <- getPointTag r ttr x y
           writeIORef isDown down
-          -- print tag
+
+          tag <- getPointTag r ttr x y
+          when down $ print tag
           case tag of
             Tag n -> writeIORef current (Just n)
             _     -> writeIORef current Nothing
@@ -562,6 +568,7 @@ main = do
           c <- readIORef current
           d <- readIORef isDown
           -- print (c,d)
+
           renderPicture r (tagTest d c)
           -- renderPicture r (mconcat
           --   [ mempty

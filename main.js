@@ -387,6 +387,8 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
         _releaseExternal(ext|0)
         break;
       case NODE_TYPE_PATH:
+        dr1 = HEAP32[(dr+(3<<2)) >> 2]|0;
+        release(dr1);
         break;
 
       case NODE_TYPE_TRANSF:
