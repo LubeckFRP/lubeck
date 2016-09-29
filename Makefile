@@ -9,12 +9,18 @@ SPEEDUP_BUILD_FLAGS := -j4 --fast
 # Disable if profiling not desired
 PROF_FLAGS := --executable-profiling --library-profiling --ghc-options="-fprof-auto -rtsopts"
 
+all: ghc ghcjs
+clean: ghc-clean ghcjs-clean
 ghc:
 	stack --stack-yaml=$(GHC)   build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
+ghcjs:
+	stack --stack-yaml=$(GHCJS) build $(SPEEDUP_BUILD_FLAGS)
+ghc-clean:
+	stack --stack-yaml=$(GHC)   clean
+ghcjs-clean:
+	stack --stack-yaml=$(GHCJS) clean 
 ghc-repl:
 	stack --stack-yaml=$(GHC)   repl $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
-ghcjs:
-	stack --stack-yaml=$(GHCJS) build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 test-run:
 	stack --stack-yaml=$(GHC)   test $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 test-run-watch:
