@@ -1,8 +1,8 @@
 
 # Just some shortcuts to the Stack build
 
-GHC	  :=	stack-ghc.yaml
-GHCJS	:=	stack-ghcjs.yaml
+GHC	  :=	ghc.yaml
+GHCJS	:=	ghcjs.yaml
 
 SPEEDUP_BUILD_FLAGS := -j4 --fast
 
