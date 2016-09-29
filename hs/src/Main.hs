@@ -496,7 +496,7 @@ randPictWithTags col n = setCol col <$> mconcat <$> replicateM n g
     square x y r = rect x y (r*2) (r*2)
     setCol col = if col then fillColor 0 0 1 0.05 else fillColor 1 0 0 0.05
 
-tagTest d c = tagTest2 d c <> translate 0 50 (rotate (tau/12) $ scaleXY 2 2 $ tagTest2 d c)
+tagTest d c = scaleXY 4 4 $ tagTest2 d c <> translate 0 50 (rotate (tau/12) $ scaleXY 2 2 $ tagTest2 d c)
 
 tagTest2 :: Bool -> Maybe Int -> Picture
 tagTest2 down cur = tag 555 $ mconcat $ fmap g [0..50]
