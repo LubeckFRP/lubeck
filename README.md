@@ -19,3 +19,4 @@ simply use `make`.
 - PhantomJS >= 2.1.1 (tests only)
 
 Install compilers using `stack setup` as usual.
+
