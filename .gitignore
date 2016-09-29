@@ -18,3 +18,7 @@ ghc-mod.package-db-stack
 ._.DS_Store
 profiles/chrome-basic/._*
 *.prof
+a.out*
+*.out.js
+node_modules
+FILES
