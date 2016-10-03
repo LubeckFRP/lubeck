@@ -80,44 +80,50 @@ import Linear.Epsilon
 
 
 -- growthGraph :: Behavior (Draft Fast)
-
-
-growthGraphDummy :: Draft Fast
-growthGraphDummy = mconcat
+growthGraph :: Draft Fast
+growthGraph = mconcat
   [ title
-  , moreFollowersThisPeriod
-
+  , translate (V2 200 0) moreFollowersThisPeriod
+  --
   , followersLikeCommentFilter
-  , periodShortCut
-  , growthPlotUsingDV -- TODO connect to overlays
-  , maybeOverlay -- The whole thing, with count, likes/comm, image, larger point, alternative pointer
-  , bottomSelector
+  -- , periodShortCut
+  -- , growthPlotUsingDV -- TODO connect to overlays
+  -- , maybeOverlay -- The whole thing, with count, likes/comm, image, larger point, alternative pointer
+  -- , bottomSelector
   ]
 
+title :: Draft Fast
 title = titleText <> translate (V2 80 0) explanation
   where
-    titleText = text "Followers over time2.3M"
-    explanation = text "?" <> (fillColor Colors.grey $ scale 10 circle)
+    titleText = fillColor Colors.black $ text "Followers over time"
+    explanation = mconcat
+      [ fillColor Colors.white $ text "?"
+      , fillColor Colors.grey $ scale 10 circle
+      ]
     -- TODO pop-up
     popUpText = "The growth of your followers during a selected time range"
 
-moreFollowersThisPeriod = mempty
+moreFollowersThisPeriod :: Draft Fast
+moreFollowersThisPeriod = mconcat [a,b,c]
   where
-    a = "2.3M"
-    b = "+30.97%"
-    c = "MORE FOLLOWERS THIS PERIOD"
+    a = fillColor Colors.black $ text "2.3M"
+    b = fillColor Colors.black $ text "+30.97%"
+    c = fillColor Colors.black $ text "MORE FOLLOWERS THIS PERIOD"
 
+followersLikeCommentFilter :: Draft Fast
 followersLikeCommentFilter = catH [b "Followers", b "Likes", b "Comments"]
   where
     -- TODO auto-match box size with text
     -- TODO hover/interact
     b t = text t <> fillColor Colors.grey (scaleXY (V2 110 40) square)
 
+periodShortCut :: Draft Fast
 periodShortCut = catH [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
   where
     -- TODO extra sapce
     b t = fillColor Colors.grey (text t)
 
+growthPlotUsingDV :: Draft Fast
 growthPlotUsingDV = mempty
 -- TODO
 
@@ -131,6 +137,7 @@ countAtTime = l <> t
     l = (strokeColor Colors.white $ strokeWidth 2 $ scaleY 100 horizontalLine)
     t = fillColor Colors.white (text "1,000,000") <> fillColor Colors.lightblue (scaleXY (V2 110 40) square)
 
+maybeOverlay :: Draft Fast
 maybeOverlay = catV [image, spaceV 20, bottom]
   where
     -- TODO correct image
@@ -141,6 +148,7 @@ maybeOverlay = catV [image, spaceV 20, bottom]
     commentD = fillColor Colors.blue $ scale 10 circle
     likesD = fillColor Colors.red $ scale 10 circle
 
+bottomSelector :: Draft Fast
 bottomSelector = mempty
 
 
@@ -156,7 +164,11 @@ main = do
   runRenderingLoop init handleInput render
   print "GG"
   where
-    init = _
-    handleInput = _
-    render = _
+    opts = RenderingOptions (P (V2 800 800)) Center False -- FIXME
+    init canvE ctxt renderer = return ()
+    handleInput () renderer eventType event  = return ()
+    render () renderer = do
+      renderFastDrawing renderer (adaptCoordinates opts $ getDraft growthGraph)
+      performMajorGC
+      return ()
 #endif
