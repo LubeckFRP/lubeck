@@ -1026,14 +1026,14 @@ instance Text Fast where
       st FontStyleNormal = "normal"
       st FontStyleItalic = "italic"
       st FontStyleOblique = "oblique"
-      st FontStyleInherit = "inherit"
+      st FontStyleInherit = ""
 
       fw FontWeightNormal  = "normal"
       fw (FontWeightN n)   = toStr n
       fw FontWeightBold    = "bold"
       fw FontWeightBolder  = "bolder"
       fw FontWeightLighter = "lighter"
-      fw FontWeightInherit = "inherit"
+      fw FontWeightInherit = ""
 
       ta TextAnchorStart    = mapD $ FastB.textAlign FastB.TextAlignStart
       ta TextAnchorEnd      = mapD $ FastB.textAlign FastB.TextAlignEnd
