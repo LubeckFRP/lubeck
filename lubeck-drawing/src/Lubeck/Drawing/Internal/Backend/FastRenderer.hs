@@ -112,7 +112,7 @@ foreign import javascript unsafe "$1.offsetY"
 
 {-| Create an 800x800 canvas with id 'canvas' and append it to the body element. -}
 foreign import javascript unsafe
-  "var n = document.createElement('canvas'); n.id = 'canvas'; n.width = 800; n.height = 800; document.getElementsByTagName('body')[0].appendChild(n)"
+  "var n = document.createElement('canvas'); n.id = 'canvas'; n.width = 1400; n.height = 800; document.getElementsByTagName('body')[0].appendChild(n)"
   createCanvasNode :: IO ()
 foreign import javascript unsafe
   "var loop = function() { update(); requestAnimationFrame(loop) } ; loop()"
@@ -539,4 +539,7 @@ lineWidth = undefined
 path = undefined
 linePathV2 = undefined
 tag = tag
+textAlign = undefined
+textBaseline = undefined
+textFont = undefined
 #endif
