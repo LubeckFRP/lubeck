@@ -10,6 +10,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  js-sources:          jsbits/fast-renderer.out.js
   exposed-modules:     Lubeck.Drawing
                      , Lubeck.Drawing.Types
                      , Lubeck.Drawing.Style
@@ -17,6 +18,8 @@ library
                      , Lubeck.Drawing.Transformation
                      , Lubeck.Drawing.Handlers
                      , Lubeck.Drawing.Internal.MMap
+                     , Lubeck.Drawing.Internal.Backend.SVG
+                     , Lubeck.Drawing.Internal.Backend.FastRenderer
 
   build-depends:       base
                      , base-prelude
@@ -50,6 +53,52 @@ executable lubeck-drawing-bench
                     --  , lens
                      , linear
                      , colour
+                     , lubeck-core
+                     , lubeck-drawing
+                     , MonadRandom
+  if impl(ghcjs)
+    build-depends:     ghcjs-base
+                    --  , lubeck-web
+                     , virtual-dom
+                     , benchmark
+  default-language:    Haskell2010
+
+executable lubeck-drawing-test
+  js-sources:          jsbits/fast-renderer.out.js
+  hs-source-dirs:      test
+  main-is:             Main.hs
+  ghc-options:         -Wall
+  build-depends:       base
+                     , base-prelude
+                    --  , lens
+                     , linear
+                     , colour
+                     , mtl
+                     , transformers
+                     , MonadRandom
+                     , lubeck-core
+                     , lubeck-drawing
+                     , MonadRandom
+  if impl(ghcjs)
+    build-depends:     ghcjs-base
+                    --  , lubeck-web
+                     , virtual-dom
+                     , benchmark
+  default-language:    Haskell2010
+
+executable lubeck-drawing-growth-graph
+  js-sources:          jsbits/fast-renderer.out.js
+  hs-source-dirs:      test
+  main-is:             GrowthGraph.hs
+  ghc-options:         -Wall
+  build-depends:       base
+                     , base-prelude
+                    --  , lens
+                     , linear
+                     , colour
+                     , mtl
+                     , transformers
+                     , MonadRandom
                      , lubeck-core
                      , lubeck-drawing
                      , MonadRandom

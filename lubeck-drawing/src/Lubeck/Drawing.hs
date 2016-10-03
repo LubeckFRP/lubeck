@@ -9,6 +9,9 @@
   , BangPatterns
   , ScopedTypeVariables
   , NoImplicitPrelude
+  , NoMonomorphismRestriction
+  , TypeSynonymInstances
+  , FlexibleContexts
   #-}
 
 {-# OPTIONS_GHC
@@ -160,22 +163,21 @@ module Lubeck.Drawing
 
   -- ** Styling
   , Style
-  , styleNamed
+  -- *** Color styles
   , fillColor
   , fillColorA
   , strokeColor
   , strokeColorA
   , fillGradient
+  -- *** Colors and backgrounds
   , strokeWidth
-  -- *** Rendering styles
-  , styleToAttrString
   -- *** Applying styles
   , style
-  -- *** Line style
+  -- *** Line styles
   , dash
   , dashing
 
-  -- *** Text
+  -- *** Text styles
   , text
   , textMiddle
   , textEnd
@@ -190,19 +192,20 @@ module Lubeck.Drawing
   , TextOptions(..)
   , textWithOptions
 
+  -- *** SVG styles
+  , styleToAttrString
+  , styleNamed
+
   -- ** Events
   , addHandler
-  -- , addProperty
+  , tag
 
   -- ** Embedded SVG
   , Embed(..)
   , addEmbeddedSVG
   , addEmbeddedSVGFromStr
 
-  -- ** Masking
-  , mask
-
-  -- ** Envelopes, Alignment, Juxtaposition
+  -- ** Envelopes and alignment
   , Envelope
   , envelope
   -- transformEnvelope
@@ -222,13 +225,26 @@ module Lubeck.Drawing
   , OctagonSide(..)
 
   -- ** Drawings
+  -- ** Drawing/Draft type
+  , Draft(..)
   , Drawing
+  -- ** Backends
+  , SVG
+  , Fast
+  -- ** Backend support
+  , Backend
+  , Colour
+  , Lines
+  , Text
+  , Regions
+  , Envelopes
+
   -- ** Basic drawings
   , transparent
   , circle
   , circleSector
   , square
-  , rectangle
+  , rectangleRounded
   , triangle
   , horizontalLine
   , verticalLine
@@ -245,10 +261,6 @@ module Lubeck.Drawing
   , showEnvelope
   , smokeBackground
 
-  -- ** Debug
-  , drawingTreeInfo
-  , DrawingTreeInfo(..)
-
   -- * Rendering drawings
   , OriginPlacement(..)
   , RenderingOptions(..)
@@ -256,13 +268,6 @@ module Lubeck.Drawing
   , toSvg
   , toSvgStr
   , toSvgAny
-
-  -- ** High-performance
-  , RDrawing
-  , RD
-  , runRD
-  , renderDrawing
-  , emitDrawing
   ) where
 
 import BasePrelude hiding (Handler, rotate, (|||), mask)
@@ -302,245 +307,378 @@ import Linear.Epsilon
 #endif
 
 import Lubeck.Str
-
 import Lubeck.Drawing.Types
 import Lubeck.Drawing.Style
 import Lubeck.Drawing.Handlers
 import Lubeck.Drawing.Text
 import Lubeck.Drawing.Transformation
 
+import Lubeck.Drawing.Internal.Backend.FastRenderer(FastDrawing)
+import Lubeck.Drawing.Internal.Backend.SVG
+import qualified Lubeck.Drawing.Internal.Backend.FastRenderer as FastB
+import qualified Lubeck.Drawing.Internal.Backend.SVG as SVG
+
 #ifdef __GHCJS__
-import GHCJS.Types(JSVal, JSString)
-import Web.VirtualDom.Svg (Svg)
-import qualified Web.VirtualDom as VD
-import qualified Web.VirtualDom.Svg as E
-import qualified Web.VirtualDom.Svg.Attributes as A
+-- TODO this is only used by the legacy event API and should be removed
+import GHCJS.Types(JSVal)
 #endif
 
--- Ideomatically: (V2 Double), (P2 Double) and so on
--- |
--- @
--- offsetVectors :: Num a => P2 a -> [V2 a] -> [P2 a]
--- @
-offsetVectors :: (Num a, Affine p) => p a -> [Diff p a] -> [p a]
-offsetVectors p = tail . offsetVectors' p
+{-| An empty and transparent drawing. Same as 'mempty'. -}
+transparent :: Backend a => Draft a
+transparent = mempty
+{-# SPECIALIZE transparent :: Draft SVG #-}
+{-# SPECIALIZE transparent :: Draft Fast #-}
+
+{-| A centered circle with radius one. -}
+circle :: Backend a => Draft a
+circle  = circleB
+{-# INLINABLE circle #-}
+{-# SPECIALIZE circle :: Draft SVG #-}
+{-# SPECIALIZE circle :: Draft Fast #-}
+{-# SPECIALIZE circleB :: Draft SVG #-}
+{-# SPECIALIZE circleB :: Draft Fast #-}
+
+{-| A centered circle sector with radius one and the given radii.
+
+A point is in the sector if its in the circle with the same radius and the angle from origin to
+the point x is (r1 < x < r2), where r1 and r2 are the radii of the sector.
+
+https://en.wikipedia.org/wiki/Circular_sector
+ -}
+circleSector :: Backend a => Angle Double -> Angle Double -> Draft a
+circleSector = circleSectorB
+{-# INLINABLE circleSector #-}
+{-# SPECIALIZE circleSector :: Angle Double -> Angle Double -> Draft SVG #-}
+{-# SPECIALIZE circleSector :: Angle Double -> Angle Double -> Draft Fast #-}
+
+{-| A centered square with a width and height of one. -}
+square :: Backend a => Draft a
+square = squareB
+{-# INLINABLE square #-}
+{-# SPECIALIZE square :: Draft Fast #-}
+
+{-| A centered square the given x, y, rx, ry dimensions. -}
+rectangleRounded :: Backend a => Double -> Double -> Double -> Double -> Draft a
+rectangleRounded = rectRoundedB
+{-# INLINABLE rectangleRounded #-}
+{-# SPECIALIZE rectangleRounded :: Double -> Double -> Double -> Double -> Draft Fast #-}
+-- NOTE This was called rectangle at some point, confusingly enough.
+
+{-| An equilateral a. -}
+triangle :: Backend a => Draft a
+triangle =
+    translate (V2 (-1/2) (-(eqTriAlt/3))) $ polygon
+      [V2 1 0, V2 (-1/2) eqTriAlt, V2 (-1/2) (-eqTriAlt)]
   where
-    offsetVectors' = Data.List.scanl (.+^)
+    eqTriAlt = sqrt 3 / 2
 
--- |
--- @
--- betweenPoints :: Num a => [P2 a] -> [V2 a]
--- @
-betweenPoints :: (Num a, Affine p) => [p a] -> [Diff p a]
-betweenPoints xs = case xs of
-  []     -> []
-  (_:ys) -> zipWith (.-.) ys xs
+{-| A centered horizontal line of length one. -}
+horizontalLine :: Backend a => Draft a
+horizontalLine = translateX (-0.5) lineB
 
--- | An angle in 2D space.
---
--- The value [turn](#turn) is used to represent a full rotation, so a half-turn
--- can be expressed as `turn/2`, three quarters of a turn by `turn*3/4` and so on.
---
--- To convert to radians or degrees, use
-newtype Angle n = Radians n
-  deriving (Functor, Enum, Eq, Ord, Num, Fractional, Floating)
+{-| A centered vertical line of length one. -}
+verticalLine :: Backend a => Draft a
+verticalLine = rotate (turn/4) horizontalLine
 
-instance Show a => Show (Angle a) where
-  show (Radians x) = show x
+{-| Draw a sequence of line segments.
 
-instance Applicative Angle where
-  pure = Radians
-  {-# INLINABLE pure #-}
-  Radians f <*> Radians x = Radians (f x)
-  {-# INLINABLE (<*>) #-}
+Similar to 'polygon' except endpoints are not joined.
+-}
+segments :: Backend a => [V2 Double] -> Draft a
+segments = linesB False
 
-instance Additive Angle where
-  zero = pure 0
-  {-# INLINABLE zero #-}
+{-| Draw a polygon.
 
-instance Num n => Monoid (Angle n) where
-  mappend = (^+^)
-  mempty  = Radians 0
+Similar to 'polygon' except endpoints are not joined.
 
-{-| The value representing a full turn.
-This can be expressed in radians as τ (or 2π), or in degrees as 360°. -}
-turn :: Floating a => a
-turn = pi * 2
+Argument vectors need not have a zero sum (if they do not an implicit extra
+endpoint is assumed.
+-}
+polygon :: Backend a => [V2 Double] -> Draft a
+polygon = linesB True
 
-{-| Convert an angle to turns. -}
-angleToTurns :: Floating a => Angle a -> a
-angleToTurns (Radians x) = x / turn
 
-{-| Convert an angle to radians. -}
-angleToRadians :: Floating a => Angle a -> a
-angleToRadians (Radians x) = x
+{-|
+Line dash style.
 
-{-| Convert an angle to degrees. -}
-angleToDegrees :: Floating a => Angle a -> a
-angleToDegrees (Radians x) = let tau = pi * 2 in (x / tau * 360)
+>>> dash [1]
+>>> dash [5, 5]
+>>> dash [15, 10, 5, 10]
 
-acosA :: Floating n => n -> Angle n
-acosA = pure . acos
-
--- Ideomatically: Direction V2 Double
-newtype Direction v a = Direction (v a)
-  deriving (Eq, Ord, Show)
-
-dir :: v n -> Direction v n
-dir = Direction
-
--- | @fromDirection d@ is the unit vector in the direction @d@.
-fromDirection :: (Metric v, Floating n) => Direction v n -> v n
-fromDirection (Direction v) = signorm v
-
-angleBetween :: (Metric v, Floating n) => v n -> v n -> Angle n
-angleBetween v1 v2 = acosA (signorm v1 `dot` signorm v2)
-
-transformDirection :: Num n => Transformation n -> Direction V2 n -> Direction V2 n
-transformDirection t (Direction v) = Direction (transformVector t v)
-
-angleBetweenDirections :: (Metric v, Floating n) => Direction v n -> Direction v n -> Angle n
-angleBetweenDirections x y = acosA $ (fromDirection x) `dot` (fromDirection y)
+https://developer.mozilla.org/en/docs/Web/SVG/Attribute/stroke-dasharray
+-}
+dashing :: [Double] -> Style
+dashing [] = mempty
+dashing ns = styleNamed "stroke-dasharray" (intercalateStr ", " $ map toStr ns)
 
 {-
-Turn two radii to scale and offset in polar coordinates, clockwise direction.
+Line dash style.
+
+>>> dash [1]
+>>> dash [5, 5]
+>>> dash [15, 10, 5, 10]
+
+https://developer.mozilla.org/en/docs/Web/SVG/Attribute/stroke-dasharray
 -}
-anglesToPolarScaleOffset
-  :: Angle Double
-  -> Angle Double
-  -> (Double, Double)
-anglesToPolarScaleOffset a1 a2 = (s, o )
-  where
-    o = mod' (1 - angleToTurns a2) 1
-    s = mod' (angleToTurns a2 - angleToTurns a1) 1
+dash :: Lines a => [Double] -> Draft a -> Draft a
+dash = dash_B
 
+{-| Draw text. See also 'textWithOptions'. -}
+text :: Backend a => Str -> Draft a
+text = textB
 
-{-|
-A rectangle, represented as two points.
+textStart, textMiddle, textEnd :: Text a => Str -> Draft a
 
-Access the corners as
+-- | Text horizontally aligned to the start of the text.
+--
+-- See also 'TextAnchor'.
+textStart = textWithOptions $ mempty
+  { textAnchor = TextAnchorStart }
+
+-- | Text horizontally aligned to the middle of the text.
+--
+-- See also 'TextAnchor'.
+textMiddle = textWithOptions $ mempty
+  { textAnchor = TextAnchorMiddle }
+
+-- | Text horizontally aligned to the end of the text.
+--
+-- See also 'TextAnchor'.
+textEnd = textWithOptions $ mempty
+  { textAnchor = TextAnchorEnd }
+
+textLeftMiddle, textMiddleMiddle, textRightMiddle :: Text a => Str -> Draft a
+
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline.
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
+textLeftMiddle = textWithOptions $ mempty
+  { textAnchor        = TextAnchorStart
+  , alignmentBaseline = AlignmentBaselineMiddle }
+
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
+textMiddleMiddle = textWithOptions $ mempty
+  { textAnchor        = TextAnchorMiddle
+  , alignmentBaseline = AlignmentBaselineMiddle }
+
+-- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
+--
+-- See also 'TextAnchor', 'AlignmentBaseline'.
+textRightMiddle = textWithOptions $ mempty
+  { textAnchor        = TextAnchorEnd
+  , alignmentBaseline = AlignmentBaselineMiddle }
+
+-- | Text woth options. Idiomatically:
+--
+-- @
+-- textWithOptions $ mempty
+--    { textAnchor        = TextAnchorStart
+--    , alignmentBaseline = AlignmentBaselineMiddle }
+-- @
+--
+textWithOptions :: Text a => TextOptions -> Str -> Draft a
+textWithOptions opts t = textOptions_B opts (textB t)
+{-# INLINABLE textWithOptions #-}
+
+{-| Apply a [Transformation](#Transformation) to an image.
+
+This is the most general way to transform an image. Most of the functions
+below are more convenient to use, but can not be used to transform arbitrary
+objects.
+
 @
-let r = Rect_ (P (V2 1 2) (3 4))
+transform (rotation x)   image = rotate x image
+transform (stretching x) image = stretch x image
+@
 
-r^.p1.x -- left
-r^.p2.x -- right
-r^.p1.y -- bottom
-r^.p2.y -- top
+Composing transformations has the same effect as carrying out the
+transformation one at a time:
+
+@
+transform s (transform t image) = transform (s <> t) image
+@
+ -}
+transform :: Backend a => Transformation Double -> Draft a -> Draft a
+transform t dr = transfB t dr
+{-# INLINABLE transform #-}
+
+{-| Translate (move) an image. -}
+translate :: Backend a => V2 Double -> Draft a -> Draft a
+-- translate (V2 dx dy) = transform $ matrix (1,0,0,1,dx,dy)
+translate v = transform $ translation v
+
+{-| Translate (move) an image along the horizonal axis.
+A positive argument will move the image to the right. -}
+translateX :: Backend a => Double -> Draft a -> Draft a
+-- translateX x = translate (V2 x 0)
+translateX x = transform $ translationX x
+
+{-| Translate (move) an image along the vertical axis.
+A positive argument will move the image upwards (as opposed to standard SVG behavior). -}
+translateY :: Backend a => Double -> Draft a -> Draft a
+-- translateY y = translate (V2 0 y)
+translateY y = transform $ translationY y
+
+{-| Scale (stretch) an image. -}
+scaleXY :: Backend a => V2 Double -> Draft a -> Draft a
+scaleXY (V2 x y) = transform $ matrix (x,0,0,y,0,0)
+
+{-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
+scale :: Backend a => Double -> Draft a -> Draft a
+-- scale x = scaleXY x x
+scale a = transform $ scaling a
+
+{-| Scale (stretch) an image horizontally. -}
+scaleX :: Backend a => Double -> Draft a -> Draft a
+-- scaleX x = scaleXY x 1
+scaleX a = transform $ scalingX a
+
+{-| Scale (stretch) an image vertically. -}
+scaleY :: Backend a => Double -> Draft a -> Draft a
+-- scaleY y = scaleXY 1 y
+scaleY a = transform $ scalingY a
+
+{-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
+rotate :: Backend a => Angle Double -> Draft a -> Draft a
+-- rotate (Radians a) = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+-- NOTE The b,c, signs are inverted because of the reverse y polarity.
+rotate a = transform $ rotation a
+
+{-| Shear an image. -}
+-- shear :: Double -> Double -> Draft SVG -> Draft SVG
+-- shear a b = transform $ matrix (1, b, a, 1, 0, 0)
+shearX :: Backend a => Double -> Draft a -> Draft a
+shearX a = transform $ shearingX a
+
+shearY :: Backend a => Double -> Draft a -> Draft a
+shearY a = transform $ shearingY a
+
+{-# INLINABLE translate #-}
+{-# INLINABLE translateX #-}
+{-# INLINABLE translateY #-}
+{-# INLINABLE scale #-}
+{-# INLINABLE scaleX #-}
+{-# INLINABLE scaleY #-}
+{-# INLINABLE scaleXY #-}
+{-# INLINABLE rotate #-}
+{-# INLINABLE shearX #-}
+{-# INLINABLE shearY #-}
+
+
+
+
+{-| A "big" smoke-colored background.
+
+Useful to see the boundary of the canvas, as in:
+
+@
+  (fillColor "red" square) `over` smokeBackground
 @
 -}
-data Rect a = Rect_ { _p1 :: P2 a, _p2 :: P2 a }
-  deriving (Eq, Ord, Show, Functor)
+smokeBackground :: (Backend a, Colors a) => Draft a
+smokeBackground = fillColor Colors.whitesmoke $ scale 5000 $ square
 
-rect :: a -> a -> a -> a -> Rect a
-rect x1 y1 x2 y2 = Rect_ (P (V2 x1 y1)) (P (V2 x2 y2))
+{-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
+xyAxis :: (Backend a, Colors a, Lines a) => Draft a
+xyAxis = scale 5000 $ strokeColor Colors.darkgreen $ strokeWidth 0.5 $
+  mconcat [horizontalLine, verticalLine]
 
-transformRect :: Num a => T2 a -> Rect a -> Rect a
-transformRect t (Rect_ p1 p2) = Rect_ (transformPoint t p1) (transformPoint t p2)
+{-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
+xyCoords :: (Backend a, Colors a, Lines a) => Draft a
+xyCoords = fillColorA (Colors.black `withOpacity` 0) $ strokeColor Colors.darkgreen $
+  strokeWidth 0.5 $ mconcat [horizontalLine, verticalLine, circle, square]
 
--- makeLenses ''Rect
-p1 :: Lens' (Rect a) (P2 a)
-p1 f (Rect_ p1 p2) = fmap (\p1' -> Rect_ p1' p2) $ f p1
+-- | Draw the unit vector.
+showUnitX :: (Backend a, Colors a, Lines a) => Draft a
+showUnitX = strokeColor Colors.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 
-p2 :: Lens' (Rect a) (P2 a)
-p2 f (Rect_ p1 p2) = fmap (\p2' -> Rect_ p1 p2') $ f p2
-
-_left, _right, _bottom, _top :: Lens' (Rect a) a
-_left    = p1._x
-_right   = p2._x
-_bottom  = p1._y
-_top     = p2._y
-
-width r = r^._right - r^._left
-height r = r^._top - r^._bottom
-
-
-
-{-|
-Fit a drawing inside a rectangle. Accomplished by aligning the drawing
-at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
--}
-fitInsideRect :: Rect Double -> Drawing -> Drawing
-fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
-    $ translate (p1 .-. origin)
-    $ scaleXY   (p2 .-. p1)
-    -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
-    -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
-    $ align BL
-    $ d
-
-{-|
-Turn a rectangle into a transformation that transforms the unit square into
-the original rectangle.
-
-Inverse of @rectToTransf@.
--}
-rectToTransf :: Num a => Rect a -> T2 a
-rectToTransf (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) =
-  translation (p1 .-. origin) <> scalingXY (p2 .-. p1)
-
-{-|
-The inverse of @rectToTransf@.
--}
-transfToRect :: Num a => T2 a -> Rect a
-transfToRect t = transformRect t (rect 0 0 1 1)
-
-
-
-{-|
-A line segment.
-
-The 1-dimensional analogue of @Rect@.
--}
-data LineSeg a = LineSeg { _lp1 :: P1 a, _lp2 :: P1 a }
-  deriving (Eq, Ord, Show, Functor)
-
-lineseg :: a -> a -> LineSeg a
-lineseg x1 x2 = LineSeg (P (V1 x1)) (P (V1 x2))
-
-transformLineSeg :: Num a => T1 a -> LineSeg a -> LineSeg a
-transformLineSeg t (LineSeg p1 p2) = LineSeg (transformPoint1 t p1) (transformPoint1 t p2)
-
-lineSegToTransf :: Num a => LineSeg a -> T1 a
-lineSegToTransf (LineSeg (p1@(P (v1@(V1 x1)))) (p2@(P (v2@(V1 x2))))) =
-  translation1 (p1 .-. origin) <> scaling1 (p2 .-. p1)
+-- | Draw an image representing a direction.
+showDirection :: (Backend a, Colors a, Lines a) => Direction V2 Double -> Draft a
+showDirection dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
   where
-    translation1 (V1 x) = matrix1 (1,x)
-    scaling1 (V1 x)     = matrix1 (x,0)
-    -- origin = P (V1 0)
+    tp = Colors.black `withOpacity` 0
 
-transfToLineSeg :: Num a => T1 a -> LineSeg a
-transfToLineSeg t = transformLineSeg t (lineseg 0 1)
+-- | Draw an image representing two boundaries of an image along the given line.
+--
+-- See also 'boundaries'.
+showBoundaries :: (Backend a, Colors a, Lines a, Envelopes a) => V2 Double -> Draft a -> Draft a
+showBoundaries v dr = case boundaries v (envelope dr) of
+  Nothing -> dr
+  Just (lo, hi) -> strokeColor Colors.blue (showPoint lo) <> scale 2 (showPoint hi) <> dr
+
+-- | Draw an image representing a point.
+showPoint :: (Backend a, Colors a, Lines a) => Point V2 Double -> Draft a
+showPoint p = translate (p .-. origin) base
+  where
+    base = strokeColor Colors.red $ fillColorA (Colors.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
+
+-- | Draw an image representing an envelope.
+showEnvelope :: (Backend a, Colors a, Lines a, Envelopes a) => V2 Double -> Draft a -> Draft a
+showEnvelope v drawing = case envelopeVMay v drawing of
+  Nothing -> drawing
+  Just v2 -> (rotate (angleBetween v2 unitX) $ scale (norm v2) $ unitX_T) <> drawing
+  where
+    -- A sideways T in the unit square, with the "top" pointing
+    -- in the direction of unitX
+    unitX_T = strokeWidth 2 $ strokeColor Colors.red $ fillColorA tp $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
+    tp = Colors.black `withOpacity` 0
+
+{-| Apply a style to a drawing. -}
+style :: Style -> Draft SVG -> Draft SVG
+style s (Draft dr) = Draft $ Style s dr
+
+{-| -}
+fillColor :: Colors a => Colour Double -> Draft a -> Draft a
+fillColor = fillColor_B
+
+{-| -}
+strokeColor :: Colors a => Colour Double -> Draft a -> Draft a
+strokeColor = strokeColor_B
+
+{-| -}
+fillColorA :: Colors a => AlphaColour Double -> Draft a -> Draft a
+fillColorA = fillColorA_B
+
+-- {-| -}
+strokeColorA :: Colors a => AlphaColour Double -> Draft a -> Draft a
+strokeColorA = strokeColorA_B
+
+{-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
+-}
+strokeWidth :: Lines a => Double -> Draft a -> Draft a
+strokeWidth = strokeWidth_B
+
+fillGradient :: Colors a => Gradient -> Draft a -> Draft a
+fillGradient = fillGradient_B
+
+-- SLOW
+-- TODO move
+showColor :: Colour Double -> Str
+showColor = packStr . Data.Colour.SRGB.sRGB24show
 
 
+
+
+{-| Add a tag to this drawing.
+    Used for low-level event detection.
+-}
+tag :: Regions b => Int -> Draft b -> Draft b
+tag = tag_B
 
 {-| Add an event handler to the given drawing.
 
    Handlers_ are embedde using 'Web.VirtualDom.on' so the same naming conventions apply.
 -}
 #ifdef __GHCJS__
-addHandler :: Str -> (JSVal -> IO ()) -> Drawing -> Drawing
-addHandler k v = Handlers (singleTonHandlers k v)
+addHandler :: Str -> (JSVal -> IO ()) -> Draft SVG -> Draft SVG
+addHandler k v (Draft d) = Draft $ Handlers (singleTonHandlers k v) d
 #else
-addHandler :: Str -> a -> Drawing -> Drawing
-addHandler k v = Handlers ()
+addHandler :: Str -> a -> Draft SVG -> Draft SVG
+addHandler k v (Draft d) = Draft $ Handlers () d
 #endif
 
-
-
-{-|
-Mask a drawing (binary).
-
-Behaves like the second drawing, except that every points that is transparent
-in the first drawing becomes transparent in the resulting drawing as well.
-
-If you consider drawings as a function @P2 R -> AlphaColour R@, then
-
-@
-mask d1 d2 = \p -> if d1 p == transparent then transparent else d2 p
-@
--}
-mask :: Drawing -> Drawing -> Drawing
-mask = Mask
 
 
 newtype Envelope v n = Envelope (Maybe (v n -> n))
@@ -583,7 +721,7 @@ transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
           inv    = recip
 {-# INLINABLE transformEnvelope #-}
 
-juxtapose :: V2 Double -> Drawing -> Drawing -> Drawing
+juxtapose :: (Envelopes a) => V2 Double -> Draft a -> Draft a -> Draft a
 juxtapose v a1 a2 =   case (mv1, mv2) of
     (Just v1, Just v2) -> moveOriginBy (v1 ^+^ v2) a2
     _                  -> a2
@@ -591,7 +729,7 @@ juxtapose v a1 a2 =   case (mv1, mv2) of
         mv2 = envelopeVMay (negated v) a2
         moveOriginBy v = translate (negated v)
 
-envelopeVMay :: V2 Double -> Drawing -> Maybe (V2 Double)
+envelopeVMay :: Envelopes a => V2 Double -> Draft a -> Maybe (V2 Double)
 envelopeVMay v = envelopeVMay' v . envelope
 
 envelopeVMay' :: (Functor v, Num n) => v n -> Envelope v n -> Maybe (v n)
@@ -628,28 +766,44 @@ alignE R   = alignE' unitX 1
 alignE T   = alignE' unitY 1
 alignE B   = alignE' unitY 0
 
-align' :: V2 Double -> Double -> Drawing -> Drawing
+align' :: Envelopes a => V2 Double -> Double -> Draft a -> Draft a
 align' v n dr = case alignE' v n (envelope dr) of
   Nothing -> mempty
   Just p  -> moveOriginTo p dr
 
-align :: OctagonSide -> Drawing -> Drawing
+align :: Envelopes a => OctagonSide -> Draft a -> Draft a
 align t dr = case alignE t (envelope dr) of
   Nothing -> mempty
   Just p  -> moveOriginTo p dr
 
-moveOriginBy :: V2 Double -> Drawing -> Drawing
+{-|
+Fit a drawing inside a rectangle. Accomplished by aligning the drawing
+at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
+-}
+fitInsideRect :: Envelopes a => Rect Double -> Draft a -> Draft a
+fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
+    $ translate (p1 .-. origin)
+    $ scaleXY   (p2 .-. p1)
+    -- Align at bottom left corner, so that the translation part can be derived from the (x1,y1)
+    -- Alternatively, we could align at TR and derive translation from (x2,y2) and so on
+    $ align BL
+    $ d
+
+moveOriginBy :: Backend a => V2 Double -> Draft a -> Draft a
 moveOriginBy v = translate (-v)
 
-moveOriginTo :: P2 Double -> Drawing -> Drawing
+moveOriginTo :: Backend a => P2 Double -> Draft a -> Draft a
 moveOriginTo p = moveOriginBy (origin .-. p)
 -- FIXME should be the other way around!
 
-envelope :: Drawing -> Envelope V2 Double
-envelope x = case x of
+envelope :: Envelopes a => Draft a -> Envelope V2 Double
+envelope = envelope_B
+
+svgEnvelope :: SVGDrawing -> Envelope V2 Double
+svgEnvelope x = case x of
   Circle            -> Envelope $ Just $ \v -> (0.5/norm v)
   -- FIXME no envelope for CircleSector
-  CircleSector _ _  -> envelope Circle
+  CircleSector _ _  -> svgEnvelope Circle
   -- Goes around like: TL, TR, BR, BL
   Rect                -> pointsEnvelope $ fmap P [V2 (0.5) (0.5), V2 (-0.5) (0.5), V2 (-0.5) (-0.5), V2 (0.5) (-0.5)]
   RectRounded x y _ _ -> pointsEnvelope $ fmap P [V2 (0.5*x) (0.5*y), V2 (-0.5*x) (0.5*y), V2 (-0.5*x) (-0.5*y), V2 (0.5*x) (-0.5*y)]
@@ -657,21 +811,21 @@ envelope x = case x of
   Lines _ vs    -> pointsEnvelope $ offsetVectors origin vs
   -- No proper text envelopes, fake by using a single rectangles
   -- https://github.com/BeautifulDestinations/lubeck/issues/73
-  Text _        -> envelope Rect
+  Text _        -> svgEnvelope Rect
 
   Embed _       -> mempty
 
   {-
   TODO envelopes should take masking into account.
   -}
-  Mask d1 d2    -> envelope d2
+  Mask d1 d2    -> svgEnvelope d2
 
-  Transf t x    -> transformEnvelope t (envelope x)
-  Style _ x     -> envelope x
-  SpecialStyle _ x     -> envelope x
-  Handlers _ x  -> envelope x
+  Transf t x    -> transformEnvelope t (svgEnvelope x)
+  Style _ x     -> svgEnvelope x
+  SpecialStyle _ x     -> svgEnvelope x
+  Handlers _ x  -> svgEnvelope x
   Em            -> mempty
-  Ap xs         -> mconcat (fmap envelope xs)
+  Ap xs         -> mconcat (fmap svgEnvelope xs)
 
 pointsEnvelope :: [P2 Double] -> Envelope V2 Double
 pointsEnvelope [] = Envelope $ Nothing
@@ -690,23 +844,8 @@ pointsEnvelope ps = Envelope $ Just $ \v ->
     rotatePoints a = fmap (rotatePoint a)
     rotatePoint a  = transformPoint (rotation a)
 
--- | Vector of length one, pointing to the left.
-unitX :: Num a => V2 a
-unitX = V2 1 0
 
--- | Vector of length one, pointing upwards.
-unitY :: Num a => V2 a
-unitY = V2 0 1
-
--- | Vector of length one, pointing diagonally upwards and left.
-posDiagonal :: Floating a => V2 a
-posDiagonal = V2 (sqrt 2) (sqrt 2)
-
--- | Vector of length one, pointing diagonally downwards and left.
-negDiagonal :: Floating a => V2 a
-negDiagonal = V2 (sqrt 2) (-sqrt 2)
-
-(===), (|||), (\\\), (///) :: Drawing -> Drawing -> Drawing
+(===), (|||), (\\\), (///) :: Envelopes a => Draft a -> Draft a -> Draft a
 a ||| b = a <> juxtapose unitX a b
 a === b = a <> juxtapose (negated unitY) a b
 a \\\ b = a <> juxtapose posDiagonal a b
@@ -714,29 +853,22 @@ a /// b = a <> juxtapose negDiagonal a b
 
 -- TODO general path/beziers (cubic spline?) support (generalizes all others! including text?)
 
-{-|
-Embedded SVG node.
--}
-data Embed
-  = EmbedNode Str [(Str, Str)] [Embed]
-  | EmbedContent Str
-  deriving (Eq, Show)
 
 {-|
 Embed arbitrary SVG markup in a drawing.
 -}
-addEmbeddedSVG :: Embed -> Drawing
-addEmbeddedSVG = Embed
+addEmbeddedSVG :: Embed -> Draft SVG
+addEmbeddedSVG x = Draft $ Embed x
 
 {-|
 Embed arbitrary SVG markup in a drawing.
 
 Argument must be a valid SVG string, or @Nothing@ is returned.
 -}
-addEmbeddedSVGFromStr :: Str -> Maybe Drawing
+addEmbeddedSVGFromStr :: Str -> Maybe (Draft SVG)
 addEmbeddedSVGFromStr x = fmap addEmbeddedSVGFromXmlLight $ Text.XML.Light.parseXMLDoc $ unpackStr x
 
-addEmbeddedSVGFromXmlLight :: Text.XML.Light.Element -> Drawing
+addEmbeddedSVGFromXmlLight :: Text.XML.Light.Element -> Draft SVG
 addEmbeddedSVGFromXmlLight = addEmbeddedSVG . textXmlLightElementToEmbed
 
 textXmlLightElementToEmbed :: Text.XML.Light.Element -> Embed
@@ -756,958 +888,129 @@ textXmlLightElementToEmbed = unE
     unA (X.Attr (X.QName k _ _) v) = (packStr k, packStr v)
     -- Ignore namespace/prefix
 
-{-|
-  A drawing is an infinite two-dimensional image, which supports arbitrary scaling transparency.
 
-  Semantically
-  @
-  -- TODO specify full semantics for mouse/touch interaction
-  Drawing ~ ( P2 -> AlphaColour, Behavior P2 -> Events () -> ?)
-  @s
-
-  TODO semantics for mouse interaction.
-
-  Because the image is infinite, basic images have simple proportions, for example 'circle', 'square',
-  and 'horizontalLine' all have a width of one. To obtain other sizes, use the 'transform' or 'scale' functions.
-
-  Every image has a notion of a local origin, or "midpoint". Transformations such as scaling, rotation and
-  reflection are carried out with respect to the local origin. By default, most shapes are centered around the
-  local origin (or to put it differently: the local origin is the midpoint of the image). To move an image, use
-  the 'translate' functions.
-
-  Images can be composed using the 'Monoid' instance, which overlays the two images so that their origins match exactly.
--}
-data Drawing
-  = Circle
-  | CircleSector !(Angle Double) !(Angle Double)
-  | Rect
-  | RectRounded !Double !Double !Double !Double
-  -- A line along the unit vector
-  | Line
-  -- A sequence of straight lines, closed or not. For closed lines, there is no need
-  -- to return the original point (i.e. the sum of the vectors does not have to be zeroV).
-  | Lines !Bool ![V2 Double]
-  | Text !Str
-
-  | Embed Embed
-
-  | Mask !Drawing !Drawing
-  | Transf !(Transformation Double) !Drawing
-  | Style !Style !Drawing
-  | SpecialStyle !SpecialStyle !Drawing
-  | Handlers !Handlers !Drawing
-
-  | Em
-  -- Compose drawings
-  -- Left-most is top-most.
-  | Ap ![Drawing]
-
-data DrawingTreeInfo = DrawingTreeInfo
-  { numberOfNodes :: Int -- ^ Number of nodes in the internal tree representing the drawing, not counting embedded SVGs.
-  }
-  deriving (Show)
-
-drawingTreeInfo :: Drawing -> DrawingTreeInfo
-drawingTreeInfo drawing = DrawingTreeInfo (numNodes drawing)
-  where
-    numNodes (Mask a b) = numNodes a + numNodes b
-    numNodes (Ap as)    = sum $ fmap numNodes as
-    numNodes _          = 1
-
-instance Monoid Drawing where
-  mempty  = Em
-
-  mappend Em x = x
-  mappend x Em = x
-  mappend (Ap xs) (Ap ys) = Ap (xs <> ys)
-  mappend x (Ap ys) = Ap (x : ys)
-  mappend (Ap xs) y = Ap (xs <> pure y)
-  mappend x y = Ap [x, y]
-  mconcat = Ap
-
-{-| An empty and transparent drawing. Same as 'mempty'. -}
-transparent :: Drawing
-transparent      = Em
-
-{-| A centered circle with radius one. -}
-circle :: Drawing
-circle    = Circle
-{-# INLINABLE circle #-}
-
-{-| A centered circle sector with radius one and the given radii.
-
-A point is in the sector if its in the circle with the same radius and the angle from origin to
-the point x is (r1 < x < r2), where r1 and r2 are the radii of the sector.
-
-https://en.wikipedia.org/wiki/Circular_sector
- -}
-circleSector :: Angle Double -> Angle Double -> Drawing
-circleSector = CircleSector
-{-# INLINABLE circleSector #-}
-
-{-| A centered square with a width and height of one. -}
-square :: Drawing
-square = Rect
-{-# INLINABLE square #-}
-
-{-| A centered square the given x, y, rx, ry dimensions. -}
-rectangle :: Double -> Double -> Double -> Double -> Drawing
-rectangle = RectRounded
-{-# INLINABLE rectangle #-}
-
-
-{-| An equilateral triangle. -}
-triangle :: Drawing
-triangle =
-    Lubeck.Drawing.translate (V2 (-1/2) (-(eqTriAlt/3))) $ Lubeck.Drawing.polygon
-      [V2 1 0, V2 (-1/2) eqTriAlt, V2 (-1/2) (-eqTriAlt)]
-  where
-    eqTriAlt = sqrt 3 / 2
-
-{-| A centered horizontal line of length one. -}
-horizontalLine :: Drawing
-horizontalLine = translateX (-0.5) Line
-
-{-| A centered vertical line of length one. -}
-verticalLine :: Drawing
-verticalLine = rotate (turn/4) horizontalLine
-
-{-| Draw a sequence of line segments.
-
-Similar to 'polygon' except endpoints are not joined.
--}
-segments :: [V2 Double] -> Drawing
-segments = Lines False
-
-{-| Draw a polygon.
-
-Similar to 'polygon' except endpoints are not joined.
-
-Argument vectors need not have a zero sum (if they do not an implicit extra
-endpoint is assumed.
--}
-polygon :: [V2 Double] -> Drawing
-polygon = Lines True
-
-
-{-|
-Line dash style.
-
->>> dash [1]
->>> dash [5, 5]
->>> dash [15, 10, 5, 10]
-
-https://developer.mozilla.org/en/docs/Web/SVG/Attribute/stroke-dasharray
--}
-dashing :: [Double] -> Style
-dashing [] = mempty
-dashing ns = styleNamed "stroke-dasharray" (intercalateStr ", " $ map toStr ns)
 
 {-
-Line dash style.
+The 'SVG :: *' and 'Fast :: *' tyes represent backends
+'Draft :: * -> *' is a type parameterized on backend type.
 
->>> dash [1]
->>> dash [5, 5]
->>> dash [15, 10, 5, 10]
+This can be encoded properly with injective TFs, until we
+have those please pretend that 'SVG' and 'Fast' are opaque types.
 
-https://developer.mozilla.org/en/docs/Web/SVG/Attribute/stroke-dasharray
+It could *also* be encoded with GADTs, but we avoid these
+because of the run-time cost.
 -}
-dash :: [Double] -> Drawing -> Drawing
-dash = style . dashing
-
-{-| Draw text. See also 'textWithOptions'. -}
-text :: Str -> Drawing
-text = Text
-
-textStart, textMiddle, textEnd :: Str -> Drawing
-
--- | Text horizontally aligned to the start of the text.
---
--- See also 'TextAnchor'.
-textStart = textWithOptions $ mempty
-  { textAnchor = TextAnchorStart }
-
--- | Text horizontally aligned to the middle of the text.
---
--- See also 'TextAnchor'.
-textMiddle = textWithOptions $ mempty
-  { textAnchor = TextAnchorMiddle }
-
--- | Text horizontally aligned to the end of the text.
---
--- See also 'TextAnchor'.
-textEnd = textWithOptions $ mempty
-  { textAnchor = TextAnchorEnd }
-
-textLeftMiddle, textMiddleMiddle, textRightMiddle :: Str -> Drawing
-
--- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline.
---
--- See also 'TextAnchor', 'AlignmentBaseline'.
-textLeftMiddle = textWithOptions $ mempty
-  { textAnchor        = TextAnchorStart
-  , alignmentBaseline = AlignmentBaselineMiddle }
-
--- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
---
--- See also 'TextAnchor', 'AlignmentBaseline'.
-textMiddleMiddle = textWithOptions $ mempty
-  { textAnchor        = TextAnchorMiddle
-  , alignmentBaseline = AlignmentBaselineMiddle }
-
--- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline
---
--- See also 'TextAnchor', 'AlignmentBaseline'.
-textRightMiddle = textWithOptions $ mempty
-  { textAnchor        = TextAnchorEnd
-  , alignmentBaseline = AlignmentBaselineMiddle }
-
--- | Text woth options. Idiomatically:
---
--- @
--- textWithOptions $ mempty
---    { textAnchor        = TextAnchorStart
---    , alignmentBaseline = AlignmentBaselineMiddle }
--- @
---
-textWithOptions :: TextOptions -> Str -> Drawing
-textWithOptions opts = style (textOptionsToStyle opts) . Text
-
-
-{-| Apply a [Transformation](#Transformation) to an image.
-
-This is the most general way to transform an image. Most of the functions
-below are more convenient to use, but can not be used to transform arbitrary
-objects.
-
-@
-transform (rotation x)   image = rotate x image
-transform (stretching x) image = stretch x image
-@
-
-Composing transformations has the same effect as carrying out the
-transformation one at a time:
-
-@
-transform s (transform t image) = transform (s <> t) image
-@
- -}
-transform :: Transformation Double -> Drawing -> Drawing
-transform _ Em = Em
-transform t dr = Transf t dr
-
-{-| Translates (move) an object. -}
-translation :: Num a => V2 a -> Transformation a
-translation (V2 a b) = matrix (1,0,0,1,a,b)
-
-{-| Translates (move) an object along the horizonal axis.
-A positive argument will move the object to the right. -}
-translationX :: Num a => a -> Transformation a
-translationX a = translation (V2 a 0)
-
-{-| Translates (move) an object along the vertical axis.
-A positive argument will move the object upwards (as opposed to standard SVG behavior). -}
-translationY :: Num a => a -> Transformation a
-translationY b = translation (V2 0 b)
-
-{-| Scales (stretches) an object, preserving its horizontal/vertical proportion. -}
-scaling :: Num a => a -> Transformation a
-scaling a = matrix (a,0,0,a,0,0)
-
-scalingXY :: Num a => V2 a -> Transformation a
-scalingXY (V2 a b) = matrix (a,0,0,b,0,0)
-
-{-| Scales (stretches) an object. -}
-scalingX :: Num a => a -> Transformation a
-scalingX a = matrix (a,0,0,1,0,0)
-
-{-| Scales (stretches) an object. -}
-scalingY :: Num a => a -> Transformation a
-scalingY b = matrix (1,0,0,b,0,0)
-
-{-| Rotates an object. A positive vale will result in a counterclockwise rotation
-    and negative value in a clockwise rotation. -}
-rotation :: Floating a => Angle a -> Transformation a
-rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
-
--- {-| Shears an object. -}
--- shearing :: Num a => a -> a -> Transformation a
--- shearing a b = matrix (1, b, a, 1, 0, 0)
-
-{-| Shears an object. -}
-shearingX :: Num a => a -> Transformation a
-shearingX a = matrix (1, 1, a, 1, 0, 0)
-
-{-| Shears an object. -}
-shearingY :: Num a => a -> Transformation a
-shearingY b = matrix (1, b, 1, 1, 0, 0)
-
-{-# INLINABLE transform #-}
-{-# INLINABLE translation #-}
-{-# INLINABLE translationX #-}
-{-# INLINABLE translationY #-}
-{-# INLINABLE scaling #-}
-{-# INLINABLE scalingX #-}
-{-# INLINABLE scalingY #-}
-{-# INLINABLE rotation #-}
-{-# INLINABLE shearingX #-}
-{-# INLINABLE shearingY #-}
-
-
-{-| Translate (move) an image. -}
-translate :: V2 Double -> Drawing -> Drawing
--- translate (V2 dx dy) = transform $ matrix (1,0,0,1,dx,dy)
-translate v = transform $ translation v
-
-{-| Translate (move) an image along the horizonal axis.
-A positive argument will move the image to the right. -}
-translateX :: Double -> Drawing -> Drawing
--- translateX x = translate (V2 x 0)
-translateX x = transform $ translationX x
-
-{-| Translate (move) an image along the vertical axis.
-A positive argument will move the image upwards (as opposed to standard SVG behavior). -}
-translateY :: Double -> Drawing -> Drawing
--- translateY y = translate (V2 0 y)
-translateY y = transform $ translationY y
-
-{-| Scale (stretch) an image. -}
-scaleXY :: V2 Double -> Drawing -> Drawing
-scaleXY (V2 x y) = transform $ matrix (x,0,0,y,0,0)
-
-{-| Scale (stretch) an image, preserving its horizontal/vertical proportion. -}
-scale :: Double -> Drawing -> Drawing
--- scale x = scaleXY x x
-scale a = transform $ scaling a
-
-{-| Scale (stretch) an image horizontally. -}
-scaleX :: Double -> Drawing -> Drawing
--- scaleX x = scaleXY x 1
-scaleX a = transform $ scalingX a
-
-{-| Scale (stretch) an image vertically. -}
-scaleY :: Double -> Drawing -> Drawing
--- scaleY y = scaleXY 1 y
-scaleY a = transform $ scalingY a
-
-{-| Rotate an image. A positive vale will result in a counterclockwise rotation and negative value in a clockwise rotation. -}
-rotate :: Angle Double -> Drawing -> Drawing
--- rotate (Radians a) = transform $ matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
--- NOTE The b,c, signs are inverted because of the reverse y polarity.
-rotate a = transform $ rotation a
-
-{-| Shear an image. -}
--- shear :: Double -> Double -> Drawing -> Drawing
--- shear a b = transform $ matrix (1, b, a, 1, 0, 0)
-shearX a = transform $ shearingX a
-shearY a = transform $ shearingY a
-
-{-# INLINABLE translate #-}
-{-# INLINABLE translateX #-}
-{-# INLINABLE translateY #-}
-{-# INLINABLE scale #-}
-{-# INLINABLE scaleX #-}
-{-# INLINABLE scaleY #-}
-{-# INLINABLE scaleXY #-}
-{-# INLINABLE rotate #-}
-{-# INLINABLE shearX #-}
-{-# INLINABLE shearY #-}
-
-
-
-
-{-| A "big" smoke-colored background.
-
-Useful to see the boundary of the canvas, as in:
-
-@
-  (fillColor "red" square) `over` smokeBackground
-@
--}
-smokeBackground :: Drawing
-smokeBackground = fillColor Colors.whitesmoke $ scale 5000 $ square
-
-{-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
-xyAxis :: Drawing
-xyAxis = scale 5000 $ strokeColor Colors.darkgreen $ strokeWidth 0.5 $
-  mconcat [horizontalLine, verticalLine]
-
-{-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
-xyCoords :: Drawing
-xyCoords = fillColorA (Colors.black `withOpacity` 0) $ strokeColor Colors.darkgreen $
-  strokeWidth 0.5 $ mconcat [horizontalLine, verticalLine, circle, square]
-
--- | Draw the unit vector.
-showUnitX :: Drawing
-showUnitX = strokeColor Colors.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
-
--- | Draw an image representing a direction.
-showDirection :: Direction V2 Double -> Drawing
-showDirection dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
-  where
-    tp = Colors.black `withOpacity` 0
-
--- | Draw an image representing two boundaries of an image along the given line.
---
--- See also 'boundaries'.
-showBoundaries :: V2 Double -> Drawing -> Drawing
-showBoundaries v dr = case boundaries v (envelope dr) of
-  Nothing -> dr
-  Just (lo, hi) -> strokeColor Colors.blue (showPoint lo) <> scale 2 (showPoint hi) <> dr
-
--- | Draw an image representing a point.
-showPoint :: Point V2 Double -> Drawing
-showPoint p = translate (p .-. origin) base
-  where
-    base = strokeColor Colors.red $ fillColorA (Colors.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
-
--- | Draw an image representing an envelope.
-showEnvelope :: V2 Double -> Drawing -> Drawing
-showEnvelope v drawing = case envelopeVMay v drawing of
-  Nothing -> drawing
-  Just v2 -> (rotate (angleBetween v2 unitX) $ scale (norm v2) $ unitX_T) <> drawing
-  where
-    -- A sideways T in the unit square, with the "top" pointing
-    -- in the direction of unitX
-    unitX_T = strokeWidth 2 $ strokeColor Colors.red $ fillColorA tp $ segments [V2 0 0, V2 1 0, V2 0 0.5, V2 0 (-1)]
-    tp = Colors.black `withOpacity` 0
-
-{-| Apply a style to a drawing. -}
-style :: Style -> Drawing -> Drawing
-style _ Em = Em
-style s dr = Style s dr
-
-{-| -}
-fillColor :: Colour Double -> Drawing -> Drawing
-fillColor x = style (styleNamed "fill" $ showColor x)
-
-{-| -}
-strokeColor :: Colour Double -> Drawing -> Drawing
-strokeColor x = style (styleNamed "stroke" $ showColor x)
-
--- SLOW
-showColor :: Colour Double -> Str
-showColor = packStr . Data.Colour.SRGB.sRGB24show
-
-{-| -}
-fillColorA :: AlphaColour Double -> Drawing -> Drawing
-fillColorA x = fillColor c . alpha a
-  where
-    alpha a = style (styleNamed "fill-opacity" $ toStr a)
-    c = Data.Colour.over x Colors.black
-    a = Data.Colour.alphaChannel x
-
--- {-| -}
-strokeColorA :: AlphaColour Double -> Drawing -> Drawing
-strokeColorA x = strokeColor c . alpha a
-  where
-    alpha a = style (styleNamed "stroke-opacity" $ toStr a)
-    c = Data.Colour.over x Colors.black
-    a = Data.Colour.alphaChannel x
-
-{-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
--}
-strokeWidth :: Double -> Drawing -> Drawing
-strokeWidth x = style (styleNamed "stroke-width" (toStr x <> "px"))
--- TODO this can be overriden by setting the non-scaling-stroke attribute. Wrap in nice API?
-
-fillGradient :: Gradient -> Drawing -> Drawing
-fillGradient g = SpecialStyle $ FillGradient g
--- TODO feel bad this is not a Style (performance reasons)
-
-
-{-| Where to place origo in the generated SVG. -}
-data OriginPlacement
-  = TopLeft
-  | BottomLeft
-  | Center
-  deriving (Eq, Ord, Show)
-
-{-| Specifies how to generate an SVG from a Drawing. -}
-data RenderingOptions = RenderingOptions
-  { dimensions          :: !(P2 Double)
-  -- ^ Dimensions. Describes a rectangle from (0,0) to the given point (x,y).
-  -- Default is @800 x 800@..
-  , originPlacement     :: !OriginPlacement
-  -- ^ Where to place origo in the generated image.
-  -- Default is @Center@.
-  , renderSpecialStyles :: !Bool
-  -- ^ When true, render special styles (currently only gradients), which could make
-  -- rendering slower. Default is @False@.
-  }
-  deriving (Eq, Ord, Show)
-
--- | Left-biased. Mainly here for the 'mempty'.
-instance Monoid RenderingOptions where
-  mempty  = RenderingOptions (P $ V2 800 800) Center False
-  mappend = const
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- Rendering
-
-{-|
-
-RDrawing is a tree similar to Drawing, with some differences:
-
-- Child nodes (in RMany) are stored in order bottom-top instead of top-bottom
-
-- Instead of having explicit nodes for transform/style/handlers, each node
-  contains a RNodeInfo object storing all three of them.
-
-  When converting Drawings to RDrawings, we collapse all style/transform/handlers
-  to the the next descending group or node, for example:
-
-    T t1 (T t2 (H h (Ap [...]))) -> RMany (t <> t2, mempty, h)
-
-- Masks and Gradients are hoisted to the top and assigned unique identities.
-
-
-When rendering to SVG
-- Each RTopInfo corresponds to a sub-tree <defs> entry
-- Each RDrawing corresponds to a node in the SVG tree
-
--}
-
-data RTopInfo
-  = RTopGradient !Str !Gradient
-  -- | RTopMask !Str !RDrawing
-
-data RDrawing
-  = RPrim !RNodeInfo !RPrim
-  | RMany !RNodeInfo ![RDrawing]
-   deriving (Show)
-
-instance Monoid RDrawing where
-  mempty = RMany mempty mempty
-
-  -- TODO this could emit extra nodes
-  mappend x y = RMany mempty (y : pure x)
-  mconcat     = RMany mempty . mapReverse id
-
-data RPrim
-   = RCircle
-   | RCircleSector !(Angle Double) !(Angle Double)
-   | RRect
-   | RRectRounded !Double !Double !Double !Double
-   | RLine
-   -- TODO use Seq not []
-   | RLines !Bool ![V2 Double]
-   | RText !Str
-   | REmbed !Embed
-   deriving (Show)
-
-data RNodeInfo
-  = RNodeInfo
-    { rStyle   :: !Style
-    , rTransf  :: !(Transformation Double)
-    , rHandler :: !Handlers
-    , rFill    :: First Str
-    }
-   deriving (Show)
-
-instance Monoid RNodeInfo where
-  mempty = RNodeInfo mempty mempty mempty mempty
-  mappend (RNodeInfo a1 a2 a3 a4) (RNodeInfo b1 b2 b3 b4) =
-    RNodeInfo (a1 <> b1) (a2 <> b2) (a3 <> b3) (a4 <> b4)
-
--- | Render monad
--- Writer for RTopInfo values
---
-newtype RD a = RD { runRD_ :: WriterT [RTopInfo] (StateT Int Identity) a }
-  deriving (Functor, Applicative, Monad, MonadWriter [RTopInfo], MonadState Int)
-
-runRD :: RD a -> (a, [RTopInfo])
-runRD x = fst $ runState (runWriterT $ runRD_ x) 0
-
-newId :: RD Str
-newId = do
-  i <- get
-  put $ i + 1
-  pure $ "id" <> toStr i
-
-writeTopInfo :: RTopInfo -> RD ()
-writeTopInfo x = tell [x]
-
-
-renderDrawing :: RenderingOptions -> Drawing -> RD RDrawing
-renderDrawing (RenderingOptions {dimensions, originPlacement}) drawing = drawingToRDrawing' mempty $ placeOrigo $ scaleY (-1) $ drawing
-  where
-    placeOrigo :: Drawing -> Drawing
-    -- placeOrigo = id
-    placeOrigo = case originPlacement of
-      TopLeft     -> id
-      Center      -> translateX (dx/2) . translateY (dy/2)
-      BottomLeft  -> translateY (dy)
-
-    P (V2 dx dy) = dimensions
-
-    {-
-      TODO this needs to be mapped in an Int state (counting maskIds) and a writer (of [(Int, Drawing)]) for emitted masks
-    -}
-    drawingToRDrawing' :: RNodeInfo -> Drawing -> RD RDrawing
-    drawingToRDrawing' nodeInfo x = case x of
-        Circle                 -> pure $ RPrim nodeInfo RCircle
-        CircleSector r1 r2     -> pure $ RPrim nodeInfo $ RCircleSector r1 r2
-        Rect                   -> pure $ RPrim nodeInfo RRect
-        RectRounded x y rx ry  -> pure $ RPrim nodeInfo $ RRectRounded x y rx ry
-        Line                   -> pure $ RPrim nodeInfo RLine
-        (Lines closed vs)      -> pure $ RPrim nodeInfo (RLines closed vs)
-        (Text t)               -> pure $ RPrim nodeInfo (RText t)
-        (Embed e)              -> pure $ RPrim nodeInfo (REmbed e)
-
-        -- TODO render masks properly
-        -- This code just renders it as a group
-        (Mask x y)             -> do
-          ys <- mapMReverse recur [x, y]
-          pure $ RMany nodeInfo ((\x -> seqListE x x) $ ys)
-          where
-            recur = drawingToRDrawing' mempty
-
-        (Transf t x)           -> drawingToRDrawing' (nodeInfo <> transformationToNodeInfo t) x
-        (Style s x)            -> drawingToRDrawing' (nodeInfo <> styleToNodeInfo s) x
-        (SpecialStyle (FillGradient g) x) -> do
-          s <- newId
-          writeTopInfo $ RTopGradient s g
-          drawingToRDrawing' (nodeInfo <> fillToNodeInfo s) x
-
-        (Handlers h x)         -> drawingToRDrawing' (nodeInfo <> handlerToNodeInfo h) x
-        Em                     -> pure mempty
-
-        -- TODO could probably be optimized by some clever redifinition of the Drawing monoid
-        -- current RNodeInfo data render on this node alone, so further invocations uses (recur mempty)
-        -- TODO return empty if concatMap returns empty list
-        (Ap xs)   -> do
-          ys <- mapMReverse recur xs
-          pure $ RMany nodeInfo ((\x -> seqListE x x) ys)
-          where
-            recur = drawingToRDrawing' mempty
-
-    fillToNodeInfo ::  Str -> RNodeInfo
-    fillToNodeInfo s = mempty { rFill = First (Just s) }
-    {-# INLINABLE fillToNodeInfo #-}
-
-    transformationToNodeInfo :: Transformation Double -> RNodeInfo
-    transformationToNodeInfo t = mempty { rTransf = t }
-    {-# INLINABLE transformationToNodeInfo #-}
-
-    styleToNodeInfo :: Style -> RNodeInfo
-    styleToNodeInfo t = mempty { rStyle = t }
-    {-# INLINABLE styleToNodeInfo #-}
-
-    handlerToNodeInfo :: Handlers -> RNodeInfo
-    handlerToNodeInfo t = mempty { rHandler = t }
-    {-# INLINABLE handlerToNodeInfo #-}
-
-
-
-#ifdef __GHCJS__
-{-| Generate an SVG from a drawing. -}
-toSvg :: RenderingOptions -> Drawing -> Svg
-toSvg opts d =
-  let (rd, rt) = runRD $ renderDrawing opts d
-  in emitDrawing opts rt rd
-
-{-| Generate an SVG from a drawing. TODO rename emitDrawingSvg or similar -}
-emitDrawing :: RenderingOptions -> [RTopInfo] -> RDrawing -> Svg
-emitDrawing (RenderingOptions {dimensions, originPlacement}) !topInfo !drawing =
-  svgTopNode
-    (toStr $ floor x)
-    (toStr $ floor y)
-    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-    [ topInfoToDefs topInfo
-    , toSvg1 drawing
-    ]
-  where
-    svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
-    svgTopNode w h vb children = E.svg
-      [ A.width (toJSString w)
-      , A.height (toJSString h)
-      , A.viewBox (toJSString vb) ] children
-
-    pointsToSvgString :: [P2 Double] -> Str
-    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
-      where
-        toJSString = packStr
-        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
-
-    embedToSvg :: Embed -> Svg
-    embedToSvg (EmbedContent str) = E.text (toJSString str)
-    embedToSvg (EmbedNode name attrs children) =
-      VD.node (toJSString name)
-        (fmap (\(name, value) -> VD.attribute (toJSString name) (toJSString value)) attrs)
-        (fmap embedToSvg children)
-
-    -- single x = [x]
-    noScale = VD.attribute "vector-effect" "non-scaling-stroke"
-    offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-    P (V2 x y) = dimensions
-
-    topInfoToDefs :: [RTopInfo] -> Svg
-    topInfoToDefs ts = E.defs [] (fmap topInfoToDef ts)
-
-    topInfoToDef :: RTopInfo -> Svg
-    topInfoToDef (RTopGradient name (LinearGradient stops)) =
-        E.node "linearGradient" [A.id $ toJSString name] (fmap g stops)
-      where
-        g (GradientStop o c) = E.node "stop"
-          [ A.offset (toJSString (toStr o) <> "%")
-          , A.stopColor (toJSString $ showColor c <> "")
-          ] []
-
-    toSvg1 :: RDrawing -> Svg
-    toSvg1 drawing = case drawing of
-      RPrim nodeInfo prim -> case prim of
-        RCircle -> E.circle
-          (nodeInfoToProperties nodeInfo ++ [A.r "0.5", noScale])
-          []
-        -- Where S and O in [0..1] , <circle r="R" stroke-width="R*2" stroke-dasharray="S*(pi*R*2) (pi*R*2)" transform="rotate(O*360)">
-        RCircleSector a1 a2 ->
-          let (s, o) = anglesToPolarScaleOffset a1 a2
-          in
-            E.g (nodeInfoToProperties nodeInfo) $ pure
-              $ E.circle
-                [ A.r "0.5", A.strokeWidth "1"
-                , A.strokeDasharray $ (toJSString $ toStr (s*pi)) <> " " <> (toJSString $ toStr pi)
-                , A.transform $ "rotate("<>(toJSString $ toStr $ o * 360) <> ")"
-                ]
-            []
-        RRect -> E.rect
-          (nodeInfoToProperties nodeInfo ++ [A.x "-0.5", A.y "-0.5", A.width "1", A.height "1", noScale])
-          []
-        RRectRounded w h rx ry -> E.rect
-          (nodeInfoToProperties nodeInfo ++
-            [ A.x (toJSString $ toStr $ negate w / 2)
-            , A.y (toJSString $ toStr $ negate h / 2)
-            , A.width (toJSString $ toStr $ w)
-            , A.height (toJSString $ toStr $ h)
-            , A.rx (toJSString $ toStr $ rx)
-            , A.ry (toJSString $ toStr $ ry)
-            , noScale]
-            )
-          []
-        RLine -> E.line
-          ([A.x1 "0", A.y1 "0", A.x2 "1", A.y2 "0", noScale] ++ nodeInfoToProperties nodeInfo)
-          []
-        (RLines closed vs) -> (if closed then E.polygon else E.polyline)
-          ([A.points (toJSString $ pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) vs), noScale] ++ nodeInfoToProperties nodeInfo)
-          []
-        (RText s) -> E.g (nodeInfoToProperties nodeInfo) $ pure $ E.text'
-          ([A.x "0", A.y "0", A.transform "matrix(1,0,0,-1,0,0)"])
-          [E.text $ toJSString s]
-        -- TODO need extra group for nodeInfo etc
-        (REmbed e) -> embedToSvg e
-      RMany nodeInfo rdrawings -> case fmap toSvg1 rdrawings of
-        -- TODO use seq in virtual-dom too!
-        nodes -> E.g (nodeInfoToProperties nodeInfo) (toList nodes)
-
-{-# INLINEABLE renderDrawing #-}
-
-nodeInfoToProperties :: RNodeInfo -> [E.Property]
-nodeInfoToProperties (RNodeInfo style transf handlers fill) =
-  transformationToProperty transf : styleToProperty style <> fillToProperty fill <> handlersToProperties handlers
-  where
-    styleToProperty :: Style -> [E.Property]
-    styleToProperty s
-      -- TODO handle null case, see #132
-      -- | Map.null s = []
-      = [A.style $ toJSString $ styleToAttrString s]
-
-    transformationToProperty :: Transformation Double -> E.Property
-    transformationToProperty !(TF (V3 (V3 a c e) (V3 b d f) _)) =
-      VD.attribute "transform" (js_transformationToProperty_opt a b c d e f)
-
-    fillToProperty :: First Str -> [E.Property]
-    fillToProperty (First Nothing)   = []
-    fillToProperty (First (Just id)) = [VD.attribute "fill" ("url(#" <> toJSString id <> ")")]
-
-{-# INLINABLE nodeInfoToProperties #-}
-
-
-#else
-toSvg :: RenderingOptions -> Drawing -> ()
-toSvg _ _ = ()
-
-emitDrawing :: RenderingOptions -> RDrawing -> ()
-emitDrawing _ _ = mempty
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-{-| Generate an SVG from a drawing. -}
-toSvgAny
-  :: RenderingOptions
-  -> Drawing
-  -> (Str -> n)
-  -> (Str -> [(Str,Str)] -> [n] -> n)
-  -> n
-toSvgAny (RenderingOptions {dimensions, originPlacement}) drawing mkT mkN =
-  svgTopNode
-    (toStr $ floor x)
-    (toStr $ floor y)
-    ("0 0 " <> toStr (floor x) <> " " <> toStr (floor y))
-    (toSvg1 [] $ placeOrigo $ drawing)
-  where
-    mkA k v = (k, v)
-
-    P (V2 x y) = dimensions
-
-    -- svgTopNode :: Str -> Str -> Str -> [Svg] -> Svg
-    svgTopNode w h vb = mkN "svg"
-      [ mkA "width" w
-      , mkA "height" h
-      , mkA "viewBox" vb
-      -- Needed for static SVG and doesn't do any harm in the DOM
-      , mkA "xmlns:svg" "http://www.w3.org/2000/svg"
-      , mkA "xmlns" "http://www.w3.org/2000/svg"
-      ]
-
-    placeOrigo :: Drawing -> Drawing
-    placeOrigo = case originPlacement of
-      TopLeft     -> id
-      Center      -> translateX (x/2) . translateY (y/(-2))
-      BottomLeft  -> translateY (y*(-1))
-
-    pointsToSvgString :: [P2 Double] -> Str
-    pointsToSvgString ps = toJSString $ mconcat $ Data.List.intersperse " " $ Data.List.map pointToSvgString ps
-      where
-        toJSString = packStr
-        pointToSvgString (P (V2 x y)) = show x ++ "," ++ show y
-
-    -- embedToSvg :: Embed -> n
-    embedToSvg (EmbedContent x)    = mkT x
-    embedToSvg (EmbedNode n as ns) = mkN n as (fmap embedToSvg ns)
-
-    -- toSvg1 :: [(Str, Str)] -> Drawing -> [Svg]
-    toSvg1 ps x = let
-        single x = [x]
-        noScale = mkA "vector-effect" "non-scaling-stroke"
-        negY (a,b,c,d,e,f) = (a,b,c,d,e,negate f)
-        offsetVectorsWithOrigin p vs = p : offsetVectors p vs
-        reflY (V2 adx ady) = V2 adx (negate ady)
-      in case x of
-          Circle     -> single $ mkN "circle"
-            ([mkA "r" "0.5", noScale]++ps)
-            []
-          CircleSector a1 a2 ->
-            let (s, o) = anglesToPolarScaleOffset a1 a2
-            in
-               single $ mkN "circle"
-                  [ mkA "r" "0.5", mkA "stroke-width" "1"
-                  , mkA "stroke-dasharray" $ (toStr (s*pi)) <> " " <> (toStr pi)
-                  , mkA "transform" $ "rotate("<>(toStr $ o * 360) <> ")"
-                  ]
-              []
-          Rect       -> single $ mkN "rect"
-            ([mkA "x" "-0.5", mkA "y" "-0.5", mkA "width" "1", mkA "height" "1", noScale]++ps)
-            []
-          RectRounded w h rx ry -> single $ mkN "rect"
-            (
-              [ mkA "x" (toStr $ negate w / 2)
-              , mkA "y" (toStr $ negate h / 2)
-              , mkA "width" (toStr w)
-              , mkA "height" (toStr h)
-              , mkA "rx" (toStr rx)
-              , mkA "ry" (toStr ry)
-              , noScale
-              ]++ps)
-            []
-          Line -> single $ mkN "line"
-            ([mkA "x1" "0", mkA "y1" "0", mkA "x2" "1", mkA "y2" "0", noScale]++ps)
-            []
-          (Lines closed vs) -> single $ (if closed then mkN "polygon" else mkN "polyline")
-            ([mkA "points" (pointsToSvgString $ offsetVectorsWithOrigin (P $ V2 0 0) (fmap reflY vs)), noScale]++ps)
-            []
-          Text s -> single $ mkN "text"
-            ([mkA "x" "0", mkA "y" "0"]++ps)
-            [mkT s]
-          Embed e -> single $ embedToSvg e
-
-          -- Don't render properties applied to Transf/Style on the g node, propagate to lower level instead
-          -- As long as it is just event handlers, it doesn't matter
-          Mask _ x ->
-            (toSvg1 ps x)
-          Transf t x -> single $ mkN "g"
-            [mkA "transform" $ "matrix" <> toStr (negY $ transformationToMatrix t) <> ""]
-            (toSvg1 ps x)
-          Style s x  -> single $ mkN "g"
-            [mkA "style" $ styleToAttrString s]
-            (toSvg1 ps x)
-
-          -- TODO should render special styles (such as gradients)
-          -- Ignored until #133
-          SpecialStyle _ x -> toSvg1 ps x
-          -- Ignore event handlers
-          Handlers _ x -> toSvg1 ps x
-
-          -- No point in embedding handlers to empty groups, but render anyway
-          Em         -> single $ mkN "g" ps []
-          -- Event handlers applied to a group go on the g node
-          -- Ap x y     -> single $ mkN "g" ps (toSvg1 [] y ++ toSvg1 [] x)
-          Ap xs      -> single $ mkN "g" ps (mconcat $ fmap (toSvg1 []) $ reverse xs)
-
-
-toSvgStr :: RenderingOptions -> Drawing -> Str
-toSvgStr st dr = toSvgAny st dr id $
-        \name attrs nodes -> "<" <> name <> " "
-          <> mconcat (Data.List.intersperse " " $ fmap (\(k,v) -> k <> "=\"" <> v <> "\"") attrs)
-          <> ">"
-          <> mconcat nodes <> "</" <> name <> ">"
-
-
-
-
-
-
-
-
-
-#ifdef __GHCJS__
-
-foreign import javascript unsafe "'matrix('+$1+','+$2+','+$3+','+$4+','+$5+','+$6+')'"
-  js_transformationToProperty_opt :: Double -> Double -> Double -> Double -> Double -> Double -> JSString
-
-#endif
-
--- | Evaluate a list (but not its elements) before returning second argument
-seqList :: [a] -> b -> b
-seqList !xs b = case xs of { [] -> b ; (x:xs) -> seqList xs b }
-
--- | Evaluate a list (and its elements to WHNF) before returning second argument
-seqListE :: [a] -> b -> b
-seqListE !xs b = case xs of { [] -> b ; (x:xs) -> seq x (seqListE xs b) }
-
--- | Fast equivalent of @\f -> map f . reverse@
-mapReverse :: (a -> b) -> [a] -> [b]
-mapReverse f l =  rev l mempty
-  where
-    -- rev :: [a] -> [b] -> [b]
-    rev []     a = a
-    rev (x:xs) a = rev xs (f x : a)
-
-mapMReverse :: Monad m => (a -> m b) -> [a] -> m [b]
-mapMReverse f xs = mapM f (reverse xs)
--- TODO faster version a la the above
+type SVG  = SVGDrawing
+type Fast = FastDrawing
+
+newtype Draft a = Draft { getDraft :: a }
+  deriving (Monoid)
+
+type Drawing = Draft SVG
+
+
+class Monoid (Draft b) => Backend b where
+  circleB         :: Draft b
+  squareB         :: Draft b
+  circleSectorB   :: (Angle Double) -> (Angle Double) -> Draft b
+  rectRoundedB    :: Double -> Double -> Double -> Double -> Draft b
+  lineB           :: Draft b
+  linesB          :: Bool -> [V2 Double] -> Draft b
+  textB           :: Str -> Draft b
+  transfB         :: Transformation Double -> Draft b -> Draft b
+
+class Backend b => Text b where
+  textOptions_B :: TextOptions -> Draft b -> Draft b
+
+class Backend b => Colors b where
+  fillColor_B :: Colour Double -> Draft b -> Draft b
+  strokeColor_B :: Colour Double -> Draft b -> Draft b
+  fillColorA_B :: AlphaColour Double -> Draft b -> Draft b
+  strokeColorA_B :: AlphaColour Double -> Draft b -> Draft b
+  fillGradient_B :: Gradient -> Draft b -> Draft b
+
+class Backend b => Lines b where
+  strokeWidth_B :: Double -> Draft b -> Draft b
+  dash_B :: [Double] -> Draft b -> Draft b
+  -- TODO cap/join
+
+class Backend b => Regions b where
+  tag_B :: Int -> Draft b -> Draft b
+
+class Backend b => Envelopes b where
+  envelope_B :: Draft b -> Envelope V2 Double
+
+
+instance Backend SVG where
+  circleB = Draft $ SVG.Circle
+  squareB = Draft $ SVG.Rect
+  circleSectorB a1 a2 = Draft $ SVG.CircleSector a1 a2
+  rectRoundedB x y rx ry = Draft $ SVG.RectRounded x y rx ry
+  lineB = Draft $ SVG.Line
+  linesB c ps = Draft $ SVG.Lines c ps
+  textB t = Draft $ SVG.Text t
+  transfB t (Draft x) = Draft $ SVG.Transf t x
+
+instance Text SVG where
+  textOptions_B t (Draft x) = Draft $ Style (textOptionsToStyle t) x
+
+instance Colors SVG where
+  fillColor_B x (Draft d) = Draft $ SVG.Style (styleNamed "fill" $ showColor x) d
+  strokeColor_B x (Draft d) = Draft $ SVG.Style (styleNamed "stroke" $ showColor x) d
+  fillColorA_B x (Draft d) = Draft $ Style (styleNamed "fill" $ showColor c) . alpha a $ d
+    where
+      alpha a = SVG.Style (styleNamed "fill-opacity" $ toStr a)
+      c = Data.Colour.over x Colors.black
+      a = Data.Colour.alphaChannel x
+  strokeColorA_B x (Draft d) = Draft $ Style (styleNamed "stroke" $ showColor c) . alpha a $ d
+    where
+      alpha a = SVG.Style (styleNamed "stroke-opacity" $ toStr a)
+      c = Data.Colour.over x Colors.black
+      a = Data.Colour.alphaChannel x
+  fillGradient_B g (Draft d) = Draft $ SpecialStyle (FillGradient g) d
+
+instance Lines SVG where
+  strokeWidth_B x (Draft d) = Draft $ SVG.Style (styleNamed "stroke-width" (toStr x <> "px")) d
+  dash_B x (Draft d) = Draft $ SVG.Style (dashing x) d
+
+instance Envelopes SVG where
+  envelope_B (Draft d) = svgEnvelope d -- TODO move
+
+
+instance Backend Fast where
+  circleB = Draft $ FastB.circle 0 0 1
+  squareB = Draft $ FastB.rect (-0.5) (-0.5) 1 1
+  circleSectorB a1 a2 = circleB -- TODO
+  rectRoundedB x y rx ry = scaleXY (V2 x y) $ squareB -- TODO
+  lineB = linesB False [(V2 0 0), (V2 0 1)]
+  linesB closed [] = Draft $ mempty
+  linesB closed ((V2 x1 y1):ps) = Draft $ FastB.path x1 y1 (FastB.linePathV2 closed ps) -- TODO
+  textB s = Draft $ FastB.text 0 0 s
+  transfB (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) (Draft dr) = Draft $ FastB.transf a b c d e f dr
+
+instance Colors Fast where
+  fillColor_B c (Draft d) = Draft $ FastB.fillColor r g b 1 d
+    where
+      (Data.Colour.SRGB.RGB !r !g !b) = Data.Colour.SRGB.toSRGB c
+  strokeColor_B c (Draft d) = Draft $ FastB.strokeColor r g b 1 d
+    where
+      (Data.Colour.SRGB.RGB !r !g !b) = Data.Colour.SRGB.toSRGB c
+  fillColorA_B ac (Draft d) = Draft $ FastB.fillColor r g b a d
+    where
+      (Data.Colour.SRGB.RGB !r !g !b) = Data.Colour.SRGB.toSRGB c
+      c = Data.Colour.over ac Colors.black
+      a = Data.Colour.alphaChannel ac
+  strokeColorA_B ac (Draft d) = Draft $ FastB.strokeColor r g b a d
+    where
+      (Data.Colour.SRGB.RGB !r !g !b) = Data.Colour.SRGB.toSRGB c
+      c = Data.Colour.over ac Colors.black
+      a = Data.Colour.alphaChannel ac
+  -- TODO
+  fillGradient_B _ x = x
+
+instance Lines Fast where
+  strokeWidth_B x (Draft d) = Draft $ FastB.lineWidth x d
+  dash_B _ x = x -- TODO
+
+instance Regions Fast where
+  tag_B n (Draft x) = Draft $ FastB.tag n x

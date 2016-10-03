@@ -22,8 +22,8 @@ import System.Random
 
 
 
-drawingToSvgString :: RenderingOptions -> Styling -> Styled Drawing -> Str
-drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
+drawingToSvgString :: RenderingOptions -> Styling -> Styled (Draft SVG) -> Str
+drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ Lubeck.Drawing.getDraft $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
 
 
 -- We will plot N points

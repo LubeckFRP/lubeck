@@ -38,7 +38,7 @@ import Data.Colour(withOpacity)
 import qualified Data.Colour.Names as Colors
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
-import Lubeck.Drawing (Drawing, RenderingOptions(..), OriginPlacement(..)  )
+import Lubeck.Drawing (Draft, SVG, RenderingOptions(..), OriginPlacement(..)  )
 import Lubeck.DV
 import Lubeck.DV.Styling(HoverSelect(..))
 import qualified Lubeck.Drawing
@@ -259,11 +259,11 @@ rasterizeAndHashSvgFile path = do
 
 
 
-drawingToSvgString :: RenderingOptions -> Styling -> Styled Drawing -> Str
-drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
+drawingToSvgString :: RenderingOptions -> Styling -> Styled (Draft SVG) -> Str
+drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ Lubeck.Drawing.getDraft $ ($ style) $ Lubeck.DV.Styling.getStyled finalD
 
-drawingToSvgStringUnstyled :: RenderingOptions -> Drawing -> Str
-drawingToSvgStringUnstyled drawOpts finalD = Lubeck.Drawing.toSvgStr drawOpts $ finalD
+drawingToSvgStringUnstyled :: RenderingOptions -> Draft SVG -> Str
+drawingToSvgStringUnstyled drawOpts finalD = Lubeck.Drawing.toSvgStr drawOpts $ Lubeck.Drawing.getDraft finalD
 
 visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> Str
 visualizeTest dat geom aess = drawingToSvgString mempty mempty
@@ -583,7 +583,7 @@ test10 = DrawingTest "test10" "" $ unpackStr
   , contramap (const customDr) image <~ _2
   ]
   where
-    customDr :: Drawing
+    customDr :: Draft SVG
     customDr = Lubeck.Drawing.fillColor Colors.whitesmoke
       $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.square
 
@@ -599,7 +599,7 @@ test11 = DrawingTest "test11" "" $ unpackStr
   , contramap (const customDr) image <~ _2
   ]
   where
-    customDr :: Drawing
+    customDr :: Draft SVG
     customDr = Lubeck.Drawing.fillColor Colors.turquoise
       $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.triangle
 
@@ -616,7 +616,7 @@ test12 = DrawingTest "test12" "" $ unpackStr
   , contramap (const customDr) image <~ _2
   ]
   where
-    customDr :: Drawing
+    customDr :: Draft SVG
     customDr = Lubeck.Drawing.fillColor Colors.turquoise
       $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.triangle
 
@@ -633,7 +633,7 @@ test13 = DrawingTest "test13" "" $ unpackStr
   , contramap (const customDr) image <~ _2
   ]
   where
-    customDr :: Drawing
+    customDr :: Draft SVG
     customDr = Lubeck.Drawing.fillColor Colors.turquoise
       $ Lubeck.Drawing.scale 50 $ Lubeck.Drawing.triangle
 
@@ -650,7 +650,7 @@ test14 = DrawingTest "test14" "" $ unpackStr
   , contramap (const customDr) image <~ _2
   ]
   where
-    customDr :: Drawing
+    customDr :: Draft SVG
     customDr = Lubeck.Drawing.fillColor Colors.turquoise
       $ Lubeck.Drawing.scale 50 $ dr
 

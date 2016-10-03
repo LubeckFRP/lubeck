@@ -82,7 +82,7 @@ simpleLinePlot
   -> Int                              -- ^ Number of ticks on X axis.
   -> Int                              -- ^ Number of ticks on Y axis.
   -> [(a,b)]                          -- ^ Data to plot.
-  -> ((Double -> Double, Double -> Double), Styled Drawing)
+  -> ((Double -> Double, Double -> Double), Styled (Draft SVG))
 simpleLinePlot _     _     _   _   _   _   _         _         [] = ((id,id), mempty)
 simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, normB), drawing)
   where
@@ -145,14 +145,14 @@ simpleLinePlot showA showB a2d d2a b2d d2b numTicksA numTicksB xs = ((normA, nor
 
 
 
-simpleTimeSeries :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Styled Drawing
+simpleTimeSeries :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [(UTCTime, a)] -> Styled (Draft SVG)
 simpleTimeSeries s f g = snd . simpleLinePlot
   (replaceStr "T" "  " . takeStr 16 . formatDateAndTimeFromUTC) s
   utcTimeToApproxReal realToApproxUTCTime
   f g
   10 10
 
-simpleTimeSeriesWithOverlay :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Styled Drawing
+simpleTimeSeriesWithOverlay :: (a -> Str) -> (a -> Double) -> (Double -> a) -> [UTCTime] -> [(UTCTime, a)] -> Styled (Draft SVG)
 simpleTimeSeriesWithOverlay s f g times dat = plot2 <> plot1
   where
     plot2 = scatterDataX $ fmap ((\t -> P $ V2 t 0.5) . normT . utcTimeToApproxReal) times

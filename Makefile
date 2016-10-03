@@ -3,6 +3,7 @@
 
 GHC	  :=	stack-ghc.yaml
 GHCJS	:=	stack-ghcjs.yaml
+CPP   :=  cpp -P
 
 SPEEDUP_BUILD_FLAGS := -j4 --fast
 
@@ -10,15 +11,22 @@ SPEEDUP_BUILD_FLAGS := -j4 --fast
 PROF_FLAGS := --executable-profiling --library-profiling --ghc-options="-fprof-auto -rtsopts"
 
 all: ghc ghcjs
+lubeck-drawing/jsbits/fast-renderer.out.js:
+	$(CPP) <lubeck-drawing/jsbits/fast-renderer.js >lubeck-drawing/jsbits/fast-renderer.out.js
+setup:
+       stack setup --stack-yaml=$(GHC)
+       stack setup --stack-yaml=$(GHCJS)
 clean: ghc-clean ghcjs-clean
-ghc:
+ghc: lubeck-drawing/jsbits/fast-renderer.out.js
 	stack --stack-yaml=$(GHC)   build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 ghcjs:
 	stack --stack-yaml=$(GHCJS) build $(SPEEDUP_BUILD_FLAGS)
+ghsjs-drawing-test:
+	stack --stack-yaml=$(GHCJS) build lubeck-drawing:exe:lubeck-drawing-test
 ghc-clean:
 	stack --stack-yaml=$(GHC)   clean
 ghcjs-clean:
-	stack --stack-yaml=$(GHCJS) clean 
+	stack --stack-yaml=$(GHCJS) clean
 ghc-repl:
 	stack --stack-yaml=$(GHC)   repl $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 test-run:
@@ -32,5 +40,3 @@ test-report:
 
 ghc-prof-run:
 	stack --stack-yaml=$(GHC)   exec lubeck-dv-profiling -- +RTS -p
-
-		# && stack exec bench-ad-dashboard-calc -- config.json.local +RTS -p

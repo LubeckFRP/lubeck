@@ -79,7 +79,7 @@ data ScatterData2 = ScatterData2
 scatterData2Point :: Lens' ScatterData2 (P2 Double)
 scatterData2Point = lens scatterDataPoint2 (\s b -> s {scatterDataPoint2 = b})
 
-scatterData2 :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [ScatterData2] -> m Drawing
+scatterData2 :: (Monad m, MonadReader Styling m, Monoid (m (Draft SVG))) => [ScatterData2] -> m (Draft SVG)
 scatterData2 ps = do
   style <- ask
   let base pp = id
@@ -105,7 +105,7 @@ scatterData2 ps = do
       $ strokeWidth (style^.scatterPlotStrokeWidth)
       $ x
 
-scatterDataX :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] -> m Drawing
+scatterDataX :: (Monad m, MonadReader Styling m, Monoid (m (Draft SVG))) => [P2 Double] -> m (Draft SVG)
 scatterDataX ps = do
   style <- ask
   -- let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateY 0.5 $ verticalLine
@@ -120,7 +120,7 @@ scatterDataX ps = do
       $ strokeWidth (style^.scatterPlotStrokeWidth)
       $ x
 
-scatterDataY :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => [P2 Double] ->  m Drawing
+scatterDataY :: (Monad m, MonadReader Styling m, Monoid (m (Draft SVG))) => [P2 Double] ->  m (Draft SVG)
 scatterDataY ps = do
   style <- ask
   let base = strokeColorA (style^.scatterPlotStrokeColor.to paletteToColor) $ strokeWidth (style^.scatterPlotStrokeWidth) $ translateX 0.5 $ horizontalLine
@@ -132,7 +132,7 @@ data LineData = LineData
   }
 defLineData = LineData 0 0
 
-lineData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => LineData -> [P2 Double] -> m Drawing
+lineData :: (Monad m, MonadReader Styling m, Monoid (m (Draft SVG))) => LineData -> [P2 Double] -> m (Draft SVG)
 lineData _ []     = mempty
 lineData _ [_]    = mempty
 lineData (LineData colorN dashN) (p:ps) = do
@@ -144,8 +144,8 @@ lineData (LineData colorN dashN) (p:ps) = do
                 . strokeWidth   (style^.linePlotStrokeWidth)
                 . dash          (style^.linePlotStroke. to (`extractLineStyle` dashN))
 
-  return $ maskRenderingRectangle style $ lineStyle $ ((either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) :: Drawing -> Drawing) $
-    ((segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:mFilterToPrecision mPrec ps)) :: Drawing)
+  return $ maskRenderingRectangle style $ lineStyle $ ((either (translate . relOrigin) (translate . relOrigin) $ getRenderingPosition style p) :: (Draft SVG) -> (Draft SVG)) $
+    ((segments $ betweenPoints $ mapFilterEitherBoth (getRenderingPosition style) (p:mFilterToPrecision mPrec ps)) :: (Draft SVG))
   -- TODO this should really filter out all points outside data set (except the 2 closest to RR, to get correct slope), and *then* apply precision
 
 mFilterToPrecision :: Maybe Int -> [a] -> [a]
@@ -170,7 +170,7 @@ data AreaData = AreaData
   { areaDataColor :: Double
   }
 
-fillData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
+fillData :: (Monad m, MonadReader Styling m, Monoid (m (Draft SVG))) => AreaData -> [P2 Double] -> m (Draft SVG)
 fillData _ []     = mempty
 fillData _ [_]    = mempty
 fillData (AreaData colorN) (p:ps) = do
@@ -190,13 +190,13 @@ fillData (AreaData colorN) (p:ps) = do
       where
         proj (P (V2 x _)) = P (V2 x 0)
 
-areaData :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P3 Double] -> m Drawing
+areaData :: (Monad m, MonadReader Styling m, Monoid (m (Draft SVG))) => AreaData -> [P3 Double] -> m (Draft SVG)
 areaData i ps = areaData' i $
   fmap (\p -> P $ V2 (p^._x) (p^._z)) ps
     <>
   fmap (\p -> P $ V2 (p^._x) (p^._y)) (reverse ps)
 
-areaData' :: (Monad m, MonadReader Styling m, Monoid (m Drawing)) => AreaData -> [P2 Double] -> m Drawing
+areaData' :: (Monad m, MonadReader Styling m, Monoid (m (Draft SVG))) => AreaData -> [P2 Double] -> m (Draft SVG)
 areaData' _ []     = mempty
 areaData' _ [_]    = mempty
 areaData' (AreaData colorN) (p:ps) = do
@@ -211,7 +211,7 @@ areaData' (AreaData colorN) (p:ps) = do
 --   }
 
 -- TODO pie vs. donut
-circularData :: (Monad m, MonadReader Styling m) => [Double] -> m Drawing
+circularData :: (Monad m, MonadReader Styling m) => [Double] -> m (Draft SVG)
 circularData ps = do
   style <- ask
   pure
@@ -258,7 +258,7 @@ circularData ps = do
     angleFromTurns :: Double -> Angle Double
     angleFromTurns x = realToFrac x * turn
 
-    shapes :: [Drawing]
+    shapes :: [(Draft SVG)]
     shapes = fmap (\(s,o) -> fillColorA transparent $
       circleSector (angleFromTurns s) (angleFromTurns o)) plotData
 
@@ -267,15 +267,15 @@ circularData ps = do
 -- | Draw a one-dimensional bar graph.
 --
 -- For grouped/stacked charts, see `barData2`, `barData3` etc.
-barData :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
+barData :: (Monad m, MonadReader Styling m) => [P1 Double] -> m (Draft SVG)
 barData xs = do
   style <- ask
   barDataHV (style^.barPlotOrientation) xs
 
-barDataV :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
+barDataV :: (Monad m, MonadReader Styling m) => [P1 Double] -> m (Draft SVG)
 barDataV = barDataHV Vertical
 
-barDataH :: (Monad m, MonadReader Styling m) => [P1 Double] -> m Drawing
+barDataH :: (Monad m, MonadReader Styling m) => [P1 Double] -> m (Draft SVG)
 barDataH = barDataHV Horizontal
 
 {-
@@ -305,7 +305,7 @@ NOTE
 TODO prove that width = 1, regardless of the value of barPlotUngroupedOffset
 
 -}
-barDataHV :: (Monad m, MonadReader Styling m) => VerticalHorizontal -> [P1 Double] -> m Drawing
+barDataHV :: (Monad m, MonadReader Styling m) => VerticalHorizontal -> [P1 Double] -> m (Draft SVG)
 barDataHV hv ps = do
   style <- ask
 
@@ -347,7 +347,7 @@ barDataHV hv ps = do
     defHoverSelect Nothing  = NoHoverSelect
     defHoverSelect (Just x) = x
 
-    scaleCrossAlong :: Double -> Point V1 Double -> Drawing -> Drawing
+    scaleCrossAlong :: Double -> Point V1 Double -> (Draft SVG) -> (Draft SVG)
     scaleCrossAlong c (P (V1 a)) = scaleCross c . scaleAlong a
 
     -- Either of these works (first version more efficient):
@@ -366,7 +366,7 @@ barDataHV hv ps = do
     translateCross = case hv of { Vertical -> translateX ; Horizontal -> translateY }
 
     -- Reads (renderingRectangle, zoom) from the style
-    scaleRR :: Styling -> Drawing -> Drawing
+    scaleRR :: Styling -> (Draft SVG) -> (Draft SVG)
     scaleRR = getRenderingPositionD
 
 
@@ -375,7 +375,7 @@ barDataHV hv ps = do
 
 
 
-baseImage :: (Monad m, MonadReader Styling m) => Drawing -> Double -> Double -> Maybe Double -> m Drawing
+baseImage :: (Monad m, MonadReader Styling m) => (Draft SVG) -> Double -> Double -> Maybe Double -> m (Draft SVG)
 baseImage dr x y Nothing     = baseImage dr x y (Just 1)
 baseImage dr x y (Just size) = do
   style <- ask
@@ -383,7 +383,7 @@ baseImage dr x y (Just size) = do
     $ Lubeck.Drawing.scale size
     $ dr
 
-baseLabel :: MonadReader Styling m => Double -> Double -> Str -> m Drawing
+baseLabel :: MonadReader Styling m => Double -> Double -> Str -> m (Draft SVG)
 baseLabel x y str = do
   style <- ask
   return $ getRenderingPositionRel (V2 x y) style
@@ -409,7 +409,7 @@ ticks
   :: (Monad m, MonadReader Styling m)
   => [(Double, Maybe Str)] -- ^ X axis ticks.
   -> [(Double, Maybe Str)] -- ^ Y axis ticks.
-  -> m Drawing
+  -> m (Draft SVG)
 ticks xTickList1 yTickList1 = do
   style <- ask
   if getAny $ style^.noXY
@@ -500,7 +500,7 @@ labeledAxis
   :: (Monad m, MonadReader Styling m)
   => Str -- ^ X axis label.
   -> Str -- ^ Y axis label.
-  -> m Drawing
+  -> m (Draft SVG)
 labeledAxis labelX labelY = do
   style <- ask
   if getAny $ style^.noXY
@@ -573,7 +573,7 @@ getRenderingPositionM :: (Monad m, Alternative m) => Styling -> m (P2 Double) ->
 getRenderingPositionM style = mapFilterEither (getRenderingPosition style)
 
 
-{-| Similar 'getRenderingPosition' for Drawings. Transforming a drawing is
+{-| Similar 'getRenderingPosition' for (Draft SVG)s. Transforming a drawing is
 conceptually the same as transformting every point inside it using
 'getRenderingPosition'. However, this function ignores the filtering peformed by
 'getRenderingPosition', so the resulting image might fall partially, or
@@ -581,7 +581,7 @@ completely outside the rendering rectangle.
 
 TODO prove/assure that this is equal to
 getRenderingPosition/getRenderingPositionT modulo filtering -}
-getRenderingPositionD :: Styling -> Drawing -> Drawing
+getRenderingPositionD :: Styling -> (Draft SVG) -> (Draft SVG)
 getRenderingPositionD styling x = transform (scalingXY $ styling^.renderingRectangle) $ transform (styling^.zoom) x
 
 
@@ -594,7 +594,7 @@ and rendering rectangle into account), and the image is then translated so that
 its origin aligns with the transformed anchor.
 
 This is useful for things like labels and text. -}
-getRenderingPositionRel :: V2 Double -> Styling -> Drawing -> Drawing
+getRenderingPositionRel :: V2 Double -> Styling -> (Draft SVG) -> (Draft SVG)
 getRenderingPositionRel v styling dr = case getRenderingPosition styling (origin .+^ v) of
   Left _ -> mempty
   Right p -> translate (p .-. origin) dr
@@ -624,10 +624,10 @@ withinNormRange x = (0-0.001) <= x && x <= (1+0.001)
 
 {-|
 This is intended to assure that no pieces of data are accidentally rendered
-outside the rendering rectangle. As masking is not yet implemented in Lubeck Drawing
+outside the rendering rectangle. As masking is not yet implemented in Lubeck (Draft SVG)
 it is a no-op.
 -}
-maskRenderingRectangle :: Styling -> Drawing -> Drawing
+maskRenderingRectangle :: Styling -> (Draft SVG) -> (Draft SVG)
 maskRenderingRectangle _ x = x
 
 
@@ -695,7 +695,7 @@ instance Diffable MouseState where
   patch x _ = x
 
 
-addBasicHandlers :: (MouseEv -> IO ()) -> Drawing -> Drawing
+addBasicHandlers :: (MouseEv -> IO ()) -> (Draft SVG) -> (Draft SVG)
 addBasicHandlers mouseS dr = ( id
    . addHandler "mouseover" (\ev -> mouseS MouseOver)
    . addHandler "mouseout"  (\ev -> mouseS MouseOut)
@@ -709,11 +709,11 @@ addBasicHandlers mouseS dr = ( id
 Most general way of creating a drawing with mosue interaction.
 Only event handlers sent to the given drawing a are processed (i.e. transparent areas are ignored).
 -}
-withMousePositionState :: (Signal MouseState -> Signal Drawing) -> FRP (Signal Drawing, Signal MouseState, Events MouseEv)
+withMousePositionState :: (Signal MouseState -> Signal (Draft SVG)) -> FRP (Signal (Draft SVG), Signal MouseState, Events MouseEv)
 withMousePositionState drawingF = do
   (mouseS,    mouseE    :: Events MouseEv)     <- newEvent
   state :: Signal MouseState <- accumS mempty (fmap (flip patch) mouseE)
-  let (dWithHandlers :: Signal MouseState -> Signal Drawing) = (fmap . fmap)
+  let (dWithHandlers :: Signal MouseState -> Signal (Draft SVG)) = (fmap . fmap)
                            ( id
                            . addHandler "mouseover" (\ev -> mouseS MouseOver)
                            . addHandler "mouseout"  (\ev -> mouseS MouseOut)

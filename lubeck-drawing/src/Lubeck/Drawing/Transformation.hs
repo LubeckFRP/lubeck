@@ -26,6 +26,25 @@ module Lubeck.Drawing.Transformation
   , transformPoint1
   , T1
   , T2
+  , transformRect
+  , transformDirection
+
+  , translation
+  , translationX
+  , translationY
+  , scaling
+  , scalingX
+  , scalingY
+  , scalingXY
+  , rotation
+  , shearingX
+  , shearingY
+
+  , rectToTransf
+  , transfToRect
+  , transformLineSeg
+  , lineSegToTransf
+  , transfToLineSeg
   )
 where
 
@@ -203,6 +222,9 @@ transl t =
 
 
 
+transformRect :: Num a => T2 a -> Rect a -> Rect a
+transformRect t (Rect_ p1 p2) = Rect_ (transformPoint t p1) (transformPoint t p2)
+
 
 
 
@@ -322,3 +344,96 @@ scaling1 x = matrix1 (x,0)
 
 translation1 :: Num a => a -> Transformation1 a
 translation1 x = matrix1 (1,x)
+
+
+transformDirection :: Num n => Transformation n -> Direction V2 n -> Direction V2 n
+transformDirection t (Direction v) = Direction (transformVector t v)
+
+
+{-| Translates (move) an object. -}
+translation :: Num a => V2 a -> Transformation a
+translation (V2 a b) = matrix (1,0,0,1,a,b)
+
+{-| Translates (move) an object along the horizonal axis.
+A positive argument will move the object to the right. -}
+translationX :: Num a => a -> Transformation a
+translationX a = translation (V2 a 0)
+
+{-| Translates (move) an object along the vertical axis.
+A positive argument will move the object upwards (as opposed to standard SVG behavior). -}
+translationY :: Num a => a -> Transformation a
+translationY b = translation (V2 0 b)
+
+{-| Scales (stretches) an object, preserving its horizontal/vertical proportion. -}
+scaling :: Num a => a -> Transformation a
+scaling a = matrix (a,0,0,a,0,0)
+
+scalingXY :: Num a => V2 a -> Transformation a
+scalingXY (V2 a b) = matrix (a,0,0,b,0,0)
+
+{-| Scales (stretches) an object. -}
+scalingX :: Num a => a -> Transformation a
+scalingX a = matrix (a,0,0,1,0,0)
+
+{-| Scales (stretches) an object. -}
+scalingY :: Num a => a -> Transformation a
+scalingY b = matrix (1,0,0,b,0,0)
+
+{-| Rotates an object. A positive vale will result in a counterclockwise rotation
+    and negative value in a clockwise rotation. -}
+rotation :: Floating a => Angle a -> Transformation a
+rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+
+-- {-| Shears an object. -}
+-- shearing :: Num a => a -> a -> Transformation a
+-- shearing a b = matrix (1, b, a, 1, 0, 0)
+
+{-| Shears an object. -}
+shearingX :: Num a => a -> Transformation a
+shearingX a = matrix (1, 1, a, 1, 0, 0)
+
+{-| Shears an object. -}
+shearingY :: Num a => a -> Transformation a
+shearingY b = matrix (1, b, 1, 1, 0, 0)
+
+{-# INLINABLE translation #-}
+{-# INLINABLE translationX #-}
+{-# INLINABLE translationY #-}
+{-# INLINABLE scaling #-}
+{-# INLINABLE scalingX #-}
+{-# INLINABLE scalingY #-}
+{-# INLINABLE rotation #-}
+{-# INLINABLE shearingX #-}
+{-# INLINABLE shearingY #-}
+
+{-|
+Turn a rectangle into a transformation that transforms the unit square into
+the original rectangle.
+
+Inverse of @rectToTransf@.
+-}
+rectToTransf :: Num a => Rect a -> T2 a
+rectToTransf (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) =
+  translation (p1 .-. origin) <> scalingXY (p2 .-. p1)
+
+{-|
+The inverse of @rectToTransf@.
+-}
+transfToRect :: Num a => T2 a -> Rect a
+transfToRect t = transformRect t (rect 0 0 1 1)
+
+
+
+transformLineSeg :: Num a => T1 a -> LineSeg a -> LineSeg a
+transformLineSeg t (LineSeg p1 p2) = LineSeg (transformPoint1 t p1) (transformPoint1 t p2)
+
+lineSegToTransf :: Num a => LineSeg a -> T1 a
+lineSegToTransf (LineSeg (p1@(P (v1@(V1 x1)))) (p2@(P (v2@(V1 x2))))) =
+  translation1 (p1 .-. origin) <> scaling1 (p2 .-. p1)
+  where
+    translation1 (V1 x) = matrix1 (1,x)
+    scaling1 (V1 x)     = matrix1 (x,0)
+    -- origin = P (V1 0)
+
+transfToLineSeg :: Num a => T1 a -> LineSeg a
+transfToLineSeg t = transformLineSeg t (lineseg 0 1)

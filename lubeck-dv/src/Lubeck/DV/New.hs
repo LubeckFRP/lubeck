@@ -171,7 +171,7 @@ import Linear.V2 (V2(..))
 import Linear.V3 (V3(..))
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
-import Lubeck.Drawing (Drawing, RenderingOptions(..), Rect(..), LineSeg(..))
+import Lubeck.Drawing (Draft, SVG, RenderingOptions(..), Rect(..), LineSeg(..))
 import Lubeck.Drawing.Transformation
 import Lubeck.DV.Styling (Styled, Styling, zoom, zoomType, ZoomType(AutoScaleY))
 import Lubeck.DV.Internal.Normalized
@@ -266,7 +266,7 @@ Just strings (for labels) and drawings (for embedded images) for now.
 -}
 data Special
   = SpecialStr Str
-  | SpecialDrawing Drawing
+  | SpecialDrawing (Draft SVG)
 
 instance Show Special where
   show (SpecialStr x) = show x
@@ -336,7 +336,7 @@ customAesthetic = customAesthetic' scale (const Nothing) (const Nothing)
 {- |
 Make a custom aesthetic attribute.
 -}
-customAesthetic' :: (a -> Scale a) -> (a -> Maybe Str) -> (a -> Maybe Drawing) -> Key -> Aesthetic a
+customAesthetic' :: (a -> Scale a) -> (a -> Maybe Str) -> (a -> Maybe (Draft SVG)) -> Key -> Aesthetic a
 customAesthetic' scale toMStr toMDrawing n =
     Aesthetic mapping specialMapping genPlotBounds genGuides getScaleBaseName
   where
@@ -431,7 +431,7 @@ label :: Aesthetic Str
 label = customAesthetic' scale Just (const Nothing) "label"
 
 -- | Map arbitrary drawings.
-image :: Aesthetic Drawing
+image :: Aesthetic (Draft SVG)
 image = customAesthetic' dummyScale (const Nothing) Just "image"
   where
     dummyScale _ = Scale (\_ _ -> 0) (const (0,0)) (const []) "dummy"
@@ -918,7 +918,7 @@ You can think of scaled and mapped data matrix of numbers and special values
 dataset and each column to an aesthetic attribute such as size, position, color etc.
 -}
 data Geometry = Geometry
-  { geomMapping        :: Table Key Cell -> Styled Drawing
+  { geomMapping        :: Table Key Cell -> Styled (Draft SVG)
   , geomBaseName       :: [String]
   }
 
@@ -1458,11 +1458,11 @@ Create a plot from a given data set, aesthetic mappings and geometry.
 createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> SinglePlot
 
 {-|
-Convert the given visualization to a 'Drawing'.
+Convert the given visualization to a '(Draft SVG)'.
 
 The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.
 -}
-drawPlot :: Plot -> Styled Drawing
+drawPlot :: Plot -> Styled (Draft SVG)
 
 
 -- createSinglePlot = undefined
@@ -1482,7 +1482,7 @@ createSinglePlot titles dat aess geometry =
 
 drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
   where
-    drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled Drawing
+    drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled (Draft SVG)
     drawPlot1 bounds includeGuides plot = mconcat
       [ dataD
       , if includeGuides
@@ -1490,13 +1490,13 @@ drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (P
           else mempty ]
       where
 
-        axesD :: Styled Drawing
+        axesD :: Styled (Draft SVG)
         axesD = Lubeck.DV.Internal.Render.labeledAxis (axesNames !! 0) (axesNames !! 1)
           where
             m ? k = maybe mempty id $ Map.lookup k m
             axesNames = axesTitles plot <> repeat mempty
 
-        guidesD :: Styled Drawing
+        guidesD :: Styled (Draft SVG)
         guidesD = local (updateZoomToAutoScale fullPlot)
           $ drawGuides (scaledGuides (bounds) plot ? "x") (scaledGuides (bounds) plot ? "y")
           where
@@ -1507,7 +1507,7 @@ drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (P
                 ys = fmap (second Just) ys2
 
         -- SLOW
-        dataD :: Styled Drawing
+        dataD :: Styled (Draft SVG)
         dataD = local (updateZoomToAutoScale fullPlot) $ do
           (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial bounds plot)
           geomMapping (geometry plot) $ cells
@@ -1608,7 +1608,7 @@ plotLabel :: Str -> [a] -> [Aesthetic a] -> Plot
 plotLabel text dat baseAes =
   plot dat (baseAes <> [text >$ label]) labelG
 
-plotImage :: Drawing -> [a] -> [Aesthetic a] -> Plot
+plotImage :: (Draft SVG) -> [a] -> [Aesthetic a] -> Plot
 plotImage drawing dat baseAes =
   plot dat (baseAes <> [drawing >$ image]) imageG
 

@@ -35,10 +35,6 @@ import qualified Text.Parsec as Parsec
 import qualified Text.Parser.Char as PC
 import qualified Text.Parser.Combinators as P
 import Data.Functor.Identity(Identity(..))
--- import Control.Monad.State.Class(modify)
--- import System.Process(runCommand, waitForProcess)
--- import Text.PrettyPrint.Boxes hiding ((<>))
--- import qualified Text.PrettyPrint.Boxes as B
 import Data.Map(Map)
 import qualified Data.Map as Map
 import qualified Data.CharSet as CharSet
@@ -80,18 +76,11 @@ parseFile = do
 
 -- Usage: stack build/cpp.hs IN_FILE OUT_FILE
 main = do
+  print "Hello CPP"
   [inF, outF] <- getArgs
-  -- let inF = "main.js"
-  -- let outF = "main.out2.js"
   inp <- readFile inF
-
   let (lines,env) = case Parsec.runParser parseFile mempty inF inp of
           Left e -> error $ show e
           Right r -> r
-  -- print env
   let replacementFunction = Map.foldrWithKey (\k v f -> replace k v . f) id env
   writeFile outF $ mconcat $ fmap replacementFunction lines
-
-  pure undefined
-
--- replace old new input

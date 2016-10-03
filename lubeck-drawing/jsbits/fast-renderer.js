@@ -1700,6 +1700,7 @@ function createRenderer(c2) {
   var utf8d       = new TextDecoder("utf-8");
 
   // Externals
+  // FIXME size of this table leaks
   var externals   = {}
   var externalCount = 0
 
@@ -2007,7 +2008,8 @@ function createRenderer(c2) {
       }
     }
     var usedTuples = n - unusedTuples;
-    var [allocs,deallocs] = [res.getAllocationInfo(1), res.getAllocationInfo(0)]
+    var allocs = res.getAllocationInfo(1)
+    var deallocs = res.getAllocationInfo(0)
     console.log("Heap size:", HEAP_SIZE)
     console.log("Max tuples:", res.getMaxNumberOfTuples())
     console.log("Number of tuples allocated:", allocs)

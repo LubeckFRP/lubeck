@@ -21,9 +21,9 @@ foreign import javascript unsafe
 ```
 
 The purpose of your callback is to create a `Picture` representing what to draw,
-and call `renderPicture :: Renderer -> Picture -> IO ()`.
+and call `renderPicture :: Renderer -> Draft Fast -> IO ()`.
 
-It is possible to use FRP combinators to provide the picture (structuring your view as a `Behavior Picture` or similar), but this is not the only way to do it.
+It is possible to use FRP combinators to provide the picture (structuring your view as a `Behavior (Draft Fast)` or similar), but this is not the only way to do it.
 
 
 ## Pre-render
@@ -34,7 +34,7 @@ Any part of a picture generated outside of the main loop should be pre-rendered 
 
 ## Use asyncCallback to generate your Callback
 
-That is `GHCJS.Foreign.Callback`. This is much faster than `syncCallback`.
+In `GHCJS.Foreign.Callback`, `asyncCallbackN` is generally faster than `syncCallbackN`, but the latter seems to give more predictable GC schedules.
 
 ## Run performMajorGC in your rendering loop
 
