@@ -110,7 +110,7 @@ foreign import javascript unsafe "$1.offsetX"
 foreign import javascript unsafe "$1.offsetY"
   offsetY :: MouseEvent -> Double
 
-
+{-| Create an 800x800 canvas with id 'canvas' and append it to the body element. -}
 foreign import javascript unsafe
   "var n = document.createElement('canvas'); n.id = 'canvas'; n.width = 800; n.height = 800; document.getElementsByTagName('body')[0].appendChild(n)"
   createCanvasNode :: IO ()
@@ -484,6 +484,42 @@ finWithRenderer3_S :: RenderedFastSegment -> WithRenderer3 RenderedFastSegment
 finWithRenderer3_S !d = ReaderT $ \r -> do
   addFinalizer d (releaseS r d)
   pure d
+
+
+data MouseEventType = MouseMove | MouseUp | MouseDown deriving (Eq, Ord, Show, Enum)
+
+{-|
+ Convenient wrapper for testing and basic apps.
+ - Creates a canvas element as per 'createCanvasNode' and appends it to the document
+ - Creates a renderer to the canvas
+ - Runs the init function
+ - Registers mouse event handlers on the canvas
+ - Starts an infinite requestAnimationFrame() loop calling the given renderer callback, then returns.
+
+ It does NOT call 'performMajorGC' in the render callback, so the caller may want to do this.
+-}
+runRenderingLoop
+  :: (CanvasElement -> Context -> Renderer -> IO t)             -- ^ Init callback
+   -> (t -> Renderer -> MouseEventType -> MouseEvent -> IO ())  -- ^ Update callback
+   -> (t -> Renderer -> IO ())                                  -- ^ Render callback
+   -> IO ()
+runRenderingLoop initK handlerK updateK = do
+  createCanvasNode
+  e <- getCanvas
+  ct <- get2DContext e
+  r <- createRenderer ct
+  showRenderer r
+
+  initRes <- initK e ct r
+
+  updateCB <- CB.asyncCallback (updateK initRes r)
+  setUpdateCB updateCB
+
+  setMousemoveCB e =<< (CB.asyncCallback1 $ (. MouseEvent) $ handlerK initRes r MouseMove)
+  setMouseupCB e =<<   (CB.asyncCallback1 $ (. MouseEvent) $ handlerK initRes r MouseUp)
+  setMousedownCB e =<< (CB.asyncCallback1 $ (. MouseEvent) $ handlerK initRes r MouseDown)
+  startLoop
+
 
 
 

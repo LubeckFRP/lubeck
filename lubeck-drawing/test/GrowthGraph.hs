@@ -149,5 +149,13 @@ catV = mconcat -- TODO proper
 catH = mconcat -- TODO proper
 
 
-main = print "GG"
+
+
+main = do
+  runRenderingLoop init handleInput render
+  print "GG"
+  where
+    init = _
+    handleInput = _
+    render = _
 #endif
