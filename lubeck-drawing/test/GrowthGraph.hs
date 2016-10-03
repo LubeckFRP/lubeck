@@ -92,7 +92,7 @@ growthGraph = translate (V2 50 (-50))
   $ mconcat
   [ mempty
   , title
-  , translate (V2 200 0) moreFollowersThisPeriod
+  , translate (V2 400 0) moreFollowersThisPeriod
   --
   , translateY (-50) $ mconcat
     [ mempty
@@ -104,18 +104,23 @@ growthGraph = translate (V2 50 (-50))
     , growthPlotUsingDV -- TODO connect to overlays
     -- , maybeOverlay -- The whole thing, with count, likes/comm, image, larger point, alternative pointer
     ]
-  , translateY (-500) $ mconcat
+  , translateY (-350) $ mconcat
     [ mempty
     , bottomSelector
     ]
   ]
 
+
+stdFont        = mempty { fontFamily = First (Just "Verdana, sans-serif"), fontSize = First (Just "16px"), fontWeight = FontWeightNormal }
+stdFontLarger  = stdFont { fontSize = First (Just "18px")}
+stdFontSmaller = stdFont { fontSize = First (Just "15px")}
+
 title :: Draft Fast
 title = titleText <> translate (V2 120 0) explanation
   where
-    titleText = fillColor Colors.black $ text "Followers over time"
+    titleText = fillColor Colors.black $ textWithOptions stdFontLarger "Followers over time"
     explanation = mconcat
-      [ fillColor Colors.white $ text "?"
+      [ fillColor Colors.white $ textWithOptions stdFont "?"
       , fillColor Colors.lightgrey $ scale 10 circle
       ]
     -- TODO pop-up
@@ -124,25 +129,25 @@ title = titleText <> translate (V2 120 0) explanation
 moreFollowersThisPeriod :: Draft Fast
 moreFollowersThisPeriod = mconcat [a, translateX 50 b, translateX 150 c]
   where
-    a = fillColor Colors.lightgreen $ text "2.3M"
-    b = fillColor Colors.white $ text "+30.97%"<> (fillColor Colors.lightgreen $ scaleXY (V2 40 30) square)
-    c = fillColor Colors.black $ text "MORE FOLLOWERS THIS PERIOD"
+    a = fillColor Colors.lightgreen $ textWithOptions stdFont "2.3M"
+    b = fillColor Colors.white $ textWithOptions stdFontSmaller "+30.97%"<> (fillColor Colors.lightgreen $ scaleXY (V2 40 30) square)
+    c = fillColor Colors.black $ textWithOptions (stdFont { fontWeight = FontWeightLighter }) "MORE FOLLOWERS THIS PERIOD"
 
 followersLikeCommentFilter :: Draft Fast
-followersLikeCommentFilter = catH [b "Followers", translateX 90 $ b "Likes", translateX (90*2) $ b "Comments"]
+followersLikeCommentFilter = catH [b "Followers", translateX (110+10) $ b "Likes", translateX ((110+10)*2) $ b "Comments"]
   where
     -- TODO auto-match box size with text
     -- TODO hover/interact
     b t = mconcat
-      [ fillColor Colors.white $ text t
-      , fillColor Colors.lightgrey (scaleXY (V2 110 40) square)
+      [ fillColor Colors.white $ textWithOptions stdFont t
+      , fillColor Colors.lightgrey (scaleXY (V2 110 40) squareL)
       ]
 
 periodShortCut :: Draft Fast
 periodShortCut = catH [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
   where
     -- TODO extra sapce
-    b t = fillColor Colors.lightgrey (text t)
+    b t = fillColor Colors.lightgrey (textWithOptions stdFont t)
 
 growthPlotUsingDV :: Draft Fast
 growthPlotUsingDV = fillColorA (Colors.black `withOpacity` 0.1) $ scaleXY (V2 800 200) squareTL
@@ -156,7 +161,7 @@ countAtTime = l <> t
     -- TODO auto-match box size with text
     -- TODO move to current mouseX (relative plot)
     l = (strokeColor Colors.white $ strokeWidth 2 $ scaleY 100 horizontalLine)
-    t = fillColor Colors.white (text "1,000,000") <> fillColor Colors.lightblue (scaleXY (V2 110 40) squareTL)
+    t = fillColor Colors.white (textWithOptions stdFont "1,000,000") <> fillColor Colors.lightblue (scaleXY (V2 110 40) squareTL)
 
 maybeOverlay :: Draft Fast
 maybeOverlay = catV [image, spaceV 20, bottom]
@@ -164,15 +169,16 @@ maybeOverlay = catV [image, spaceV 20, bottom]
     -- TODO correct image
     image = (fillColor Colors.red $ scaleXY (V2 90 90) square)
     -- TODO move to correct position
-    bottom = catH [commentD, text "1,023", likesD, text "299,222"] <> (fillColor Colors.lightgrey $ scaleXY (V2 110 30) squareTL)
+    bottom = catH [commentD, textWithOptions stdFontSmaller "1,023", likesD, textWithOptions stdFontSmaller "299,222"] <> (fillColor Colors.lightgrey $ scaleXY (V2 110 30) squareTL)
     -- TODO proper comment/like image
     commentD = fillColor Colors.blue $ scale 10 circle
     likesD = fillColor Colors.red $ scale 10 circle
 
 bottomSelector :: Draft Fast
-bottomSelector = fillColor Colors.lightblue $ scaleXY (V2 800 10) squareTL
+bottomSelector = fillColor Colors.lightblue $ scaleXY (V2 800 30) squareTL
 
 
+squareL = translate (V2 0.5 0) $ square
 squareTL = translate (V2 0.5 (-0.5)) $ square
 spaceH _ = mempty -- TODO
 spaceV _ = mempty -- TODO

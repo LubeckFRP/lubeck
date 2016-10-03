@@ -327,16 +327,13 @@ import GHCJS.Types(JSVal)
 transparent :: Backend a => Draft a
 transparent = mempty
 {-# SPECIALIZE transparent :: Draft SVG #-}
-{-# SPECIALIZE transparent :: Draft Fast #-}
 
 {-| A centered circle with radius one. -}
 circle :: Backend a => Draft a
 circle  = circleB
 {-# INLINABLE circle #-}
 {-# SPECIALIZE circle :: Draft SVG #-}
-{-# SPECIALIZE circle :: Draft Fast #-}
 {-# SPECIALIZE circleB :: Draft SVG #-}
-{-# SPECIALIZE circleB :: Draft Fast #-}
 
 {-| A centered circle sector with radius one and the given radii.
 
@@ -349,19 +346,16 @@ circleSector :: Backend a => Angle Double -> Angle Double -> Draft a
 circleSector = circleSectorB
 {-# INLINABLE circleSector #-}
 {-# SPECIALIZE circleSector :: Angle Double -> Angle Double -> Draft SVG #-}
-{-# SPECIALIZE circleSector :: Angle Double -> Angle Double -> Draft Fast #-}
 
 {-| A centered square with a width and height of one. -}
 square :: Backend a => Draft a
 square = squareB
 {-# INLINABLE square #-}
-{-# SPECIALIZE square :: Draft Fast #-}
 
 {-| A centered square the given x, y, rx, ry dimensions. -}
 rectangleRounded :: Backend a => Double -> Double -> Double -> Double -> Draft a
 rectangleRounded = rectRoundedB
 {-# INLINABLE rectangleRounded #-}
-{-# SPECIALIZE rectangleRounded :: Double -> Double -> Double -> Double -> Draft Fast #-}
 -- NOTE This was called rectangle at some point, confusingly enough.
 
 {-| An equilateral a. -}
@@ -977,6 +971,7 @@ instance Envelopes SVG where
   envelope_B (Draft d) = svgEnvelope d -- TODO move
 
 
+#ifdef __GHCJS__
 instance Backend Fast where
   circleB = Draft $ FastB.circle 0 0 1
   squareB = Draft $ FastB.rect (-0.5) (-0.5) 1 1
@@ -1061,3 +1056,12 @@ instance Lines Fast where
 
 instance Regions Fast where
   tag_B n (Draft x) = Draft $ FastB.tag n x
+
+{-# SPECIALIZE rectangleRounded :: Double -> Double -> Double -> Double -> Draft Fast #-}
+{-# SPECIALIZE square :: Draft Fast #-}
+{-# SPECIALIZE transparent :: Draft Fast #-}
+{-# SPECIALIZE circle :: Draft Fast #-}
+{-# SPECIALIZE circleB :: Draft Fast #-}
+{-# SPECIALIZE circleSector :: Angle Double -> Angle Double -> Draft Fast #-}
+
+#endif

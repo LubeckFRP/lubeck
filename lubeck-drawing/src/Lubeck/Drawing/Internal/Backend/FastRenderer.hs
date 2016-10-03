@@ -527,19 +527,5 @@ runRenderingLoop initK handlerK updateK = do
 #else
 module Lubeck.Drawing.Internal.Backend.FastRenderer where
 import Prelude
-newtype FastDrawing = FastDrawing ()
-  deriving (Monoid)
-circle = undefined
-rect = undefined
-text = undefined
-transf = undefined
-fillColor = undefined
-strokeColor = undefined
-lineWidth = undefined
-path = undefined
-linePathV2 = undefined
-tag = tag
-textAlign = undefined
-textBaseline = undefined
-textFont = undefined
+newtype FastDrawing = FastDrawing () deriving (Monoid)
 #endif
