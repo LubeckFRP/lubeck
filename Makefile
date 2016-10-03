@@ -17,11 +17,11 @@ setup:
        stack setup --stack-yaml=$(GHC)
        stack setup --stack-yaml=$(GHCJS)
 clean: ghc-clean ghcjs-clean
-ghc: lubeck-drawing/jsbits/fast-renderer.out.js
+ghc:
 	stack --stack-yaml=$(GHC)   build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
-ghcjs:
+ghcjs: lubeck-drawing/jsbits/fast-renderer.out.js
 	stack --stack-yaml=$(GHCJS) build $(SPEEDUP_BUILD_FLAGS)
-ghsjs-drawing-test:
+ghsjs-drawing-test: lubeck-drawing/jsbits/fast-renderer.out.js
 	stack --stack-yaml=$(GHCJS) build lubeck-drawing:exe:lubeck-drawing-test
 ghc-clean:
 	stack --stack-yaml=$(GHC)   clean
