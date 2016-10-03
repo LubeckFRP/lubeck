@@ -24,6 +24,7 @@ import Lubeck.Drawing.Internal.Backend.FastRenderer (adaptCoordinates, prerender
   , createRenderer
   , showRenderer
   , renderFastDrawing
+  , runRenderingLoop
 
   , getPointTag
   , TagResult(..)
