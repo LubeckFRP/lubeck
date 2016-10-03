@@ -17,6 +17,7 @@ setup:
        stack setup --stack-yaml=$(GHC)
        stack setup --stack-yaml=$(GHCJS)
 clean: ghc-clean ghcjs-clean
+	rm lubeck-drawing/jsbits/fast-renderer.out.js
 ghc:
 	stack --stack-yaml=$(GHC)   build $(PROF_FLAGS) $(SPEEDUP_BUILD_FLAGS)
 ghcjs: lubeck-drawing/jsbits/fast-renderer.out.js
