@@ -1008,6 +1008,53 @@ instance Colors Fast where
   -- TODO
   fillGradient_B _ x = x
 
+instance Text Fast where
+  textOptions_B opts x = id
+      -- style weight size family
+      $ mapD (FastB.textFont $ toJSString $ st (fontStyle opts) <> " " <> fw (fontWeight opts) <> " " <> fs (fontSize opts) <> " " <> ff (fontFamily opts))
+      $ tb (alignmentBaseline opts)
+      $ ta (textAnchor opts) x
+    where
+      mapD f (Draft x) = Draft (f x)
+
+      fs (First (Just v)) = v
+      fs (First Nothing)  = ""
+
+      ff (First (Just v)) = v
+      ff (First Nothing)  = ""
+
+      st FontStyleNormal = "normal"
+      st FontStyleItalic = "italic"
+      st FontStyleOblique = "oblique"
+      st FontStyleInherit = "inherit"
+
+      fw FontWeightNormal  = "normal"
+      fw (FontWeightN n)   = toStr n
+      fw FontWeightBold    = "bold"
+      fw FontWeightBolder  = "bolder"
+      fw FontWeightLighter = "lighter"
+      fw FontWeightInherit = "inherit"
+
+      ta TextAnchorStart    = mapD $ FastB.textAlign FastB.TextAlignStart
+      ta TextAnchorEnd      = mapD $ FastB.textAlign FastB.TextAlignEnd
+      ta TextAnchorMiddle   = mapD $ FastB.textAlign FastB.TextAlignCenter
+      ta TextAnchorInherit  = id
+
+      -- TODO top/bottom?
+      tb AlignmentBaselineAuto = id
+      tb AlignmentBaselineMiddle = mapD $ FastB.textBaseline FastB.TextBaselineMiddle
+      tb AlignmentBaselineHanging = mapD $ FastB.textBaseline FastB.TextBaselineHanging
+      tb AlignmentBaselineCentral = id
+      tb AlignmentBaselineAlphabetic = mapD $ FastB.textBaseline FastB.TextBaselineAlphabetic
+      tb AlignmentBaselineBaseline = id
+      tb AlignmentBaselineAfterEdge = id
+      tb AlignmentBaselineBeforeEdge = id
+      tb AlignmentBaselineTextAfterEdge = id
+      tb AlignmentBaselineTextBeforeEdge = id
+      tb AlignmentBaselineMathematical = id
+      tb AlignmentBaselineIdeographic = mapD $ FastB.textBaseline FastB.TextBaselineIdeographic
+
+
 instance Lines Fast where
   strokeWidth_B x (Draft d) = Draft $ FastB.lineWidth x d
   dash_B _ x = x -- TODO
