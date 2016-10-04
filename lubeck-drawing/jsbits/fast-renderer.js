@@ -218,6 +218,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
   var _releaseExternal = foreign.releaseExternal
 
   // var _rect = foreign.rect;
+  var _setTransform = foreign.setTransform
   var _save = foreign.save;
   var _restore = foreign.restore;
   var _transform = foreign.transform;
@@ -524,9 +525,10 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
       _fill();
     }
     if (hasStroke) {
-      _stroke();
+      strokeWithoutPointWiseTransform()
     }
   }
+
   function drawRect(x,y,w,h,hasFill,hasStroke,hasClip) {
     x=+x
     y=+y
@@ -535,14 +537,20 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     hasFill = hasFill|0;
     hasStroke = hasStroke|0;
     hasClip = hasClip|0
-    // _rect(x,y,w,h);
-    // _fill();
 
     if (hasFill) {
       _fillRect(x,y,w,h);
     }
     if (hasStroke) {
-      _strokeRect(x,y,w,h);
+      // Generates a path equivalent to _rect(x,y,w,h)
+      // This is affected by the transformation, but the below fill is not (see longer comment )
+      _beginPath()
+      _moveTo(x,   y)
+      _lineTo(x+w, y)
+      _lineTo(x+w, y+h)
+      _lineTo(x,   y+h)
+      _closePath()
+      strokeWithoutPointWiseTransform();
     }
   }
 
@@ -556,6 +564,23 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     if (hasFill) {
       _fillText(x,y,txt|0)
     }
+  }
+
+  function strokeWithoutPointWiseTransform() {
+    // Assues that the current path has been set by previous calls and
+    // affected by any transformation higher up in the tree. To avoid a pointwise
+    // scaling of the stroke (which we generally don't want), temporarily reset
+    // the transformation here. Note that this does NOT affect the shape ByteString
+    // stroke (as this has already been transmitted via path mutation calls.)
+    //
+    // The effect of resetting the matrix is the same as SVGs non-scaling-stroke
+    //
+    // For a more full explanation see here
+    // http://www.bit-101.com/blog/?p=3690
+    _save()
+    _setTransform(1,0,0,1,0,0)
+    _stroke()
+    _restore()
   }
 
   // Writes a string such as '123' or '255' to the given pointer based
@@ -1205,7 +1230,7 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
           _closePath()
         }
         if (hasStroke) {
-          _stroke()
+          strokeWithoutPointWiseTransform()
         }
         if (hasFill) {
           _fill()
@@ -1887,6 +1912,8 @@ function createRenderer(c2) {
         function (x,y,txtRef) {
           c.fillText(fetchExternal(txtRef), x, y)
         }
+      , setTransform:
+        function (a, b, c_, d, e, f) { c.setTransform(a,b,c_,d,e,f) }
       , save:
         function (x) { c.save() }
       , restore:

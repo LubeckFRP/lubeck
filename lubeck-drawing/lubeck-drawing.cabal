@@ -89,7 +89,6 @@ executable lubeck-drawing-test
   default-language:    Haskell2010
 
 executable lubeck-drawing-growth-graph
-  js-sources:          jsbits/fast-renderer.out.js
   hs-source-dirs:      test
   main-is:             GrowthGraph.hs
   ghc-options:         -Wall

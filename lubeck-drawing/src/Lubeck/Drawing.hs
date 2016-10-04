@@ -76,6 +76,7 @@ Main differences from Diagrams:
 module Lubeck.Drawing
   (
   -- * Creating drawings
+  -- $fakeInjectiveTFs
   -- ** Geometry
     Point(..)
   , V1(..)
@@ -205,7 +206,7 @@ module Lubeck.Drawing
   , addEmbeddedSVG
   , addEmbeddedSVGFromStr
 
-  -- ** Envelopes and alignment
+  -- ** HasEnvelopes and alignment
   , Envelope
   , envelope
   -- transformEnvelope
@@ -233,11 +234,11 @@ module Lubeck.Drawing
   , Fast
   -- ** Backend support
   , Backend
-  , Colour
-  , Lines
-  , Text
-  , Regions
-  , Envelopes
+  , HasColors
+  , HasLines
+  , HasText
+  , HasRegions
+  , HasEnvelopes
 
   -- ** Basic drawings
   , transparent
@@ -414,14 +415,14 @@ Line dash style.
 
 https://developer.mozilla.org/en/docs/Web/SVG/Attribute/stroke-dasharray
 -}
-dash :: Lines a => [Double] -> Draft a -> Draft a
+dash :: HasLines a => [Double] -> Draft a -> Draft a
 dash = dash_B
 
 {-| Draw text. See also 'textWithOptions'. -}
 text :: Backend a => Str -> Draft a
 text = textB
 
-textStart, textMiddle, textEnd :: Text a => Str -> Draft a
+textStart, textMiddle, textEnd :: HasText a => Str -> Draft a
 
 -- | Text horizontally aligned to the start of the text.
 --
@@ -441,7 +442,7 @@ textMiddle = textWithOptions $ mempty
 textEnd = textWithOptions $ mempty
   { textAnchor = TextAnchorEnd }
 
-textLeftMiddle, textMiddleMiddle, textRightMiddle :: Text a => Str -> Draft a
+textLeftMiddle, textMiddleMiddle, textRightMiddle :: HasText a => Str -> Draft a
 
 -- | Text horizontally aligned to the start of the text, and vertically aligned to the middle baseline.
 --
@@ -472,7 +473,7 @@ textRightMiddle = textWithOptions $ mempty
 --    , alignmentBaseline = AlignmentBaselineMiddle }
 -- @
 --
-textWithOptions :: Text a => TextOptions -> Str -> Draft a
+textWithOptions :: HasText a => TextOptions -> Str -> Draft a
 textWithOptions opts t = textOptions_B opts (textB t)
 {-# INLINABLE textWithOptions #-}
 
@@ -571,25 +572,25 @@ Useful to see the boundary of the canvas, as in:
   (fillColor "red" square) `over` smokeBackground
 @
 -}
-smokeBackground :: (Backend a, Colors a) => Draft a
+smokeBackground :: (Backend a, HasColors a) => Draft a
 smokeBackground = fillColor Colors.whitesmoke $ scale 5000 $ square
 
 {-| Draw the X and Y axis inside the unit square (their intersection is the origin). -}
-xyAxis :: (Backend a, Colors a, Lines a) => Draft a
+xyAxis :: (Backend a, HasColors a, HasLines a) => Draft a
 xyAxis = scale 5000 $ strokeColor Colors.darkgreen $ strokeWidth 0.5 $
   mconcat [horizontalLine, verticalLine]
 
 {-| Draw the X and Y axis inside the unit square, unit circle and unit square. -}
-xyCoords :: (Backend a, Colors a, Lines a) => Draft a
+xyCoords :: (Backend a, HasColors a, HasLines a) => Draft a
 xyCoords = fillColorA (Colors.black `withOpacity` 0) $ strokeColor Colors.darkgreen $
   strokeWidth 0.5 $ mconcat [horizontalLine, verticalLine, circle, square]
 
 -- | Draw the unit vector.
-showUnitX :: (Backend a, Colors a, Lines a) => Draft a
+showUnitX :: (Backend a, HasColors a, HasLines a) => Draft a
 showUnitX = strokeColor Colors.red $ strokeWidth 3 $ translateX 0.5 horizontalLine
 
 -- | Draw an image representing a direction.
-showDirection :: (Backend a, Colors a, Lines a) => Direction V2 Double -> Draft a
+showDirection :: (Backend a, HasColors a, HasLines a) => Direction V2 Double -> Draft a
 showDirection dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillColorA tp $ segments [fromDirection dir]
   where
     tp = Colors.black `withOpacity` 0
@@ -597,19 +598,19 @@ showDirection dir = scale 100 $ strokeColor Colors.red $ strokeWidth 3 $ fillCol
 -- | Draw an image representing two boundaries of an image along the given line.
 --
 -- See also 'boundaries'.
-showBoundaries :: (Backend a, Colors a, Lines a, Envelopes a) => V2 Double -> Draft a -> Draft a
+showBoundaries :: (Backend a, HasColors a, HasLines a, HasEnvelopes a) => V2 Double -> Draft a -> Draft a
 showBoundaries v dr = case boundaries v (envelope dr) of
   Nothing -> dr
   Just (lo, hi) -> strokeColor Colors.blue (showPoint lo) <> scale 2 (showPoint hi) <> dr
 
 -- | Draw an image representing a point.
-showPoint :: (Backend a, Colors a, Lines a) => Point V2 Double -> Draft a
+showPoint :: (Backend a, HasColors a, HasLines a) => Point V2 Double -> Draft a
 showPoint p = translate (p .-. origin) base
   where
     base = strokeColor Colors.red $ fillColorA (Colors.black `withOpacity` 0) $strokeWidth 2 $ scale 1 $ circle
 
 -- | Draw an image representing an envelope.
-showEnvelope :: (Backend a, Colors a, Lines a, Envelopes a) => V2 Double -> Draft a -> Draft a
+showEnvelope :: (Backend a, HasColors a, HasLines a, HasEnvelopes a) => V2 Double -> Draft a -> Draft a
 showEnvelope v drawing = case envelopeVMay v drawing of
   Nothing -> drawing
   Just v2 -> (rotate (angleBetween v2 unitX) $ scale (norm v2) $ unitX_T) <> drawing
@@ -624,27 +625,27 @@ style :: Style -> Draft SVG -> Draft SVG
 style s (Draft dr) = Draft $ Style s dr
 
 {-| -}
-fillColor :: Colors a => Colour Double -> Draft a -> Draft a
+fillColor :: HasColors a => Colour Double -> Draft a -> Draft a
 fillColor = fillColor_B
 
 {-| -}
-strokeColor :: Colors a => Colour Double -> Draft a -> Draft a
+strokeColor :: HasColors a => Colour Double -> Draft a -> Draft a
 strokeColor = strokeColor_B
 
 {-| -}
-fillColorA :: Colors a => AlphaColour Double -> Draft a -> Draft a
+fillColorA :: HasColors a => AlphaColour Double -> Draft a -> Draft a
 fillColorA = fillColorA_B
 
 -- {-| -}
-strokeColorA :: Colors a => AlphaColour Double -> Draft a -> Draft a
+strokeColorA :: HasColors a => AlphaColour Double -> Draft a -> Draft a
 strokeColorA = strokeColorA_B
 
 {-| Set the stroke width. By default stroke is /not/ affected by scaling or other transformations.
 -}
-strokeWidth :: Lines a => Double -> Draft a -> Draft a
+strokeWidth :: HasLines a => Double -> Draft a -> Draft a
 strokeWidth = strokeWidth_B
 
-fillGradient :: Colors a => Gradient -> Draft a -> Draft a
+fillGradient :: HasColors a => Gradient -> Draft a -> Draft a
 fillGradient = fillGradient_B
 
 -- SLOW
@@ -658,7 +659,7 @@ showColor = packStr . Data.Colour.SRGB.sRGB24show
 {-| Add a tag to this drawing.
     Used for low-level event detection.
 -}
-tag :: Regions b => Int -> Draft b -> Draft b
+tag :: HasRegions b => Int -> Draft b -> Draft b
 tag = tag_B
 
 {-| Add an event handler to the given drawing.
@@ -715,7 +716,7 @@ transformEnvelope t env = moveOrigin (negated (transl t)) $ onEnvelope g env
           inv    = recip
 {-# INLINABLE transformEnvelope #-}
 
-juxtapose :: (Envelopes a) => V2 Double -> Draft a -> Draft a -> Draft a
+juxtapose :: (HasEnvelopes a) => V2 Double -> Draft a -> Draft a -> Draft a
 juxtapose v a1 a2 =   case (mv1, mv2) of
     (Just v1, Just v2) -> moveOriginBy (v1 ^+^ v2) a2
     _                  -> a2
@@ -723,7 +724,7 @@ juxtapose v a1 a2 =   case (mv1, mv2) of
         mv2 = envelopeVMay (negated v) a2
         moveOriginBy v = translate (negated v)
 
-envelopeVMay :: Envelopes a => V2 Double -> Draft a -> Maybe (V2 Double)
+envelopeVMay :: HasEnvelopes a => V2 Double -> Draft a -> Maybe (V2 Double)
 envelopeVMay v = envelopeVMay' v . envelope
 
 envelopeVMay' :: (Functor v, Num n) => v n -> Envelope v n -> Maybe (v n)
@@ -760,12 +761,12 @@ alignE R   = alignE' unitX 1
 alignE T   = alignE' unitY 1
 alignE B   = alignE' unitY 0
 
-align' :: Envelopes a => V2 Double -> Double -> Draft a -> Draft a
+align' :: HasEnvelopes a => V2 Double -> Double -> Draft a -> Draft a
 align' v n dr = case alignE' v n (envelope dr) of
   Nothing -> mempty
   Just p  -> moveOriginTo p dr
 
-align :: Envelopes a => OctagonSide -> Draft a -> Draft a
+align :: HasEnvelopes a => OctagonSide -> Draft a -> Draft a
 align t dr = case alignE t (envelope dr) of
   Nothing -> mempty
   Just p  -> moveOriginTo p dr
@@ -774,7 +775,7 @@ align t dr = case alignE t (envelope dr) of
 Fit a drawing inside a rectangle. Accomplished by aligning the drawing
 at the bottom left corner, scaling by (v1.-.v2) and translating by (v1 .-. origin).
 -}
-fitInsideRect :: Envelopes a => Rect Double -> Draft a -> Draft a
+fitInsideRect :: HasEnvelopes a => Rect Double -> Draft a -> Draft a
 fitInsideRect (Rect_ (p1@(P (v1@(V2 x1 y1)))) (p2@(P (v2@(V2 x2 y2))))) d = id
     $ translate (p1 .-. origin)
     $ scaleXY   (p2 .-. p1)
@@ -790,7 +791,7 @@ moveOriginTo :: Backend a => P2 Double -> Draft a -> Draft a
 moveOriginTo p = moveOriginBy (origin .-. p)
 -- FIXME should be the other way around!
 
-envelope :: Envelopes a => Draft a -> Envelope V2 Double
+envelope :: HasEnvelopes a => Draft a -> Envelope V2 Double
 envelope = envelope_B
 
 svgEnvelope :: SVGDrawing -> Envelope V2 Double
@@ -839,7 +840,7 @@ pointsEnvelope ps = Envelope $ Just $ \v ->
     rotatePoint a  = transformPoint (rotation a)
 
 
-(===), (|||), (\\\), (///) :: Envelopes a => Draft a -> Draft a -> Draft a
+(===), (|||), (\\\), (///) :: HasEnvelopes a => Draft a -> Draft a -> Draft a
 a ||| b = a <> juxtapose unitX a b
 a === b = a <> juxtapose (negated unitY) a b
 a \\\ b = a <> juxtapose posDiagonal a b
@@ -884,7 +885,8 @@ textXmlLightElementToEmbed = unE
 
 
 
-{-
+{-| $fakeInjectiveTFs
+
 The 'SVG :: *' and 'Fast :: *' tyes represent backends
 'Draft :: * -> *' is a type parameterized on backend type.
 
@@ -903,7 +905,9 @@ newtype Draft a = Draft { getDraft :: a }
 type Drawing = Draft SVG
 
 
-class Monoid (Draft b) => Backend b where
+-- | Drawing backends.
+-- The double monoid constraint is because we fake injective TFs, see $fakeInjectiveTFs.
+class (Monoid b, Monoid (Draft b)) => Backend b where
   circleB         :: Draft b
   squareB         :: Draft b
   circleSectorB   :: (Angle Double) -> (Angle Double) -> Draft b
@@ -913,25 +917,30 @@ class Monoid (Draft b) => Backend b where
   textB           :: Str -> Draft b
   transfB         :: Transformation Double -> Draft b -> Draft b
 
-class Backend b => Text b where
+-- | Drawing backends with text style support.
+class Backend b => HasText b where
   textOptions_B :: TextOptions -> Draft b -> Draft b
 
-class Backend b => Colors b where
+-- | Drawing backends with color support.
+class Backend b => HasColors b where
   fillColor_B :: Colour Double -> Draft b -> Draft b
   strokeColor_B :: Colour Double -> Draft b -> Draft b
   fillColorA_B :: AlphaColour Double -> Draft b -> Draft b
   strokeColorA_B :: AlphaColour Double -> Draft b -> Draft b
   fillGradient_B :: Gradient -> Draft b -> Draft b
 
-class Backend b => Lines b where
+-- | Drawing backends with line style support.
+class Backend b => HasLines b where
   strokeWidth_B :: Double -> Draft b -> Draft b
   dash_B :: [Double] -> Draft b -> Draft b
   -- TODO cap/join
 
-class Backend b => Regions b where
+-- | Drawing backends with region support (used for event detection etc).
+class Backend b => HasRegions b where
   tag_B :: Int -> Draft b -> Draft b
 
-class Backend b => Envelopes b where
+-- | Drawing backends with envelope support (used for positioning/alignment)
+class Backend b => HasEnvelopes b where
   envelope_B :: Draft b -> Envelope V2 Double
 
 
@@ -945,10 +954,10 @@ instance Backend SVG where
   textB t = Draft $ SVG.Text t
   transfB t (Draft x) = Draft $ SVG.Transf t x
 
-instance Text SVG where
+instance HasText SVG where
   textOptions_B t (Draft x) = Draft $ Style (textOptionsToStyle t) x
 
-instance Colors SVG where
+instance HasColors SVG where
   fillColor_B x (Draft d) = Draft $ SVG.Style (styleNamed "fill" $ showColor x) d
   strokeColor_B x (Draft d) = Draft $ SVG.Style (styleNamed "stroke" $ showColor x) d
   fillColorA_B x (Draft d) = Draft $ Style (styleNamed "fill" $ showColor c) . alpha a $ d
@@ -963,11 +972,11 @@ instance Colors SVG where
       a = Data.Colour.alphaChannel x
   fillGradient_B g (Draft d) = Draft $ SpecialStyle (FillGradient g) d
 
-instance Lines SVG where
+instance HasLines SVG where
   strokeWidth_B x (Draft d) = Draft $ SVG.Style (styleNamed "stroke-width" (toStr x <> "px")) d
   dash_B x (Draft d) = Draft $ SVG.Style (dashing x) d
 
-instance Envelopes SVG where
+instance HasEnvelopes SVG where
   envelope_B (Draft d) = svgEnvelope d -- TODO move
 
 
@@ -983,7 +992,7 @@ instance Backend Fast where
   textB s = Draft $ FastB.text 0 0 s
   transfB (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) (Draft dr) = Draft $ FastB.transf a b c d e f dr
 
-instance Colors Fast where
+instance HasColors Fast where
   fillColor_B c (Draft d) = Draft $ FastB.fillColor r g b 1 d
     where
       (Data.Colour.SRGB.RGB !r !g !b) = Data.Colour.SRGB.toSRGB c
@@ -1003,7 +1012,7 @@ instance Colors Fast where
   -- TODO
   fillGradient_B _ x = x
 
-instance Text Fast where
+instance HasText Fast where
   textOptions_B opts x = id
       -- style weight size family
       $ mapD (FastB.textFont $ toJSString $ st (fontStyle opts) <> " " <> fw (fontWeight opts) <> " " <> fs (fontSize opts) <> " " <> ff (fontFamily opts))
@@ -1050,11 +1059,11 @@ instance Text Fast where
       tb AlignmentBaselineIdeographic = mapD $ FastB.textBaseline FastB.TextBaselineIdeographic
 
 
-instance Lines Fast where
+instance HasLines Fast where
   strokeWidth_B x (Draft d) = Draft $ FastB.lineWidth x d
   dash_B _ x = x -- TODO
 
-instance Regions Fast where
+instance HasRegions Fast where
   tag_B n (Draft x) = Draft $ FastB.tag n x
 
 {-# SPECIALIZE rectangleRounded :: Double -> Double -> Double -> Double -> Draft Fast #-}

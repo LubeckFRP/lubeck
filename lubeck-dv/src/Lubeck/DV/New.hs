@@ -12,6 +12,7 @@
   , DeriveFunctor
   , StandaloneDeriving
   , ScopedTypeVariables
+  , TypeFamilies
   #-}
 
 {-# OPTIONS_GHC
@@ -171,7 +172,7 @@ import Linear.V2 (V2(..))
 import Linear.V3 (V3(..))
 
 import Lubeck.Str (Str, toStr, packStr, unpackStr)
-import Lubeck.Drawing (Draft, SVG, RenderingOptions(..), Rect(..), LineSeg(..))
+import Lubeck.Drawing (Draft, SVG, RenderingOptions(..), Rect(..), LineSeg(..), HasColors, HasLines, HasText, HasRegions, HasEnvelopes)
 import Lubeck.Drawing.Transformation
 import Lubeck.DV.Styling (Styled, Styling, zoom, zoomType, ZoomType(AutoScaleY))
 import Lubeck.DV.Internal.Normalized
@@ -262,7 +263,7 @@ instance Show Key where
 
 {-|
 Non-numerical values that can be embedded in a visualization.
-Just strings (for labels) and drawings (for embedded images) for now.
+Just strings (for labels) and SVG drawings (for embedded images) for now.
 -}
 data Special
   = SpecialStr Str
@@ -913,19 +914,27 @@ data Cell = Cell
 {-|
 Provides a way to draw mapped and scaled data.
 
+Parameter type is a drawing backend (same as passed to 'Draft'), so i.e. a @Geometry SVG@ produces SVG images (@Draft SVG@).
+
 You can think of scaled and mapped data matrix of numbers and special values
 (images, labels etc), where each rows correspond to a tuple in the original
 dataset and each column to an aesthetic attribute such as size, position, color etc.
 -}
-data Geometry = Geometry
-  { geomMapping        :: Table Key Cell -> Styled (Draft SVG)
+data Geometry b = Geometry
+  { geomMapping        :: Table Key Cell -> Styled (Draft b)
   , geomBaseName       :: [String]
   }
 
-deriving instance Generic Geometry
-instance Monoid Geometry where
-   mempty  = memptydefault
-   mappend = mappenddefault
+-- deriving instance Generic (Geometry b)
+--
+-- instance Monoid (Geometry b) where
+--    mempty  = memptydefault
+--    mappend = mappenddefault
+
+-- TODO figure out how to derive this (above doesn't work, why?)
+instance Monoid b => Monoid (Geometry b) where
+  mempty = Geometry mempty mempty
+  mappend (Geometry a1 b1) (Geometry a2 b2) = Geometry (a1 <> a2) (b1 <> b2)
 
 ifT :: Key -> Table Key Cell -> Table Key Cell
 ifT key = filterRows key (\x -> cScaled x >= 0.5)
@@ -976,7 +985,7 @@ size
 shape
 @
 -}
-pointG :: Geometry
+pointG :: (HasLines b, HasColors b) => Geometry b
 pointG = Geometry g []
   where
     -- x and y required, default color to 0 if not present
@@ -1038,7 +1047,7 @@ Aesthetics:
 x, y
 @
 -}
-line :: Geometry
+line :: (HasLines b, HasColors b) => Geometry b
 line = Geometry g []
   where
     -- TODO extract color
@@ -1065,7 +1074,7 @@ Aesthetics:
 x, y
 @
 -}
-fill :: Geometry
+fill :: (HasLines b, HasColors b) => Geometry b
 -- TODO color separation
 fill = Geometry g []
   where
@@ -1092,7 +1101,7 @@ Aesthetics:
 x, yMin, y
 @
 -}
-area :: Geometry
+area :: (HasLines b, HasColors b) => Geometry b
 area = Geometry g []
   where
     -- TODO extract color
@@ -1123,7 +1132,7 @@ Aesthetics:
 x, y, bound
 @
 -}
-area2 :: Geometry
+area2 :: (HasLines b, HasColors b) => Geometry b
 area2 = Geometry g []
   where
     g t = Lubeck.DV.Internal.Render.areaData' (Lubeck.DV.Internal.Render.AreaData color) (ps1 <> reverse ps2)
@@ -1156,7 +1165,7 @@ Aesthetics:
 y
 @
 -}
-bars :: Geometry
+bars :: (HasLines b, HasColors b) => Geometry b
 bars = Geometry g []
   where
     -- TODO color, stack, dodge
@@ -1173,7 +1182,7 @@ Aesthetics:
 y
 @
 -}
-circular :: Geometry
+circular :: (HasLines b, HasColors b) => Geometry b
 circular = Geometry g []
   where
     g t = Lubeck.DV.Internal.Render.circularData $ runColumnFinite $ do -- Column monad
@@ -1188,7 +1197,7 @@ Aesthetics:
 x, y, crossLineX
 @
 -}
-xIntercept :: Geometry
+xIntercept :: (HasLines b, HasColors b) => Geometry b
 xIntercept = Geometry g []
   where
     -- TODO extract color
@@ -1206,7 +1215,7 @@ Aesthetics:
 x, y, crossLineY
 @
 -}
-yIntercept :: Geometry
+yIntercept :: (HasLines b, HasColors b) => Geometry b
 yIntercept = Geometry g []
   where
     -- TODO extract color
@@ -1225,7 +1234,7 @@ Aesthetics:
 x, y, crossLineX
 @
 -}
-xInterceptAlways :: Geometry
+xInterceptAlways :: (HasLines b, HasColors b) => Geometry b
 xInterceptAlways = Geometry g []
   where
     -- TODO extract color
@@ -1243,7 +1252,7 @@ Aesthetics:
 x, y, crossLineY
 @
 -}
-yInterceptAlways:: Geometry
+yInterceptAlways:: (HasLines b, HasColors b) => Geometry b
 yInterceptAlways = Geometry g []
   where
     -- TODO extract color
@@ -1262,7 +1271,7 @@ Aesthetics:
 x, y, image
 @
 -}
-imageG :: Geometry
+imageG :: Geometry SVG
 imageG = Geometry g [""]
   where
     g t = mconcat $ runColumnFinite $ do
@@ -1284,7 +1293,7 @@ Aesthetics:
 x, y, labe
 @
 -}
-labelG :: Geometry
+labelG :: (HasLines b, HasColors b, HasText b) => Geometry b
 labelG = Geometry g [""]
   where
     g t = mconcat $ runColumnFinite $ do
@@ -1336,7 +1345,7 @@ labelG = Geometry g [""]
 -- Table k a ~ [Map k a] ~ Map k [Maybe a]
 
 -- Data/guides/labels is mapped but not scaled
-data SinglePlot = SinglePlot
+data SinglePlot b = SinglePlot
   -- Generated from running aesthetics over data
   { mappedData        :: Table Key Double
   , specialData       :: Table Key Special
@@ -1344,12 +1353,12 @@ data SinglePlot = SinglePlot
   , bounds            :: Map Key (Double, Double) -- aka PlotBounds
 
   -- Provided by user
-  , geometry          :: Geometry
+  , geometry          :: Geometry b
   , axesTitles        :: [Str]
   }
 -- Not a Monoid!
 
-instance Show SinglePlot where
+instance Show (SinglePlot b) where
   show (SinglePlot md sd gs bs _ ax) = show ("SinglePlot", md, sd, gs, bs, ax)
 
 {-
@@ -1369,7 +1378,7 @@ XXX
 OK so far for a single plot, but what about a layered plot?
 -}
 
-plotPlotBounds :: Plot -> PlotBounds
+plotPlotBounds :: Plot b -> PlotBounds
 plotPlotBounds (Plot []) = mempty
 plotPlotBounds (Plot ps) = foldr1 outerPlotBounds (fmap bounds ps)
   where
@@ -1404,7 +1413,7 @@ rectFromLineSegs (LineSeg (P (V1 x1)) (P (V1 x2))) (LineSeg (P (V1 y1)) (P (V1 y
 {-
 Given a plot and a suggested zoom value for X, return a suitable zoom value for Y.
 -}
-autoscaleByX :: Plot -> LineSeg Double -> LineSeg Double
+autoscaleByX :: Plot b -> LineSeg Double -> LineSeg Double
 autoscaleByX pl@(Plot ps) xt =
     -- D.transfToLineSeg $ scaling1 0.5
   case newBounds of
@@ -1418,7 +1427,7 @@ autoscaleByX pl@(Plot ps) xt =
       . scaledData
       ) ps
 
-    scaledData :: SinglePlot -> Table Key Coord
+    scaledData :: SinglePlot b -> Table Key Coord
     scaledData (SinglePlot mappedData specialData _ _ _ _)
         = normalizeData (plotPlotBounds pl) mappedData
 
@@ -1433,7 +1442,7 @@ autoscaleByX pl@(Plot ps) xt =
 
     transformNormalized t (Normalized x) = let (P (V1 x')) = transformPoint1 t (P (V1 x)) in Normalized x'
 
-updateZoomToAutoScale :: Plot -> Styling -> Styling
+updateZoomToAutoScale :: Plot b -> Styling -> Styling
 updateZoomToAutoScale plot style
   | style^.zoomType == AutoScaleY = (zoom %~ g) style
   | otherwise                     = style
@@ -1448,21 +1457,21 @@ updateZoomToAutoScale plot style
 
 
 
-newtype Plot = Plot [SinglePlot]
+newtype Plot b = Plot [SinglePlot b]
   deriving (Monoid)
 
 {-|
 Create a plot from a given data set, aesthetic mappings and geometry.
 
 -}
-createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> SinglePlot
+createSinglePlot :: [Str] -> [a] -> [Aesthetic a] -> Geometry b -> SinglePlot b
 
 {-|
-Convert the given visualization to a '(Draft SVG)'.
+Convert the given visualization to a 'Draft'.
 
 The 'Styled' monad can be used to customize the visual style of the plot without affecting semantics.
 -}
-drawPlot :: Plot -> Styled (Draft SVG)
+drawPlot :: (HasLines b, HasColors b, HasText b) => Plot b -> Styled (Draft b)
 
 
 -- createSinglePlot = undefined
@@ -1482,7 +1491,7 @@ createSinglePlot titles dat aess geometry =
 
 drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (Plot plots))) (True : repeat False) plots
   where
-    drawPlot1 :: PlotBounds -> Bool -> SinglePlot -> Styled (Draft SVG)
+    -- drawPlot1 :: PlotBounds -> Bool -> SinglePlot b -> Styled (Draft b)
     drawPlot1 bounds includeGuides plot = mconcat
       [ dataD
       , if includeGuides
@@ -1490,13 +1499,13 @@ drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (P
           else mempty ]
       where
 
-        axesD :: Styled (Draft SVG)
+        -- axesD :: Styled (Draft b)
         axesD = Lubeck.DV.Internal.Render.labeledAxis (axesNames !! 0) (axesNames !! 1)
           where
             m ? k = maybe mempty id $ Map.lookup k m
             axesNames = axesTitles plot <> repeat mempty
 
-        guidesD :: Styled (Draft SVG)
+        -- guidesD :: Styled (Draft b)
         guidesD = local (updateZoomToAutoScale fullPlot)
           $ drawGuides (scaledGuides (bounds) plot ? "x") (scaledGuides (bounds) plot ? "y")
           where
@@ -1507,7 +1516,7 @@ drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (P
                 ys = fmap (second Just) ys2
 
         -- SLOW
-        dataD :: Styled (Draft SVG)
+        -- dataD :: Styled (Draft b)
         dataD = local (updateZoomToAutoScale fullPlot) $ do
           (cells :: Table Key Cell) <- pure $ wrapTable (mappedData plot) (mappedAndScaledDataWithSpecial bounds plot)
           geomMapping (geometry plot) $ cells
@@ -1516,21 +1525,21 @@ drawPlot fullPlot@(Plot plots) = mconcat $ zipWith (drawPlot1 (plotPlotBounds (P
 
         -- Scale/Normalize
 
-        mappedAndScaledDataWithSpecial :: PlotBounds -> SinglePlot -> Table Key (Coord, Maybe Special)
+        -- mappedAndScaledDataWithSpecial :: PlotBounds -> SinglePlot b -> Table Key (Coord, Maybe Special)
         mappedAndScaledDataWithSpecial b (SinglePlot mappedData specialData _ _ _ _)
             = g b mappedData specialData
           where
             g b x y = conjoin2L (normalizeData b x) y
 
-        scaledGuides :: PlotBounds -> SinglePlot -> Map Key [(Coord, Str)]
+        -- scaledGuides :: PlotBounds -> SinglePlot b -> Map Key [(Coord, Str)]
         scaledGuides b (SinglePlot _ _ guides _ _ _) = normalizeGuides b guides
 
-        normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
+        -- normalizeGuides :: PlotBounds -> Map Key [(Double, a)] -> Map Key [(Coord, a)]
         normalizeGuides b m = normalizeGuides' b m
           where
             normalizeGuides' b = Map.mapWithKey (\aesK dsL -> fmap (first (normalize (Map.lookup aesK b))) dsL)
 
-        normalizeData :: PlotBounds -> Table Key Double -> Table Key Coord
+        -- normalizeData :: PlotBounds -> Table Key Double -> Table Key Coord
         normalizeData b m = tableFromList $ fmap (normalizeData' b) $ tableToList m
           where
             normalizeData'   b = Map.mapWithKey (\aesK dsL ->              normalize (Map.lookup aesK b)  dsL)
@@ -1595,23 +1604,23 @@ debugInfo dat aess = box
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plot :: [a] -> [Aesthetic a] -> Geometry -> Plot
+plot :: [a] -> [Aesthetic a] -> Geometry b -> Plot b
 plot dat aess geom = Plot [createSinglePlot [] dat aess geom]
 
 {-|
 Create a visualization the given data set using the given aesthetics and geometries.
 -}
-plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry -> Plot
+plotWithTitles :: [Str] -> [a] -> [Aesthetic a] -> Geometry b -> Plot b
 plotWithTitles titles dat aess geom = Plot [createSinglePlot titles dat aess geom]
 
-plotLabel :: Str -> [a] -> [Aesthetic a] -> Plot
+plotLabel :: (HasLines b, HasText b, HasColors b) => Str -> [a] -> [Aesthetic a] -> Plot b
 plotLabel text dat baseAes =
   plot dat (baseAes <> [text >$ label]) labelG
 
-plotImage :: (Draft SVG) -> [a] -> [Aesthetic a] -> Plot
+plotImage :: (HasText b, b ~ SVG) => Draft b -> [a] -> [Aesthetic a] -> Plot b
 plotImage drawing dat baseAes =
   plot dat (baseAes <> [drawing >$ image]) imageG
 
-plotXIntercept :: [a] -> [Aesthetic a] -> Plot
+plotXIntercept :: (HasLines b, HasColors b) => [a] -> [Aesthetic a] -> Plot b
 plotXIntercept dat baseAes =
   plot dat (baseAes <> [True >$ crossLineX]) xIntercept

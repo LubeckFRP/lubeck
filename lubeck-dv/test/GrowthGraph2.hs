@@ -15,6 +15,9 @@ main = error "ghcjs only"
 module Main where
 
 import Lubeck.Str
+import Lubeck.FRP ()
+import Lubeck.DV (plot, drawPlot, line, x, y, getStyled, (<~))
+import Control.Lens (_1, _2)
 import Lubeck.Drawing hiding (path, rect)
 import Lubeck.Drawing.Internal.Backend.FastRenderer (adaptCoordinates, prerender, usePrerendered
   , TransferedFastDrawing
@@ -150,8 +153,11 @@ periodShortCut = catH [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
     b t = fillColor Colors.lightgrey (textWithOptions stdFont t)
 
 growthPlotUsingDV :: Draft Fast
-growthPlotUsingDV = fillColorA (Colors.black `withOpacity` 0.1) $ scaleXY (V2 800 200) squareTL
+growthPlotUsingDV = fillColorA (Colors.purple `withOpacity` 0.1) $ scaleXY (V2 800 200) squareTL
 -- TODO
+
+foo :: Draft Fast
+foo = flip getStyled mempty $ drawPlot $ plot [(1,1),(2,2),(3::Int,1::Int)] [x<~_1, y<~_2] line
 
 countAtTime :: Draft Fast
 countAtTime = l <> t

@@ -265,7 +265,7 @@ drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ Lu
 drawingToSvgStringUnstyled :: RenderingOptions -> Draft SVG -> Str
 drawingToSvgStringUnstyled drawOpts finalD = Lubeck.Drawing.toSvgStr drawOpts $ Lubeck.Drawing.getDraft finalD
 
-visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> Str
+visualizeTest :: Show s => [s] -> Geometry SVG -> [Aesthetic s] -> Str
 visualizeTest dat geom aess = drawingToSvgString mempty mempty
   $ drawPlot
   $ plot dat aess geom
@@ -1039,7 +1039,7 @@ data Person33 = Person33 { height33 :: Double, weight :: Double, is_male :: Bool
 drTest1 = DrawingTest
   "drTest1"
   [string|
-    A centered red circle, radius 10.
+    A centered red circle, radius 50.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.scale 50
@@ -1049,7 +1049,7 @@ drTest1 = DrawingTest
 drTest2 = DrawingTest
   "drTest2"
   [string|
-    A centered blue circle, radius 10.
+    A centered blue circle, radius 50.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.scale 50
@@ -1059,7 +1059,7 @@ drTest2 = DrawingTest
 drTest3 = DrawingTest
   "drTest3"
   [string|
-    A red circle on top of a blue square, both centered.
+    A red circle (radius 50) on top of a blue square (side length 50), both centered.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ c <> s
@@ -1078,17 +1078,38 @@ drTest4 = DrawingTest
 drTest5 = DrawingTest
   "drTest5"
   [string|
-    A semi-transparent triangle.
+    A semi-transparent triangle (fillColorA).
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.scale 50
-  $ D.fillColor Colors.blue
+  $ D.fillColorA (Colors.blue `withOpacity` 0.5)
   $ D.triangle
+
+drTest5b = DrawingTest
+  "drTest5b"
+  [string|
+    A path looking like two triangles connecte at the origin.
+    Semi-transparent blue fill, red border (default line width).
+    Below it a slightly larger square.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ D.scale 50
+  $ (<> (D.fillColor (Colors.lightgrey) $ D.scale 2.1 $ D.square))
+  $ D.strokeColor Colors.red
+  $ D.fillColorA (Colors.blue `withOpacity` 0.5)
+  $ D.polygon $ D.betweenPoints $
+    [ P (V2 0      0)
+    , P (V2 1      1)
+    , P (V2 1    (-1))
+    , P (V2 (-1)   1)
+    , P (V2 (-1) (-1))
+    ]
 
 drTest6 = DrawingTest
   "drTest6"
   [string|
-    A square moved to the right.
+    A square moved to the right over a co-ordinate system.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1100,6 +1121,8 @@ drTest6 = DrawingTest
 drTest7 = DrawingTest
   "drTest7"
   [string|
+    A stroked vertical line with stroke with 5, height 100, moved 10 to the right,
+    over a co-ordinate system.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1112,6 +1135,7 @@ drTest7 = DrawingTest
 drTest7b = DrawingTest
   "drTest7b"
   [string|
+    Exactly the same as drTest7 (transformations distribute over styles and vice-versa).
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1124,6 +1148,8 @@ drTest7b = DrawingTest
 drTest8 = DrawingTest
   "drTest8"
   [string|
+    A stroked horizonal line with stroke with 5, width 100, moved 10 upwards,
+    over a co-ordinate system.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1136,6 +1162,7 @@ drTest8 = DrawingTest
 drTest9 = DrawingTest
   "drTest9"
   [string|
+    Text naming the four quadrants (text, translation and orientation) over a co-ordinate system.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1149,6 +1176,8 @@ drTest9 = DrawingTest
 drTest10 = DrawingTest
   "drTest10"
   [string|
+    Five squares of various size and position (all in the 1st quadrant).
+    Stroked green with stroke width 1, not filled (default stroke and fill styles, no extranou fills).
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1163,6 +1192,8 @@ drTest10 = DrawingTest
 drTest11 = DrawingTest
   "drTest11"
   [string|
+    Six small squares filled green, not stroked, translated 100 to the right and then rotated
+    variously (colors, transformations, rotation direction).
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1180,6 +1211,7 @@ drTest11 = DrawingTest
 drTest12 = DrawingTest
   "drTest12"
   [string|
+    Five squares translated and rotated, distributed evenly around local origin.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1196,6 +1228,7 @@ drTest12 = DrawingTest
 drTest13 = DrawingTest
   "drTest13"
   [string|
+    Two squares on top, one fit inside a rectangle.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ (<> D.xyAxis)
@@ -1212,6 +1245,7 @@ drTest13 = DrawingTest
 drTestTransf1 = DrawingTest
   "drTestTransf1"
   [string|
+    Translation.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.translate (V2 50 (-50)) sq1 <> sq2
@@ -1221,6 +1255,7 @@ drTestTransf1 = DrawingTest
 drTestTransf2 = DrawingTest
   "drTestTransf2"
   [string|
+    Scaling.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.scaleX 1.2 sq1 <> D.scaleY 1.2 sq2
@@ -1230,6 +1265,7 @@ drTestTransf2 = DrawingTest
 drTestTransf3 = DrawingTest
   "drTestTransf3"
   [string|
+    Rotation.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.rotate (D.turn/3) sq1 <> sq2
@@ -1239,6 +1275,7 @@ drTestTransf3 = DrawingTest
 drTestTransf4 = DrawingTest
   "drTestTransf4"
   [string|
+    Shearing.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.shearX 1.1 sq1 <> sq2
@@ -1248,6 +1285,7 @@ drTestTransf4 = DrawingTest
 drTestTransf5 = DrawingTest
   "drTestTransf5"
   [string|
+    Linear/affine combo.
   |]
   $ unpackStr $ drawingToSvgStringUnstyled mempty
   $ D.scaleX (-1) (D.translate 50 sq1) <> sq2
@@ -1962,6 +2000,7 @@ drawingTestBatck = [
   , drTest3
   , drTest4
   , drTest5
+  , drTest5b
   , drTest6
   , drTest7
   , drTest7b
