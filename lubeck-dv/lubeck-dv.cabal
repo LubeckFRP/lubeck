@@ -125,3 +125,28 @@ executable lubeck-dv-profiling
                     --  , virtual-dom
                     --  , benchmark
   default-language:    Haskell2010
+
+executable lubeck-dv-growth-graph2
+  hs-source-dirs:      test
+  main-is:             GrowthGraph2.hs
+  ghc-options:         -Wall
+  build-depends:       base
+                     , base-prelude
+                     , lens
+                     , linear
+                     , colour
+                     , mtl
+                     , contravariant
+                     , transformers
+                     , MonadRandom
+                     , lubeck-core
+                     , lubeck-drawing
+                     , lubeck-frp
+                     , lubeck-dv
+                     , MonadRandom
+  if impl(ghcjs)
+    build-depends:     ghcjs-base
+                    --  , lubeck-web
+                     , virtual-dom
+                     , benchmark
+  default-language:    Haskell2010
