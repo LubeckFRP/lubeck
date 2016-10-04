@@ -28,6 +28,7 @@ library
                      , text
                      , mtl
                      , transformers
+                     , contravariant
                      , containers
                      , unordered-containers
                      , semigroups
@@ -74,6 +75,7 @@ executable lubeck-drawing-test
                      , linear
                      , colour
                      , mtl
+                     , contravariant
                      , transformers
                      , MonadRandom
                      , lubeck-core
@@ -97,6 +99,7 @@ executable lubeck-drawing-growth-graph
                      , linear
                      , colour
                      , mtl
+                     , contravariant
                      , transformers
                      , MonadRandom
                      , lubeck-core

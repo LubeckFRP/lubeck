@@ -24,6 +24,9 @@ import Lubeck.Drawing.Internal.Backend.FastRenderer (adaptCoordinates, prerender
   , createRenderer
   , showRenderer
   , renderFastDrawing
+  , CanvasElement
+  , Context
+  , Renderer
 
   , getPointTag
   , TagResult(..)
@@ -54,6 +57,7 @@ import Control.Monad.Random.Class
 import GHCJS.Foreign.Callback as CB
 import Control.Monad.Reader
 import Control.Monad.Reader.Class
+import Data.Functor.Contravariant
 import Linear.Vector
 import Linear.Affine
 import Linear.Matrix hiding (translation)
@@ -267,7 +271,6 @@ main = do
 
   update
   startLoop
-
 
 
 tau = 2*pi
