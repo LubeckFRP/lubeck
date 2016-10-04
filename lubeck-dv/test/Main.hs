@@ -265,7 +265,7 @@ drawingToSvgString drawOpts style finalD = Lubeck.Drawing.toSvgStr drawOpts $ Lu
 drawingToSvgStringUnstyled :: RenderingOptions -> Draft SVG -> Str
 drawingToSvgStringUnstyled drawOpts finalD = Lubeck.Drawing.toSvgStr drawOpts $ Lubeck.Drawing.getDraft finalD
 
-visualizeTest :: Show s => [s] -> Geometry -> [Aesthetic s] -> Str
+visualizeTest :: Show s => [s] -> Geometry SVG -> [Aesthetic s] -> Str
 visualizeTest dat geom aess = drawingToSvgString mempty mempty
   $ drawPlot
   $ plot dat aess geom
