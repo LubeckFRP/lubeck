@@ -202,7 +202,7 @@ main = do
       -- writeIORef r (offsetX event)
       return ()
     render (State ctxt r) renderer = do
-      clearRect ctxt 0 0 800 800
+      clearRect ctxt 0 0 1400 800
       n <- readIORef r
       renderFastDrawing renderer (adaptCoordinates opts $ getDraft $ rotate (realToFrac (n/800*(2*pi/5))) growthGraph)
       performMajorGC
