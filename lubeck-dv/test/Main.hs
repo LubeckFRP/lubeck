@@ -1085,6 +1085,27 @@ drTest5 = DrawingTest
   $ D.fillColorA (Colors.blue `withOpacity` 0.5)
   $ D.triangle
 
+drTest5b = DrawingTest
+  "drTest5b"
+  [string|
+    A path looking like two triangles connecte at the origin.
+    Semi-transparent blue fill, red border (default line width).
+    Below it a slightly larger square.
+  |]
+  $ unpackStr $ drawingToSvgStringUnstyled mempty
+  $ (<> D.xyAxis)
+  $ D.scale 50
+  $ (<> (D.fillColor (Colors.lightgrey) $ D.scale 2.1 $ D.square))
+  $ D.strokeColor Colors.red
+  $ D.fillColorA (Colors.blue `withOpacity` 0.5)
+  $ D.polygon $ D.betweenPoints $
+    [ P (V2 0      0)
+    , P (V2 1      1)
+    , P (V2 1    (-1))
+    , P (V2 (-1)   1)
+    , P (V2 (-1) (-1))
+    ]
+
 drTest6 = DrawingTest
   "drTest6"
   [string|
@@ -1979,6 +2000,7 @@ drawingTestBatck = [
   , drTest3
   , drTest4
   , drTest5
+  , drTest5b
   , drTest6
   , drTest7
   , drTest7b
