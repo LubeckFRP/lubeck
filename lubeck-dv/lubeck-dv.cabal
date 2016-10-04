@@ -12,7 +12,6 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Lubeck.DV
                      , Lubeck.DV.New
-                     , Lubeck.DV.SimpleNormalized
                      , Lubeck.DV.Styling
                      , Lubeck.DV.ColorPalette
                      , Lubeck.DV.LineStyles
