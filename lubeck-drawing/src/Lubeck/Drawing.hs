@@ -359,7 +359,7 @@ rectangleRounded = rectRoundedB
 {-# INLINABLE rectangleRounded #-}
 -- NOTE This was called rectangle at some point, confusingly enough.
 
-{-| An equilateral a. -}
+{-| An (centered?) equilateral with sides of length 1. -}
 triangle :: Backend a => Draft a
 triangle =
     translate (V2 (-1/2) (-(eqTriAlt/3))) $ polygon

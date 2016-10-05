@@ -18,6 +18,7 @@ import Lubeck.Str
 import Lubeck.FRP ()
 import Lubeck.DV (plot, drawPlot, line, x, y, getStyled, (<~))
 import Control.Lens (_1, _2)
+import qualified Lubeck.Drawing as D
 import Lubeck.Drawing hiding (path, rect)
 import Lubeck.Drawing.Internal.Backend.FastRenderer (adaptCoordinates, prerender, usePrerendered
   , TransferedFastDrawing
@@ -85,11 +86,36 @@ import Linear.Epsilon
 
 -- TODO move
 showLocalOrigin x = showPoint (P (V2 0 0)) <> x
-
+center800 = translate (V2 400 (-400))
 
 -- growthGraph :: Behavior (Draft Fast)
 
 -- Using top-left local origin
+mainD :: Draft Fast
+mainD = center800 $ drTest10
+
+
+
+
+-- TODO move these definitions
+drTest10 = (<> D.xyAxis)
+  $ mconcat [
+    (D.translate (V2 21 63) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
+  , (D.translate (V2 01 22) $ D.strokeColor Colors.green $ D.scale 11 $ D.square)
+  , (D.translate (V2 31 51) $ D.strokeColor Colors.green $ D.scale 12 $ D.square)
+  , (D.translate (V2 99 41) $ D.strokeColor Colors.green $ D.scale 13 $ D.square)
+  , (D.translate (V2 71 17) $ D.strokeColor Colors.green $ D.scale 14 $ D.square)
+  ]
+
+
+strokeTest :: Draft Fast
+strokeTest = translate (V2 400 (-400)) $ fillColor Colors.pink $ strokeColor Colors.red $ mconcat [sh 10, translateX 20 (sh 20), translateX 40 (sh 10)]
+  where
+    sh s = polygon [V2 s 0, V2 0 s, V2 (-s) 0, V2 0 (-s)]
+
+-- mainD = translate (V2 400 (-400)) $ strokeColor Colors.red $ scale 10 $ strokeWidth (1/10) circle
+-- mainD = translate (V2 400 (-400)) foo
+
 growthGraph :: Draft Fast
 growthGraph = translate (V2 50 (-50))
   $ mconcat
@@ -153,7 +179,7 @@ periodShortCut = catH [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
     b t = fillColor Colors.lightgrey (textWithOptions stdFont t)
 
 growthPlotUsingDV :: Draft Fast
-growthPlotUsingDV = fillColorA (Colors.purple `withOpacity` 0.1) $ scaleXY (V2 800 200) squareTL
+growthPlotUsingDV = foo --fillColorA (Colors.purple `withOpacity` 0.1) $ scaleXY (V2 800 200) squareTL
 -- TODO
 
 foo :: Draft Fast
@@ -210,7 +236,7 @@ main = do
     render (State ctxt r) renderer = do
       clearRect ctxt 0 0 1400 800
       n <- readIORef r
-      renderFastDrawing renderer (adaptCoordinates opts $ getDraft $ rotate (realToFrac (n/800*(2*pi/5))) growthGraph)
+      renderFastDrawing renderer (adaptCoordinates opts $ getDraft $ rotate (realToFrac (n/800*(2*pi/5))) mainD)
       performMajorGC
       return ()
 #endif
