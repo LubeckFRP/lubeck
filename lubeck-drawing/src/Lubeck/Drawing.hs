@@ -988,7 +988,13 @@ instance Backend Fast where
   rectRoundedB x y rx ry = scaleXY (V2 x y) $ squareB -- TODO
   lineB = linesB False [(V2 0 0), (V2 0 1)]
   linesB closed [] = Draft $ mempty
-  linesB closed ((V2 x1 y1):ps) = Draft $ FastB.path x1 y1 (FastB.linePathV2 closed ps) -- TODO
+  {-
+  What we get is a list of vectors between the points, first point always at origin.
+  Transform into absolute points, starting at (P $ V2 0 0).
+  -}
+  linesB closed vs = Draft $ FastB.path 0 0 (FastB.linePathP2 closed ps) -- TODO
+    where
+      ps = offsetVectors (P $ V2 0 0) vs
   textB s = Draft $ FastB.text 0 0 s
   transfB (TF (V3 (V3 a c e) (V3 b d f) (V3 _ _ _))) (Draft dr) = Draft $ FastB.transf a b c d e f dr
 

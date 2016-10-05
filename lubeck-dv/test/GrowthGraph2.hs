@@ -93,7 +93,7 @@ center800 = translate (V2 400 (-400))
 
 -- Using top-left local origin
 mainD :: Draft Fast
-mainD = center800 $ Tests.drawing Tests.drTest10
+mainD = center800 $ Tests.drawing Tests.drTest9
 
 
 

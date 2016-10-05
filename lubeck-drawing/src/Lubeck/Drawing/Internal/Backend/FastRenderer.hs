@@ -195,8 +195,14 @@ segment !x !y (FastSegment rtail) = FastSegment $ do
 linePath :: Foldable t => Bool -> t (Double, Double) -> FastSegment
 linePath close = foldr (\(x,y) r -> segment x y r) (segmentEnd close)
 
+-- TODO remove (name is wrong, it takes absolute points!)
 linePathV2 :: Foldable t => Bool -> t (V2 Double) -> FastSegment
 linePathV2 close = foldr (\(V2 !x !y) r -> segment x y r) (segmentEnd close)
+
+linePathP2 :: Bool -> [(P2 Double)] -> FastSegment
+linePathP2 close = linePathV2 close . fmap getP
+  where
+    getP (P x) = x
 
 path :: Double -> Double -> FastSegment -> FastDrawing
 path !x !y (FastSegment rpath) = FastDrawing $ do
