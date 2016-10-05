@@ -6,8 +6,9 @@ license:             AllRightsReserved
 license-file:        LICENSE
 author:              Beautiful Destinations
 maintainer:          hans@beautifuldestinations.com
-build-type:          Simple
+build-type:          Custom
 cabal-version:       >=1.10
+extra-source-files:  jsbits/fast-renderer.jspp
 
 library
   js-sources:          jsbits/fast-renderer.out.js
