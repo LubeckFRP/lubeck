@@ -143,6 +143,7 @@ executable lubeck-dv-growth-graph2
                      , lubeck-drawing
                      , lubeck-frp
                      , lubeck-dv
+                     , neat-interpolation
                      , MonadRandom
   if impl(ghcjs)
     build-depends:     ghcjs-base

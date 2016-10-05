@@ -77,6 +77,7 @@ import qualified Linear.V4
 import qualified Data.Colour.Names as Colors
 import Data.Colour.SRGB(sRGB)
 import Data.Colour(withOpacity)
+import qualified StandardDrawingTests as Tests
 #if MIN_VERSION_linear(1,20,0)
 #else
 import Linear.Epsilon
@@ -92,20 +93,20 @@ center800 = translate (V2 400 (-400))
 
 -- Using top-left local origin
 mainD :: Draft Fast
-mainD = center800 $ drTest10
+mainD = center800 $ Tests.drawing Tests.drTest10
 
 
 
 
 -- TODO move these definitions
-drTest10 = (<> D.xyAxis)
-  $ mconcat [
-    (D.translate (V2 21 63) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
-  , (D.translate (V2 01 22) $ D.strokeColor Colors.green $ D.scale 11 $ D.square)
-  , (D.translate (V2 31 51) $ D.strokeColor Colors.green $ D.scale 12 $ D.square)
-  , (D.translate (V2 99 41) $ D.strokeColor Colors.green $ D.scale 13 $ D.square)
-  , (D.translate (V2 71 17) $ D.strokeColor Colors.green $ D.scale 14 $ D.square)
-  ]
+-- drTest10 = (<> D.xyAxis)
+--   $ mconcat [
+--     (D.translate (V2 21 63) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
+--   , (D.translate (V2 01 22) $ D.strokeColor Colors.green $ D.scale 11 $ D.square)
+--   , (D.translate (V2 31 51) $ D.strokeColor Colors.green $ D.scale 12 $ D.square)
+--   , (D.translate (V2 99 41) $ D.strokeColor Colors.green $ D.scale 13 $ D.square)
+--   , (D.translate (V2 71 17) $ D.strokeColor Colors.green $ D.scale 14 $ D.square)
+--   ]
 
 
 strokeTest :: Draft Fast
