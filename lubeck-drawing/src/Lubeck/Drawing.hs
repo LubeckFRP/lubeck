@@ -982,7 +982,7 @@ instance HasEnvelopes SVG where
 
 #ifdef __GHCJS__
 instance Backend Fast where
-  circleB = Draft $ FastB.circle 0 0 1
+  circleB = Draft $ FastB.circle 0 0 0.5
   squareB = Draft $ FastB.rect (-0.5) (-0.5) 1 1
   circleSectorB a1 a2 = circleB -- TODO
   rectRoundedB x y rx ry = scaleXY (V2 x y) $ squareB -- TODO
