@@ -174,6 +174,11 @@
 // Minimal value for tags
 #define TAG_OFFSET                 2
 
+// If true, black is used as the the default fill color for *text*, rather than transparent.
+// The primFillColor attribute still takes precedence, if set
+#define DEFAULT_TEXT_FILL_BLACK    1
+
+
 function AsmDrawingRenderer(stdlib, foreign, heap) {
   "use asm";
 
@@ -563,6 +568,14 @@ function AsmDrawingRenderer(stdlib, foreign, heap) {
     // Don't support stroke
     if (hasFill) {
       _fillText(x,y,txt|0)
+    } else {
+      if (DEFAULT_TEXT_FILL_BLACK) {
+        _save()
+        writeRGBAStringToBuffer(0,0,0,1)
+        _fillStyleFromColorBuffer()
+        _fillText(x,y,txt|0)
+        _restore()
+      }
     }
   }
 
