@@ -477,9 +477,11 @@ adaptCoordinates :: RenderingOptions -> FastDrawing -> FastDrawing
 adaptCoordinates (RenderingOptions (P (V2 dx dy)) op _) = t op . flipY
   where
     t TopLeft    = id
-    t BottomLeft = translate 0 dy
     t Center     = translate (dx/2) (dy/2)
+    t BottomLeft = translate 0 dy
     flipY = scaleXY 1 (-1)
+    -- flipY =  transf 1 0 0 (-1) 0 0
+    -- flipY =  transf 1 1 (-1) (-1) 0 0
 
 finWithRenderer3 :: TransferedFastDrawing -> WithRenderer3 TransferedFastDrawing
 finWithRenderer3 !d = ReaderT $ \r -> do

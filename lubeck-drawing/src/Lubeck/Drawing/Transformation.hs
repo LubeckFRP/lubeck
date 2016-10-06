@@ -382,7 +382,8 @@ scalingY b = matrix (1,0,0,b,0,0)
 {-| Rotates an object. A positive vale will result in a counterclockwise rotation
     and negative value in a clockwise rotation. -}
 rotation :: Floating a => Angle a -> Transformation a
-rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+-- rotation (Radians a) = matrix (cos a, 0 - sin a, sin a, cos a, 0, 0)
+rotation (Radians a) = matrix (cos (-a), 0 - sin (-a), sin (-a), cos (-a), 0, 0)
 
 -- {-| Shears an object. -}
 -- shearing :: Num a => a -> a -> Transformation a
