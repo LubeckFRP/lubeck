@@ -307,7 +307,7 @@ renderDrawingTestsToDir1 dir tests = case testBatchToMap tests of
 
     let content = concatMap (\name -> makeItem name)
           (Data.Map.keys nameToSvgStrMap)
-    dateString <- formatTime defaultTimeLocale "<p>Generated %F %T</p>" <$> getCurrentTime
+    dateString <- formatTime defaultTimeLocale "<p>Generated at UTC %F %T</p>" <$> getCurrentTime
     writeFile (dir <> "/" <> "index.html") $ makeIndex dateString content
   where
     makeItem :: String -> String
