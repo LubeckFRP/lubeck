@@ -626,3 +626,13 @@ drawingTestBatch = [
   --
   -- TODO etc
   ]
+
+
+{-
+TODO missing test coverage:
+  Default styles
+    fill, stroke, line width
+  Better assurance that stroke is independent of transformation (or is drTest7* sufficient?)
+  Understand/cover shearing better
+
+-}
