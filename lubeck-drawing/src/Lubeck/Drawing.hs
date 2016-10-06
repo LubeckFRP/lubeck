@@ -986,7 +986,7 @@ instance Backend Fast where
   squareB = Draft $ FastB.rect (-0.5) (-0.5) 1 1
   circleSectorB a1 a2 = circleB -- TODO
   rectRoundedB x y rx ry = scaleXY (V2 x y) $ squareB -- TODO
-  lineB = linesB False [(V2 0 0), (V2 0 1)]
+  lineB = linesB False [(V2 0 0), (V2 1 0)]
   linesB closed [] = Draft $ mempty
   {-
   What we get is a list of vectors between the points, first point always at origin.
