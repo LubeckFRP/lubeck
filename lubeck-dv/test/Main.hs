@@ -18,12 +18,12 @@ module Main where
 
 import BasePrelude
 import Control.Lens.TH
---
+
 import Control.Lens(Getter, to)
 import Control.Lens(_1, _2, _3, _4) -- TODO debug
 import Control.Lens.Operators hiding ((<~))
 import Data.Functor.Contravariant (Contravariant(..))
-import Data.Time(UTCTime)
+import Data.Time(UTCTime, getCurrentTime, formatTime, defaultTimeLocale)
 import Linear.Affine (Point(..))
 import Linear.V1 (V1(..), _x)
 import Linear.V2 (V2(..), _y)
@@ -307,14 +307,15 @@ renderDrawingTestsToDir1 dir tests = case testBatchToMap tests of
 
     let content = concatMap (\name -> makeItem name)
           (Data.Map.keys nameToSvgStrMap)
-    writeFile (dir <> "/" <> "index.html") $ makeIndex content
+    dateString <- formatTime defaultTimeLocale "<p>Generated %F %T</p>" <$> getCurrentTime
+    writeFile (dir <> "/" <> "index.html") $ makeIndex dateString content
   where
     makeItem :: String -> String
     -- makeItem name = "<p><a href='" <> name <> ".svg'>" <> name <> "</a></p>\n"
     makeItem name = "<h2>" <> name <> "</h2><p><img src='" <> name <> ".svg' alt='" <> name <> "' /></p>"
 
-    makeIndex :: String -> String
-    makeIndex a = s1 <> a <> s2
+    makeIndex :: String -> String -> String
+    makeIndex dateString content = mconcat [s1, dateString, content, s2]
       where
         s1 = [string|
           <!DOCTYPE html>
