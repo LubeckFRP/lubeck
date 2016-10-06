@@ -146,7 +146,7 @@ drTest7 = DrawingTest
 drTest7b = DrawingTest
   "drTest7b"
   [string|
-    Exactly the same as drTest7 (transformations distribute over styles and vice-versa).
+    Exactly the same as drTest7 (to assure scale distribute over stroke-width and vice-versa).
   |]
   $ (<> D.xyAxis)
   $ D.translateX 10
@@ -179,6 +179,18 @@ drTest9 = DrawingTest
   , (D.translate (V2 (-50) 50)    $ D.text "2nd")
   , (D.translate (V2 (-50) (-50)) $ D.text "3rd")
   , (D.translate (V2 50 (-50))    $ D.text "4th")
+  ]
+drTest9b = DrawingTest
+  "drTest9b"
+  [string|
+    Text naming various degrees of rotation (increasing, counter-clockwise).
+  |]
+  $ (<> D.xyAxis)
+  $ mconcat [
+    (D.rotate (D.turn*1/8) $ D.translate (V2 50 0) $ D.text "tau*1/8")
+  , (D.rotate (D.turn*3/8) $ D.translate (V2 50 0) $ D.text "tau*3/8")
+  , (D.rotate (D.turn*5/8) $ D.translate (V2 50 0) $ D.text "tau*5/8")
+  , (D.rotate (D.turn*7/8) $ D.translate (V2 50 0) $ D.text "tau*7/8")
   ]
 
 drTest10 = DrawingTest
@@ -566,6 +578,7 @@ drawingTestBatch = [
   , drTest7b
   , drTest8
   , drTest9
+  , drTest9b
   , drTest10
   , drTest11
   , drTest12
