@@ -261,7 +261,7 @@ drTest13 = DrawingTest
 drTestTransf1 = DrawingTest
   "drTestTransf1"
   [string|
-    Translation, right downward.
+    Translation, right downward (red square).
   |]
   $ D.translate (V2 50 (-50)) sq1 <> sq2
     where
@@ -270,7 +270,7 @@ drTestTransf1 = DrawingTest
 drTestTransf2 = DrawingTest
   "drTestTransf2"
   [string|
-    Scaling by X and Y.
+    Scaling by X (red) and Y (blue).
   |]
   $ D.scaleX 1.2 sq1 <> D.scaleY 1.2 sq2
     where
@@ -279,7 +279,7 @@ drTestTransf2 = DrawingTest
 drTestTransf3 = DrawingTest
   "drTestTransf3"
   [string|
-    Rotation, red curcle 1/3 counter-clockwise.
+    Rotation, red square rotated 1/3 counter-clockwise.
   |]
   $ D.rotate (D.turn/3) sq1 <> sq2
     where
@@ -288,7 +288,7 @@ drTestTransf3 = DrawingTest
 drTestTransf4 = DrawingTest
   "drTestTransf4"
   [string|
-    Shearing.
+    Shearing. (??)
   |]
   $ D.shearX 1.1 sq1 <> sq2
     where
@@ -298,8 +298,9 @@ drTestTransf5 = DrawingTest
   "drTestTransf5"
   [string|
     Linear/affine combo.
+    Move upwards and right, then flip horizontally (so position is upward and left).
   |]
-  $ D.scaleX (-1) (D.translate 50 sq1) <> sq2
+  $ D.scaleX (-1) (D.translate (V2 50 50) sq1) <> sq2
     where
       sq1 = D.fillColor Colors.red  $ D.scale 150 $ D.square
       sq2 = D.fillColor Colors.blue $ D.scale 150 $ D.square
