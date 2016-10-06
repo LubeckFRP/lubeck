@@ -1,7 +1,15 @@
 
 -- main = print "Lubeck drawing tests TODO"
 
-{-# LANGUAGE ScopedTypeVariables, BangPatterns, OverloadedStrings, NoImplicitPrelude, GeneralizedNewtypeDeriving, CPP #-}
+{-# LANGUAGE
+    ScopedTypeVariables
+  , BangPatterns
+  , OverloadedStrings
+  , NoImplicitPrelude
+  , GeneralizedNewtypeDeriving
+  , CPP
+  , NoMonomorphismRestriction
+  #-}
 
 #ifndef __GHCJS__
 import Prelude
@@ -16,8 +24,8 @@ module Main where
 
 import Lubeck.Str
 import Lubeck.FRP ()
-import Lubeck.DV (plot, drawPlot, line, x, y, getStyled, (<~))
-import Control.Lens (_1, _2)
+import Lubeck.DV (plot, drawPlot, line, x, y, getStyled, (<~), renderingRectangle)
+import Control.Lens (_1, _2, to, (.~))
 import qualified Lubeck.Drawing as D
 import Lubeck.Drawing hiding (path, rect)
 import Lubeck.Drawing.Internal.Backend.FastRenderer (adaptCoordinates, prerender, usePrerendered
@@ -89,42 +97,17 @@ import Lubeck.FRP
 
 -- TODO move
 showLocalOrigin x = showPoint (P (V2 0 0)) <> x
+
 center800 = translate (V2 400 (-400))
 
 -- growthGraph :: Behavior (Draft Fast)
 
 -- Using top-left local origin
-mainD :: Draft Fast
-mainD = center800 $ Tests.dt_drawing Tests.test21
+-- Tests.dt_drawing Tests.foo
 
+mainD :: Int -> Draft Fast
+mainD n = growthGraph n
 
--- NOTE all of these run with
---       renderFastDrawing renderer (adaptCoordinates opts $ getDraft mainD)
-
--- drTest11
-
--- drTest3 GOOD
--- drTest9, no output
--- drTest10, good except strokeWidth
--- drTest5b BAD, missing x/y axis (otherwise good)
--- drTest13, no compile (envelopes)
--- drTestTransf1 GOOD
--- drTestTransf2 GOOD
--- drTestTransf3 BAD, rotates in the wrong dir (also angle?)
--- drTestTransf4 BAD, horizonally flipped
--- drTestTransf5 GOOD
-
-
-
--- TODO move these definitions
--- drTest10 = (<> D.xyAxis)
---   $ mconcat [
---     (D.translate (V2 21 63) $ D.strokeColor Colors.green $ D.scale 10 $ D.square)
---   , (D.translate (V2 01 22) $ D.strokeColor Colors.green $ D.scale 11 $ D.square)
---   , (D.translate (V2 31 51) $ D.strokeColor Colors.green $ D.scale 12 $ D.square)
---   , (D.translate (V2 99 41) $ D.strokeColor Colors.green $ D.scale 13 $ D.square)
---   , (D.translate (V2 71 17) $ D.strokeColor Colors.green $ D.scale 14 $ D.square)
---   ]
 
 
 strokeTest :: Draft Fast
@@ -135,8 +118,8 @@ strokeTest = translate (V2 400 (-400)) $ fillColor Colors.pink $ strokeColor Col
 -- mainD = translate (V2 400 (-400)) $ strokeColor Colors.red $ scale 10 $ strokeWidth (1/10) circle
 -- mainD = translate (V2 400 (-400)) foo
 
-growthGraph :: Draft Fast
-growthGraph = translate (V2 50 (-50))
+-- growthGraph :: Draft Fast
+growthGraph n = translate (V2 50 (-50))
   $ mconcat
   [ mempty
   , title
@@ -147,9 +130,9 @@ growthGraph = translate (V2 50 (-50))
     , showLocalOrigin $ followersLikeCommentFilter
     , translateX 200 periodShortCut
     ]
-  , translateY (-100) $ mconcat
+  , translateY (-300) $ mconcat
     [ mempty
-    , growthPlotUsingDV -- TODO connect to overlays
+    , growthPlotUsingDV n -- TODO connect to overlays
     -- , maybeOverlay -- The whole thing, with count, likes/comm, image, larger point, alternative pointer
     ]
   , translateY (-350) $ mconcat
@@ -197,12 +180,12 @@ periodShortCut = catH [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
     -- TODO extra sapce
     b t = fillColor Colors.lightgrey (textWithOptions stdFont t)
 
-growthPlotUsingDV :: Draft Fast
-growthPlotUsingDV = foo --fillColorA (Colors.purple `withOpacity` 0.1) $ scaleXY (V2 800 200) squareTL
--- TODO
-
-foo :: Draft Fast
-foo = flip getStyled mempty $ drawPlot $ plot [(1,1),(2,2),(3::Int,1::Int)] [x<~_1, y<~_2] line
+growthPlotUsingDV :: Int -> Draft Fast
+growthPlotUsingDV n = flip getStyled (renderingRectangle .~ V2 500 200 $ mempty) $ drawPlot $ plot dat [x<~to (!! 0), y<~ to (!! 1)] line
+  where
+    -- Just some data
+    dat = take n dt
+    dt = take 120 Tests.dataset1
 
 countAtTime :: Draft Fast
 countAtTime = l <> t
@@ -250,12 +233,12 @@ main = do
       return $ State ctxt r
     handleInput (State _ r) renderer eventType event = do
       {-when (eventType == MouseDown) $-}
-      -- writeIORef r (offsetX event)
+      writeIORef r (offsetX event)
       return ()
     render (State ctxt r) renderer = do
       clearRect ctxt 0 0 1400 800
       n <- readIORef r
-      renderFastDrawing renderer (adaptCoordinates opts $ getDraft mainD)
+      renderFastDrawing renderer (adaptCoordinates opts $ getDraft $ mainD (round (n/4)))
       performMajorGC
       return ()
 #endif
