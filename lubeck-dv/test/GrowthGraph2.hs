@@ -83,6 +83,8 @@ import qualified StandardDrawingTests as Tests
 import Linear.Epsilon
 #endif
 
+import Lubeck.FRP
+import Lubeck.App(runAppReactive)
 
 
 -- TODO move
@@ -93,7 +95,7 @@ center800 = translate (V2 400 (-400))
 
 -- Using top-left local origin
 mainD :: Draft Fast
-mainD = center800 $ Tests.drawing Tests.drTestTransf4
+mainD = center800 $ Tests.dt_drawing Tests.test20
 
 
 -- NOTE all of these run with

@@ -136,6 +136,8 @@ executable lubeck-dv-growth-graph2
                      , linear
                      , colour
                      , mtl
+                     , time
+                     , containers
                      , contravariant
                      , transformers
                      , MonadRandom
