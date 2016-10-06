@@ -249,7 +249,7 @@ drTest13 = DrawingTest
 drTestTransf1 = DrawingTest
   "drTestTransf1"
   [string|
-    Translation.
+    Translation, right downward.
   |]
   $ D.translate (V2 50 (-50)) sq1 <> sq2
     where
@@ -258,7 +258,7 @@ drTestTransf1 = DrawingTest
 drTestTransf2 = DrawingTest
   "drTestTransf2"
   [string|
-    Scaling.
+    Scaling by X and Y.
   |]
   $ D.scaleX 1.2 sq1 <> D.scaleY 1.2 sq2
     where
@@ -267,7 +267,7 @@ drTestTransf2 = DrawingTest
 drTestTransf3 = DrawingTest
   "drTestTransf3"
   [string|
-    Rotation.
+    Rotation, red curcle 1/3 counter-clockwise.
   |]
   $ D.rotate (D.turn/3) sq1 <> sq2
     where
