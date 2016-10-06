@@ -552,3 +552,61 @@ drTestU7 = DrawingTest
     The unit vector.
   |]
   $ D.showUnitX
+
+
+drawingTestBatch = [
+    drTest1
+  , drTest2
+  , drTest3
+  , drTest4
+  , drTest5
+  , drTest5b
+  , drTest6
+  , drTest7
+  , drTest7b
+  , drTest8
+  , drTest9
+  , drTest10
+  , drTest11
+  , drTest12
+  , drTest13
+
+  , drTestRO1
+  , drTestRO2
+  , drTestRO3
+  , drTestU1
+  , drTestU2
+  , drTestU3
+  , drTestU4
+  , drTestU5
+  , drTestU6
+  , drTestU7
+
+  , drTestTransf1
+  , drTestTransf2
+  , drTestTransf3
+  , drTestTransf4
+  , drTestTransf5
+  --
+  , drTestStyles1
+  , drTestStyles2
+  , drTestStyles3
+  , drTestStyles4
+  , drTestStyles5
+  , drTestStyles6
+  , drTestStyles7
+  --
+  , drTestText1
+  , drTestText2
+  , drTestText3
+  , drTestText4
+  , drTestText5
+  --
+  , drTestMasking1
+  , drTestMasking2
+  , drTestEmbed
+  , drTestEnvelope1
+  , drTestEnvelope2
+  --
+  -- TODO etc
+  ]

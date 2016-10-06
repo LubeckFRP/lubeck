@@ -93,8 +93,24 @@ center800 = translate (V2 400 (-400))
 
 -- Using top-left local origin
 mainD :: Draft Fast
-mainD = center800 $ Tests.drawing Tests.drTest9
+mainD = center800 $ Tests.drawing Tests.drTestTransf4
 
+
+-- NOTE all of these run with
+--       renderFastDrawing renderer (adaptCoordinates opts $ getDraft mainD)
+
+-- drTest11
+
+-- drTest3 GOOD
+-- drTest9, no output
+-- drTest10, good except strokeWidth
+-- drTest5b BAD, missing x/y axis (otherwise good)
+-- drTest13, no compile (envelopes)
+-- drTestTransf1 GOOD
+-- drTestTransf2 GOOD
+-- drTestTransf3 BAD, rotates in the wrong dir (also angle?)
+-- drTestTransf4 BAD, horizonally flipped
+-- drTestTransf5 GOOD
 
 
 
@@ -237,7 +253,7 @@ main = do
     render (State ctxt r) renderer = do
       clearRect ctxt 0 0 1400 800
       n <- readIORef r
-      renderFastDrawing renderer (adaptCoordinates opts $ getDraft $ rotate (realToFrac (n/800*(2*pi/5))) mainD)
+      renderFastDrawing renderer (adaptCoordinates opts $ getDraft mainD)
       performMajorGC
       return ()
 #endif
