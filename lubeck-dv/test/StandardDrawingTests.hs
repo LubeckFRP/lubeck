@@ -473,6 +473,7 @@ drTestEnvelope1 = DrawingTest
   [string|
     A circle above a square.
   |]
+  $ D.fillColor Colors.black
   $ D.scale 70 D.circle D.=== D.scale 80 D.square
 
 drTestEnvelope2 = DrawingTest
@@ -480,6 +481,7 @@ drTestEnvelope2 = DrawingTest
   [string|
     A circle to the left of a square, and to the left and above of them a triangle.
   |]
+  $ D.fillColor Colors.black
   $ D.scale 110 D.triangle D./// (D.scale 70 D.circle D.||| D.scale 80 D.square)
 
 
