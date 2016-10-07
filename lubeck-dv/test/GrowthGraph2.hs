@@ -24,7 +24,8 @@ module Main where
 
 import Lubeck.Str
 import Lubeck.FRP ()
-import Lubeck.DV (plot, drawPlot, line, x, y, getStyled, (<~), renderingRectangle)
+import Lubeck.DV (plot, drawPlot, line, x, y, getStyled, (<~), renderingRectangle, linePlotStrokeColor, linePlotStrokeWidth, singleColour, paletteToInteractive)
+import qualified Lubeck.DV.Styling as DV
 import Control.Lens (_1, _2, to, (.~))
 import qualified Lubeck.Drawing as D
 import Lubeck.Drawing hiding (path, rect)
@@ -83,7 +84,7 @@ import qualified Linear.V2
 import qualified Linear.V3
 import qualified Linear.V4
 import qualified Data.Colour.Names as Colors
-import Data.Colour.SRGB(sRGB)
+import Data.Colour.SRGB(sRGB, sRGB24)
 import Data.Colour(withOpacity)
 import qualified StandardDrawingTests as Tests
 #if MIN_VERSION_linear(1,20,0)
@@ -127,7 +128,7 @@ growthGraph n = translate (V2 50 (-50))
   --
   , translateY (-50) $ mconcat
     [ mempty
-    , showLocalOrigin $ followersLikeCommentFilter
+    , followersLikeCommentFilter
     , translateX 200 periodShortCut
     ]
   , translateY (-300) $ mconcat
@@ -142,26 +143,32 @@ growthGraph n = translate (V2 50 (-50))
   ]
 
 
-stdFont        = mempty { fontFamily = First (Just "Verdana, sans-serif"), fontSize = First (Just "16px"), fontWeight = FontWeightNormal }
-stdFontLarger  = stdFont { fontSize = First (Just "18px")}
-stdFontSmaller = stdFont { fontSize = First (Just "15px")}
+stdFontFamily  = First (Just "Gill Sans, sans-serif")
+stdFont        = mempty { fontFamily = stdFontFamily, fontSize = First (Just "16px"), fontWeight = FontWeightN 500 }
+stdFontLarger  = stdFont { fontSize = First (Just "19px")}
+stdFontEvenLarger  = stdFont { fontSize = First (Just "24px")}
+stdFontSmaller = stdFont { fontSize = First (Just "14px")}
+greenColor = sRGB24 0x0d 0xe1 0x5b -- #0de15b
+lightgreyColor = sRGB24 0xa5 0xa5 0xa5 -- #a5a5a5
+lightergreyColor = sRGB24 188 188 188 -- #a5a5a5
+bluishColor = sRGB24 88 180 232
 
 title :: Draft Fast
-title = titleText <> translate (V2 120 0) explanation
+title = titleText <> translateX 166 explanation
   where
     titleText = fillColor Colors.black $ textWithOptions stdFontLarger "Followers over time"
     explanation = mconcat
       [ fillColor Colors.white $ textWithOptions stdFont "?"
-      , fillColor Colors.lightgrey $ scale 10 circle
+      , fillColor lightergreyColor $ scale 23 circle
       ]
     -- TODO pop-up
     popUpText = "The growth of your followers during a selected time range"
 
 moreFollowersThisPeriod :: Draft Fast
-moreFollowersThisPeriod = mconcat [a, translateX 50 b, translateX 150 c]
+moreFollowersThisPeriod = mconcat [a, translateX 45 b, translateX 90 c]
   where
-    a = fillColor Colors.lightgreen $ textWithOptions stdFont "2.3M"
-    b = fillColor Colors.white $ textWithOptions stdFontSmaller "+30.97%"<> (fillColor Colors.lightgreen $ scaleXY (V2 40 30) square)
+    a = fillColor greenColor   $ textWithOptions (stdFontEvenLarger { textAnchor = TextAnchorEnd }) "2.3M"
+    b = fillColor Colors.white $ textWithOptions (stdFontSmaller { textAnchor = TextAnchorMiddle }) "+30.97%"<> (fillColor greenColor $ translateY 5 $ scaleXY (V2 62 21) square)
     c = fillColor Colors.black $ textWithOptions (stdFont { fontWeight = FontWeightLighter }) "MORE FOLLOWERS THIS PERIOD"
 
 followersLikeCommentFilter :: Draft Fast
@@ -171,7 +178,7 @@ followersLikeCommentFilter = catH [b "Followers", translateX (110+10) $ b "Likes
     -- TODO hover/interact
     b t = mconcat
       [ fillColor Colors.white $ textWithOptions stdFont t
-      , fillColor Colors.lightgrey (scaleXY (V2 110 40) squareL)
+      , fillColor lightgreyColor (scaleXY (V2 85 28) squareL)
       ]
 
 periodShortCut :: Draft Fast
@@ -181,8 +188,17 @@ periodShortCut = catH [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
     b t = fillColor Colors.lightgrey (textWithOptions stdFont t)
 
 growthPlotUsingDV :: Int -> Draft Fast
-growthPlotUsingDV n = flip getStyled (renderingRectangle .~ V2 500 200 $ mempty) $ drawPlot $ plot dat [x<~to (!! 0), y<~ to (!! 1)] line
+growthPlotUsingDV n = flip getStyled (id
+  $ renderingRectangle .~ V2 800 200
+  $ linePlotStrokeColor .~ singleColour (bluishColor `withOpacity` 1)
+  $ linePlotStrokeWidth .~ 3
+  -- $ DV.basicTickLength .~ 0
+  $ DV.basicTickColor .~ transp
+  $ DV.backgroundTickStrokeColorX .~ transp
+  $ DV.axisTextFontFamily .~ stdFontFamily
+  $ mempty) $ drawPlot $ plot dat [x<~to (!! 0), y<~ to (!! 1)] line
   where
+    transp = Colors.black `withOpacity` 0
     -- Just some data
     dat = take n dt
     dt = take 120 Tests.dataset1
@@ -232,8 +248,9 @@ main = do
       r <- newIORef 0
       return $ State ctxt r
     handleInput (State _ r) renderer eventType event = do
-      {-when (eventType == MouseDown) $-}
-      writeIORef r (offsetX event)
+      when (eventType == MouseDown) $ do
+        print "Down"
+      writeIORef r (screenX event)
       return ()
     render (State ctxt r) renderer = do
       clearRect ctxt 0 0 1400 800
