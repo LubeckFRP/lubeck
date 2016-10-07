@@ -31,23 +31,23 @@ import qualified Lubeck.Drawing as D
 import Lubeck.Drawing hiding (path, rect)
 import Lubeck.Drawing.Internal.Backend.FastRenderer
   ( adaptCoordinates
-  -- , prerender
-  -- , usePrerendered
+  , prerender
+  , usePrerendered
   , TransferedFastDrawing
-  -- , createCanvasNode
-  -- , getCanvas
-  -- , get2DContext
-  -- , createRenderer
-  -- , showRenderer
-  -- , renderFastDrawing
-  -- , runRenderingLoop
-  -- , Context
-  -- , MouseEventType(..)
+  , createCanvasNode
+  , getCanvas
+  , get2DContext
+  , createRenderer
+  , showRenderer
+  , renderFastDrawing
+  , runRenderingLoop
+  , Context
+  , MouseEventType(..)
 
-  -- , getPointTag
-  -- , TagResult(..)
-  -- , TextAlign(..)
-  -- , TextBaseline(..)
+  , getPointTag
+  , TagResult(..)
+  , TextAlign(..)
+  , TextBaseline(..)
   , MouseEvent(..)
   , offsetX
   , offsetY
