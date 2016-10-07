@@ -53,7 +53,7 @@ import Lubeck.Drawing.Internal.Backend.FastRenderer
   , offsetY
   , screenX
   , screenY
-  -- , clearRect
+  , clearRect
   , setMouseupCB
   , setMousedownCB
   , setMousemoveCB
