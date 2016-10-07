@@ -29,28 +29,31 @@ import qualified Lubeck.DV.Styling as DV
 import Control.Lens (_1, _2, to, (.~))
 import qualified Lubeck.Drawing as D
 import Lubeck.Drawing hiding (path, rect)
-import Lubeck.Drawing.Internal.Backend.FastRenderer (adaptCoordinates, prerender, usePrerendered
+import Lubeck.Drawing.Internal.Backend.FastRenderer
+  ( adaptCoordinates
+  -- , prerender
+  -- , usePrerendered
   , TransferedFastDrawing
-  , createCanvasNode
-  , getCanvas
-  , get2DContext
-  , createRenderer
-  , showRenderer
-  , renderFastDrawing
-  , runRenderingLoop
-  , Context
-  , MouseEventType(..)
+  -- , createCanvasNode
+  -- , getCanvas
+  -- , get2DContext
+  -- , createRenderer
+  -- , showRenderer
+  -- , renderFastDrawing
+  -- , runRenderingLoop
+  -- , Context
+  -- , MouseEventType(..)
 
-  , getPointTag
-  , TagResult(..)
-  , TextAlign(..)
-  , TextBaseline(..)
+  -- , getPointTag
+  -- , TagResult(..)
+  -- , TextAlign(..)
+  -- , TextBaseline(..)
   , MouseEvent(..)
   , offsetX
   , offsetY
   , screenX
   , screenY
-  , clearRect
+  -- , clearRect
   , setMouseupCB
   , setMousedownCB
   , setMousemoveCB

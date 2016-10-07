@@ -498,6 +498,37 @@ data MouseEventType = MouseMove | MouseUp | MouseDown deriving (Eq, Ord, Show, E
 
 {-|
  Convenient wrapper for testing and basic apps.
+ - Creates a renderer to the given canvas element
+ - Runs the init function
+ - Registers mouse event handlers on the canvas
+ - Starts an infinite requestAnimationFrame() loop calling the given renderer callback, then returns.
+
+ It does NOT call 'performMajorGC' in the render callback, so the caller may want to do this.
+-}
+runRenderingLoopOn
+  :: CanvasElement
+   -> (CanvasElement -> Context -> Renderer -> IO t)             -- ^ Init callback
+   -> (t -> Renderer -> MouseEventType -> MouseEvent -> IO ())  -- ^ Update callback
+   -> (t -> Renderer -> IO ())                                  -- ^ Render callback
+   -> IO ()
+runRenderingLoopOn e initK handlerK updateK = do
+  e <- getCanvas
+  ct <- get2DContext e
+  r <- createRenderer ct
+  showRenderer r
+
+  initRes <- initK e ct r
+
+  updateCB <- CB.asyncCallback (updateK initRes r)
+  setUpdateCB updateCB
+
+  setMousemoveCB e =<< (CB.asyncCallback1 $ (. MouseEvent) $ handlerK initRes r MouseMove)
+  setMouseupCB e =<<   (CB.asyncCallback1 $ (. MouseEvent) $ handlerK initRes r MouseUp)
+  setMousedownCB e =<< (CB.asyncCallback1 $ (. MouseEvent) $ handlerK initRes r MouseDown)
+  startLoop
+
+{-|
+ Convenient wrapper for testing and basic apps.
  - Creates a canvas element as per 'createCanvasNode' and appends it to the document
  - Creates a renderer to the canvas
  - Runs the init function
