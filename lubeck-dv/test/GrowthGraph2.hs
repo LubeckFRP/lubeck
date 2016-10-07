@@ -124,12 +124,12 @@ growthGraph n = translate (V2 50 (-50))
   $ mconcat
   [ mempty
   , title
-  , translate (V2 400 0) moreFollowersThisPeriod
+  , translate (V2 450 0) moreFollowersThisPeriod
   --
   , translateY (-50) $ mconcat
     [ mempty
     , followersLikeCommentFilter
-    , translateX 200 periodShortCut
+    , translateX 550 periodShortCut
     ]
   , translateY (-300) $ mconcat
     [ mempty
@@ -154,18 +154,21 @@ lightergreyColor = sRGB24 188 188 188 -- #a5a5a5
 bluishColor = sRGB24 88 180 232
 
 title :: Draft Fast
-title = titleText <> translateX 166 explanation
+title = titleText <> translateX 174 explanation
   where
     titleText = fillColor Colors.black $ textWithOptions stdFontLarger "Followers over time"
-    explanation = mconcat
-      [ fillColor Colors.white $ textWithOptions stdFont "?"
-      , fillColor lightergreyColor $ scale 23 circle
+    explanation = translateY 7 $ mconcat
+      [ fillColor Colors.white $ textWithOptions (stdFont
+        { textAnchor = TextAnchorMiddle
+        , alignmentBaseline = AlignmentBaselineMiddle })
+         "?"
+      , fillColor lightergreyColor $ scale 19 circle
       ]
     -- TODO pop-up
     popUpText = "The growth of your followers during a selected time range"
 
 moreFollowersThisPeriod :: Draft Fast
-moreFollowersThisPeriod = mconcat [a, translateX 45 b, translateX 90 c]
+moreFollowersThisPeriod = mconcat [a, translateX 45 b, translateX (90+5) c]
   where
     a = fillColor greenColor   $ textWithOptions (stdFontEvenLarger { textAnchor = TextAnchorEnd }) "2.3M"
     b = fillColor Colors.white $ textWithOptions (stdFontSmaller { textAnchor = TextAnchorMiddle }) "+30.97%"<> (fillColor greenColor $ translateY 5 $ scaleXY (V2 62 21) square)
@@ -177,12 +180,17 @@ followersLikeCommentFilter = catH [b "Followers", translateX (110+10) $ b "Likes
     -- TODO auto-match box size with text
     -- TODO hover/interact
     b t = mconcat
-      [ fillColor Colors.white $ textWithOptions stdFont t
+      [ translateX (85/2)
+        $ fillColor Colors.white
+        $ textWithOptions (stdFont
+          { textAnchor = TextAnchorMiddle
+          , alignmentBaseline = AlignmentBaselineMiddle })
+        $ t
       , fillColor lightgreyColor (scaleXY (V2 85 28) squareL)
       ]
 
 periodShortCut :: Draft Fast
-periodShortCut = catH [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
+periodShortCut = foldr (\x y -> x <> translateX 35 y) mempty [b "1d", b "5d", b "1m", b "3m", b "6m", b "YTD", b "ALL"]
   where
     -- TODO extra sapce
     b t = fillColor Colors.lightgrey (textWithOptions stdFont t)
