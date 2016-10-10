@@ -512,7 +512,6 @@ runRenderingLoopOn
    -> (t -> Renderer -> IO ())                                  -- ^ Render callback
    -> IO ()
 runRenderingLoopOn e initK handlerK updateK = do
-  e <- getCanvas
   ct <- get2DContext e
   r <- createRenderer ct
   showRenderer r
