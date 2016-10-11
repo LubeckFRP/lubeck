@@ -51,9 +51,9 @@ import Control.Lens(Getter, to, toListOf)
 import Control.Lens.Operators hiding ((<~))
 import Control.Monad.Reader (ask)
 import Data.Functor.Contravariant (Contravariant(..))
-import Data.Map(Map)
+import Data.Map.Strict(Map)
 import Data.Set(Set)
-import Data.IntMap(IntMap)
+import Data.IntMap.Strict(IntMap)
 import Data.IntSet(IntSet)
 
 import Control.Monad.Trans.Maybe
@@ -62,10 +62,10 @@ import Control.Monad.Writer
 import Data.Functor.Compose
 import qualified Data.Char
 import qualified Data.List
-import qualified Data.Map
-import qualified Data.Map as Map
+import qualified Data.Map.Strict
+import qualified Data.Map.Strict as Map
 import qualified Data.Set
-import qualified Data.IntMap
+import qualified Data.IntMap.Strict
 import qualified Data.IntSet
 import qualified Data.Maybe
 import qualified Data.Time
@@ -175,7 +175,7 @@ tableNull _          = False
 Create a table with a single row and column.
 -}
 tableSingleton :: k -> a -> Table k a
-tableSingleton k v = Table $ pure $ Data.Map.singleton k v
+tableSingleton k v = Table $ pure $ Map.singleton k v
 
 {-|
 Create a table from a list.
@@ -194,7 +194,7 @@ Returns the names of each column.
 tableHeaders :: Ord k => Table k a -> [k]
 tableHeaders (Table t) = ks
   where
-    ks = Data.List.nub $ mconcat $ fmap Data.Map.keys t
+    ks = Data.List.nub $ mconcat $ fmap Map.keys t
 
 {-|
 Returns values in column-major order.
@@ -220,16 +220,16 @@ tableToList (Table t) = t
 View the table as a map from column name to values.
 -}
 tableToMap :: Ord k => Table k a -> Map k [Maybe a]
-tableToMap (Table t) = Data.Map.fromList $ fmap (\k -> (k, fmap (Data.Map.lookup k) t)) ks
+tableToMap (Table t) = Map.fromList $ fmap (\k -> (k, fmap (Map.lookup k) t)) ks
   where
     -- ks :: [[k]]
-    ks = Data.List.nub $ mconcat $ fmap Data.Map.keys t
+    ks = Data.List.nub $ mconcat $ fmap Map.keys t
 
 tableToMap' :: Ord k => Table k a -> Map k (Column a)
 tableToMap' = fmap columnFromList . tableToMap
 
 getColumn :: Ord k => k -> Table k a -> Column a
-getColumn k t = case Data.Map.lookup k (tableToMap' t) of
+getColumn k t = case Map.lookup k (tableToMap' t) of
   Nothing -> empty
   Just c -> c
 
@@ -238,7 +238,7 @@ getColumn k t = case Data.Map.lookup k (tableToMap' t) of
 Filter a row by looking at a single key.
 -}
 filterRows :: Ord k => k -> (a -> Bool) -> Table k a -> Table k a
-filterRows k p (Table t) = Table $ filter (\m -> justJust p $ Data.Map.lookup k m) t
+filterRows k p (Table t) = Table $ filter (\m -> justJust p $ Map.lookup k m) t
   where
     justJust p (Just x) = p x
     justJust p Nothing  = False
@@ -258,10 +258,10 @@ Laws
 -}
 
 crossTablesShort :: Ord k => (a -> a -> a) -> Table k a -> Table k a -> Table k a
-crossTablesShort f (Table a) (Table b) = Table $ zipWith (Data.Map.unionWith f) a b
+crossTablesShort f (Table a) (Table b) = Table $ zipWith (Map.unionWith f) a b
 
 crossTablesLong :: Ord k => (a -> a -> a) -> Table k a -> Table k a -> Table k a
-crossTablesLong f (Table a) (Table b) = Table $ crossWith (Data.Map.unionWith f) a b
+crossTablesLong f (Table a) (Table b) = Table $ crossWith (Map.unionWith f) a b
   where
     -- TODO consolidate w New module
     crossWith f [] b  = []
@@ -285,10 +285,10 @@ combine2 :: Ord k => Map k a -> Map k b -> Map k (a, b)
 combine2 = combine2With (,)
 
 combine2With :: Ord k => (a -> b -> c) -> Map k a -> Map k b -> Map k c
-combine2With f a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
+combine2With f a b = Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
   where
     -- safeLookUpWithKey :: Ord k => Map k a -> Map k b -> k -> Maybe (k, (a, b))
-    safeLookUpWithKey as bs k = case (Data.Map.lookup k as, Data.Map.lookup k bs) of
+    safeLookUpWithKey as bs k = case (Map.lookup k as, Map.lookup k bs) of
       (Just a, Just b) -> Just (k, f a b)
       _ -> Nothing
     ks = sortNub $ Map.keys a <> Map.keys b
@@ -298,10 +298,10 @@ combine2With f a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safe
 
 
 conjoin2With :: Ord k => (a -> c) -> (b -> c) -> (a -> b -> c) -> Map k a -> Map k b -> Map k c
-conjoin2With f g h a b = Data.Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
+conjoin2With f g h a b = Map.fromList $ Data.Maybe.catMaybes $ fmap (\k -> safeLookUpWithKey a b k) ks
   where
     -- safeLookUpWithKey :: Ord k => Map k a -> Map k b -> k -> Maybe (k, (a, b))
-    safeLookUpWithKey as bs k = case (Data.Map.lookup k as, Data.Map.lookup k bs) of
+    safeLookUpWithKey as bs k = case (Map.lookup k as, Map.lookup k bs) of
       (Just a, Just b) -> Just (k, h a b)
       (Just a, _)      -> Just (k, f a)
       (_,      Just b) -> Just (k, g b)
