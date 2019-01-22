@@ -2,9 +2,9 @@
 name:                lubeck-drawing
 version:             0.1.0.0
 synopsis:            Functional 2D graphics based on SVG
-license:             AllRightsReserved
+license:             MIT
 license-file:        LICENSE
-author:              Beautiful Destinations
+author:              Hans Höglund
 maintainer:          hans@beautifuldestinations.com
 build-type:          Custom
 cabal-version:       >=1.10

@@ -2,9 +2,9 @@
 name:                lubeck-web
 version:             0.1.0.0
 synopsis:            Lubeck web libraries
-license:             AllRightsReserved
+license:             MIT
 license-file:        LICENSE
-author:              Beautiful Destinations
+author:              Hans Höglund
 maintainer:          hans@beautifuldestinations.com
 build-type:          Simple
 cabal-version:       >=1.10
